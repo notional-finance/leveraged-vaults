@@ -1,0 +1,19 @@
+compiler:
+  solc:
+    optimizer:
+      enabled: true
+      runs: 200
+    remappings:
+      - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.5.0"
+      - "@openzeppelin-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.5.0"
+
+networks:
+  default: development
+
+reports:
+  exclude_paths:
+    - interfaces/**/*.*
+
+dependencies:
+  - OpenZeppelin/openzeppelin-contracts@4.5.0
+  - OpenZeppelin/openzeppelin-contracts-upgradeable@4.5.0
