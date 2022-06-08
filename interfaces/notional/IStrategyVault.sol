@@ -10,9 +10,9 @@ interface IStrategyVaultCustom {
     // Tells a vault to redeem some amount of strategy tokens from Notional and transfer the resulting asset cash
     function redeemFromNotional(uint256 strategyTokens, uint256 maturity, bytes calldata data) external;
 
-    function isInSettlement() external view returns (bool);
+    function isInSettlement(uint256 maturity) external view returns (bool);
     function canSettleMaturity(uint256 maturity) external view returns (bool);
-    function convertStrategyToUnderlying(uint256 strategyTokens) external view returns (uint256 underlyingValue);
+    function convertStrategyToUnderlying(uint256 strategyTokens, uint256 maturity) external view returns (uint256 underlyingValue);
 }
 
 interface IStrategyVault is IStrategyVaultCustom, IERC20  {}
