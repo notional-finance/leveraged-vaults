@@ -24,11 +24,14 @@ abstract contract BaseStrategyVault is ERC20, IStrategyVaultCustom {
     function _depositFromNotional(uint256 deposit, uint256 maturity, bytes calldata data) internal virtual returns (uint256 strategyTokensMinted);
     function _redeemFromNotional(uint256 strategyTokens, uint256 maturity, bytes calldata data) internal virtual returns (uint256 tokensFromRedeem);
 
+    // TODO: these are all actually storage on a proxy
     uint16 internal immutable BORROW_CURRENCY_ID;
     bool internal immutable USE_UNDERLYING_TOKEN;
     TokenType internal immutable ASSET_TOKEN_TYPE;
     ERC20 public immutable ASSET_TOKEN;
     ERC20 public immutable UNDERLYING_TOKEN;
+    // TODO: these are all actually storage on a proxy
+
     NotionalProxy public immutable NOTIONAL;
     ILendingPool public immutable AAVE_LENDING_POOL;
 

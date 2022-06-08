@@ -6,7 +6,7 @@ import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {IWrappedfCashFactory} from "../../../interfaces/notional/IWrappedfCashFactory.sol";
 import {IWrappedfCashComplete as IWrappedfCash} from "../../../interfaces/notional/IWrappedfCash.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
-import {BatchLend, Token, VaultState} from "../global/Types.sol";
+import {BatchLend, Token, VaultState, ETHRateStorage, AggregatorV2V3Interface} from "../global/Types.sol";
 import {Constants} from "../global/Constants.sol";
 
 /**
@@ -16,6 +16,17 @@ import {Constants} from "../global/Constants.sol";
  */
 contract CrossCurrencyfCashVault is BaseStrategyVault {
     uint16 public immutable LEND_CURRENCY_ID;
+
+    uint8 borrowRateDecimalPlaces;
+    bool borrowRateMustInvert;
+    uint8 lendRateDecimalPlaces;
+    bool lendRateMustInvert;
+
+    AggregatorV2V3Interface borrowRateOracle;
+    // --- 6 bytes here before next slot
+
+    AggregatorV2V3Interface lendRateOracle;
+    
     IWrappedfCashFactory internal immutable WRAPPED_FCASH_FACTORY;
 
     /// @notice Emitted when a vault is settled
@@ -34,11 +45,17 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
     ) BaseStrategyVault(name_, symbol_, notional_, borrowCurrencyId_, true, true) {
         LEND_CURRENCY_ID = lendCurrencyId_;
         WRAPPED_FCASH_FACTORY = wrappedfCashFactory_;
-        // (Token memory assetToken, Token memory underlyingToken) = _setAssetTokenApprovals(
-        //     lendCurrencyId_,
-        //     true,
-        //     NotionalProxy(notional_)
-        // );
+
+        // Sets the exchange rate storage
+        (ETHRateStorage memory lendRateStorage, /* */) = NOTIONAL.getRateStorage(lendCurrencyId_);
+        lendRateDecimalPlaces = lendRateStorage.rateDecimalPlaces;
+        lendRateMustInvert = lendRateStorage.mustInvert;
+        lendRateOracle = lendRateStorage.rateOracle;
+
+        (ETHRateStorage memory borrowRateStorage, /* */) = NOTIONAL.getRateStorage(borrowCurrencyId_);
+        borrowRateDecimalPlaces = borrowRateStorage.rateDecimalPlaces;
+        borrowRateMustInvert = borrowRateStorage.mustInvert;
+        borrowRateOracle = borrowRateStorage.rateOracle;
     }
 
     function getConfigFlags() external view returns (uint16 flags) {
