@@ -11,6 +11,7 @@ import {IBoostController} from "../../interfaces/notional/IBoostController.sol";
 import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../interfaces/balancer/IBalancerMinter.sol";
 import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
+import {ITradingModule} from "@notional-trading-module/interfaces/ITradingModule.sol";
 
 struct Balancer2TokenVaultParams {
     IBalancerVault balancerVault;
@@ -19,6 +20,7 @@ struct Balancer2TokenVaultParams {
     ILiquidityGauge liquidityGauge;
     IBalancerMinter balancerMinter;
     address veBalDelegator;
+    ITradingModule tradingModule;
 }
 
 contract Balancer2TokenVault is BaseStrategyVault {
