@@ -3,6 +3,8 @@ pragma solidity =0.8.11;
 pragma abicoder v2;
 
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {IWrappedfCashFactory} from "../../../interfaces/notional/IWrappedfCashFactory.sol";
+import {IWrappedfCash} from "../../../interfaces/notional/IWrappedfCash.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {Token} from "../global/Types.sol";
 
@@ -14,15 +16,18 @@ import {Token} from "../global/Types.sol";
 contract CrossCurrencyfCashVault is BaseStrategyVault {
 
     uint16 internal immutable LEND_CURRENCY_ID;
+    IWrappedfCashFactory internal immutable WRAPPED_FCASH_FACTORY;
 
     constructor(
         string memory name_,
         string memory symbol_,
         address notional_,
+        IWrappedfCashFactory wrappedfCashFactory_,
         uint16 borrowCurrencyId_,
         uint16 lendCurrencyId_
     ) BaseStrategyVault(name_, symbol_, notional_, borrowCurrencyId_, true, true) {
         LEND_CURRENCY_ID = lendCurrencyId_;
+        WRAPPED_FCASH_FACTORY = wrappedfCashFactory_;
         // (Token memory assetToken, Token memory underlyingToken) = _setAssetTokenApprovals(
         //     lendCurrencyId_,
         //     true,
@@ -30,6 +35,19 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         // );
     }
 
+    /**
+     * @notice Returns the fCash wrapper address for the LEND_CURRENCY_ID and maturity
+     */
+    function getfCashWrapperAddress(uint40 maturity) public view returns (IWrappedfCash wrapper) {
+        return IWrappedfCash(WRAPPED_FCASH_FACTORY.computeAddress(LEND_CURRENCY_ID, maturity));
+    }
+
+    /**
+     * @notice During settlement all of the fCash balance in the lend currency will be redeemed to the
+     * underlying token and traded back to the borrow currency. All of the borrow currency will be deposited
+     * into the Notional contract as asset tokens and held for accounts to withdraw. Settlement can only
+     * be called after maturity.
+     */
     function settleVault(uint256 maturity, bytes calldata settlementTrade) external view returns (bool) {
         // Redeem the entire fCash balance to cash into the debt currency
         // uint256 fCashBalance = IWrappedfCash(maturity).balanceOf(address(this));
