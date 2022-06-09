@@ -6,6 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Token} from "../global/Types.sol";
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
+import {WETH9} from "../../interfaces/WETH9.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {IBoostController} from "../../interfaces/notional/IBoostController.sol";
 import {IBalancerVault, IAsset} from "../../interfaces/balancer/IBalancerVault.sol";
@@ -23,10 +24,17 @@ struct Balancer2TokenVaultParams {
     IBalancerMinter balancerMinter;
     address veBalDelegator;
     ITradingModule tradingModule;
+    WETH9 weth;
 }
 
 struct Balancer2TokenVaultDepositParams {
     uint256 minBPT;
+}
+
+struct Balancer2TokenVaultRedeemParams {
+    uint256 minUnderlying;
+    uint256 minUnderlyingSecond;
+    bool withdrawFromWETH;
 }
 
 contract Balancer2TokenVault is BaseStrategyVault {
@@ -41,6 +49,7 @@ contract Balancer2TokenVault is BaseStrategyVault {
     IBalancerMinter public immutable BALANCER_MINTER;
     address public immutable VEBAL_DELEGATOR;
     uint256 public immutable UNDERLYING_INDEX;
+    WETH9 public immutable WETH;
 
     constructor(
         string memory name_,
@@ -88,6 +97,7 @@ contract Balancer2TokenVault is BaseStrategyVault {
         LIQUIDITY_GAUGE = params.liquidityGauge;
         BALANCER_MINTER = params.balancerMinter;
         VEBAL_DELEGATOR = params.veBalDelegator;
+        WETH = params.weth;
     }
 
     function canSettleMaturity(uint256 maturity)
@@ -118,13 +128,24 @@ contract Balancer2TokenVault is BaseStrategyVault {
             (Balancer2TokenVaultDepositParams)
         );
 
+        // prettier-ignore
         (
             IAsset[] memory assets,
             uint256[] memory maxAmountsIn
-        ) = _getPoolParams(deposit);
+        ) = _getPoolParams(
+            BORROW_CURRENCY_ID == 1
+                ? address(0)
+                : address(UNDERLYING_TOKEN),
+            deposit,
+            0
+        );
+
+        uint256 msgValue = assets[UNDERLYING_INDEX] == IAsset(address(0))
+            ? maxAmountsIn[UNDERLYING_INDEX]
+            : 0;
 
         // Join pool
-        BALANCER_VAULT.joinPool(
+        BALANCER_VAULT.joinPool{value: msgValue}(
             BALANCER_POOL_ID,
             address(this),
             address(this),
@@ -162,7 +183,6 @@ contract Balancer2TokenVault is BaseStrategyVault {
         // Mint strategy tokens
         uint256 bptBalance = _bptHeld();
         uint256 _totalSupply = totalSupply();
-        uint256 strategyTokensMinted;
         if (_totalSupply == 0) {
             strategyTokensMinted = bptAmount;
         } else {
@@ -173,6 +193,8 @@ contract Balancer2TokenVault is BaseStrategyVault {
 
         // Handles event emission, balance update and total supply update
         super._mint(msg.sender, strategyTokensMinted);
+
+        // TODO: emit deposit event here
     }
 
     /// @dev Gets the total BPT held across the LIQUIDITY GAUGE and the contract itself
@@ -181,22 +203,84 @@ contract Balancer2TokenVault is BaseStrategyVault {
             BALANCER_POOL_TOKEN.balanceOf(address(this)));
     }
 
-    function _getPoolParams(uint256 amount)
-        private
-        view
-        returns (IAsset[] memory, uint256[] memory)
-    {
-        IAsset[] memory assets = new IAsset[](2);
-        assets[UNDERLYING_INDEX] = BORROW_CURRENCY_ID == 1
-            ? IAsset(address(0))
-            : IAsset(address(UNDERLYING_TOKEN));
+    function _getPoolParams(
+        address underlying,
+        uint256 underlyingAmount,
+        uint256 underlyingSecondAmount
+    ) private view returns (IAsset[] memory assets, uint256[] memory amounts) {
+        assets = new IAsset[](2);
+        assets[UNDERLYING_INDEX] = IAsset(underlying);
         assets[1 - UNDERLYING_INDEX] = IAsset(address(UNDERLYING_SECOND));
 
-        uint256[] memory maxAmountsIn = new uint256[](2);
-        maxAmountsIn[UNDERLYING_INDEX] = amount;
-        maxAmountsIn[1 - UNDERLYING_INDEX] = 0;
+        amounts = new uint256[](2);
+        amounts[UNDERLYING_INDEX] = underlyingAmount;
+        amounts[1 - UNDERLYING_INDEX] = underlyingSecondAmount;
+    }
 
-        return (assets, maxAmountsIn);
+    /// @notice Returns how many Balancer pool tokens a strategy token amount has a claim on
+    function getPoolTokenShare(uint256 strategyTokenAmount)
+        public
+        view
+        returns (uint256 bptClaim)
+    {
+        uint256 _totalSupply = totalSupply();
+        if (_totalSupply == 0) return 0;
+
+        uint256 bptBalance = _bptHeld();
+
+        // BPT and Strategy token are both in 18 decimal precision so no conversion required
+        return (bptBalance * strategyTokenAmount) / _totalSupply;
+    }
+
+    function _exitPool(uint256 bptExitAmount, bytes calldata data) internal {
+        Balancer2TokenVaultRedeemParams memory params = abi.decode(
+            data,
+            (Balancer2TokenVaultRedeemParams)
+        );
+
+        // prettier-ignore
+        (
+            IAsset[] memory assets,
+            uint256[] memory minAmountsOut
+        ) = _getPoolParams(
+            params.withdrawFromWETH ? address(0) : address(WETH),
+            params.minUnderlying,
+            params.minUnderlyingSecond
+        );
+
+        uint256 underlyingBefore = BORROW_CURRENCY_ID == 1
+            ? msg.sender.balance
+            : UNDERLYING_TOKEN.balanceOf(msg.sender);
+        uint256 underlyingSecondBefore = UNDERLYING_SECOND.balanceOf(
+            msg.sender
+        );
+
+        BALANCER_VAULT.exitPool(
+            BALANCER_POOL_ID,
+            address(this),
+            payable(msg.sender), // Owner will receive the underlying assets
+            IBalancerVault.ExitPoolRequest(
+                assets,
+                minAmountsOut,
+                abi.encode(
+                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+                    bptExitAmount
+                ),
+                false // Don't use internal balances
+            )
+        );
+
+        uint256 underlyingAfter = BORROW_CURRENCY_ID == 1
+            ? msg.sender.balance
+            : UNDERLYING_TOKEN.balanceOf(msg.sender);
+        uint256 underlyingSecondAfter = UNDERLYING_SECOND.balanceOf(msg.sender);
+
+        /*emit StrategyTokensRedeemed(
+            msg.sender,
+            underlyingAfter - underlyingBefore,
+            underlyingSecondAfter - underlyingSecondBefore,
+            bptExitAmount
+        ); */
     }
 
     function _redeemFromNotional(
@@ -204,6 +288,22 @@ contract Balancer2TokenVault is BaseStrategyVault {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 tokensFromRedeem) {
-        tokensFromRedeem = 0;
+        tokensFromRedeem = getPoolTokenShare(strategyTokens);
+
+        // Handles event emission, balance update and total supply update
+        _burn(msg.sender, strategyTokens);
+
+        if (tokensFromRedeem > 0) {
+            // Withdraw gauge token from VeBALDelegator
+            BOOST_CONTROLLER.withdrawToken(
+                address(LIQUIDITY_GAUGE),
+                tokensFromRedeem
+            );
+
+            // Unstake BPT
+            LIQUIDITY_GAUGE.withdraw(tokensFromRedeem, false);
+
+            _exitPool(tokensFromRedeem, data);
+        }
     }
 }
