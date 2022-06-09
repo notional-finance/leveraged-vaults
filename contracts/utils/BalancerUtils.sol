@@ -25,12 +25,12 @@ library BalancerUtils {
     function getPoolAddress(IBalancerVault vault, bytes32 poolId)
         internal
         view
-        returns (IERC20)
+        returns (address)
     {
         // Balancer will revert if pool is not found
         // prettier-ignore
         (address poolAddress, /* */) = vault.getPool(poolId);
-        return IERC20(poolAddress);
+        return poolAddress;
     }
 
     function getTokenAddress(
