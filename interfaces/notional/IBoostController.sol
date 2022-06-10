@@ -5,5 +5,11 @@ interface IBoostController {
 
     function withdrawToken(address token, uint256 amount) external;
 
-    function claimRewards(address liquidityGauge) external;
+    function claimBAL(address liquidityGauge)
+        external
+        returns (uint256 claimAmount);
+
+    function claimGaugeTokens(address liquidityGauge)
+        external
+        returns (address[] memory tokens, uint256[] memory balancesTransferred);
 }

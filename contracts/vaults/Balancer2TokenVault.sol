@@ -3,7 +3,7 @@ pragma solidity =0.8.11;
 pragma abicoder v2;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Token} from "../global/Types.sol";
+import {Token, VaultState} from "../global/Types.sol";
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
@@ -22,9 +22,9 @@ struct Balancer2TokenVaultParams {
     IBoostController boostController;
     ILiquidityGauge liquidityGauge;
     IBalancerMinter balancerMinter;
-    address veBalDelegator;
     ITradingModule tradingModule;
     WETH9 weth;
+    uint256 settlementPeriod;
 }
 
 struct Balancer2TokenVaultDepositParams {
@@ -47,13 +47,11 @@ contract Balancer2TokenVault is BaseStrategyVault {
     IBoostController public immutable BOOST_CONTROLLER;
     ILiquidityGauge public immutable LIQUIDITY_GAUGE;
     IBalancerMinter public immutable BALANCER_MINTER;
-    address public immutable VEBAL_DELEGATOR;
     uint256 public immutable UNDERLYING_INDEX;
     WETH9 public immutable WETH;
+    uint256 public immutable SETTLEMENT_PERIOD;
 
     constructor(
-        string memory name_,
-        string memory symbol_,
         address notional_,
         uint16 borrowCurrencyId_,
         bool setApproval,
@@ -61,8 +59,6 @@ contract Balancer2TokenVault is BaseStrategyVault {
         Balancer2TokenVaultParams memory params
     )
         BaseStrategyVault(
-            name_,
-            symbol_,
             notional_,
             borrowCurrencyId_,
             setApproval,
@@ -96,8 +92,8 @@ contract Balancer2TokenVault is BaseStrategyVault {
         BOOST_CONTROLLER = params.boostController;
         LIQUIDITY_GAUGE = params.liquidityGauge;
         BALANCER_MINTER = params.balancerMinter;
-        VEBAL_DELEGATOR = params.veBalDelegator;
         WETH = params.weth;
+        SETTLEMENT_PERIOD = params.settlementPeriod;
     }
 
     function canSettleMaturity(uint256 maturity)
@@ -106,20 +102,30 @@ contract Balancer2TokenVault is BaseStrategyVault {
         override
         returns (bool)
     {
-        return false;
+        // prettier-ignore
+        (
+            /* int256 assetCashRequiredToSettle */,
+            int256 underlyingCashRequiredToSettle
+        ) = NOTIONAL.getCashRequiredToSettle(address(this), maturity);
+        /// @notice The first is insolvency, the second is where we have paid off all debts.
+        return
+            totalSupply(maturity) == 0 || underlyingCashRequiredToSettle <= 0;
     }
 
-    function convertStrategyToUnderlying(uint256 strategyTokens)
-        public
-        view
-        override
-        returns (uint256 underlyingValue)
-    {
+    function convertStrategyToUnderlying(
+        uint256 strategyTokens,
+        uint256 maturity
+    ) public view override returns (uint256 underlyingValue) {
         underlyingValue = 0;
     }
 
-    function isInSettlement() external view override returns (bool) {
-        return false;
+    function isInSettlement(uint256 maturity)
+        external
+        view
+        override
+        returns (bool)
+    {
+        return block.timestamp > maturity - SETTLEMENT_PERIOD;
     }
 
     function _joinPool(uint256 deposit, bytes calldata data) private {
@@ -182,7 +188,7 @@ contract Balancer2TokenVault is BaseStrategyVault {
 
         // Mint strategy tokens
         uint256 bptBalance = _bptHeld();
-        uint256 _totalSupply = totalSupply();
+        uint256 _totalSupply = totalSupply(maturity);
         if (_totalSupply == 0) {
             strategyTokensMinted = bptAmount;
         } else {
@@ -190,9 +196,6 @@ contract Balancer2TokenVault is BaseStrategyVault {
                 (_totalSupply * bptAmount) /
                 (bptBalance - bptAmount);
         }
-
-        // Handles event emission, balance update and total supply update
-        super._mint(msg.sender, strategyTokensMinted);
 
         // TODO: emit deposit event here
     }
@@ -218,12 +221,12 @@ contract Balancer2TokenVault is BaseStrategyVault {
     }
 
     /// @notice Returns how many Balancer pool tokens a strategy token amount has a claim on
-    function getPoolTokenShare(uint256 strategyTokenAmount)
+    function getPoolTokenShare(uint256 strategyTokenAmount, uint256 maturity)
         public
         view
         returns (uint256 bptClaim)
     {
-        uint256 _totalSupply = totalSupply();
+        uint256 _totalSupply = totalSupply(maturity);
         if (_totalSupply == 0) return 0;
 
         uint256 bptBalance = _bptHeld();
@@ -288,10 +291,7 @@ contract Balancer2TokenVault is BaseStrategyVault {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 tokensFromRedeem) {
-        tokensFromRedeem = getPoolTokenShare(strategyTokens);
-
-        // Handles event emission, balance update and total supply update
-        _burn(msg.sender, strategyTokens);
+        tokensFromRedeem = getPoolTokenShare(strategyTokens, maturity);
 
         if (tokensFromRedeem > 0) {
             // Withdraw gauge token from VeBALDelegator
@@ -305,5 +305,19 @@ contract Balancer2TokenVault is BaseStrategyVault {
 
             _exitPool(tokensFromRedeem, data);
         }
+    }
+
+    /** Public view functions */
+
+    function name() external view returns (string memory) {
+        return "Balancer 2-Token Strategy Vault";
+    }
+
+    function totalSupply(uint256 maturity) public view returns (uint256) {
+        VaultState memory vaultState = NOTIONAL.getVaultState(
+            address(this),
+            maturity
+        );
+        return vaultState.totalStrategyTokens;
     }
 }
