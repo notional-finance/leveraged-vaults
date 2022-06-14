@@ -37,12 +37,11 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
 
     constructor(
         string memory name_,
-        string memory symbol_,
         address notional_,
         IWrappedfCashFactory wrappedfCashFactory_,
         uint16 borrowCurrencyId_,
         uint16 lendCurrencyId_
-    ) BaseStrategyVault(name_, symbol_, notional_, borrowCurrencyId_, true, true) {
+    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_, true, true) {
         LEND_CURRENCY_ID = lendCurrencyId_;
         WRAPPED_FCASH_FACTORY = wrappedfCashFactory_;
 
@@ -56,10 +55,6 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         borrowRateDecimalPlaces = borrowRateStorage.rateDecimalPlaces;
         borrowRateMustInvert = borrowRateStorage.mustInvert;
         borrowRateOracle = borrowRateStorage.rateOracle;
-    }
-
-    function getConfigFlags() external view returns (uint16 flags) {
-        // Returns the configuration flags for the vault
     }
 
     /**
@@ -79,40 +74,15 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
     function settleVault(uint256 maturity, bytes calldata settlementTrade) external {
         require(maturity <= block.timestamp, "Cannot Settle");
         VaultState memory vaultState = NOTIONAL.getVaultState(address(this), maturity);
-        // We don't want to redeem the fCash balance until we know for sure that all accounts
-        // requiring settlement have been properly handled. This would mess up the accounting
-        // for pooled settlement.
-        require(vaultState.accountsRequiringSettlement == 0);
 
-        // Redeem the entire fCash balance to cash into the debt currency
-        uint256 fCashBalance = getfCashWrapper(maturity).balanceOf(address(this));
         (
             int256 assetCashRequiredToSettle,
             int256 underlyingCashRequiredToSettle
-        ) = NOTIONAL.redeemStrategyTokensToCash(maturity, fCashBalance, settlementTrade);
+        ) = NOTIONAL.redeemStrategyTokensToCash(maturity, vaultState.totalStrategyTokens, settlementTrade);
 
         // Profits are the surplus in cash after the tokens have been settled, this is the negation of
         // what is returned from the method above
         emit VaultSettled(maturity, -1 * assetCashRequiredToSettle, -1 * underlyingCashRequiredToSettle);
-    }
-
-
-    /**
-     * @notice Called by Notional to check if the strategy tokens have been redeemed to the borrow
-     * currency so that it can proceed with settling out the vault on its side. We return true anytime
-     * after maturity so that individual account settlement can proceed.
-     */
-    function canSettleMaturity(uint256 maturity) external override view returns (bool) {
-        // TODO: are these necessary or not?
-        return maturity <= block.timestamp;
-    }
-
-    /**
-     * @notice Called by Notional to check if a vault can be entered or not
-     */
-    function isInSettlement(uint256 maturity) external override view returns (bool) {
-        // TODO: are these necessary or not?
-        return maturity <= block.timestamp;
     }
 
     function getLendToBorrowExchangeRate() public view returns (uint256 exchangeRate, uint256 exchangeRatePrecision) {
@@ -139,6 +109,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
      * corresponding maturity.
      */
     function _depositFromNotional(
+        address /* account */,
         uint256 borrowedUnderlyingExternal,
         uint256 maturity,
         bytes calldata data
@@ -186,6 +157,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
     }
 
     function _redeemFromNotional(
+        address /* account */,
         uint256 strategyTokens,
         uint256 maturity,
         bytes calldata data

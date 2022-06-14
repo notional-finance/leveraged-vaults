@@ -3,7 +3,7 @@ pragma solidity =0.8.11;
 pragma abicoder v2;
 
 import {Token, TokenType} from "../global/Types.sol";
-import {IStrategyVaultCustom} from "../../../interfaces/notional/IStrategyVault.sol";
+import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {IVaultController} from "../../../interfaces/notional/IVaultController.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -12,33 +12,47 @@ import {ILendingPool} from "../../interfaces/aave/ILendingPool.sol";
 import {CErc20Interface} from "../../../../interfaces/compound/CErc20Interface.sol";
 import {CEtherInterface} from "../../../../interfaces/compound/CEtherInterface.sol";
 
-abstract contract BaseStrategyVault is ERC20, IStrategyVaultCustom {
+abstract contract BaseStrategyVault is IStrategyVault {
     using SafeERC20 for ERC20;
 
     /** These view methods need to be implemented by the vault */
-    function canSettleMaturity(uint256 maturity) external view virtual returns (bool);
     function convertStrategyToUnderlying(uint256 strategyTokens, uint256 maturity) public view virtual returns (uint256 underlyingValue);
-    function isInSettlement(uint256 maturity) external view virtual returns (bool);
     
     // Vaults need to implement these two methods
-    function _depositFromNotional(uint256 deposit, uint256 maturity, bytes calldata data) internal virtual returns (uint256 strategyTokensMinted);
-    function _redeemFromNotional(uint256 strategyTokens, uint256 maturity, bytes calldata data) internal virtual returns (uint256 tokensFromRedeem);
+    function _depositFromNotional(
+        address account,
+        uint256 deposit,
+        uint256 maturity,
+        bytes calldata data
+    ) internal virtual returns (uint256 strategyTokensMinted);
 
-    // TODO: these are all actually storage on a proxy
+    function _redeemFromNotional(
+        address account,
+        uint256 strategyTokens,
+        uint256 maturity,
+        bytes calldata data
+    ) internal virtual returns (uint256 tokensFromRedeem);
+
+    // This can be overridden if the vault borrows in a secondary currency, but reverts by default.
+    function _repaySecondaryBorrowCallback(
+        uint256 assetCashRequired, bytes calldata data
+    ) internal virtual returns (bytes memory returnData) {
+        revert();
+    }
+
     uint16 internal immutable BORROW_CURRENCY_ID;
     bool internal immutable USE_UNDERLYING_TOKEN;
     TokenType internal immutable ASSET_TOKEN_TYPE;
     ERC20 public immutable ASSET_TOKEN;
     ERC20 public immutable UNDERLYING_TOKEN;
-    // TODO: these are all actually storage on a proxy
-
     NotionalProxy public immutable NOTIONAL;
     ILendingPool public immutable AAVE_LENDING_POOL;
 
     // Return code for cTokens that represents no error
     uint256 internal constant COMPOUND_RETURN_CODE_NO_ERROR = 0;
     uint8 constant internal INTERNAL_TOKEN_DECIMALS = 8;
-    function decimals() public view override returns (uint8) { return INTERNAL_TOKEN_DECIMALS; }
+    string public override name;
+    function decimals() public view returns (uint8) { return INTERNAL_TOKEN_DECIMALS; }
 
     modifier onlyNotional() {
         require(msg.sender == address(NOTIONAL));
@@ -47,60 +61,65 @@ abstract contract BaseStrategyVault is ERC20, IStrategyVaultCustom {
 
     constructor(
         string memory name_,
-        string memory symbol_,
         address notional_,
         uint16 borrowCurrencyId_,
         bool setApproval,
         bool useUnderlyingToken
-    ) ERC20(name_, symbol_) {
+    ) {
+        name = name_;
         NOTIONAL = NotionalProxy(notional_);
         BORROW_CURRENCY_ID = borrowCurrencyId_;
         USE_UNDERLYING_TOKEN = useUnderlyingToken;
         address lendingPool = NotionalProxy(notional_).getLendingPool(); 
         AAVE_LENDING_POOL = ILendingPool(lendingPool);
 
-        (Token memory assetToken, Token memory underlyingToken) = _setAssetTokenApprovals(
-            borrowCurrencyId_,
-            setApproval,
-            NotionalProxy(notional_)
-        );
+        (
+            Token memory assetToken,
+            Token memory underlyingToken,
+            /* ETHRate memory ethRate */,
+            /* AssetRateParameters memory assetRate */
+        ) = NotionalProxy(notional_).getCurrencyAndRates(borrowCurrencyId_);
 
         ASSET_TOKEN = ERC20(assetToken.tokenAddress);
         ASSET_TOKEN_TYPE = assetToken.tokenType;
         UNDERLYING_TOKEN = ERC20(underlyingToken.tokenAddress);
-    }
-
-    function _setAssetTokenApprovals(
-        uint16 currencyId,
-        bool setApproval,
-        NotionalProxy Notional
-    ) internal returns (
-        Token memory assetToken,
-        Token memory underlyingToken
-    ) {
-        (assetToken, underlyingToken, /* */, /* */) = Notional.getCurrencyAndRates(currencyId);
-
         if (setApproval && underlyingToken.tokenAddress != address(0)) {
             // If the parent wants to, set up token approvals for minting
             if (assetToken.tokenType == TokenType.cToken) {
                 ERC20(underlyingToken.tokenAddress).safeApprove(assetToken.tokenAddress, type(uint256).max);
             } else if (assetToken.tokenType == TokenType.aToken) {
-                ERC20(underlyingToken.tokenAddress).safeApprove(address(AAVE_LENDING_POOL), type(uint256).max);
+                ERC20(underlyingToken.tokenAddress).safeApprove(lendingPool, type(uint256).max);
             }
         }
     }
 
     // External methods are authenticated to be just Notional
-    function depositFromNotional(uint256 deposit, uint256 maturity, bytes calldata data) external onlyNotional returns (uint256 strategyTokensMinted) {
+    function depositFromNotional(
+        address account,
+        uint256 deposit,
+        uint256 maturity,
+        bytes calldata data
+    ) external onlyNotional returns (uint256 strategyTokensMinted) {
         uint256 tokenAmount = USE_UNDERLYING_TOKEN ? _redeemAssetTokens(deposit) : deposit;
-        return _depositFromNotional(tokenAmount, maturity, data);
+        return _depositFromNotional(account, tokenAmount, maturity, data);
     }
 
-    function redeemFromNotional(uint256 strategyTokens, uint256 maturity, bytes calldata data) external onlyNotional {
-        uint256 tokensFromRedeem = _redeemFromNotional(strategyTokens, maturity, data);
+    function redeemFromNotional(
+        address account,
+        uint256 strategyTokens,
+        uint256 maturity,
+        bytes calldata data
+    ) external onlyNotional {
+        uint256 tokensFromRedeem = _redeemFromNotional(account, strategyTokens, maturity, data);
         uint256 assetTokensToTransfer = USE_UNDERLYING_TOKEN ? _mintAssetTokens(tokensFromRedeem) : tokensFromRedeem;
 
         ASSET_TOKEN.transfer(address(NOTIONAL), assetTokensToTransfer);
+    }
+
+    function repaySecondaryBorrowCallback(
+        uint256 assetCashRequired, bytes calldata data
+    ) external onlyNotional returns (bytes memory returnData) {
+        return _repaySecondaryBorrowCallback(assetCashRequired, data);
     }
 
     function _redeemAssetTokens(uint256 assetTokens) internal returns (uint256 underlyingTokens) {
@@ -147,5 +166,9 @@ abstract contract BaseStrategyVault is ERC20, IStrategyVaultCustom {
         uint256 balanceAfter = ASSET_TOKEN.balanceOf(address(this));
 
         return balanceAfter - balanceBefore;
+    }
+
+    receive() external payable {
+        // Allow ETH transfers to succeed
     }
 }
