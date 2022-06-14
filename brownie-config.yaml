@@ -6,7 +6,7 @@ compiler:
     remappings:
       - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0"
       - "@openzeppelin-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.6.0"
-
+      - "@notional-trading-module=notional-finance/trading-module@0.0.1"
 networks:
   default: development
 
@@ -17,3 +17,4 @@ reports:
 dependencies:
   - OpenZeppelin/openzeppelin-contracts@4.6.0
   - OpenZeppelin/openzeppelin-contracts-upgradeable@4.6.0
+  - notional-finance/trading-module@0.0.1
