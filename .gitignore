@@ -6,3 +6,4 @@ build/
 reports/
 node_modules/
 cache/
+venv

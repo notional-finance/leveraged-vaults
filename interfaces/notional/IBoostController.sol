@@ -1,4 +1,5 @@
-pragma solidity =0.8.11;
+// SPDX-License-Identifier: GPL-v3
+pragma solidity >=0.7.6;
 
 interface IBoostController {
     function depositToken(address token, uint256 amount) external;

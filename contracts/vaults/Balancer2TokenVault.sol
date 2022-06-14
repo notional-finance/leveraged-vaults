@@ -59,6 +59,7 @@ contract Balancer2TokenVault is BaseStrategyVault {
         Balancer2TokenVaultParams memory params
     )
         BaseStrategyVault(
+            "Balancer 2-Token Strategy Vault",
             notional_,
             borrowCurrencyId_,
             setApproval,
@@ -94,22 +95,6 @@ contract Balancer2TokenVault is BaseStrategyVault {
         BALANCER_MINTER = params.balancerMinter;
         WETH = params.weth;
         SETTLEMENT_PERIOD = params.settlementPeriod;
-    }
-
-    function canSettleMaturity(uint256 maturity)
-        external
-        view
-        override
-        returns (bool)
-    {
-        // prettier-ignore
-        (
-            /* int256 assetCashRequiredToSettle */,
-            int256 underlyingCashRequiredToSettle
-        ) = NOTIONAL.getCashRequiredToSettle(address(this), maturity);
-        /// @notice The first is insolvency, the second is where we have paid off all debts.
-        return
-            totalSupply(maturity) == 0 || underlyingCashRequiredToSettle <= 0;
     }
 
     function convertStrategyToUnderlying(
@@ -308,10 +293,6 @@ contract Balancer2TokenVault is BaseStrategyVault {
     }
 
     /** Public view functions */
-
-    function name() external view returns (string memory) {
-        return "Balancer 2-Token Strategy Vault";
-    }
 
     function totalSupply(uint256 maturity) public view returns (uint256) {
         VaultState memory vaultState = NOTIONAL.getVaultState(

@@ -457,42 +457,57 @@ struct AccountBalance {
     uint256 lastClaimTime;
     uint256 accountIncentiveDebt;
 }
+
 struct VaultConfigStorage {
     // Vault Flags (documented in VaultConfiguration.sol)
     uint16 flags;
     // Each vault only borrows in a single currency
     uint16 borrowCurrencyId;
-    // Absolute maximum vault size (fCash overflows at uint80)
-    // NOTE: we can reduce this to uint48 to allow for a 281 trillion token vault (in whole 8 decimals)
-    uint80 maxVaultBorrowCapacity;
     // Specified in whole tokens in 1e8 precision, allows a 4.2 billion min borrow size
     uint32 minAccountBorrowSize;
     // Minimum collateral ratio for a vault specified in basis points, valid values are greater than 10_000
     // where the largest minimum collateral ratio is 65_536 which is much higher than anything reasonable.
     uint16 minCollateralRatioBPS;
-    // The number of days of each vault term (this is sufficient for 20 year vaults)
-    uint16 termLengthInDays;
     // Allows up to a 12.75% annualized fee
     uint8 feeRate5BPS;
     // A percentage that represents the share of the cash raised that will go to the liquidator
     uint8 liquidationRate;
     // A percentage of the fee given to the protocol
     uint8 reserveFeeShare;
+    // Maximum market index where a vault can borrow from
+    uint8 maxBorrowMarketIndex;
+    // Maximum collateral ratio that a liquidator can push a an account to during deleveraging
+    uint16 maxDeleverageCollateralRatioBPS;
+    // An optional list of secondary borrow currencies
+    uint16[3] secondaryBorrowCurrencies;
+    // 80 bytes left
+}
 
-    // 56 bytes left
+struct VaultBorrowCapacityStorage {
+    // Total fCash across all maturities that caps the borrow capacity
+    uint80 maxBorrowCapacity;
+    // Current usage of that total borrow capacity
+    uint80 totalUsedBorrowCapacity;
+    // TODO: consider tightly packing secondary borrows here
+}
+
+struct VaultSecondaryBorrowStorage {
+    // fCash borrowed for a specific maturity on a secondary currency
+    uint80 fCashBorrowed;
 }
 
 struct VaultConfig {
     address vault;
     uint16 flags;
     uint16 borrowCurrencyId;
-    int256 maxVaultBorrowCapacity;
     int256 minAccountBorrowSize;
-    uint256 termLengthInSeconds;
     int256 feeRate;
     int256 minCollateralRatio;
-    uint256 liquidationRate;
+    int256 liquidationRate;
     int256 reserveFeeShare;
+    uint256 maxBorrowMarketIndex;
+    int256 maxDeleverageCollateralRatio;
+    uint16[3] secondaryBorrowCurrencies;
     AssetRateParameters assetRate;
 }
 
@@ -502,38 +517,32 @@ struct VaultStateStorage {
     // vault term. This value must equal the total fCash borrowed by all accounts
     // in the vault.
     uint80 totalfCash;
-    // This represents the fCash requiring settlement (excludes accounts that have been removed
-    // because they require individualized settlement.
-    uint80 totalfCashRequiringSettlement;
     // The total amount of asset cash in the pool held as prepayment for fCash
     uint80 totalAssetCash;
+    // Total vault shares in this maturity
+    uint80 totalVaultShares;
     // Set to true if a vault has been fully settled and the cash can be pulled. Matured
     // accounts must wait for this flag to be set before they can proceed to exit after
     // maturity
-    bool isFullySettled;
-    // NOTE: 8 bytes left
-    // ----- (248 bytes) This breaks into a new storage slot -------    
-    // Total vault shares in this maturity
-    uint80 totalVaultShares;
+    bool isSettled;
+    // NOTE: 8 bits left
+    // ----- This breaks into a new storage slot -------    
+    // TODO: potentially make total strategy tokens bigger...
     // The total amount of strategy tokens held in the pool
     uint80 totalStrategyTokens;
-    // This holds a counter for the number of accounts that are require settlement (i.e. were unable
-    // to lend to exit positions). This counter must be zero before the vault is considered fully settled.
-    // 4.3 billion is likely more than enough to hold the number of accounts, we should never overflow
-    // this since even one should be exceedingly rare.
-    uint32 accountsRequiringSettlement;
-    // NOTE: 64 bytes left
+    // Valuation of a strategy token at settlement
+    uint80 settlementStrategyTokenValue;
+    // NOTE: 96 bits left
 }
 
 struct VaultState {
     uint256 maturity;
     int256 totalfCash;
-    int256 totalfCashRequiringSettlement;
-    bool isFullySettled;
-    uint256 accountsRequiringSettlement;
+    bool isSettled;
     uint256 totalVaultShares;
     uint256 totalAssetCash;
     uint256 totalStrategyTokens;
+    int256 settlementStrategyTokenValue;
 }
 
 /// @notice Represents an account's position within an individual vault
@@ -541,21 +550,14 @@ struct VaultAccountStorage {
     // The amount of fCash the account has borrowed from Notional. Stored as a uint but on the stack it
     // is represented as a negative number.
     uint80 fCash;
-    // It's possible that an account may not be able to repay their fCash on the market.
-    // in that case we hold asset cash against their fCash as repayment. When this occurs,
-    // we must also update the totalfCashRequiringSettlement on the VaultState object to ensure
-    // that we do not over-sell vault shares to repay debt.
-    uint80 escrowedAssetCash;
     // Vault shares that the account holds
     uint80 vaultShares;
-    // As a storage optimization, we use epochs to store the vault maturity (each epoch is equal to the
-    // term length of the vault from an arbitrary start time). This keeps the storage under 32 bytes.
-    uint16 vaultEpoch;
+    // Maturity when the vault shares and fCash will mature
+    uint32 maturity;
 }
 
 struct VaultAccount {
     int256 fCash;
-    int256 escrowedAssetCash;
     uint256 maturity;
     uint256 vaultShares;
     address account;
@@ -567,6 +569,5 @@ struct VaultAccount {
 struct RollVaultOpts {
     uint32 minLendRate;
     uint32 maxBorrowRate;
-    bytes exitVaultData;
     bytes enterVaultData;
 }
