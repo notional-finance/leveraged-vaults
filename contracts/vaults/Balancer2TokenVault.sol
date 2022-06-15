@@ -124,11 +124,10 @@ contract Balancer2TokenVault is BaseStrategyVault {
         BALANCER_MINTER = params.balancerMinter;
         BAL_TOKEN = ERC20(BALANCER_MINTER.getBalancerToken());
         VEBAL_DELEGATOR = params.veBalDelegator;
-
-        _balancerInit(params);
-
         WETH = params.weth;
         SETTLEMENT_PERIOD = params.settlementPeriod;
+
+        _initRewardTokenList(params);
     }
 
     function _getTokenAddress(uint16 currencyId) private returns (address) {
@@ -145,7 +144,7 @@ contract Balancer2TokenVault is BaseStrategyVault {
         return vaultConfig.secondaryBorrowCurrencies[0];
     }
 
-    function _balancerInit(InitParams memory params) private {
+    function _initRewardTokenList(InitParams memory params) private {
         address[] memory rewardTokens = VEBAL_DELEGATOR.getGaugeRewardTokens(
             address(LIQUIDITY_GAUGE)
         );
@@ -170,8 +169,8 @@ contract Balancer2TokenVault is BaseStrategyVault {
 
         uint256 borrowedSecondaryAmount = 0;
         if (SECONDARY_BORROW_CURRENCY_ID > 0) {
-            uint256 secondaryOracleBalance = 0;
-            uint256 primaryOracleBalance = 1;
+            uint256 secondaryOracleBalance = 0; // TODO: fetch from oracle
+            uint256 primaryOracleBalance = 1; // TODO: fetch from oracle
 
             uint256 optimalSecondaryAmount = (deposit *
                 secondaryOracleBalance) / primaryOracleBalance;
