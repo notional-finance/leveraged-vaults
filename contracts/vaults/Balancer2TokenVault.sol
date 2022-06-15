@@ -16,9 +16,8 @@ import {IBalancerMinter} from "../../interfaces/balancer/IBalancerMinter.sol";
 import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
-import {ITradingModule} from "@notional-trading-module/interfaces/ITradingModule.sol";
-import {Trade} from "@notional-trading-module/contracts/Types.sol";
-import {TradeHandler} from "@notional-trading-module/contracts/TradeHandler.sol";
+import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
+import {TradeHandler} from "../trading/TradeHandler.sol";
 
 contract Balancer2TokenVault is BaseStrategyVault {
     using TradeHandler for Trade;
