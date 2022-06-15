@@ -6,8 +6,21 @@ import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {IWrappedfCashFactory} from "../../../interfaces/notional/IWrappedfCashFactory.sol";
 import {IWrappedfCashComplete as IWrappedfCash} from "../../../interfaces/notional/IWrappedfCash.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
-import {BatchLend, Token, VaultState, ETHRateStorage, AggregatorV2V3Interface} from "../global/Types.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {
+    BalanceActionWithTrades,
+    DepositActionType,
+    TradeActionType,
+    BatchLend,
+    Token,
+    TokenType,
+    VaultState
+} from "../global/Types.sol";
 import {Constants} from "../global/Constants.sol";
+import {DateTime} from "../global/DateTime.sol";
+import {SafeInt256} from "../global/SafeInt256.sol";
+import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
+import {TradeHandler} from "@notional-trading-module/contracts/TradeHandler.sol";
 
 /**
  * @notice This vault borrows in one currency, trades it to a different currency
@@ -15,54 +28,32 @@ import {Constants} from "../global/Constants.sol";
  * that lends and borrows in the opposite direction.
  */
 contract CrossCurrencyfCashVault is BaseStrategyVault {
+    using SafeInt256 for uint256;
+
     uint16 public immutable LEND_CURRENCY_ID;
-
-    uint8 borrowRateDecimalPlaces;
-    bool borrowRateMustInvert;
-    uint8 lendRateDecimalPlaces;
-    bool lendRateMustInvert;
-
-    AggregatorV2V3Interface borrowRateOracle;
-    // --- 6 bytes here before next slot
-
-    AggregatorV2V3Interface lendRateOracle;
-    
-    IWrappedfCashFactory internal immutable WRAPPED_FCASH_FACTORY;
-
-    /// @notice Emitted when a vault is settled
-    /// @param assetTokenProfits total amount of profit to vault account holders, if this is negative
-    /// than there is a shortfall that must be covered by the protocol
-    /// @param underlyingTokenProfits same as assetTokenProfits but denominated in underlying
-    event VaultSettled(uint256 maturity, int256 assetTokenProfits, int256 underlyingTokenProfits);
+    ERC20 public immutable LEND_UNDERLYING_TOKEN;
+    ITradingModule public immutable TRADING_MODULE;
 
     constructor(
         string memory name_,
         address notional_,
-        IWrappedfCashFactory wrappedfCashFactory_,
+        ITradingModule tradingModule_,
         uint16 borrowCurrencyId_,
         uint16 lendCurrencyId_
     ) BaseStrategyVault(name_, notional_, borrowCurrencyId_, true, true) {
         LEND_CURRENCY_ID = lendCurrencyId_;
-        WRAPPED_FCASH_FACTORY = wrappedfCashFactory_;
+        TRADING_MODULE = tradingModule_;
 
-        // Sets the exchange rate storage
-        (ETHRateStorage memory lendRateStorage, /* */) = NOTIONAL.getRateStorage(lendCurrencyId_);
-        lendRateDecimalPlaces = lendRateStorage.rateDecimalPlaces;
-        lendRateMustInvert = lendRateStorage.mustInvert;
-        lendRateOracle = lendRateStorage.rateOracle;
+        (
+            Token memory assetToken,
+            Token memory underlyingToken,
+            /* ETHRate memory ethRate */,
+            /* AssetRateParameters memory assetRate */
+        ) = NotionalProxy(notional_).getCurrencyAndRates(lendCurrencyId_);
 
-        (ETHRateStorage memory borrowRateStorage, /* */) = NOTIONAL.getRateStorage(borrowCurrencyId_);
-        borrowRateDecimalPlaces = borrowRateStorage.rateDecimalPlaces;
-        borrowRateMustInvert = borrowRateStorage.mustInvert;
-        borrowRateOracle = borrowRateStorage.rateOracle;
-    }
-
-    /**
-     * @notice Returns the fCash wrapper address for the LEND_CURRENCY_ID and maturity
-     */
-    function getfCashWrapper(uint256 maturity) public view returns (IWrappedfCash wrapper) {
-        require(maturity <= type(uint40).max);
-        return IWrappedfCash(WRAPPED_FCASH_FACTORY.computeAddress(LEND_CURRENCY_ID, uint40(maturity)));
+        ERC20 tokenAddress = assetToken.tokenType == TokenType.NonMintable ?
+            ERC20(assetToken.tokenAddress) : ERC20(underlyingToken.tokenAddress);
+        LEND_UNDERLYING_TOKEN = tokenAddress;
     }
 
     /**
@@ -79,15 +70,6 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             int256 assetCashRequiredToSettle,
             int256 underlyingCashRequiredToSettle
         ) = NOTIONAL.redeemStrategyTokensToCash(maturity, vaultState.totalStrategyTokens, settlementTrade);
-
-        // Profits are the surplus in cash after the tokens have been settled, this is the negation of
-        // what is returned from the method above
-        emit VaultSettled(maturity, -1 * assetCashRequiredToSettle, -1 * underlyingCashRequiredToSettle);
-    }
-
-    function getLendToBorrowExchangeRate() public view returns (uint256 exchangeRate, uint256 exchangeRatePrecision) {
-        // TODO: should this come off of the trading adapter or some other centralized oracle service?
-        // TODO: we know that both currencies are on Notional so we could do the math here...
     }
 
     /**
@@ -98,9 +80,22 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         uint256 strategyTokens,
         uint256 maturity
     ) public override view returns (uint256 underlyingValue) {
-        uint256 lendPresentValueUnderlyingExternal = getfCashWrapper(maturity).convertToAssets(strategyTokens);
-        (uint256 exchangeRate, uint256 exchangeRatePrecision) = getLendToBorrowExchangeRate();
-        return (lendPresentValueUnderlyingExternal * exchangeRate) / exchangeRatePrecision;
+        // This is the non-risk adjusted oracle price for fCash
+        int256 _presentValueUnderlyingInternal = NOTIONAL.getPresentfCashValue(
+            LEND_CURRENCY_ID, maturity, strategyTokens.toInt(), block.timestamp, false
+        );
+        require(_presentValueUnderlyingInternal > 0);
+        uint256 pvInternal = uint256(_presentValueUnderlyingInternal);
+
+        (uint256 rate, uint256 rateDecimals) = TRADING_MODULE.getOraclePrice(
+            address(LEND_UNDERLYING_TOKEN), address(UNDERLYING_TOKEN)
+        );
+        uint256 borrowTokenDecimals = 10**UNDERLYING_TOKEN.decimals();
+
+        // Convert this back to the borrow currency, external precision
+        // (pv (8 decimals) * borrowTokenDecimals * rate) / (rateDecimals * 8 decimals)
+        return (pvInternal * borrowTokenDecimals * rate) /
+            (rateDecimals * uint256(Constants.INTERNAL_TOKEN_PRECISION));
     }
 
     /**
@@ -117,8 +112,8 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         // We have `deposit` amount of borrowed underlying tokens. Now we execute a trade
         // to receive some amount of lending tokens
         uint256 lendUnderlyingTokens;
-        // // This should trade exactIn = deposit
-        // // _execute0xTrade(trade, deposit);
+        // This should trade exactIn = deposit
+        // TradeHandler._executeTrade(trade, deposit);
 
         // Now we lend the underlying amount
         (uint256 fCashAmount, /* */, bytes32 encodedTrade) = NOTIONAL.getfCashLendFromDeposit(
@@ -135,41 +130,69 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         action[0].depositUnderlying = true;
         action[0].trades = new bytes32[](1);
         action[0].trades[0] = encodedTrade;
-        bytes memory batchLendCallData = abi.encodeWithSelector(NotionalProxy.batchLend.selector, address(this), action);
-
-        uint256 fCashId = uint256(
-            (bytes32(uint256(LEND_CURRENCY_ID)) << 48) |
-            (bytes32(uint256(uint40(maturity))) << 8) |
-            bytes32(uint256(uint8(Constants.FCASH_ASSET_TYPE)))
-        );
-
-        // This is a more efficient way to mint fCash wrapped tokens (397103 gas)
-        NOTIONAL.safeTransferFrom(
-            address(this),
-            address(getfCashWrapper(maturity)),
-            fCashId,
-            fCashAmount,
-            batchLendCallData
-        );
+        NOTIONAL.batchLend(address(this), action);
 
         // fCash is the strategy token in this case
         return fCashAmount;
     }
 
     function _redeemFromNotional(
-        address /* account */,
+        address account,
         uint256 strategyTokens,
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 tokensFromRedeem) {
-        uint32 maxImpliedRate; // TODO: implement
-        uint256 balanceBefore = UNDERLYING_TOKEN.balanceOf(address(this));
-        getfCashWrapper(maturity).redeemToUnderlying(strategyTokens, address(this), maxImpliedRate);
-        uint256 balanceAfter = UNDERLYING_TOKEN.balanceOf(address(this));
-        uint256 tokensRedeemed = balanceAfter - balanceBefore;
+        uint256 balanceBefore = LEND_UNDERLYING_TOKEN.balanceOf(address(this));
 
-        // This will trade underlying for borrowed currency id using exact in based on
-        // what we redeemed above
+        if (block.timestamp <= maturity) {
+            // Only allow the vault to redeem past maturity to settle all positions
+            require(account == address(this));
+            NOTIONAL.settleAccount(address(this));
+            (int256 cashBalance, /* */, /* */) = NOTIONAL.getAccountBalance(LEND_CURRENCY_ID, address(this));
+
+            // It should never be possible that this contract has a negative cash balance
+            require(0 <= cashBalance && cashBalance <= int256(uint256(type(uint88).max)));
+
+            // Withdraws all cash to underlying
+            NOTIONAL.withdraw(LEND_CURRENCY_ID, uint88(uint256(cashBalance)), true);
+        } else {
+            // Sells fCash on Notional AMM (via borrowing)
+            BalanceActionWithTrades[] memory action = _encodeBorrowTrade(
+                maturity,
+                strategyTokens,
+                0 // maxImpliedRate
+            );
+            NOTIONAL.batchBalanceAndTradeAction(address(this), action);
+        }
+
+        uint256 balanceAfter = LEND_UNDERLYING_TOKEN.balanceOf(address(this));
         // tokensFromRedeem = _execute0xTrade(trade, deposit);
+    }
+
+    function _encodeBorrowTrade(
+        uint256 maturity,
+        uint256 fCashAmount,
+        uint32 maxImpliedRate
+    ) private view returns (BalanceActionWithTrades[] memory action) {
+        (uint256 marketIndex, bool isIdiosyncratic) = DateTime.getMarketIndex(
+            Constants.MAX_TRADED_MARKET_INDEX,
+            maturity,
+            block.timestamp
+        );
+        require(!isIdiosyncratic);
+        require(fCashAmount <= uint256(type(uint88).max));
+
+        action = new BalanceActionWithTrades[](1);
+        action[0].actionType = DepositActionType.None;
+        action[0].currencyId = LEND_CURRENCY_ID;
+        action[0].withdrawEntireCashBalance = true;
+        action[0].redeemToUnderlying = true;
+        action[0].trades = new bytes32[](1);
+        action[0].trades[0] = bytes32(
+            (uint256(uint8(TradeActionType.Borrow)) << 248) |
+            (uint256(marketIndex) << 240) |
+            (uint256(fCashAmount) << 152) |
+            (uint256(maxImpliedRate) << 120)
+        );
     }
 }
