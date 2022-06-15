@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity =0.8.11;
 
+import {IVeBalDelegator} from "../../interfaces/notional/IVeBalDelegator.sol";
 import {IBoostController} from "../../interfaces/notional/IBoostController.sol";
 import {IVaultController, VaultConfig} from "../../interfaces/notional/IVaultController.sol";
-import {IVeBalDelegator} from "../../interfaces/notional/IVeBalDelegator.sol";
 
 contract BalancerBoostController is IBoostController {
     IVeBalDelegator public immutable VEBAL_DELEGATOR;

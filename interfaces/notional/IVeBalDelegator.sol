@@ -26,4 +26,9 @@ interface IVeBalDelegator {
     function claimGaugeTokens(address liquidityGauge, address to)
         external
         returns (address[] memory tokens, uint256[] memory balancesTransferred);
+
+    function getGaugeRewardTokens(address liquidityGauge)
+        external
+        view
+        returns (address[] memory tokens);
 }

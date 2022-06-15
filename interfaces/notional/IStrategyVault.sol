@@ -2,8 +2,8 @@
 pragma solidity >=0.7.6;
 
 interface IStrategyVault {
-
     function decimals() external view returns (uint8);
+
     function name() external view returns (string memory);
 
     // Tells a vault to deposit some amount of tokens from Notional and mint strategy tokens with it.
@@ -22,7 +22,13 @@ interface IStrategyVault {
         bytes calldata data
     ) external;
 
-    function convertStrategyToUnderlying(uint256 strategyTokens, uint256 maturity) external view returns (uint256 underlyingValue);
+    function convertStrategyToUnderlying(
+        uint256 strategyTokens,
+        uint256 maturity
+    ) external view returns (uint256 underlyingValue);
 
-    function repaySecondaryBorrowCallback(uint256 assetCashRequired, bytes calldata data) external returns (bytes memory returnData);
+    function repaySecondaryBorrowCallback(
+        uint256 assetCashRequired,
+        bytes calldata data
+    ) external returns (bytes memory returnData);
 }
