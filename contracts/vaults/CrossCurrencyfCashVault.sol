@@ -21,6 +21,7 @@ import {DateTime} from "../global/DateTime.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import {TradeHandler} from "@notional-trading-module/contracts/TradeHandler.sol";
+import {DexId, TradeType, Trade} from "@notional-trading-module/contracts/Types.sol";
 
 /**
  * @notice This vault borrows in one currency, trades it to a different currency
@@ -109,18 +110,26 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 lendfCashMinted) {
-        // We have `deposit` amount of borrowed underlying tokens. Now we execute a trade
-        // to receive some amount of lending tokens
-        uint256 lendUnderlyingTokens;
+        (uint256 minPurchaseAmount, uint32 minLendRate, uint16 dexId) = abi.decode(data, (uint256, uint32, uint16));
         // This should trade exactIn = deposit
-        // TradeHandler._executeTrade(trade, deposit);
+        Trade memory trade = new Trade({
+            tradeType: TradeType.EXACT_IN_SINGLE,
+            sellToken: address(UNDERLYING_TOKEN),
+            buyToken: address(LEND_UNDERLYING_TOKEN),
+            amount: deposit,
+            limit: minPurchaseAmount,
+            deadline: block.timestamp,
+            exchangeData: ""
+        });
+
+        TradeHandler._executeTrade(trade, TRADING_MODULE, dexId, WETH9(address(0)));
 
         // Now we lend the underlying amount
         (uint256 fCashAmount, /* */, bytes32 encodedTrade) = NOTIONAL.getfCashLendFromDeposit(
             LEND_CURRENCY_ID,
             lendUnderlyingTokens, // TODO: may need to buffer this down a bit
             maturity,
-            0, // TODO: minLendRate,
+            minLendRate,
             block.timestamp,
             true // useUnderlying is true
         );
