@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {IWrappedfCashFactory} from "../../../interfaces/notional/IWrappedfCashFactory.sol";
+import {WETH9} from "../../../interfaces/WETH9.sol";
 import {IWrappedfCashComplete as IWrappedfCash} from "../../../interfaces/notional/IWrappedfCash.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -19,9 +20,8 @@ import {
 import {Constants} from "../global/Constants.sol";
 import {DateTime} from "../global/DateTime.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
-import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
-import {TradeHandler} from "@notional-trading-module/contracts/TradeHandler.sol";
-import {DexId, TradeType, Trade} from "@notional-trading-module/contracts/Types.sol";
+import {ITradingModule, DexId, TradeType, Trade} from "../../interfaces/trading/ITradingModule.sol";
+import {TradeHandler} from "../trading/TradeHandler.sol";
 
 /**
  * @notice This vault borrows in one currency, trades it to a different currency
@@ -111,18 +111,19 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         bytes calldata data
     ) internal override returns (uint256 lendfCashMinted) {
         (uint256 minPurchaseAmount, uint32 minLendRate, uint16 dexId) = abi.decode(data, (uint256, uint32, uint16));
-        // This should trade exactIn = deposit
-        Trade memory trade = new Trade({
+        Trade memory trade = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
             sellToken: address(UNDERLYING_TOKEN),
             buyToken: address(LEND_UNDERLYING_TOKEN),
-            amount: deposit,
+            amount: borrowedUnderlyingExternal,
             limit: minPurchaseAmount,
             deadline: block.timestamp,
-            exchangeData: ""
+            exchangeData: "" // TODO, implement this
         });
 
-        TradeHandler._executeTrade(trade, TRADING_MODULE, dexId, WETH9(address(0)));
+        (/* */, uint256 lendUnderlyingTokens) = TradeHandler._execute(
+            trade, TRADING_MODULE, dexId, WETH9(address(0))
+        );
 
         // Now we lend the underlying amount
         (uint256 fCashAmount, /* */, bytes32 encodedTrade) = NOTIONAL.getfCashLendFromDeposit(
@@ -152,6 +153,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         bytes calldata data
     ) internal override returns (uint256 tokensFromRedeem) {
         uint256 balanceBefore = LEND_UNDERLYING_TOKEN.balanceOf(address(this));
+        (uint256 minPurchaseAmount, uint32 maxBorrowRate, uint16 dexId) = abi.decode(data, (uint256, uint32, uint16));
 
         if (block.timestamp <= maturity) {
             // Only allow the vault to redeem past maturity to settle all positions
@@ -169,13 +171,25 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             BalanceActionWithTrades[] memory action = _encodeBorrowTrade(
                 maturity,
                 strategyTokens,
-                0 // maxImpliedRate
+                maxBorrowRate
             );
             NOTIONAL.batchBalanceAndTradeAction(address(this), action);
         }
 
         uint256 balanceAfter = LEND_UNDERLYING_TOKEN.balanceOf(address(this));
-        // tokensFromRedeem = _execute0xTrade(trade, deposit);
+        
+        // Trade out
+        Trade memory trade = Trade({
+            tradeType: TradeType.EXACT_IN_SINGLE,
+            sellToken: address(LEND_UNDERLYING_TOKEN),
+            buyToken: address(UNDERLYING_TOKEN),
+            amount: balanceAfter - balanceBefore,
+            limit: minPurchaseAmount,
+            deadline: block.timestamp,
+            exchangeData: "" // TODO, implement this
+        });
+
+        (/* */, tokensFromRedeem) = TradeHandler._execute(trade, TRADING_MODULE, dexId, WETH9(address(0)));
     }
 
     function _encodeBorrowTrade(
