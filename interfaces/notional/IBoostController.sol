@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-v3
 pragma solidity >=0.7.6;
 
+import "./IVeBalDelegator.sol";
+
 interface IBoostController {
-    function VEBAL_DELEGATOR() external view returns (address);
+    function VEBAL_DELEGATOR() external view returns (IVeBalDelegator);
 
     function depositToken(address token, uint256 amount) external;
 

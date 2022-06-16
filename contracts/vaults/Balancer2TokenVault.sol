@@ -55,6 +55,7 @@ contract Balancer2TokenVault is BaseStrategyVault {
     /** Errors */
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
+    error InvalidTokenIndex(uint256 tokenIndex);
 
     /// @notice Balancer weight precision
     uint256 internal constant WEIGHT_PRECISION = 1e18;
@@ -135,11 +136,10 @@ contract Balancer2TokenVault is BaseStrategyVault {
                 revert InvalidSecondaryToken(tokens[1 - PRIMARY_INDEX]);
         }
 
-        (uint256 weight0, uint256 weight1) = BALANCER_POOL_TOKEN
-            .getNormalizedWeights();
+        uint256[] memory weights = BALANCER_POOL_TOKEN.getNormalizedWeights();
 
-        PRIMARY_WEIGHT = PRIMARY_INDEX == 0 ? weight0 : weight1;
-        SECONDARY_WEIGHT = PRIMARY_INDEX == 0 ? weight1 : weight0;
+        PRIMARY_WEIGHT = weights[PRIMARY_INDEX];
+        SECONDARY_WEIGHT = weights[1 - PRIMARY_INDEX];
 
         BOOST_CONTROLLER = params.boostController;
         LIQUIDITY_GAUGE = params.liquidityGauge;
@@ -435,6 +435,42 @@ contract Balancer2TokenVault is BaseStrategyVault {
 
     /** Public view functions */
 
+    function getSpotPrice(uint256 tokenIndex) public view returns (uint256) {
+        // prettier-ignore
+        (
+            /* address[] memory tokens */,
+            uint256[] memory balances,
+            /* uint256 lastChangeBlock */
+        ) = BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+
+        uint256 primaryDecimals = address(UNDERLYING_TOKEN) == address(0)
+            ? 18
+            : UNDERLYING_TOKEN.decimals();
+        uint256 secondaryDecimals = SECONDARY_TOKEN.decimals();
+
+        // Make everything 1e18
+        uint256 primaryBalance = balances[PRIMARY_INDEX] *
+            10**(18 - primaryDecimals);
+        uint256 secondaryBalance = balances[1 - PRIMARY_INDEX] *
+            10**(18 - secondaryDecimals);
+
+        // First we multiply everything by 1e18 for the weight division (weights are in 1e18),
+        // then we multiply the numerator by 1e18 to to preserve enough precision for the division
+        if (tokenIndex == PRIMARY_INDEX) {
+            // PrimarySpotPrice = (SecondaryBalance / SecondaryWeight * 1e18) / (PrimaryBalance / PrimaryWeight)
+            return
+                (((secondaryBalance * 1e18) / SECONDARY_WEIGHT) * 1e18) /
+                ((primaryBalance * 1e18) / PRIMARY_WEIGHT);
+        } else if (tokenIndex == (1 - PRIMARY_INDEX)) {
+            // SecondarySpotPrice = (PrimaryBalance / PrimaryWeight * 1e18) / (SecondaryBalance / SecondaryWeight)
+            return
+                (((primaryBalance * 1e18) / PRIMARY_WEIGHT) * 1e18) /
+                ((secondaryBalance * 1e18) / SECONDARY_WEIGHT);
+        }
+
+        revert InvalidTokenIndex(tokenIndex);
+    }
+
     /// @notice Calculates the optimal secondary borrow amount
     function getOptimalSecondaryBorrowAmount(uint256 primaryAmount)
         public
@@ -448,28 +484,32 @@ contract Balancer2TokenVault is BaseStrategyVault {
             oracleWindowInSeconds
         );
 
-        // pairPrice = (primaryAmount / PRIMARY_WEIGHT) / (secondaryAmount / SECONDARY_WEIGHT)
-        // (secondaryAmount / SECONDARY_WEIGHT) = (primaryAmount / PRIMARY_WEIGHT) / pairPrice
-        // secondaryAmount = (primaryAmount / PRIMARY_WEIGHT) / pairPrice * SECONDAR_WEIGHT
+        // PairPrice = (PrimaryAmount / PrimaryWeight) / (SecondaryAmount / SecondaryWeight)
+        // SecondaryAmount = (PrimaryAmount / PrimaryWeight) / PairPrice * SecondaryWeight
+        // SecondaryAmount = (PrimaryAmount * 1e18 / PrimaryWeight) * 1e18 / PairPrice * SecondaryWeight / 1e18
 
+        // Calculate weighted primary amount
+        primaryAmount = ((primaryAmount * WEIGHT_PRECISION) / PRIMARY_WEIGHT);
+
+        // Calculate price adjusted primary amount, price is always in 1e18
+        // Since price is always expressed as the price of the second token in units of the
+        // first token, we need to invert the math if the second token is the primary token
         if (PRIMARY_INDEX == 0) {
-            // Token0 is the primary token, we use pairPrice as is
-            primaryAmount =
-                ((primaryAmount * PRIMARY_WEIGHT) / WEIGHT_PRECISION) /
-                pairPrice;
+            primaryAmount = ((primaryAmount * 1e18) / pairPrice);
         } else {
-            // Token1 is the primary token, pairPrice is inverted
-            primaryAmount =
-                ((primaryAmount * PRIMARY_WEIGHT) / WEIGHT_PRECISION) *
-                pairPrice;
+            primaryAmount = ((primaryAmount * pairPrice) / 1e18);
         }
 
+        // Calculate secondary amount (precision is still 1e18)
         secondaryAmount = (primaryAmount * SECONDARY_WEIGHT) / WEIGHT_PRECISION;
 
-        // Normalize precision
+        // Normalize precision to secondary precision
+        uint256 primaryDecimals = address(UNDERLYING_TOKEN) == address(0)
+            ? 18
+            : UNDERLYING_TOKEN.decimals();
         secondaryAmount =
             (secondaryAmount * 10**SECONDARY_TOKEN.decimals()) /
-            10**UNDERLYING_TOKEN.decimals();
+            10**primaryDecimals;
     }
 
     /// @dev Gets the total BPT held across the LIQUIDITY GAUGE, VeBal Delegator and the contract itself
