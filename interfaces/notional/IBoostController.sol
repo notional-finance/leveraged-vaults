@@ -2,6 +2,8 @@
 pragma solidity >=0.7.6;
 
 interface IBoostController {
+    function VEBAL_DELEGATOR() external view returns (address);
+
     function depositToken(address token, uint256 amount) external;
 
     function withdrawToken(address token, uint256 amount) external;

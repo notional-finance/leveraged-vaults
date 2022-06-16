@@ -2,6 +2,8 @@
 pragma solidity >=0.7.6;
 
 interface IVeBalDelegator {
+    function BALANCER_MINTER() external view returns (address);
+
     function depositToken(
         address token,
         address from,

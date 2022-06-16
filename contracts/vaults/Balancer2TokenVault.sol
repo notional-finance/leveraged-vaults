@@ -23,14 +23,12 @@ contract Balancer2TokenVault is BaseStrategyVault {
     using TradeHandler for Trade;
 
     struct InitParams {
+        WETH9 weth;
         IBalancerVault balancerVault;
         bytes32 balancerPoolId;
         IBoostController boostController;
         ILiquidityGauge liquidityGauge;
-        IBalancerMinter balancerMinter;
-        IVeBalDelegator veBalDelegator;
         ITradingModule tradingModule;
-        WETH9 weth;
         uint256 oracleWindowInSeconds;
         uint256 settlementPeriod; // 1 week settlement
         uint256 maxSettlementPercentage; // 20%
@@ -54,9 +52,14 @@ contract Balancer2TokenVault is BaseStrategyVault {
         uint256 minSecondaryAmount;
     }
 
+    /** Errors */
+    error InvalidPrimaryToken(address token);
+    error InvalidSecondaryToken(address token);
+
     /// @notice Balancer weight precision
     uint256 internal constant WEIGHT_PRECISION = 1e18;
 
+    /** Immutables */
     uint16 internal immutable SECONDARY_BORROW_CURRENCY_ID;
     IBalancerVault public immutable BALANCER_VAULT;
     bytes32 public immutable BALANCER_POOL_ID;
@@ -64,7 +67,6 @@ contract Balancer2TokenVault is BaseStrategyVault {
     ERC20 public immutable SECONDARY_TOKEN;
     IBoostController public immutable BOOST_CONTROLLER;
     ILiquidityGauge public immutable LIQUIDITY_GAUGE;
-    IBalancerMinter public immutable BALANCER_MINTER;
     IVeBalDelegator public immutable VEBAL_DELEGATOR;
     ERC20 public immutable BAL_TOKEN;
     uint256 public immutable PRIMARY_INDEX;
@@ -99,6 +101,7 @@ contract Balancer2TokenVault is BaseStrategyVault {
         )
     {
         SECONDARY_BORROW_CURRENCY_ID = _getSecondaryBorrowCurrencyId();
+        WETH = params.weth;
         BALANCER_VAULT = params.balancerVault;
         BALANCER_POOL_ID = params.balancerPoolId;
         BALANCER_POOL_TOKEN = IBalancerPool(
@@ -115,18 +118,21 @@ contract Balancer2TokenVault is BaseStrategyVault {
             /* uint256 lastChangeBlock */
         ) = BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
-        require(
-            address(UNDERLYING_TOKEN) == tokens[0] ||
-                address(UNDERLYING_TOKEN) == tokens[1]
-        );
+        // Balancer tokens are sorted by address, so we need to figure out
+        // the correct index for the primary token
+        PRIMARY_INDEX = tokens[0] == _primaryAddress() ? 0 : 1;
 
-        PRIMARY_INDEX = tokens[0] == address(UNDERLYING_TOKEN) ? 1 : 0;
+        // Since this is always a 2-token vault, SECONDARY_INDEX = 1-PRIMARY_INDEX
         SECONDARY_TOKEN = SECONDARY_BORROW_CURRENCY_ID > 0
             ? ERC20(_getTokenAddress(SECONDARY_BORROW_CURRENCY_ID))
             : ERC20(tokens[1 - PRIMARY_INDEX]);
 
+        // Make sure the deployment parameters are correct
+        if (tokens[PRIMARY_INDEX] != _primaryAddress())
+            revert InvalidPrimaryToken(tokens[PRIMARY_INDEX]);
         if (SECONDARY_BORROW_CURRENCY_ID > 0) {
-            require(address(SECONDARY_TOKEN) == tokens[1 - PRIMARY_INDEX]);
+            if (tokens[1 - PRIMARY_INDEX] != _secondaryAddress())
+                revert InvalidSecondaryToken(tokens[1 - PRIMARY_INDEX]);
         }
 
         (uint256 weight0, uint256 weight1) = BALANCER_POOL_TOKEN
@@ -137,14 +143,34 @@ contract Balancer2TokenVault is BaseStrategyVault {
 
         BOOST_CONTROLLER = params.boostController;
         LIQUIDITY_GAUGE = params.liquidityGauge;
-        BALANCER_MINTER = params.balancerMinter;
-        BAL_TOKEN = ERC20(BALANCER_MINTER.getBalancerToken());
-        VEBAL_DELEGATOR = params.veBalDelegator;
-        WETH = params.weth;
+        VEBAL_DELEGATOR = IVeBalDelegator(BOOST_CONTROLLER.VEBAL_DELEGATOR());
+        BAL_TOKEN = ERC20(
+            IBalancerMinter(VEBAL_DELEGATOR.BALANCER_MINTER())
+                .getBalancerToken()
+        );
         SETTLEMENT_PERIOD = params.settlementPeriod;
         oracleWindowInSeconds = params.oracleWindowInSeconds;
 
         _initRewardTokenList(params);
+    }
+
+    /// @notice special handling for ETH because UNDERLYING_TOKEN == address(0))
+    /// and Balancer uses WETH
+    function _primaryAddress() private returns (address) {
+        return
+            BORROW_CURRENCY_ID == 1 ? address(WETH) : address(UNDERLYING_TOKEN);
+    }
+
+    /// @notice special handling for ETH because SECONDARY_TOKEN == address(0))
+    /// and Balancer uses WETH
+    function _secondaryAddress() private returns (address) {
+        if (SECONDARY_BORROW_CURRENCY_ID > 0) {
+            return
+                SECONDARY_BORROW_CURRENCY_ID == 1
+                    ? address(WETH)
+                    : address(SECONDARY_TOKEN);
+        }
+        return address(0);
     }
 
     function _getTokenAddress(uint16 currencyId) private returns (address) {
@@ -161,12 +187,14 @@ contract Balancer2TokenVault is BaseStrategyVault {
         return vaultConfig.secondaryBorrowCurrencies[0];
     }
 
+    /// @notice This list is used to validate trades
     function _initRewardTokenList(InitParams memory params) private {
-        address[] memory rewardTokens = VEBAL_DELEGATOR.getGaugeRewardTokens(
-            address(LIQUIDITY_GAUGE)
-        );
-        for (uint256 i; i < rewardTokens.length; i++)
-            gaugeRewardTokens[rewardTokens[i]] = true;
+        if (address(LIQUIDITY_GAUGE) != address(0)) {
+            address[] memory rewardTokens = VEBAL_DELEGATOR
+                .getGaugeRewardTokens(address(LIQUIDITY_GAUGE));
+            for (uint256 i; i < rewardTokens.length; i++)
+                gaugeRewardTokens[rewardTokens[i]] = true;
+        }
     }
 
     function convertStrategyToUnderlying(
