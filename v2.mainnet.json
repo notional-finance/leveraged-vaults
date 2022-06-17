@@ -1,5 +1,18 @@
 {
   "notional": "0x1344a36a1b56144c3bc62e7757377d288fde0369",
+  "actions": {
+    "AccountAction": "0xddA3988fD40c83da8B630f963e3Bc7c8fa4d35Fc",
+    "BatchAction": "0x59074a5E588de093fc5f04A7173D86b2B48e9d39",
+    "CalculationViews": "0xbE4AbA25915BAd390edf83B7e1ca44b6145F261e",
+    "ERC1155Action": "0xBf12d7e41a25f449293AB8cd1364Fe74A175bFa5",
+    "GovernanceAction": "0x38A4DfC0ff6588fD0c2142d14D4963A97356A245",
+    "InitializeMarketsAction": "0xe3E38607A1E2d6881A32F1D78C5C232f14bdef22",
+    "LiquidateCurrencyAction": "0xa3707CD595F6AB810a84d04C92D8adE5f7593Db5",
+    "LiquidatefCashAction": "0xfB56271c976A8b446B6D33D1Ec76C84F6AA53F1B",
+    "TreasuryAction": "0x5fd75e91Cc34DF9831Aa75903027FC34FeB9b931",
+    "Views": "0xBf91ec7A64FCF0844e54d3198E50AD8fb4D68E93",
+    "nTokenAction": "0xeA82Cfc621D5FA00E30c10531380846BB5aAfE79"
+  },
   "deployer": "0x8B64fA5Fd129df9c755eB82dB1e16D6D0Bdf5Bc3",
   "tokens": {
     "NOTE": "0xCFEAead4947f0705A14ec42aC3D44129E1Ef3eD5",
@@ -13,7 +26,7 @@
     "cDAI": "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
     "cUSDC": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
     "cWBTC": "0xccf4429db6322d5c611ee964527d42e5d685dd6a",
-    "cETH": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5"
+    "cETH": "0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5"
   },
   "whales": {
     "DAI_CONTRACT": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
