@@ -13,6 +13,9 @@
     "Views": "0xBf91ec7A64FCF0844e54d3198E50AD8fb4D68E93",
     "nTokenAction": "0xeA82Cfc621D5FA00E30c10531380846BB5aAfE79"
   },
+  "libs": {
+    "SettleAssetsExternal": "0x01713633a1b85a4a3d2f9430C68Bd4392c4a90eA"
+  },
   "deployer": "0x8B64fA5Fd129df9c755eB82dB1e16D6D0Bdf5Bc3",
   "tokens": {
     "NOTE": "0xCFEAead4947f0705A14ec42aC3D44129E1Ef3eD5",

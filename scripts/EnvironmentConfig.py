@@ -60,7 +60,7 @@ class Environment:
             [], 
             self.deployer, 
             "TradingAction", 
-            {"SettleAssetsExternal": "0x01713633a1b85a4a3d2f9430C68Bd4392c4a90eA"}
+            {"SettleAssetsExternal": self.addresses["libs"]["SettleAssetsExternal"]}
         )
         vaultAccountAction = deployArtifact(
             "scripts/artifacts/VaultAccountAction.json", 
