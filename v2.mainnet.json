@@ -13,6 +13,20 @@
     "Views": "0xBf91ec7A64FCF0844e54d3198E50AD8fb4D68E93",
     "nTokenAction": "0xeA82Cfc621D5FA00E30c10531380846BB5aAfE79"
   },
+  "staking": {
+    "sNOTE": "0x38DE42F4BA8a35056b33A746A6b45bE9B1c3B9d2"
+  },
+  "balancer": {
+    "vault": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
+    "veToken": "0xC128a9954e6c874eA3d62ce62B468bA073093F25",
+    "feeDistributor": "0x26743984e3357eFC59f2fd6C1aFDC310335a61c9",
+    "minter": "0x239e55F427D44C3cc793f49bFB507ebe76638a2b",
+    "gaugeController": "0xC128468b7Ce63eA702C1f104D55A2566b13D3ABD",
+    "delegateRegistry": "0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446",
+    "BALETHPool": {
+      "address": "0x5c6Ee304399DBdB9C8Ef030aB642B10820DB8F56"
+    }
+  },
   "libs": {
     "SettleAssetsExternal": "0x01713633a1b85a4a3d2f9430C68Bd4392c4a90eA"
   },
