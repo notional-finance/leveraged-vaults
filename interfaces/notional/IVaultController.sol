@@ -135,7 +135,7 @@ interface IVaultAccountAction {
         uint256 fCash,
         uint32 maxBorrowRate,
         bytes calldata vaultData
-    ) external;
+    ) external payable;
 
     /**
      * @notice Re-enters the vault at a longer dated maturity. The account's existing borrow

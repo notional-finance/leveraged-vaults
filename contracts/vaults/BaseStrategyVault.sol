@@ -59,6 +59,11 @@ abstract contract BaseStrategyVault is IStrategyVault {
         _;
     }
 
+    modifier onlyNotionalOwner() {
+        require(msg.sender == NOTIONAL.owner());
+        _;
+    }
+
     constructor(
         string memory name_,
         address notional_,

@@ -1,5 +1,5 @@
 import json
-
+import eth_abi
 from brownie import (
     ZERO_ADDRESS,
     accounts, 
@@ -15,6 +15,7 @@ from brownie import (
     nBeaconProxy
 )
 from brownie.network.contract import Contract
+from brownie.convert.datatypes import Wei
 from scripts.common import deployArtifact, get_vault_config, set_flags
 from eth_utils import keccak
 
@@ -45,11 +46,20 @@ with open("v2.goerli.json", "r") as f:
 
 StrategyConfig = {
     "balancer2TokenStrats": {
-        "50ETH-50USDC": {
-            "vaultConfig": get_vault_config(flags=set_flags(0, ENABLED=True)),
+        "Strat50ETH50USDC": {
+            "vaultConfig": get_vault_config(
+                flags=set_flags(0, ENABLED=True),
+                minAccountBorrowSize=1,
+                maxBorrowMarketIndex=3,
+                secondaryBorrowCurrencies=[3,0,0] # USDC
+            ),
+            "secondaryBorrowCurrency": {
+                "currencyId": 3, # USDC
+                "maxCapacity": 100_000_000e8
+            },
             "maxPrimaryBorrowCapacity": 100_000_000e8,
-            "name": "50ETH-50USDC",
-            "primaryCurrency": 1,
+            "name": "Strat50ETH50USDC",
+            "primaryCurrency": 1, # ETH
             "poolId": "0x96646936b91d6b9d7d0c47c496afbf3d6ec7b6f8000200000000000000000019",
             "liquidityGauge": "0x9ab7b0c7b154f626451c9e8a68dc04f58fb6e5ce",
             "oracleWindow": 3600,
@@ -91,7 +101,7 @@ class Environment:
         self.deployBoostController()
 
         self.balancer2TokenStrats = {}
-        self.deployBalancer2TokenVault(StrategyConfig["balancer2TokenStrats"]["50ETH-50USDC"])
+        self.deployBalancer2TokenVault(StrategyConfig["balancer2TokenStrats"]["Strat50ETH50USDC"])
 
     def upgradeNotional(self):
         tradingAction = deployArtifact(
@@ -174,6 +184,10 @@ class Environment:
             self.addresses["notional"],
             {"from": self.deployer}
         )
+        self.veBalDelegator.setManagerContract(
+            self.boostController.address, 
+            {"from": self.veBalDelegator.owner()}
+        )
 
     def deployBalancer2TokenVault(self, stratConfig):
 
@@ -189,6 +203,16 @@ class Environment:
             {"from": self.notional.owner()}
         )
 
+        secondaryCurrencyId = 0
+        if (stratConfig["secondaryBorrowCurrency"] != None):
+            self.notional.updateSecondaryBorrowCapacity(
+                proxy.address,
+                stratConfig["secondaryBorrowCurrency"]["currencyId"],
+                stratConfig["secondaryBorrowCurrency"]["maxCapacity"],
+                {"from": self.notional.owner()}
+            )
+            secondaryCurrencyId = stratConfig["secondaryBorrowCurrency"]["currencyId"]
+
         # Upgrade to actual implementation
         stratVault = Balancer2TokenVault.deploy(
             self.addresses["notional"],
@@ -196,22 +220,30 @@ class Environment:
             True,
             True,
             [
+                secondaryCurrencyId,
                 self.addresses["tokens"]["WETH"],
                 self.addresses["balancer"]["vault"],
                 stratConfig["poolId"],
                 self.boostController.address,
                 stratConfig["liquidityGauge"],
                 self.tradingModule.address,
-                stratConfig["oracleWindow"],
                 stratConfig["settlementWindow"],
-                stratConfig["settlementPercentage"], 
-                stratConfig["settlementCoolDown"]
-
             ],
             {"from": self.deployer}
         )
         beacon.upgradeTo(stratVault.address, {"from": self.deployer})
-        self.balancer2TokenStrats[stratConfig["name"]] = stratVault
+        vaultProxy = Contract.from_abi(
+            stratConfig["name"], 
+            proxy.address, 
+            Balancer2TokenVault.abi
+        )
+        vaultProxy.initialize(
+            stratConfig["oracleWindow"],
+            stratConfig["settlementPercentage"], 
+            stratConfig["settlementCoolDown"],
+            {"from": self.notional.owner()}
+        )
+        self.balancer2TokenStrats[stratConfig["name"]] = vaultProxy
 
 def getEnvironment(network = "mainnet"):
     return Environment(network)
@@ -221,3 +253,25 @@ def main():
     if networkName == "hardhat-fork":
         networkName = "mainnet"
     env = Environment(networkName)
+    vault = env.balancer2TokenStrats["Strat50ETH50USDC"]
+
+    maturity = env.notional.getActiveMarkets(1)[0][1]
+
+    env.notional.enterVault(
+        env.whales["ETH"],
+        vault.address,
+        10e18,
+        maturity,
+        True,
+        5e8,
+        0,
+        eth_abi.encode_abi(
+            ['(uint256,uint256,uint32)'],
+            [[
+                0,
+                Wei(16768e8),
+                0
+            ]]
+        ),
+        {"from": env.whales["ETH"], "value": 10e18},
+    )
