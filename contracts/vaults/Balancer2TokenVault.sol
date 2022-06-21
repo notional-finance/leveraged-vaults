@@ -60,6 +60,18 @@ contract Balancer2TokenVault is
         uint256 minSecondaryAmount;
     }
 
+    struct RewardTokenTradeParams {
+        uint16 primaryTradeDexId;
+        Trade primaryTrade;
+        uint16 secondaryTradeDexId;
+        Trade secondaryTrade;
+    }
+
+    struct ReinvestRewardParams {
+        bytes tradeData;
+        uint256 minBPT;
+    }
+
     struct RepaySecondaryCallbackParams {
         uint256 borrowedSecondaryAmount;
     }
@@ -207,7 +219,14 @@ contract Balancer2TokenVault is
     /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
     /// and Balancer uses WETH
     function _tokenAddress(address token) private view returns (address) {
-        return address(token) == address(0) ? address(WETH) : address(token);
+        return token == address(0) ? address(WETH) : address(token);
+    }
+
+    function _tokenBalance(address token) private view returns (uint256) {
+        return
+            token == address(0)
+                ? address(this).balance
+                : ERC20(token).balanceOf(address(this));
     }
 
     /// @notice Gets the underlying token address by currency ID
@@ -346,9 +365,7 @@ contract Balancer2TokenVault is
             IAsset[] memory assets,
             uint256[] memory maxAmountsIn
         ) = _getPoolParams(
-            BORROW_CURRENCY_ID == 1
-                ? address(0)
-                : address(UNDERLYING_TOKEN),
+            address(UNDERLYING_TOKEN),
             deposit,
             borrowedSecondaryAmount
         );
@@ -576,7 +593,99 @@ contract Balancer2TokenVault is
         return BOOST_CONTROLLER.claimGaugeTokens(address(LIQUIDITY_GAUGE));
     }
 
-    function executeTrade() external {}
+    function _executeRewardTrades(bytes memory data)
+        private
+        returns (uint256 primaryAmount, uint256 secondaryAmount)
+    {
+        RewardTokenTradeParams memory params = abi.decode(
+            data,
+            (RewardTokenTradeParams)
+        );
+
+        // Validate trades
+        if (!gaugeRewardTokens[params.primaryTrade.sellToken]) {
+            revert InvalidPrimaryToken(params.primaryTrade.sellToken);
+        }
+        if (params.primaryTrade.sellToken != params.secondaryTrade.sellToken) {
+            revert InvalidSecondaryToken(params.secondaryTrade.sellToken);
+        }
+        if (
+            params.primaryTrade.buyToken !=
+            _tokenAddress(address(UNDERLYING_TOKEN))
+        ) {
+            revert InvalidPrimaryToken(params.primaryTrade.buyToken);
+        }
+        if (
+            params.secondaryTrade.buyToken !=
+            _tokenAddress(address(SECONDARY_TOKEN))
+        ) {
+            revert InvalidSecondaryToken(params.secondaryTrade.buyToken);
+        }
+
+        // TODO: validate prices
+
+        uint256 primaryAmountBefore = _tokenBalance(address(UNDERLYING_TOKEN));
+        params.primaryTrade._execute(
+            TRADING_MODULE,
+            params.primaryTradeDexId,
+            WETH
+        );
+        primaryAmount =
+            _tokenBalance(address(UNDERLYING_TOKEN)) -
+            primaryAmountBefore;
+
+        uint256 secondaryAmountBefore = _tokenBalance(address(SECONDARY_TOKEN));
+        params.secondaryTrade._execute(
+            TRADING_MODULE,
+            params.secondaryTradeDexId,
+            WETH
+        );
+        secondaryAmount =
+            _tokenBalance(address(SECONDARY_TOKEN)) -
+            secondaryAmountBefore;
+    }
+
+    /// @notice Sell reward tokens for BPT and reinvest the proceeds
+    /// @param params reward reinvestment params
+    function reinvestReward(ReinvestRewardParams calldata params) external {
+        // Decode trades in another function to avoid the stack too deep error
+        (uint256 primaryAmount, uint256 secondaryAmount) = _executeRewardTrades(
+            params.tradeData
+        );
+
+        // prettier-ignore
+        (
+            IAsset[] memory assets,
+            uint256[] memory maxAmountsIn
+        ) = _getPoolParams(
+            address(UNDERLYING_TOKEN),
+            primaryAmount,
+            secondaryAmount
+        );
+
+        uint256 msgValue = assets[PRIMARY_INDEX] == IAsset(address(0))
+            ? maxAmountsIn[PRIMARY_INDEX]
+            : 0;
+
+        // Join pool
+        BALANCER_VAULT.joinPool{value: msgValue}(
+            BALANCER_POOL_ID,
+            address(this),
+            address(this),
+            IBalancerVault.JoinPoolRequest(
+                assets,
+                maxAmountsIn,
+                abi.encode(
+                    IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+                    maxAmountsIn,
+                    params.minBPT // Apply minBPT to prevent front running
+                ),
+                false // Don't use internal balances
+            )
+        );
+
+        // TODO: emit event here
+    }
 
     /** Setters */
 
