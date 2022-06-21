@@ -158,20 +158,21 @@ contract Balancer2TokenVault is
 
         // Balancer tokens are sorted by address, so we need to figure out
         // the correct index for the primary token
-        PRIMARY_INDEX = tokens[0] == _primaryAddress() ? 0 : 1;
+        PRIMARY_INDEX = tokens[0] == _tokenAddress(address(UNDERLYING_TOKEN))
+            ? 0
+            : 1;
 
         // Since this is always a 2-token vault, SECONDARY_INDEX = 1-PRIMARY_INDEX
         SECONDARY_TOKEN = SECONDARY_BORROW_CURRENCY_ID > 0
-            ? ERC20(_getTokenAddress(SECONDARY_BORROW_CURRENCY_ID))
+            ? ERC20(_getUnderlyingAddress(SECONDARY_BORROW_CURRENCY_ID))
             : ERC20(tokens[1 - PRIMARY_INDEX]);
 
         // Make sure the deployment parameters are correct
-        if (tokens[PRIMARY_INDEX] != _primaryAddress())
+        if (tokens[PRIMARY_INDEX] != _tokenAddress(address(UNDERLYING_TOKEN)))
             revert InvalidPrimaryToken(tokens[PRIMARY_INDEX]);
-        if (SECONDARY_BORROW_CURRENCY_ID > 0) {
-            if (tokens[1 - PRIMARY_INDEX] != _secondaryAddress())
-                revert InvalidSecondaryToken(tokens[1 - PRIMARY_INDEX]);
-        }
+        if (
+            tokens[1 - PRIMARY_INDEX] != _tokenAddress(address(SECONDARY_TOKEN))
+        ) revert InvalidSecondaryToken(tokens[1 - PRIMARY_INDEX]);
 
         uint256[] memory weights = BALANCER_POOL_TOKEN.getNormalizedWeights();
 
@@ -203,26 +204,14 @@ contract Balancer2TokenVault is
         _approveTokens();
     }
 
-    /// @notice special handling for ETH because UNDERLYING_TOKEN == address(0))
+    /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
     /// and Balancer uses WETH
-    function _primaryAddress() private view returns (address) {
-        return
-            BORROW_CURRENCY_ID == 1 ? address(WETH) : address(UNDERLYING_TOKEN);
+    function _tokenAddress(address token) private view returns (address) {
+        return address(token) == address(0) ? address(WETH) : address(token);
     }
 
-    /// @notice special handling for ETH because SECONDARY_TOKEN == address(0))
-    /// and Balancer uses WETH
-    function _secondaryAddress() private view returns (address) {
-        if (SECONDARY_BORROW_CURRENCY_ID > 0) {
-            return
-                SECONDARY_BORROW_CURRENCY_ID == 1
-                    ? address(WETH)
-                    : address(SECONDARY_TOKEN);
-        }
-        return address(0);
-    }
-
-    function _getTokenAddress(uint16 currencyId)
+    /// @notice Gets the underlying token address by currency ID
+    function _getUnderlyingAddress(uint16 currencyId)
         private
         view
         returns (address)
