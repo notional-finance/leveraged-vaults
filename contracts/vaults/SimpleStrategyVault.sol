@@ -2,9 +2,12 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./BaseStrategyVault.sol";
 
 contract SimpleStrategyVault is BaseStrategyVault {
+    using SafeCast for uint256;
+
     event SecondaryBorrow(uint256 underlyingTokensTransferred);
 
     bool internal _forceSettle;
@@ -46,8 +49,8 @@ contract SimpleStrategyVault is BaseStrategyVault {
         ERC20(cETH).transfer(address(NOTIONAL), assetCashRequired);
     }
 
-    function convertStrategyToUnderlying(uint256 strategyTokens, uint256 maturity) public view override returns (uint256 underlyingValue) {
-        return (strategyTokens * _tokenExchangeRate * 1e10) / 1e18;
+    function convertStrategyToUnderlying(address account, uint256 strategyTokens, uint256 maturity) public view override returns (int256 underlyingValue) {
+        return (strategyTokens.toInt256() * _tokenExchangeRate.toInt256() * 1e10) / 1e18;
     }
 
     function borrowSecondaryCurrency(

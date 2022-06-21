@@ -65,7 +65,8 @@ StrategyConfig = {
             "oracleWindow": 3600,
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "settlementPercentage": 0.2e8, # 20% settlement percentage
-            "settlementCoolDown": 3600 * 6 # 6 hour settlement cooldown
+            "settlementCoolDown": 3600 * 6, # 6 hour settlement cooldown
+            "balancerOracleWeight": 0.6e8
         }
     }
 }
@@ -160,6 +161,32 @@ class Environment:
         self.proxy = nProxy.deploy(impl.address, initData, {"from": self.deployer})
         self.tradingModule = Contract.from_abi("TradingModule", self.proxy.address, interface.ITradingModule.abi)
 
+        # ETH/USD oracle
+        self.tradingModule.setPriceOracle(
+            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", 
+            "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419", 
+            {"from": self.tradingModule.owner()}
+        )
+        # DAI/USD oracle
+        self.tradingModule.setPriceOracle(
+            "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+            "0xaed0c38402a5d19df6e4c03f4e2dced6e29c1ee9",
+            {"from": self.tradingModule.owner()}
+        )
+        # USDC/USD oracle
+        self.tradingModule.setPriceOracle(
+            "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "0x8fffffd4afb6115b954bd326cbe7b4ba576818f6",
+            {"from": self.tradingModule.owner()}
+        )
+        # WBTC/USD oracle
+        self.tradingModule.setPriceOracle(
+            "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+            "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
+            {"from": self.tradingModule.owner()}
+        )
+
+
     def deployVeBalDelegator(self):
         self.veBalDelegator = deployArtifact(
             "scripts/artifacts/VeBalDelegator.json",
@@ -241,6 +268,7 @@ class Environment:
             stratConfig["oracleWindow"],
             stratConfig["settlementPercentage"], 
             stratConfig["settlementCoolDown"],
+            stratConfig["balancerOracleWeight"],
             {"from": self.notional.owner()}
         )
         self.balancer2TokenStrats[stratConfig["name"]] = vaultProxy
@@ -257,21 +285,21 @@ def main():
 
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    env.notional.enterVault(
-        env.whales["ETH"],
-        vault.address,
-        10e18,
-        maturity,
-        True,
-        5e8,
-        0,
-        eth_abi.encode_abi(
-            ['(uint256,uint256,uint32)'],
-            [[
-                0,
-                Wei(16768e8),
-                0
-            ]]
-        ),
-        {"from": env.whales["ETH"], "value": 10e18},
-    )
+    #env.notional.enterVault(
+    #    env.whales["ETH"],
+    #    vault.address,
+    #    10e18,
+    #    maturity,
+    #    True,
+    #    5e8,
+    #    0,
+    #    eth_abi.encode_abi(
+    #        ['(uint256,uint256,uint32)'],
+    #        [[
+    #            0,
+    #            Wei(16768e8),
+    #            0
+    #        ]]
+    #    ),
+    #    {"from": env.whales["ETH"], "value": 10e18},
+    #)

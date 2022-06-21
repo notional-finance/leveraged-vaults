@@ -2,6 +2,7 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {IWrappedfCashFactory} from "../../../interfaces/notional/IWrappedfCashFactory.sol";
 import {IWrappedfCashComplete as IWrappedfCash} from "../../../interfaces/notional/IWrappedfCash.sol";
@@ -15,6 +16,8 @@ import {Constants} from "../global/Constants.sol";
  * that lends and borrows in the opposite direction.
  */
 contract CrossCurrencyfCashVault is BaseStrategyVault {
+    using SafeCast for uint256;
+
     uint16 public immutable LEND_CURRENCY_ID;
 
     uint8 borrowRateDecimalPlaces;
@@ -95,12 +98,13 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
      * borrow currency.
      */
     function convertStrategyToUnderlying(
+        address account,
         uint256 strategyTokens,
         uint256 maturity
-    ) public override view returns (uint256 underlyingValue) {
+    ) public override view returns (int256 underlyingValue) {
         uint256 lendPresentValueUnderlyingExternal = getfCashWrapper(maturity).convertToAssets(strategyTokens);
         (uint256 exchangeRate, uint256 exchangeRatePrecision) = getLendToBorrowExchangeRate();
-        return (lendPresentValueUnderlyingExternal * exchangeRate) / exchangeRatePrecision;
+        return (lendPresentValueUnderlyingExternal.toInt256() * exchangeRate.toInt256()) / exchangeRatePrecision.toInt256();
     }
 
     /**

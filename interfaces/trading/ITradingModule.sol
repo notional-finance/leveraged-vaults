@@ -29,6 +29,8 @@ struct Trade {
 }
 
 interface ITradingModule {
+    function owner() external view returns (address);
+
     function getSpender(uint16 dexId, Trade calldata trade)
         external
         view

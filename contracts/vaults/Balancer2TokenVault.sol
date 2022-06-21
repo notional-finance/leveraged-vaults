@@ -2,6 +2,7 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -29,6 +30,7 @@ contract Balancer2TokenVault is
 {
     using TradeHandler for Trade;
     using SafeERC20 for ERC20;
+    using SafeCast for uint256;
 
     struct DeploymentParams {
         uint16 secondaryBorrowCurrencyId;
@@ -50,7 +52,6 @@ contract Balancer2TokenVault is
     struct RedeemParams {
         uint256 minUnderlying;
         bool withdrawFromWETH;
-        uint256 secondaryfCashAmount;
         uint32 secondarySlippageLimit;
     }
 
@@ -75,6 +76,7 @@ contract Balancer2TokenVault is
         uint256 newPercentage
     );
     event SettlementCoolDownUpdated(uint256 oldCoolDown, uint256 newCoolDown);
+    event BalancerOracleWeightUpdated(uint256 oldWeight, uint256 newWeight);
 
     /** Constants */
 
@@ -82,6 +84,7 @@ contract Balancer2TokenVault is
     uint256 internal constant SECONDARY_BORROW_LOWER_LIMIT = 95;
     uint256 internal constant MAX_SETTLEMENT_PERCENTAGE = 1e8; // 100%
     uint256 internal constant MAX_SETTLEMENT_COOLDOWN = 24 * 3600; // 1 day
+    uint256 internal constant MAX_ORACLE_WEIGHT = 1e8; // 100%
 
     /** Immutables */
     uint16 public immutable SECONDARY_BORROW_CURRENCY_ID;
@@ -92,6 +95,7 @@ contract Balancer2TokenVault is
     IBoostController public immutable BOOST_CONTROLLER;
     ILiquidityGauge public immutable LIQUIDITY_GAUGE;
     IVeBalDelegator public immutable VEBAL_DELEGATOR;
+    ITradingModule public immutable TRADING_MODULE;
     ERC20 public immutable BAL_TOKEN;
     uint256 public immutable PRIMARY_INDEX;
     WETH9 public immutable WETH;
@@ -115,6 +119,8 @@ contract Balancer2TokenVault is
     uint256 public settlementPercentage;
 
     uint256 public settlementCoolDown;
+
+    uint256 public balancerOracleWeight;
 
     constructor(
         address notional_,
@@ -179,31 +185,34 @@ contract Balancer2TokenVault is
             IBalancerMinter(VEBAL_DELEGATOR.BALANCER_MINTER())
                 .getBalancerToken()
         );
+        TRADING_MODULE = params.tradingModule;
         SETTLEMENT_PERIOD = params.settlementPeriod;
     }
 
     function initialize(
         uint256 _oracleWindowInSeconds,
         uint256 _settlementPercentage,
-        uint256 _settlementCooldown
+        uint256 _settlementCooldown,
+        uint256 _balancerOracleWeight
     ) external initializer onlyNotionalOwner {
         oracleWindowInSeconds = _oracleWindowInSeconds;
         settlementPercentage = _settlementPercentage;
         settlementCoolDown = _settlementCooldown;
+        balancerOracleWeight = _balancerOracleWeight;
         _initRewardTokenList();
         _approveTokens();
     }
 
     /// @notice special handling for ETH because UNDERLYING_TOKEN == address(0))
     /// and Balancer uses WETH
-    function _primaryAddress() private returns (address) {
+    function _primaryAddress() private view returns (address) {
         return
             BORROW_CURRENCY_ID == 1 ? address(WETH) : address(UNDERLYING_TOKEN);
     }
 
     /// @notice special handling for ETH because SECONDARY_TOKEN == address(0))
     /// and Balancer uses WETH
-    function _secondaryAddress() private returns (address) {
+    function _secondaryAddress() private view returns (address) {
         if (SECONDARY_BORROW_CURRENCY_ID > 0) {
             return
                 SECONDARY_BORROW_CURRENCY_ID == 1
@@ -213,7 +222,11 @@ contract Balancer2TokenVault is
         return address(0);
     }
 
-    function _getTokenAddress(uint16 currencyId) private returns (address) {
+    function _getTokenAddress(uint16 currencyId)
+        private
+        view
+        returns (address)
+    {
         // prettier-ignore
         (
             /* Token memory assetToken */, 
@@ -267,11 +280,37 @@ contract Balancer2TokenVault is
     /// @param maturity maturity timestamp
     /// @return underlyingValue underlying (primary token) value of the strategy tokens
     function convertStrategyToUnderlying(
+        address account,
         uint256 strategyTokenAmount,
         uint256 maturity
-    ) public view override returns (uint256 underlyingValue) {
+    ) public view override returns (int256 underlyingValue) {
         uint256 bptClaim = getStrategyTokenClaim(strategyTokenAmount, maturity);
-        return getTimeWeightedPrimaryBalance(bptClaim);
+
+        uint256 primaryBalance = getTimeWeightedPrimaryBalance(bptClaim);
+
+        if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt256();
+
+        // Get the amount of secondary fCash borrowed
+        // We directly use the fCash amount instead of converting to underyling
+        // as an approximation with built-in interest and haircut parameters
+        uint256 borrowedSecondaryfCashAmount = getSecondaryBorrowedfCashAmount(
+            account,
+            maturity,
+            strategyTokenAmount
+        );
+
+        uint256 borrowedPrimaryAmount = 0;
+        if (PRIMARY_INDEX == 0) {
+            borrowedPrimaryAmount =
+                (borrowedSecondaryfCashAmount * 1e18) /
+                getPairPrice();
+        } else {
+            borrowedPrimaryAmount =
+                (borrowedSecondaryfCashAmount * getPairPrice()) /
+                1e18;
+        }
+
+        return primaryBalance.toInt256() - borrowedPrimaryAmount.toInt256();
     }
 
     function _joinPool(
@@ -309,9 +348,8 @@ contract Balancer2TokenVault is
             );
 
             // Track the amount borrowed per account and maturity on the contract
-            secondaryAmountfCashBorrowed[account][
-                maturity
-            ] += borrowedSecondaryAmount;
+            secondaryAmountfCashBorrowed[account][maturity] += params
+                .secondaryfCashAmount;
         }
 
         // prettier-ignore
@@ -453,7 +491,7 @@ contract Balancer2TokenVault is
             NOTIONAL.repaySecondaryCurrencyFromVault(
                 SECONDARY_BORROW_CURRENCY_ID,
                 maturity,
-                params.secondaryfCashAmount,
+                borrowedSecondaryAmount,
                 params.secondarySlippageLimit,
                 abi.encode(borrowedSecondaryAmount)
             );
@@ -511,22 +549,17 @@ contract Balancer2TokenVault is
             LIQUIDITY_GAUGE.withdraw(tokensFromRedeem, false);
 
             // Calculate the amount of secondary tokens to repay
-            uint256 borrowedSecondaryAmount = 0;
-            if (SECONDARY_BORROW_CURRENCY_ID > 0) {
-                uint256 accountTotal = getStrategyTokenBalance(account);
-                if (accountTotal > 0) {
-                    borrowedSecondaryAmount =
-                        (secondaryAmountfCashBorrowed[account][maturity] *
-                            strategyTokens) /
-                        accountTotal;
-                }
-            }
+            uint256 borrowedSecondaryfCashAmount = getSecondaryBorrowedfCashAmount(
+                    account,
+                    maturity,
+                    strategyTokens
+                );
 
             _exitPool(
                 account,
                 tokensFromRedeem,
                 maturity,
-                borrowedSecondaryAmount,
+                borrowedSecondaryfCashAmount,
                 data
             );
         }
@@ -606,6 +639,22 @@ contract Balancer2TokenVault is
         settlementCoolDown = newSettlementCoolDown;
     }
 
+    /// @notice Updates the Balancer oracle weight. This value determines
+    /// the amount of weight given to the Balancer oracle vs Chainlink
+    /// @dev 1e8 = 100%
+    /// @param newBalancerOracleWeight new Balancer oracle weight
+    function setBalancerOracleWeight(uint256 newBalancerOracleWeight)
+        external
+        onlyNotionalOwner
+    {
+        require(newBalancerOracleWeight <= MAX_ORACLE_WEIGHT);
+        emit BalancerOracleWeightUpdated(
+            balancerOracleWeight,
+            newBalancerOracleWeight
+        );
+        balancerOracleWeight = newBalancerOracleWeight;
+    }
+
     /** Public view functions */
 
     function getTokenDecimals(uint256 tokenIndex)
@@ -643,7 +692,7 @@ contract Balancer2TokenVault is
         uint256 bptPrice = BalancerUtils.getTimeWeightedOraclePrice(
             address(BALANCER_POOL_TOKEN),
             IPriceOracle.Variable.BPT_PRICE,
-            uint256(oracleWindowInSeconds)
+            oracleWindowInSeconds
         );
 
         // The first token in the BPT pool is the primary token.
@@ -668,7 +717,7 @@ contract Balancer2TokenVault is
         uint256 pairPrice = BalancerUtils.getTimeWeightedOraclePrice(
             address(BALANCER_POOL_TOKEN),
             IPriceOracle.Variable.PAIR_PRICE,
-            uint256(oracleWindowInSeconds)
+            oracleWindowInSeconds
         );
 
         // PairPrice =  (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
@@ -687,6 +736,33 @@ contract Balancer2TokenVault is
         // Normalize precision to secondary precision (Balancer uses 1e18)
         uint256 primaryDecimals = getTokenDecimals(PRIMARY_INDEX);
         return (primaryAmount * 10**primaryDecimals) / 1e18;
+    }
+
+    function getPairPrice() public view returns (uint256) {
+        uint256 balancerPrice = BalancerUtils.getTimeWeightedOraclePrice(
+            address(BALANCER_POOL_TOKEN),
+            IPriceOracle.Variable.PAIR_PRICE,
+            oracleWindowInSeconds
+        );
+
+        // prettier-ignore
+        (
+            address[] memory tokens,
+            /* uint256[] memory balances */,
+            /* uint256 lastChangeBlock */
+        ) = BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+
+        (uint256 chainlinkPrice, uint256 decimals) = TRADING_MODULE
+            .getOraclePrice(tokens[1], tokens[0]);
+
+        // Normalize price to 18 decimals
+        chainlinkPrice = (chainlinkPrice * 1e18) / decimals;
+
+        return
+            (balancerPrice * balancerOracleWeight) /
+            1e8 +
+            (chainlinkPrice * (1e8 - balancerOracleWeight)) /
+            1e8;
     }
 
     /// @notice Gets the current spot price with a given token index
@@ -779,14 +855,29 @@ contract Balancer2TokenVault is
             ));
     }
 
-    function getSecondaryBorrowedAmount(address account, uint256 maturity)
-        public
-        view
-        returns (uint256)
-    {
-        return secondaryAmountfCashBorrowed[account][maturity];
+    /// @notice Gets the amount of secondary fCash borrowed
+    /// @param account account address
+    /// @param maturity maturity timestamp
+    /// @param strategyTokenAmount amount of strategy tokens
+    /// @return borrowedSecondaryfCashAmount amount of secondary fCash borrowed
+    function getSecondaryBorrowedfCashAmount(
+        address account,
+        uint256 maturity,
+        uint256 strategyTokenAmount
+    ) public view returns (uint256 borrowedSecondaryfCashAmount) {
+        if (SECONDARY_BORROW_CURRENCY_ID > 0) {
+            uint256 accountTotal = getStrategyTokenBalance(account);
+            if (accountTotal > 0) {
+                borrowedSecondaryfCashAmount =
+                    (secondaryAmountfCashBorrowed[account][maturity] *
+                        strategyTokenAmount) /
+                    accountTotal;
+            }
+        }
     }
 
+    /// @notice Gets the total number of strategy tokens owned by the given account
+    /// @param account account address
     function getStrategyTokenBalance(address account)
         public
         view
