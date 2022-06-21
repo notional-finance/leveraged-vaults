@@ -657,8 +657,6 @@ contract Balancer2TokenVault is
                     ? 18
                     : UNDERLYING_TOKEN.decimals();
         } else if (tokenIndex == (1 - PRIMARY_INDEX)) {
-            if (SECONDARY_BORROW_CURRENCY_ID == 0) return 0;
-
             return
                 address(SECONDARY_TOKEN) == address(0)
                     ? 18
