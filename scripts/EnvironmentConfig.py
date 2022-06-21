@@ -12,7 +12,10 @@ from brownie import (
     Balancer2TokenVault,
     EmptyProxy,
     nUpgradeableBeacon,
-    nBeaconProxy
+    nBeaconProxy,
+    BalancerUtils,
+    TradeHandler,
+    OracleHelper
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -239,6 +242,11 @@ class Environment:
                 {"from": self.notional.owner()}
             )
             secondaryCurrencyId = stratConfig["secondaryBorrowCurrency"]["currencyId"]
+
+        # Deploy external libs
+        BalancerUtils.deploy({"from": self.deployer})
+        TradeHandler.deploy({"from": self.deployer})
+        OracleHelper.deploy({"from": self.deployer})
 
         # Upgrade to actual implementation
         stratVault = Balancer2TokenVault.deploy(

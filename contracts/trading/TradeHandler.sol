@@ -82,7 +82,7 @@ library TradeHandler {
         ITradingModule tradingModule,
         uint16 dexId,
         WETH9 weth
-    ) internal returns (uint256 amountSold, uint256 amountBought) {
+    ) external returns (uint256 amountSold, uint256 amountBought) {
         require(trade.buyToken != trade.sellToken, "same token");
 
         // Get pre-trade token balances

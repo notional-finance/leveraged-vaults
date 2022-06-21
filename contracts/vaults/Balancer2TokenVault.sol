@@ -9,6 +9,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Token, VaultState, VaultAccount} from "../global/Types.sol";
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
+import {OracleHelper} from "../utils/OracleHelper.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
@@ -294,7 +295,16 @@ contract Balancer2TokenVault is
     ) public view override returns (int256 underlyingValue) {
         uint256 bptClaim = getStrategyTokenClaim(strategyTokenAmount, maturity);
 
-        uint256 primaryBalance = getTimeWeightedPrimaryBalance(bptClaim);
+        uint256 primaryBalance = OracleHelper
+            .getTimeWeightedPrimaryBalance(
+                address(BALANCER_POOL_TOKEN),
+                oracleWindowInSeconds,
+                PRIMARY_INDEX,
+                PRIMARY_WEIGHT,
+                SECONDARY_WEIGHT,
+                getTokenDecimals(PRIMARY_INDEX),
+                bptClaim
+            );
 
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt256();
 
@@ -775,65 +785,6 @@ contract Balancer2TokenVault is
         revert InvalidTokenIndex(tokenIndex);
     }
 
-    /// @notice Gets the time-weighted primary token balance for a given bptAmount
-    /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
-    /// @param bptAmount BPT amount
-    /// @return primaryBalance primary token balance
-    function getTimeWeightedPrimaryBalance(uint256 bptAmount)
-        public
-        view
-        returns (uint256)
-    {
-        // Gets the BPT token price
-        uint256 bptPrice = BalancerUtils.getTimeWeightedOraclePrice(
-            address(BALANCER_POOL_TOKEN),
-            IPriceOracle.Variable.BPT_PRICE,
-            oracleWindowInSeconds
-        );
-
-        // The first token in the BPT pool is the primary token.
-        // Since bptPrice is always denominated in the first token,
-        // Both bptPrice and bptAmount are in 1e18
-        // underlyingValue = bptPrice * bptAmount / 1e18
-        if (PRIMARY_INDEX == 0) {
-            uint256 primaryAmount = (bptPrice * bptAmount) / 1e18;
-
-            // Normalize precision to primary precision
-            uint256 primaryDecimals = getTokenDecimals(PRIMARY_INDEX);
-            return (primaryAmount * primaryDecimals) / 1e18;
-        }
-
-        // The second token in the BPT pool is the primary token.
-        // In this case, we need to convert secondaryTokenValue
-        // to underlyingValue using the pairPrice.
-        // Both bptPrice and bptAmount are in 1e18
-        uint256 secondaryAmount = (bptPrice * bptAmount) / 1e18;
-
-        // Gets the pair price
-        uint256 pairPrice = BalancerUtils.getTimeWeightedOraclePrice(
-            address(BALANCER_POOL_TOKEN),
-            IPriceOracle.Variable.PAIR_PRICE,
-            oracleWindowInSeconds
-        );
-
-        // PairPrice =  (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
-        // (SecondaryAmount / SecondaryWeight) / PairPrice = (PrimaryAmount / PrimaryWeight)
-        // PrimaryAmount = (SecondaryAmount / SecondaryWeight) / PairPrice * PrimaryWeight
-
-        // Calculate weighted secondary amount
-        secondaryAmount = ((secondaryAmount * 1e18) / SECONDARY_WEIGHT);
-
-        // Calculate primary amount using pair price
-        uint256 primaryAmount = ((secondaryAmount * 1e18) / pairPrice);
-
-        // Calculate secondary amount (precision is still 1e18)
-        primaryAmount = (primaryAmount * PRIMARY_WEIGHT) / 1e18;
-
-        // Normalize precision to secondary precision (Balancer uses 1e18)
-        uint256 primaryDecimals = getTokenDecimals(PRIMARY_INDEX);
-        return (primaryAmount * 10**primaryDecimals) / 1e18;
-    }
-
     function getPairPrice() public view returns (uint256) {
         uint256 balancerPrice = BalancerUtils.getTimeWeightedOraclePrice(
             address(BALANCER_POOL_TOKEN),
@@ -859,43 +810,6 @@ contract Balancer2TokenVault is
             1e8 +
             (chainlinkPrice * (1e8 - balancerOracleWeight)) /
             1e8;
-    }
-
-    /// @notice Gets the current spot price with a given token index
-    /// @param tokenIndex 0 = PRIMARY_TOKEN, 1 = SECONDARY_TOKEN
-    /// @return spotPrice token spot price
-    function getSpotPrice(uint256 tokenIndex) public view returns (uint256) {
-        // prettier-ignore
-        (
-            /* address[] memory tokens */,
-            uint256[] memory balances,
-            /* uint256 lastChangeBlock */
-        ) = BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
-
-        uint256 primaryDecimals = getTokenDecimals(PRIMARY_INDEX);
-        uint256 secondaryDecimals = getTokenDecimals(1 - PRIMARY_INDEX);
-
-        // Make everything 1e18
-        uint256 primaryBalance = balances[PRIMARY_INDEX] *
-            10**(18 - primaryDecimals);
-        uint256 secondaryBalance = balances[1 - PRIMARY_INDEX] *
-            10**(18 - secondaryDecimals);
-
-        // First we multiply everything by 1e18 for the weight division (weights are in 1e18),
-        // then we multiply the numerator by 1e18 to to preserve enough precision for the division
-        if (tokenIndex == PRIMARY_INDEX) {
-            // PrimarySpotPrice = (SecondaryBalance / SecondaryWeight * 1e18) / (PrimaryBalance / PrimaryWeight)
-            return
-                (((secondaryBalance * 1e18) / SECONDARY_WEIGHT) * 1e18) /
-                ((primaryBalance * 1e18) / PRIMARY_WEIGHT);
-        } else if (tokenIndex == (1 - PRIMARY_INDEX)) {
-            // SecondarySpotPrice = (PrimaryBalance / PrimaryWeight * 1e18) / (SecondaryBalance / SecondaryWeight)
-            return
-                (((primaryBalance * 1e18) / PRIMARY_WEIGHT) * 1e18) /
-                ((secondaryBalance * 1e18) / SECONDARY_WEIGHT);
-        }
-
-        revert InvalidTokenIndex(tokenIndex);
     }
 
     /// @notice Calculates the optimal secondary borrow amount using the
