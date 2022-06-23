@@ -10,6 +10,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Token, VaultState, VaultAccount} from "../global/Types.sol";
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
 import {OracleHelper} from "../utils/OracleHelper.sol";
+import {TradeHelper} from "../utils/TradeHelper.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
@@ -21,7 +22,7 @@ import {IBalancerMinter} from "../../interfaces/balancer/IBalancerMinter.sol";
 import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
-import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule, Trade, TradeType} from "../../interfaces/trading/ITradingModule.sol";
 import {TradeHandler} from "../trading/TradeHandler.sol";
 
 contract Balancer2TokenVault is
@@ -51,9 +52,18 @@ contract Balancer2TokenVault is
     }
 
     struct RedeemParams {
-        uint256 minUnderlying;
-        bool withdrawFromWETH;
         uint32 secondarySlippageLimit;
+        uint256 minPrimary;
+        uint256 minSecondary;
+        bool withdrawFromWETH;
+        bytes callbackData;
+    }
+
+    struct RepaySecondaryCallbackParams {
+        uint16 dexId;
+        uint256 slippageLimit;
+        uint256 deadline;
+        bytes exchangeData;
     }
 
     struct SettlementParams {
@@ -73,14 +83,9 @@ contract Balancer2TokenVault is
         uint256 minBPT;
     }
 
-    struct RepaySecondaryCallbackParams {
-        uint256 borrowedSecondaryAmount;
-    }
-
     /** Errors */
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
-    error InvalidTokenIndex(uint256 tokenIndex);
 
     /** Events */
     event OracleWindowUpdated(uint256 oldWindow, uint256 newWindow);
@@ -256,29 +261,14 @@ contract Balancer2TokenVault is
 
     /// @notice Approve necessary token transfers
     function _approveTokens() private {
-        // Allow Balancer vault to pull UNDERLYING_TOKEN
-        if (address(UNDERLYING_TOKEN) != address(0)) {
-            UNDERLYING_TOKEN.safeApprove(
-                address(BALANCER_VAULT),
-                type(uint256).max
-            );
-        }
-        // Allow balancer vault to pull SECONDARY_TOKEN
-        if (address(SECONDARY_TOKEN) != address(0)) {
-            SECONDARY_TOKEN.safeApprove(
-                address(BALANCER_VAULT),
-                type(uint256).max
-            );
-        }
-        // Allow LIQUIDITY_GAUGE to pull BALANCER_POOL_TOKEN
-        ERC20(address(BALANCER_POOL_TOKEN)).safeApprove(
+        // Approving in external lib to reduce contract size
+        TradeHelper.approveTokens(
+            address(BALANCER_VAULT),
+            address(UNDERLYING_TOKEN),
+            address(SECONDARY_TOKEN),
+            address(BALANCER_POOL_TOKEN),
             address(LIQUIDITY_GAUGE),
-            type(uint256).max
-        );
-        // Allow VEBAL_DELEGATOR to pull LIQUIDITY_GAUGE tokens
-        ERC20(address(LIQUIDITY_GAUGE)).safeApprove(
-            address(VEBAL_DELEGATOR),
-            type(uint256).max
+            address(VEBAL_DELEGATOR)
         );
     }
 
@@ -295,16 +285,17 @@ contract Balancer2TokenVault is
     ) public view override returns (int256 underlyingValue) {
         uint256 bptClaim = getStrategyTokenClaim(strategyTokenAmount, maturity);
 
-        uint256 primaryBalance = OracleHelper
-            .getTimeWeightedPrimaryBalance(
-                address(BALANCER_POOL_TOKEN),
-                oracleWindowInSeconds,
-                PRIMARY_INDEX,
-                PRIMARY_WEIGHT,
-                SECONDARY_WEIGHT,
-                getTokenDecimals(PRIMARY_INDEX),
-                bptClaim
-            );
+        uint256 primaryBalance = OracleHelper.getTimeWeightedPrimaryBalance(
+            address(BALANCER_POOL_TOKEN),
+            oracleWindowInSeconds,
+            PRIMARY_INDEX,
+            PRIMARY_WEIGHT,
+            SECONDARY_WEIGHT,
+            address(UNDERLYING_TOKEN) == address(0)
+                ? 18
+                : UNDERLYING_TOKEN.decimals(),
+            bptClaim
+        );
 
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt256();
 
@@ -317,14 +308,23 @@ contract Balancer2TokenVault is
             strategyTokenAmount
         );
 
+        uint256 pairPrice = OracleHelper.getPairPrice(
+            address(BALANCER_POOL_TOKEN),
+            address(BALANCER_VAULT),
+            BALANCER_POOL_ID,
+            address(TRADING_MODULE),
+            oracleWindowInSeconds,
+            balancerOracleWeight
+        );
+
         uint256 borrowedPrimaryAmount = 0;
         if (PRIMARY_INDEX == 0) {
             borrowedPrimaryAmount =
                 (borrowedSecondaryfCashAmount * 1e18) /
-                getPairPrice();
+                pairPrice;
         } else {
             borrowedPrimaryAmount =
-                (borrowedSecondaryfCashAmount * getPairPrice()) /
+                (borrowedSecondaryfCashAmount * pairPrice) /
                 1e18;
         }
 
@@ -472,7 +472,7 @@ contract Balancer2TokenVault is
         address account,
         uint256 bptExitAmount,
         uint256 maturity,
-        uint256 borrowedSecondaryAmount,
+        uint256 borrowedSecondaryfCashAmount,
         bytes calldata data
     ) internal {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
@@ -483,8 +483,8 @@ contract Balancer2TokenVault is
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
             params.withdrawFromWETH ? address(0) : address(WETH),
-            params.minUnderlying,
-            borrowedSecondaryAmount
+            params.minPrimary,
+            params.minSecondary
         );
 
         BALANCER_VAULT.exitPool(
@@ -503,20 +503,20 @@ contract Balancer2TokenVault is
         );
 
         // Repay secondary debt
-        if (borrowedSecondaryAmount > 0) {
+        if (borrowedSecondaryfCashAmount > 0) {
             NOTIONAL.repaySecondaryCurrencyFromVault(
                 SECONDARY_BORROW_CURRENCY_ID,
                 maturity,
-                borrowedSecondaryAmount,
+                borrowedSecondaryfCashAmount,
                 params.secondarySlippageLimit,
-                abi.encode(borrowedSecondaryAmount)
+                params.callbackData
             );
         }
     }
 
     /// @notice Callback function for repaying secondary debt
     function _repaySecondaryBorrowCallback(
-        uint256 assetCashRequired,
+        uint256 underlyingRequired,
         bytes calldata data
     ) internal override returns (bytes memory returnData) {
         require(msg.sender == address(NOTIONAL)); /// @dev invalid caller
@@ -526,23 +526,61 @@ contract Balancer2TokenVault is
             (RepaySecondaryCallbackParams)
         );
 
-        // Require the secondary borrow amount to be within SECONDARY_BORROW_LOWER_LIMIT percent
-        // of the optimal amount
-        require(
-            assetCashRequired >=
-                ((params.borrowedSecondaryAmount *
-                    (SECONDARY_BORROW_LOWER_LIMIT)) / 100) &&
-                assetCashRequired <=
-                (params.borrowedSecondaryAmount *
-                    (SECONDARY_BORROW_UPPER_LIMIT)) /
-                    100,
-            "invalid secondary amount"
-        );
+        uint256 secondaryBalance = _tokenBalance(address(SECONDARY_TOKEN));
+        Trade memory trade;
 
+        if (secondaryBalance < underlyingRequired) {
+            // Not enough secondary balance to repay debt, sell some primary currency
+            trade = Trade(
+                uint16(TradeType.EXACT_OUT_SINGLE),
+                address(UNDERLYING_TOKEN),
+                address(SECONDARY_TOKEN),
+                underlyingRequired - secondaryBalance,
+                TradeHelper.getLimitAmount(
+                    address(TRADING_MODULE),
+                    uint16(TradeType.EXACT_OUT_SINGLE),
+                    address(UNDERLYING_TOKEN),
+                    address(SECONDARY_TOKEN),
+                    underlyingRequired - secondaryBalance,
+                    params.slippageLimit
+                ),
+                params.deadline,
+                params.exchangeData
+            );
+
+            trade.execute(TRADING_MODULE, params.dexId, WETH);
+        }
+
+        // Update balance before transfer
+        secondaryBalance -= underlyingRequired;
+
+        // Transfer required secondary balance to Notional
         if (SECONDARY_BORROW_CURRENCY_ID == 1) {
-            payable(address(NOTIONAL)).transfer(assetCashRequired);
+            payable(address(NOTIONAL)).transfer(underlyingRequired);
         } else {
-            SECONDARY_TOKEN.safeTransfer(address(NOTIONAL), assetCashRequired);
+            SECONDARY_TOKEN.safeTransfer(address(NOTIONAL), underlyingRequired);
+        }
+
+        if (secondaryBalance > 0) {
+            // Sell residual secondary balance
+            trade = Trade(
+                uint16(TradeType.EXACT_IN_SINGLE),
+                address(SECONDARY_TOKEN),
+                address(UNDERLYING_TOKEN),
+                secondaryBalance,
+                TradeHelper.getLimitAmount(
+                    address(TRADING_MODULE),
+                    uint16(TradeType.EXACT_OUT_SINGLE),
+                    address(SECONDARY_TOKEN),
+                    address(UNDERLYING_TOKEN),
+                    secondaryBalance,
+                    params.slippageLimit
+                ),
+                params.deadline,
+                params.exchangeData
+            );
+
+            trade.execute(TRADING_MODULE, params.dexId, WETH);
         }
     }
 
@@ -635,7 +673,7 @@ contract Balancer2TokenVault is
         // TODO: validate prices
 
         uint256 primaryAmountBefore = _tokenBalance(address(UNDERLYING_TOKEN));
-        params.primaryTrade._execute(
+        params.primaryTrade.execute(
             TRADING_MODULE,
             params.primaryTradeDexId,
             WETH
@@ -645,7 +683,7 @@ contract Balancer2TokenVault is
             primaryAmountBefore;
 
         uint256 secondaryAmountBefore = _tokenBalance(address(SECONDARY_TOKEN));
-        params.secondaryTrade._execute(
+        params.secondaryTrade.execute(
             TRADING_MODULE,
             params.secondaryTradeDexId,
             WETH
@@ -765,53 +803,6 @@ contract Balancer2TokenVault is
 
     /** Public view functions */
 
-    function getTokenDecimals(uint256 tokenIndex)
-        public
-        view
-        returns (uint256)
-    {
-        if (tokenIndex == PRIMARY_INDEX) {
-            return
-                address(UNDERLYING_TOKEN) == address(0)
-                    ? 18
-                    : UNDERLYING_TOKEN.decimals();
-        } else if (tokenIndex == (1 - PRIMARY_INDEX)) {
-            return
-                address(SECONDARY_TOKEN) == address(0)
-                    ? 18
-                    : SECONDARY_TOKEN.decimals();
-        }
-
-        revert InvalidTokenIndex(tokenIndex);
-    }
-
-    function getPairPrice() public view returns (uint256) {
-        uint256 balancerPrice = BalancerUtils.getTimeWeightedOraclePrice(
-            address(BALANCER_POOL_TOKEN),
-            IPriceOracle.Variable.PAIR_PRICE,
-            oracleWindowInSeconds
-        );
-
-        // prettier-ignore
-        (
-            address[] memory tokens,
-            /* uint256[] memory balances */,
-            /* uint256 lastChangeBlock */
-        ) = BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
-
-        (uint256 chainlinkPrice, uint256 decimals) = TRADING_MODULE
-            .getOraclePrice(tokens[1], tokens[0]);
-
-        // Normalize price to 18 decimals
-        chainlinkPrice = (chainlinkPrice * 1e18) / decimals;
-
-        return
-            (balancerPrice * balancerOracleWeight) /
-            1e8 +
-            (chainlinkPrice * (1e8 - balancerOracleWeight)) /
-            1e8;
-    }
-
     /// @notice Calculates the optimal secondary borrow amount using the
     /// Balancer time-weighted oracle price
     /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
@@ -849,9 +840,15 @@ contract Balancer2TokenVault is
         secondaryAmount = (primaryAmount * SECONDARY_WEIGHT) / 1e18;
 
         // Normalize precision to secondary precision
-        uint256 primaryDecimals = getTokenDecimals(PRIMARY_INDEX);
+        uint256 primaryDecimals = address(UNDERLYING_TOKEN) == address(0)
+            ? 18
+            : UNDERLYING_TOKEN.decimals();
+        uint256 secondaryDecimals = address(UNDERLYING_TOKEN) == address(0)
+            ? 18
+            : SECONDARY_TOKEN.decimals();
+            
         secondaryAmount =
-            (secondaryAmount * 10**SECONDARY_TOKEN.decimals()) /
+            (secondaryAmount * 10**secondaryDecimals) /
             10**primaryDecimals;
     }
 

@@ -1,12 +1,13 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.11;
 
-import "../../interfaces/balancer/IPriceOracle.sol";
+import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
+import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
+import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 
 library OracleHelper {
-        /// @notice Gets the time-weighted primary token balance for a given bptAmount
+    /// @notice Gets the time-weighted primary token balance for a given bptAmount
     /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
     /// @param bptAmount BPT amount
     /// @return primaryBalance primary token balance
@@ -17,11 +18,8 @@ library OracleHelper {
         uint256 primaryWeight,
         uint256 secondaryWeight,
         uint256 primaryDecimals,
-        uint256 bptAmount)
-        external
-        view
-        returns (uint256)
-    {
+        uint256 bptAmount
+    ) external view returns (uint256) {
         // Gets the BPT token price
         uint256 bptPrice = BalancerUtils.getTimeWeightedOraclePrice(
             pool,
@@ -68,5 +66,40 @@ library OracleHelper {
 
         // Normalize precision to secondary precision (Balancer uses 1e18)
         return (primaryAmount * 10**primaryDecimals) / 1e18;
+    }
+
+    function getPairPrice(
+        address pool,
+        address vault,
+        bytes32 poolId,
+        address tradingModule,
+        uint256 oracleWindowInSeconds,
+        uint256 balancerOracleWeight
+    ) external view returns (uint256) {
+        uint256 balancerPrice = BalancerUtils.getTimeWeightedOraclePrice(
+            pool,
+            IPriceOracle.Variable.PAIR_PRICE,
+            oracleWindowInSeconds
+        );
+
+        // prettier-ignore
+        (
+            address[] memory tokens,
+            /* uint256[] memory balances */,
+            /* uint256 lastChangeBlock */
+        ) = IBalancerVault(vault).getPoolTokens(poolId);
+
+        (uint256 chainlinkPrice, uint256 decimals) = ITradingModule(
+            tradingModule
+        ).getOraclePrice(tokens[1], tokens[0]);
+
+        // Normalize price to 18 decimals
+        chainlinkPrice = (chainlinkPrice * 1e18) / decimals;
+
+        return
+            (balancerPrice * balancerOracleWeight) /
+            1e8 +
+            (chainlinkPrice * (1e8 - balancerOracleWeight)) /
+            1e8;
     }
 }

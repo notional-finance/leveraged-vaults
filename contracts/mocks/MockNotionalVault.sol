@@ -50,7 +50,7 @@ contract MockNotionalVault is IVaultExchange, IVaultExchangeCallback {
         override
         returns (uint256 amountSold, uint256 amountBought)
     {
-        return trade._execute(TRADING_MODULE, dexId, WETH);
+        return trade.execute(TRADING_MODULE, dexId, WETH);
     }
 
     function exchange(VaultExchange calldata request)

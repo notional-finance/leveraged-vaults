@@ -77,7 +77,7 @@ library TradeHandler {
         require(success);
     }
 
-    function _execute(
+    function execute(
         Trade memory trade,
         ITradingModule tradingModule,
         uint16 dexId,

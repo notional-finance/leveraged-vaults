@@ -15,7 +15,8 @@ from brownie import (
     nBeaconProxy,
     BalancerUtils,
     TradeHandler,
-    OracleHelper
+    OracleHelper,
+    TradeHelper
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -247,6 +248,7 @@ class Environment:
         BalancerUtils.deploy({"from": self.deployer})
         TradeHandler.deploy({"from": self.deployer})
         OracleHelper.deploy({"from": self.deployer})
+        self.tradeHelper = TradeHelper.deploy({"from": self.deployer})
 
         # Upgrade to actual implementation
         stratVault = Balancer2TokenVault.deploy(
