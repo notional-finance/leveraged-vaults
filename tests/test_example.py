@@ -18,6 +18,8 @@ def env():
         environment = getEnvironment('goerli')
         environment.notional.upgradeTo('0x433a0679756D6EB110E8Ff730d06DBee5D9F5db5', {'from': environment.owner})
         return environment
+    if name == 'mainnet-fork':
+        return getEnvironment('mainnet')
 
 def set_flags(flags, **kwargs):
     binList = list(format(flags, "b").rjust(16, "0"))

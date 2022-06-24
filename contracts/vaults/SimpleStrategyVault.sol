@@ -18,7 +18,7 @@ contract SimpleStrategyVault is BaseStrategyVault {
         string memory name_,
         address notional_,
         uint16 borrowCurrencyId_
-    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_, true, true) { }
+    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_) { }
 
     // Vaults need to implement these two methods
     function _depositFromNotional(
@@ -40,14 +40,15 @@ contract SimpleStrategyVault is BaseStrategyVault {
     }
 
     function _repaySecondaryBorrowCallback(
-        uint256 assetCashRequired, bytes calldata data
+        uint256 underlyingTokensRequired, bytes calldata /* data */
     ) internal override returns (bytes memory returnData) {
-        address cETH = abi.decode(data, (address));
-        ERC20(cETH).transfer(address(NOTIONAL), assetCashRequired);
+        payable(address(NOTIONAL)).transfer(underlyingTokensRequired);
     }
 
-    function convertStrategyToUnderlying(uint256 strategyTokens, uint256 maturity) public view override returns (uint256 underlyingValue) {
-        return (strategyTokens * _tokenExchangeRate * 1e10) / 1e18;
+    function convertStrategyToUnderlying(
+        address account, uint256 strategyTokens, uint256 maturity
+    ) public view override returns (int256 underlyingValue) {
+        return int256((strategyTokens * _tokenExchangeRate * 1e10) / 1e18);
     }
 
     function borrowSecondaryCurrency(
@@ -66,11 +67,10 @@ contract SimpleStrategyVault is BaseStrategyVault {
         uint16 currencyId,
         uint256 maturity,
         uint256 fCashToRepay,
-        uint32 slippageLimit,
-        address cETH
+        uint32 slippageLimit
     ) external {
         NOTIONAL.repaySecondaryCurrencyFromVault(
-            currencyId, maturity, fCashToRepay, slippageLimit, abi.encode(cETH)
+            currencyId, maturity, fCashToRepay, slippageLimit, ""
         );
     }
 }
