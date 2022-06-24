@@ -2,7 +2,7 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/trading/IExchangeAdapter.sol";
 import "../../../interfaces/WETH9.sol";
 import "../../../interfaces/curve/ICurvePool.sol";
@@ -10,10 +10,7 @@ import "../../../interfaces/curve/ICurveRouter.sol";
 import "../../../interfaces/curve/ICurveRegistry.sol";
 import "../../../interfaces/curve/ICurveRegistryProvider.sol";
 
-contract CurveAdapter is IExchangeAdapter {
-    using SafeERC20 for IERC20;
-    using SafeERC20 for WETH9;
-
+library CurveAdapter {
     int128 public constant MAX_TOKENS = 4;
     address internal constant ETH_ADDRESS = address(0);
     address internal constant CURVE_ETH_ADDRESS =
@@ -88,8 +85,6 @@ contract CurveAdapter is IExchangeAdapter {
 
         require(j >= 0, "invalid buyToken");
 
-        uint256 msgValue = trade.sellToken == address(WETH) ? trade.amount : 0;
-
         return (
             address(pool),
             msgValue,
@@ -104,46 +99,21 @@ contract CurveAdapter is IExchangeAdapter {
     }
 
     function getExecutionData(address payable from, Trade calldata trade)
-        external
-        view
-        override
-        returns (
-            address,
-            uint256,
-            bytes memory
+        internal view returns (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionCallData
         )
     {
-        require(
-            TradeType(trade.tradeType) == TradeType.EXACT_IN_SINGLE,
-            "invalid type"
-        );
-
-        return _exchange(trade);
-    }
-
-    function getSpender(Trade calldata trade)
-        external
-        view
-        override
-        returns (address)
-    {
-        if (_isEthAddress(trade.sellToken)) {
-            // No need to approve if the vault is sending ETH
-            return address(0);
+        if (trade.tradeType == TradeType.EXACT_IN_SINGLE) revert InvalidTrade();
+        if (trade.sellToken == address(WETH)) {
+            spender = address(0);
+            msgValue = trade.amount;
+        } else {
+            // msgValue is zero in this case
         }
 
-        return _findPool(trade);
-    }
-
-    function getLiquidity(bytes calldata params)
-        external
-        view
-        override
-        returns (address[] memory, uint256[] memory)
-    {
-        address[] memory tokens = new address[](0);
-        uint256[] memory balances = new uint256[](0);
-
-        return (tokens, balances);
+        return _exchange(trade);
     }
 }

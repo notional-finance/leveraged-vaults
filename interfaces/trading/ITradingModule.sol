@@ -30,6 +30,8 @@ struct Trade {
     bytes exchangeData;
 }
 
+error InvalidTrade();
+
 interface ITradingModule {
     function getExecutionData(uint16 dexId, address from, Trade calldata trade)
         external view returns (

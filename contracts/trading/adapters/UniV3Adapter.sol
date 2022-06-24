@@ -2,17 +2,15 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
-import "../../../interfaces/trading/IExchangeAdapter.sol";
+import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/uniswap/v3/ISwapRouter.sol";
 
-contract UniV3Adapter is IExchangeAdapter {
-    ISwapRouter public immutable ROUTER;
+library UniV3Adapter {
+    ISwapRouter public constant ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     struct UniV3SingleData { uint24 fee; }
 
     struct UniV3BatchData { bytes path; }
-
-    constructor(ISwapRouter _router) { ROUTER = _router; }
 
     function _exactInSingle(address from, Trade memory trade)
         private pure returns (bytes memory)
@@ -63,7 +61,7 @@ contract UniV3Adapter is IExchangeAdapter {
     }
 
     function getExecutionData(address from, Trade calldata trade)
-        external view override returns (
+        internal view returns (
             address spender,
             address target,
             uint256 /* msgValue */,

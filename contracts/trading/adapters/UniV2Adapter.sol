@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.11;
 
-import "../../../interfaces/trading/IExchangeAdapter.sol";
+import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/uniswap/v2/IUniV2Router2.sol";
 
-contract UniV2Adapter is IExchangeAdapter {
-    IUniV2Router2 public immutable ROUTER;
+library UniV2Adapter {
+    IUniV2Router2 public constant ROUTER = IUniV2Router2(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     struct UniV2Data { address[] path; }
 
-    constructor(IUniV2Router2 _router) { ROUTER = _router; }
-
     function getExecutionData(address from, Trade calldata trade)
-        external view override returns (
+        internal view returns (
             address spender,
             address target,
             uint256 /* msgValue */,

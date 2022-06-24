@@ -2,12 +2,12 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
-import "../../../interfaces/trading/IExchangeAdapter.sol";
+import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/balancer/IBalancerVault.sol";
 
-contract BalancerV2Adapter is IExchangeAdapter {
+library BalancerV2Adapter {
     address internal constant ETH_ADDRESS = address(0);
-    IBalancerVault public immutable VAULT;
+    IBalancerVault public constant VAULT = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     struct SingleSwapData {
         bytes32 poolId;
@@ -18,8 +18,6 @@ contract BalancerV2Adapter is IExchangeAdapter {
         IAsset[] assets;
         int256[] limits;
     }
-
-    constructor(IBalancerVault _vault) { VAULT = _vault; }
 
     function _single(IBalancerVault.SwapKind kind, address from, Trade memory trade)
         internal pure returns (bytes memory) {
@@ -67,7 +65,7 @@ contract BalancerV2Adapter is IExchangeAdapter {
     }
 
     function getExecutionData(address from, Trade calldata trade)
-        external view override returns (
+        internal view returns (
             address spender,
             address target,
             uint256 msgValue,

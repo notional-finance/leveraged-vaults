@@ -2,10 +2,10 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
-import "../../../interfaces/trading/IExchangeAdapter.sol";
+import "../../../interfaces/trading/ITradingModule.sol";
 
-contract ZeroExAdapter is IExchangeAdapter {
-    address public immutable ZERO_EX;
+library ZeroExAdapter {
+    address constant ZERO_EX = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
 
     struct BatchFillData {
         address inputToken;
@@ -46,10 +46,6 @@ contract ZeroExAdapter is IExchangeAdapter {
     // Byte size of one hop in the Uniswap V3 encoded path (token address + fee)
     uint256 private constant UNISWAP_V3_SINGLE_HOP_OFFSET_SIZE =
         UNISWAP_V3_PATH_ADDRESS_SIZE + UNISWAP_V3_PATH_FEE_SIZE;
-
-    constructor(address _zeroEx) {
-        ZERO_EX = _zeroEx;
-    }
 
     /// @notice Validate 0x calldata against the specified trade object
     /// Reference implementation
@@ -228,7 +224,7 @@ contract ZeroExAdapter is IExchangeAdapter {
     }
 
     function getExecutionData(address from, Trade calldata trade)
-        external view override returns (
+        internal view returns (
             address spender,
             address target,
             uint256 /* msgValue */,
