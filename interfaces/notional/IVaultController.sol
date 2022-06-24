@@ -6,8 +6,7 @@ import {
     VaultConfigStorage,
     VaultConfig,
     VaultState,
-    VaultAccount,
-    RollVaultOpts
+    VaultAccount
 } from "../../contracts/global/Types.sol";
 
 interface IVaultAction {
@@ -121,7 +120,6 @@ interface IVaultAccountAction {
      * @param depositAmountExternal some amount of additional collateral in the borrowed currency
      * to be transferred to vault
      * @param maturity the maturity to borrow at
-     * @param useUnderlying true if the account will transfer underlying tokens
      * @param fCash amount to borrow
      * @param maxBorrowRate maximum interest rate to borrow at
      * @param vaultData additional data to pass to the vault contract
@@ -131,11 +129,10 @@ interface IVaultAccountAction {
         address vault,
         uint256 depositAmountExternal,
         uint256 maturity,
-        bool useUnderlying,
         uint256 fCash,
         uint32 maxBorrowRate,
         bytes calldata vaultData
-    ) external;
+    ) external payable;
 
     /**
      * @notice Re-enters the vault at a longer dated maturity. The account's existing borrow
@@ -146,14 +143,15 @@ interface IVaultAccountAction {
      * @param vault the vault to reenter
      * @param fCashToBorrow amount of fCash to borrow in the next maturity
      * @param maturity new maturity to borrow at
-     * @param opts struct with slippage limits and data to send to vault
      */
     function rollVaultPosition(
         address account,
         address vault,
         uint256 fCashToBorrow,
         uint256 maturity,
-        RollVaultOpts calldata opts
+        uint32 minLendRate,
+        uint32 maxBorrowRate,
+        bytes calldata enterVaultData
     ) external;
 
     /**
@@ -170,18 +168,17 @@ interface IVaultAccountAction {
      * @param vaultSharesToRedeem amount of vault tokens to exit, only relevant when exiting pre-maturity
      * @param fCashToLend amount of fCash to lend
      * @param minLendRate the minimum rate to lend at
-     * @param useUnderlying if vault shares should be redeemed to underlying
      * @param exitVaultData passed to the vault during exit
      */
     function exitVault(
         address account,
         address vault,
+        address receiver,
         uint256 vaultSharesToRedeem,
         uint256 fCashToLend,
         uint32 minLendRate,
-        bool useUnderlying,
         bytes calldata exitVaultData
-    ) external;
+    ) external payable;
 
     /**
      * @notice If an account is below the minimum collateral ratio, this method wil deleverage (liquidate)
@@ -192,6 +189,7 @@ interface IVaultAccountAction {
      * @param vault the vault to enter
      * @param liquidator the address that will receive profits from liquidation
      * @param depositAmountExternal amount of cash to deposit
+     * @param transferSharesToLiquidator transfers the shares to the liquidator instead of redeeming them
      * @param redeemData calldata sent to the vault when redeeming liquidator profits
      * @return profitFromLiquidation amount of vaultShares or cash received from liquidation
      */
@@ -200,6 +198,7 @@ interface IVaultAccountAction {
         address vault,
         address liquidator,
         uint256 depositAmountExternal,
+        bool transferSharesToLiquidator,
         bytes calldata redeemData
     ) external returns (uint256 profitFromLiquidation);
 
@@ -207,7 +206,9 @@ interface IVaultAccountAction {
     function getVaultAccountMaturity(address account, address vault) external view returns (uint256 maturity);
     function getVaultAccountCollateralRatio(address account, address vault) external view returns (
         int256 collateralRatio,
-        int256 minCollateralRatio
+        int256 minCollateralRatio,
+        int256 maxLiquidatorDepositAssetCash,
+        bool mustLiquidateFull
     );
 }
 

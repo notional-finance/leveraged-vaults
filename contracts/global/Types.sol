@@ -461,7 +461,7 @@ struct AccountBalance {
 struct VaultConfigStorage {
     // Vault Flags (documented in VaultConfiguration.sol)
     uint16 flags;
-    // Each vault only borrows in a single currency
+    // Primary currency the vault borrows in
     uint16 borrowCurrencyId;
     // Specified in whole tokens in 1e8 precision, allows a 4.2 billion min borrow size
     uint32 minAccountBorrowSize;
@@ -531,8 +531,16 @@ struct VaultStateStorage {
     // The total amount of strategy tokens held in the pool
     uint80 totalStrategyTokens;
     // Valuation of a strategy token at settlement
-    uint80 settlementStrategyTokenValue;
+    int80 settlementStrategyTokenValue;
     // NOTE: 96 bits left
+}
+
+/// @notice Represents the remaining assets in a vault post settlement
+struct VaultSettledAssetsStorage {
+    // Remaining strategy tokens that have not been withdrawn
+    uint80 remainingStrategyTokens;
+    // Remaining asset cash that has not been withdrawn
+    int80 remainingAssetCash;
 }
 
 struct VaultState {
@@ -564,10 +572,4 @@ struct VaultAccount {
     // This cash balance is used just within a transaction to track deposits
     // and withdraws for an account. Must be zeroed by the time we store the account
     int256 tempCashBalance;
-}
-
-struct RollVaultOpts {
-    uint32 minLendRate;
-    uint32 maxBorrowRate;
-    bytes enterVaultData;
 }

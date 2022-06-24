@@ -112,25 +112,4 @@ library Constants {
 
     // Equal to 100% of all deposit amounts for nToken liquidity across fCash markets.
     int256 internal constant DEPOSIT_PERCENT_BASIS = 1e8;
-
-    // nToken Parameters: there are offsets in the nTokenParameters bytes6 variable returned
-    // in nTokenHandler. Each constant represents a position in the byte array.
-    uint8 internal constant LIQUIDATION_HAIRCUT_PERCENTAGE = 0;
-    uint8 internal constant CASH_WITHHOLDING_BUFFER = 1;
-    uint8 internal constant RESIDUAL_PURCHASE_TIME_BUFFER = 2;
-    uint8 internal constant PV_HAIRCUT_PERCENTAGE = 3;
-    uint8 internal constant RESIDUAL_PURCHASE_INCENTIVE = 4;
-
-    // Liquidation parameters
-    // Default percentage of collateral that a liquidator is allowed to liquidate, will be higher if the account
-    // requires more collateral to be liquidated
-    int256 internal constant DEFAULT_LIQUIDATION_PORTION = 40;
-    // Percentage of local liquidity token cash claim delivered to the liquidator for liquidating liquidity tokens
-    int256 internal constant TOKEN_REPO_INCENTIVE_PERCENT = 30;
-
-    // Pause Router liquidation enabled states
-    bytes1 internal constant LOCAL_CURRENCY_ENABLED = 0x01;
-    bytes1 internal constant COLLATERAL_CURRENCY_ENABLED = 0x02;
-    bytes1 internal constant LOCAL_FCASH_ENABLED = 0x04;
-    bytes1 internal constant CROSS_CURRENCY_FCASH_ENABLED = 0x08;
 }
