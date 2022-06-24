@@ -54,7 +54,7 @@ contract ZeroExAdapter is IExchangeAdapter {
     /// @notice Validate 0x calldata against the specified trade object
     /// Reference implementation
     /// https://github.com/SetProtocol/set-protocol-v2/blob/master/contracts/protocol/integration/exchange/ZeroExApiAdapter.sol
-    function _validateExchangeData(address payable from, Trade calldata trade) internal pure {
+    function _validateExchangeData(address from, Trade calldata trade) internal pure {
         bytes calldata _data = trade.exchangeData;
 
         address inputToken;
@@ -227,38 +227,19 @@ contract ZeroExAdapter is IExchangeAdapter {
         }
     }
 
-    function getExecutionData(address payable from, Trade calldata trade)
-        external
-        view
-        override
-        returns (
-            address,
-            uint256,
-            bytes memory
+    function getExecutionData(address from, Trade calldata trade)
+        external view override returns (
+            address spender,
+            address target,
+            uint256 /* msgValue */,
+            bytes memory executionCallData
         )
     {
         _validateExchangeData(from, trade);
-        return (ZERO_EX, 0, trade.exchangeData);
-    }
 
-    function getSpender(Trade calldata trade)
-        external
-        view
-        override
-        returns (address)
-    {
-        return ZERO_EX;
-    }
-
-    function getLiquidity(bytes calldata params)
-        external
-        view
-        override
-        returns (address[] memory, uint256[] memory)
-    {
-        address[] memory tokens = new address[](0);
-        uint256[] memory balances = new uint256[](0);
-
-        return (tokens, balances);
+        spender = ZERO_EX;
+        target = ZERO_EX;
+        // msgValue is always zero
+        executionCallData = trade.exchangeData;
     }
 }

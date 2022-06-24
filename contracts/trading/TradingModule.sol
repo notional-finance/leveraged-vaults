@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity =0.8.11;
 
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
@@ -8,13 +9,21 @@ import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/trading/IExchangeAdapter.sol";
 import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 
-contract TradingModule is
-    BoringOwnable,
-    UUPSUpgradeable,
-    Initializable,
-    ITradingModule
-{
-    int256 public constant RATE_DECIMALS = 10**18;
+/// @notice TradingModule is meant to be an upgradeable contract deployed to help Strategy Vaults
+/// exchange tokens via multiple DEXes as well as receive price oracle information
+contract TradingModule is BoringOwnable, UUPSUpgradeable, Initializable, ITradingModule {
+    error SellTokenEqualsBuyToken();
+    error UnknownDEX();
+
+    struct PriceOracle {
+        AggregatorV2V3Interface oracle;
+        uint8 rateDecimals;
+    }
+
+    int256 internal constant RATE_DECIMALS = 1e18;
+    mapping(address => PriceOracle) public priceOracles;
+
+    // Each exchange adapter returns relevant parameters for a given exchange
     IExchangeAdapter public immutable UNISWAP_V2;
     IExchangeAdapter public immutable UNISWAP_V3;
     IExchangeAdapter public immutable BALANCER_V2;
@@ -38,21 +47,24 @@ contract TradingModule is
         CURVE = _curve;
         ZERO_EX = _zeroEx;
         NOTIONAL_VAULT = _notionalVault;
-        owner = address(0);
     }
-
-    mapping(address => address) public priceOracles;
 
     function initialize(address _owner) external initializer {
         owner = _owner;
         emit OwnershipTransferred(address(0), _owner);
     }
 
-    function _getExchangeAdapater(uint16 dexId)
-        internal
-        view
-        returns (IExchangeAdapter)
-    {
+    function _authorizeUpgrade(address /* newImplementation */) internal override onlyOwner {}
+
+    function setPriceOracle(address token, AggregatorV2V3Interface oracle) external override onlyOwner {
+        PriceOracle storage oracleStorage = priceOracles[token];
+        oracleStorage.oracle = oracle;
+        oracleStorage.rateDecimals = oracle.decimals();
+
+        emit PriceOracleUpdated(token, address(oracle));
+    }
+
+    function _getExchangeAdapter(uint16 dexId) internal view returns (IExchangeAdapter) {
         if (DexId(dexId) == DexId.UNISWAP_V2) {
             return UNISWAP_V2;
         } else if (DexId(dexId) == DexId.UNISWAP_V3) {
@@ -66,93 +78,43 @@ contract TradingModule is
         } else if (DexId(dexId) == DexId.NOTIONAL_VAULT) {
             return NOTIONAL_VAULT;
         }
-    }
 
-    function getSpender(uint16 dexId, Trade calldata trade)
-        external
-        view
-        override
-        returns (address)
-    {
-        IExchangeAdapter adapter = _getExchangeAdapater(dexId);
-
-        return adapter.getSpender(trade);
+        revert UnknownDEX();
     }
 
     function getExecutionData(
         uint16 dexId,
-        address payable from,
+        address from,
         Trade calldata trade
-    )
-        external
-        view
-        override
-        returns (
-            address,
-            uint256,
-            bytes memory
-        )
-    {
-        require(trade.buyToken != trade.sellToken, "same token");
-
-        IExchangeAdapter adapter = _getExchangeAdapater(dexId);
-
-        return adapter.getExecutionData(from, trade);
-    }
-
-    function setPriceOracle(address token, address oracle)
-        external
-        override
-        onlyOwner
-    {
-        priceOracles[token] = oracle;
-        emit PriceOracleUpdated(token, oracle);
+    ) external view override returns (
+        address spender,
+        address target,
+        uint256 msgValue,
+        bytes memory executionCallData
+    ) {
+        if (trade.buyToken == trade.sellToken) revert SellTokenEqualsBuyToken();
+        // TODO: make this all internal
+        return _getExchangeAdapter(dexId).getExecutionData(from, trade);
     }
 
     function getOraclePrice(address baseToken, address quoteToken)
-        external
-        view
-        override
-        returns (uint256 answer, uint256 decimals)
+        external view override returns (int256 answer, int256 decimals)
     {
-        AggregatorV2V3Interface baseOracle = AggregatorV2V3Interface(
-            priceOracles[baseToken]
-        );
-        AggregatorV2V3Interface quoteOracle = AggregatorV2V3Interface(
-            priceOracles[quoteToken]
-        );
+        PriceOracle memory baseOracle = priceOracles[baseToken];
+        PriceOracle memory quoteOracle = priceOracles[quoteToken];
 
-        int256 baseDecimals = int256(10**baseOracle.decimals());
-        int256 quoteDecimals = int256(10**quoteOracle.decimals());
+        int256 baseDecimals = int256(10**baseOracle.rateDecimals);
+        int256 quoteDecimals = int256(10**quoteOracle.rateDecimals);
 
-        // prettier-ignore
-        (
-            /* roundId */,
-            int256 basePrice,
-            /* startedAt */,
-            /* updatedAt */,
-            /* answeredInRound */
-        ) = baseOracle.latestRoundData();
+        (/* */, int256 basePrice, /* */, /* */, /* */) = baseOracle.oracle.latestRoundData();
         require(basePrice > 0); /// @dev: Chainlink Rate Error
 
-        // prettier-ignore
-        (
-            /* roundId */,
-            int256 quotePrice,
-            /* uint256 startedAt */,
-            /* updatedAt */,
-            /* answeredInRound */
-        ) = quoteOracle.latestRoundData();
+        (/* */, int256 quotePrice, /* */, /* */, /* */) = quoteOracle.oracle.latestRoundData();
         require(quotePrice > 0); /// @dev: Chainlink Rate Error
 
-        answer = uint256(
-            (basePrice * quoteDecimals * RATE_DECIMALS) /
-                (quotePrice * baseDecimals)
-        );
-        decimals = uint256(RATE_DECIMALS);
+        // TODO: this only works if we only list USD oracles....
+        answer = (basePrice * quoteDecimals * RATE_DECIMALS) / (quotePrice * baseDecimals);
+        decimals = RATE_DECIMALS;
     }
 
-    function _authorizeUpgrade(
-        address /* newImplementation */
-    ) internal override onlyOwner {}
 }
