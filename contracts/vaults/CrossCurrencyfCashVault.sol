@@ -93,15 +93,15 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             LEND_CURRENCY_ID, maturity, strategyTokens.toInt(), block.timestamp, false
         );
 
-        (uint256 rate, uint256 rateDecimals) = TRADING_MODULE.getOraclePrice(
+        (int256 rate, int256 rateDecimals) = TRADING_MODULE.getOraclePrice(
             address(LEND_UNDERLYING_TOKEN), address(UNDERLYING_TOKEN)
         );
         int256 borrowTokenDecimals = int256(10**UNDERLYING_TOKEN.decimals());
 
         // Convert this back to the borrow currency, external precision
         // (pv (8 decimals) * borrowTokenDecimals * rate) / (rateDecimals * 8 decimals)
-        return (pvInternal * borrowTokenDecimals * int256(rate)) /
-            (int256(rateDecimals) * int256(Constants.INTERNAL_TOKEN_PRECISION));
+        return (pvInternal * borrowTokenDecimals * rate) /
+            (rateDecimals * int256(Constants.INTERNAL_TOKEN_PRECISION));
     }
 
     /**
@@ -130,10 +130,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             exchangeData: "" // TODO, implement this
         });
 
-        // NOTE: WETH is not supported by this vault, it is targeted at stablecoin pairs
-        (/* */, uint256 lendUnderlyingTokens) = TradeHandler._execute(
-            trade, TRADING_MODULE, dexId, WETH9(address(0))
-        );
+        (/* */, uint256 lendUnderlyingTokens) = TradeHandler._execute(trade, TRADING_MODULE, dexId);
 
         // Now we lend the underlying amount
         (uint256 fCashAmount, /* */, bytes32 encodedTrade) = NOTIONAL.getfCashLendFromDeposit(
@@ -207,7 +204,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             exchangeData: "" // TODO, implement this
         });
 
-        (/* */, borrowedCurrencyAmount) = TradeHandler._execute(trade, TRADING_MODULE, dexId, WETH9(address(0)));
+        (/* */, borrowedCurrencyAmount) = TradeHandler._execute(trade, TRADING_MODULE, dexId);
     }
 
     function _encodeBorrowTrade(
