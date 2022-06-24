@@ -41,7 +41,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         ITradingModule tradingModule_,
         uint16 borrowCurrencyId_,
         uint16 lendCurrencyId_
-    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_, true, true) {
+    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_) {
         LEND_CURRENCY_ID = lendCurrencyId_;
         TRADING_MODULE = tradingModule_;
 
@@ -62,10 +62,13 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
      * underlying token and traded back to the borrow currency. All of the borrow currency will be deposited
      * into the Notional contract as asset tokens and held for accounts to withdraw. Settlement can only
      * be called after maturity.
+     * @param maturity the maturity to settle
+     * @param settlementTrade details for the settlement trade...
      */
     function settleVault(uint256 maturity, bytes calldata settlementTrade) external {
         require(maturity <= block.timestamp, "Cannot Settle");
         VaultState memory vaultState = NOTIONAL.getVaultState(address(this), maturity);
+        require(vaultState.totalStrategyTokens >= 0);
 
         (
             int256 assetCashRequiredToSettle,
@@ -76,37 +79,43 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
     /**
      * @notice Converts the amount of fCash the vault holds into underlying denomination for the
      * borrow currency.
+     * @param strategyTokens each strategy token is equivalent to 1 unit of fCash
+     * @param maturity the maturity of the fCash
+     * @return underlyingValue the value of the lent fCash in terms of the borrowed currency
      */
     function convertStrategyToUnderlying(
+        address /* account */,
         uint256 strategyTokens,
         uint256 maturity
-    ) public override view returns (uint256 underlyingValue) {
+    ) public override view returns (int256 underlyingValue) {
         // This is the non-risk adjusted oracle price for fCash
-        int256 _presentValueUnderlyingInternal = NOTIONAL.getPresentfCashValue(
+        int256 pvInternal = NOTIONAL.getPresentfCashValue(
             LEND_CURRENCY_ID, maturity, strategyTokens.toInt(), block.timestamp, false
         );
-        require(_presentValueUnderlyingInternal > 0);
-        uint256 pvInternal = uint256(_presentValueUnderlyingInternal);
 
         (uint256 rate, uint256 rateDecimals) = TRADING_MODULE.getOraclePrice(
             address(LEND_UNDERLYING_TOKEN), address(UNDERLYING_TOKEN)
         );
-        uint256 borrowTokenDecimals = 10**UNDERLYING_TOKEN.decimals();
+        int256 borrowTokenDecimals = int256(10**UNDERLYING_TOKEN.decimals());
 
         // Convert this back to the borrow currency, external precision
         // (pv (8 decimals) * borrowTokenDecimals * rate) / (rateDecimals * 8 decimals)
-        return (pvInternal * borrowTokenDecimals * rate) /
-            (rateDecimals * uint256(Constants.INTERNAL_TOKEN_PRECISION));
+        return (pvInternal * borrowTokenDecimals * int256(rate)) /
+            (int256(rateDecimals) * int256(Constants.INTERNAL_TOKEN_PRECISION));
     }
 
     /**
      * @notice Will receive a deposit from Notional in underlying tokens of the borrowed currency.
      * Needs to first trade that deposit into the lend currency and then lend it to fCash on the
      * corresponding maturity.
+     * @param depositUnderlyingExternal amount of tokens deposited in the borrow currency
+     * @param maturity the maturity that was borrowed at, will also be the maturity that is lent to
+     * @param data minPurchaseAmount, minLendRate and target dex for trading borrowed currency to lend currency
+     * @return lendfCashMinted the amount of strategy tokens (fCash lent) generated
      */
     function _depositFromNotional(
         address /* account */,
-        uint256 borrowedUnderlyingExternal,
+        uint256 depositUnderlyingExternal,
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 lendfCashMinted) {
@@ -115,12 +124,13 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             tradeType: TradeType.EXACT_IN_SINGLE,
             sellToken: address(UNDERLYING_TOKEN),
             buyToken: address(LEND_UNDERLYING_TOKEN),
-            amount: borrowedUnderlyingExternal,
+            amount: depositUnderlyingExternal,
             limit: minPurchaseAmount,
             deadline: block.timestamp,
             exchangeData: "" // TODO, implement this
         });
 
+        // NOTE: WETH is not supported by this vault, it is targeted at stablecoin pairs
         (/* */, uint256 lendUnderlyingTokens) = TradeHandler._execute(
             trade, TRADING_MODULE, dexId, WETH9(address(0))
         );
@@ -142,16 +152,24 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         action[0].trades[0] = encodedTrade;
         NOTIONAL.batchLend(address(this), action);
 
-        // fCash is the strategy token in this case
+        // fCash is the strategy token in this case, batchLend will always mint exactly fCashAmount
         return fCashAmount;
     }
 
+    /**
+     * @notice Withdraws lent fCash from Notional (by selling it prior to maturity or withdrawing post maturity),
+     * and trades it all back to the borrowed currency.
+     * @param account the account that is doing the redemption
+     * @param strategyTokens the amount of fCash to redeem
+     * @param maturity the maturity of the fCash
+     * @param data calldata that sets trading limits
+     */
     function _redeemFromNotional(
         address account,
         uint256 strategyTokens,
         uint256 maturity,
         bytes calldata data
-    ) internal override returns (uint256 tokensFromRedeem) {
+    ) internal override returns (uint256 borrowedCurrencyAmount) {
         uint256 balanceBefore = LEND_UNDERLYING_TOKEN.balanceOf(address(this));
         (uint256 minPurchaseAmount, uint32 maxBorrowRate, uint16 dexId) = abi.decode(data, (uint256, uint32, uint16));
 
@@ -189,7 +207,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             exchangeData: "" // TODO, implement this
         });
 
-        (/* */, tokensFromRedeem) = TradeHandler._execute(trade, TRADING_MODULE, dexId, WETH9(address(0)));
+        (/* */, borrowedCurrencyAmount) = TradeHandler._execute(trade, TRADING_MODULE, dexId, WETH9(address(0)));
     }
 
     function _encodeBorrowTrade(
