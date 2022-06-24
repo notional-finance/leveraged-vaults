@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../utils/BoringOwnable.sol";
 
 import "./adapters/BalancerV2Adapter.sol";
+import "./adapters/CurveAdapter.sol";
 import "./adapters/UniV2Adapter.sol";
 import "./adapters/UniV3Adapter.sol";
 import "./adapters/ZeroExAdapter.sol";
@@ -65,12 +66,10 @@ contract TradingModule is BoringOwnable, UUPSUpgradeable, Initializable, ITradin
             return UniV3Adapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.BALANCER_V2) {
             return BalancerV2Adapter.getExecutionData(from, trade);
-        // } else if (DexId(dexId) == DexId.CURVE) {
-        //     return CURVE;
+        } else if (DexId(dexId) == DexId.CURVE) {
+            return CurveAdapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.ZERO_EX) {
             return ZeroExAdapter.getExecutionData(from, trade);
-        // } else if (DexId(dexId) == DexId.NOTIONAL_VAULT) {
-        //     return NOTIONAL_VAULT;
         }
 
         revert UnknownDEX();

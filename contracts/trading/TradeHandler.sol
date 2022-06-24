@@ -136,7 +136,7 @@ library TradeHandler {
     ) private {
         uint256 preTradeETHBalance = address(this).balance;
 
-        // Some exchanges don't support WETH (spender == address(0))
+        // Curve doesn't support WETH (spender == address(0))
         if (trade.sellToken == address(WETH) && spender == ETH_ADDRESS) {
             uint256 withdrawAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             WETH.withdraw(withdrawAmount);
@@ -147,7 +147,8 @@ library TradeHandler {
 
         uint256 postTradeETHBalance = address(this).balance;
 
-        // Wrap into WETH if we received ETH from this trade
+        // If the caller specifies that they want to receive WETH but we have received ETH,
+        // wrap the ETH to WETH.
         if (trade.buyToken == address(WETH) && postTradeETHBalance > preTradeETHBalance) {
             uint256 depositAmount;
             unchecked { depositAmount = postTradeETHBalance - preTradeETHBalance; }
