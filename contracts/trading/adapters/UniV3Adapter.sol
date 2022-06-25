@@ -81,7 +81,5 @@ library UniV3Adapter {
         } else if (trade.tradeType == TradeType.EXACT_OUT_BATCH) {
             executionCallData = _exactOutBatch(from, trade);
         }
-
-        revert InvalidTrade();
     }
 }

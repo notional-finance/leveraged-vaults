@@ -1,9 +1,23 @@
 import pytest
+import eth_abi
 from brownie.network import Chain
-from brownie import network, SimpleStrategyVault
+from brownie import network, Contract
 from scripts.EnvironmentConfig import getEnvironment
 
 chain = Chain()
+
+DEX_ID = {
+    'UNISWAP_V2': 0,
+    'UNISWAP_V3': 1,
+    'ZERO_EX': 2,
+    'BALANCER_V2': 3,
+    'CURVE': 4,
+    'NOTIONAL_VAULT': 5
+}
+
+def encode_exchange_data(dex, tradeType, params):
+    if dex == 'UNISWAP_V3' and tradeType == 'EXACT_IN_SINGLE':
+        return eth_abi.encode_abi(['(uint24)'], [tuple([params['fee']])])
 
 @pytest.fixture(autouse=True)
 def run_around_tests():
@@ -11,7 +25,7 @@ def run_around_tests():
     yield
     chain.revert()
 
-@pytest.fixture()
+@pytest.fixture(scope="module", autouse=True)
 def env():
     name = network.show_active()
     if name == 'goerli-fork':
@@ -20,6 +34,12 @@ def env():
         return environment
     if name == 'mainnet-fork':
         return getEnvironment('mainnet')
+
+@pytest.fixture(scope="module", autouse=True)
+def tradingModule(env, TradingModule, nProxy, accounts):
+    impl = TradingModule.deploy(env.notional.address, {"from": accounts[0]})
+    proxy = nProxy.deploy(impl.address, bytes(0), {"from": accounts[0]})
+    return Contract.from_abi("TradingModule", proxy.address, abi=TradingModule.abi)
 
 def set_flags(flags, **kwargs):
     binList = list(format(flags, "b").rjust(16, "0"))
@@ -57,19 +77,3 @@ def get_vault_config(**kwargs):
         kwargs.get("maxDeleverageCollateralRatioBPS", 4000),  # 8: 40% max collateral ratio
         kwargs.get("secondaryBorrowCurrencies", [0, 0, 0]),  # 9: none set
     ]
-
-def test_list_simple_strategy(env, accounts):
-    vault = SimpleStrategyVault.deploy(
-        "Simple Strategy",
-        env.notional.address,
-        2, # DAI VAULT
-        {"from": accounts[0]}
-    )
-    vault.setExchangeRate(1e18)
-
-    env.notional.updateVault(
-        vault.address,
-        get_vault_config(flags=set_flags(0, ENABLED=True)),
-        100_000_000e8,
-        {"from": env.notional.owner()},
-    )
