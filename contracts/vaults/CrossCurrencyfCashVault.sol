@@ -44,7 +44,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         IWrappedfCashFactory wrappedfCashFactory_,
         uint16 borrowCurrencyId_,
         uint16 lendCurrencyId_
-    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_, true, true) {
+    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_) {
         LEND_CURRENCY_ID = lendCurrencyId_;
         WRAPPED_FCASH_FACTORY = wrappedfCashFactory_;
 

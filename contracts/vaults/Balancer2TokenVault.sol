@@ -45,6 +45,18 @@ contract Balancer2TokenVault is
         uint256 settlementPeriod;
     }
 
+    struct InitParams {
+        uint32 oracleWindowInSeconds;
+        uint32 settlementCooldownInSeconds;
+        uint32 balancerOracleWeight;
+        uint32 maxBalancerPoolShare;
+        uint256 maxUnderylingSurplus;
+        uint32 settlementSlippageLimit;
+        uint32 emergencySettlementSlippageLimit;
+        uint32 settlementCoolDownInSeconds;
+        uint32 emergencySettlementCoolDownInSeconds;
+    }
+
     struct DepositParams {
         uint256 minBPT;
         uint256 secondaryfCashAmount;
@@ -61,14 +73,9 @@ contract Balancer2TokenVault is
 
     struct RepaySecondaryCallbackParams {
         uint16 dexId;
-        uint256 slippageLimit;
+        uint32 slippageLimit;
         uint256 deadline;
         bytes exchangeData;
-    }
-
-    struct SettlementParams {
-        uint256 minPrimaryAmount;
-        uint256 minSecondaryAmount;
     }
 
     struct RewardTokenTradeParams {
@@ -86,23 +93,50 @@ contract Balancer2TokenVault is
     /** Errors */
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
+    error NotionalOwnerRequired(address sender);
+    error NotInSettlementWindow();
+    error RedeemingTooMuch(
+        int256 underlyingRedeemed,
+        int256 underlyingCashRequiredToSettle
+    );
+    error SlippageTooHigh(uint32 slippage, uint32 limit);
+    error InSettlementCoolDown(uint32 lastTimestamp, uint32 coolDown);
 
     /** Events */
     event OracleWindowUpdated(uint256 oldWindow, uint256 newWindow);
-    event SettlementPercentageUpdated(
-        uint256 oldPercentage,
-        uint256 newPercentage
+    event SettlementCoolDownUpdated(uint32 oldCoolDown, uint32 newCoolDown);
+    event EmergencySettlementCoolDownUpdated(
+        uint32 oldCoolDown,
+        uint32 newCoolDown
     );
-    event SettlementCoolDownUpdated(uint256 oldCoolDown, uint256 newCoolDown);
-    event BalancerOracleWeightUpdated(uint256 oldWeight, uint256 newWeight);
+    event BalancerOracleWeightUpdated(uint32 oldWeight, uint32 newWeight);
+    event MaxBalancerPoolShareUpdated(uint32 oldShare, uint32 newShare);
+    event MaxUnderlyingSurplusUpdated(uint256 oldSurplus, uint256 newSurplus);
+    event SettlementSlippageLimitUpdated(uint32 oldLimit, uint32 newLimit);
+    event EmergencySettlementSlippageLimitUpdated(
+        uint32 oldLimit,
+        uint32 newLimit
+    );
+
+    /// @notice Emitted when a vault is settled
+    /// @param assetTokenProfits total amount of profit to vault account holders, if this is negative
+    /// than there is a shortfall that must be covered by the protocol
+    /// @param underlyingTokenProfits same as assetTokenProfits but denominated in underlying
+    event VaultSettled(
+        uint256 maturity,
+        int256 assetTokenProfits,
+        int256 underlyingTokenProfits
+    );
 
     /** Constants */
 
     uint256 internal constant SECONDARY_BORROW_UPPER_LIMIT = 105;
     uint256 internal constant SECONDARY_BORROW_LOWER_LIMIT = 95;
-    uint256 internal constant MAX_SETTLEMENT_PERCENTAGE = 1e8; // 100%
-    uint256 internal constant MAX_SETTLEMENT_COOLDOWN = 24 * 3600; // 1 day
-    uint256 internal constant MAX_ORACLE_WEIGHT = 1e8; // 100%
+    uint32 internal constant MAX_SETTLEMENT_COOLDOWN = 24 * 3600; // 1 day
+    uint32 internal constant MAX_ORACLE_WEIGHT = 1e8; // 100%
+    uint32 internal constant MAX_SLIPPAGE_LIMIT = 1e8; // 100%
+    uint32 internal constant MAX_BALANCER_POOL_SHARE = 1e8; // 100%
+    uint32 internal constant BALANCER_POOL_SHARE_BUFFER = 8e7; // 80%
 
     /** Immutables */
     uint16 public immutable SECONDARY_BORROW_CURRENCY_ID;
@@ -128,31 +162,43 @@ contract Balancer2TokenVault is
     /// @notice Keeps track of the possible gauge reward tokens
     mapping(address => bool) private gaugeRewardTokens;
 
-    /// @notice Balancer oracle window in seconds
-    uint256 public oracleWindowInSeconds;
-
     /// @notice Total number of strategy tokens across all maturities
     uint256 public totalStrategyTokenGlobal;
 
-    uint256 public settlementPercentage;
+    /// @notice Balancer oracle window in seconds
+    uint256 public oracleWindowInSeconds;
 
-    uint256 public settlementCoolDown;
+    uint256 public maxUnderylingSurplus;
 
-    uint256 public balancerOracleWeight;
+    uint32 public maxBalancerPoolShare;
+
+    /// @notice Slippage limit for normal settlement
+    uint32 public settlementSlippageLimit;
+
+    /// @notice Slippage limit for emergency settlement (vault owns too much of the Balancer pool)
+    uint32 public emergencySettlementSlippageLimit;
+
+    uint32 public balancerOracleWeight;
+
+    /// @notice Cool down in seconds for normal settlement
+    uint32 public settlementCoolDownInSeconds;
+
+    /// @notice Cool down in seconds for emergency settlement
+    uint32 public emergencySettlementCoolDownInSeconds;
+
+    uint32 public lastSettlementTimestamp;
+
+    uint32 public lastEmergencySettlementTimestamp;
 
     constructor(
         address notional_,
         uint16 borrowCurrencyId_,
-        bool setApproval,
-        bool useUnderlyingToken,
         DeploymentParams memory params
     )
         BaseStrategyVault(
             "Balancer 2-Token Strategy Vault",
             notional_,
-            borrowCurrencyId_,
-            setApproval,
-            useUnderlyingToken
+            borrowCurrencyId_
         )
         initializer
     {
@@ -208,16 +254,22 @@ contract Balancer2TokenVault is
         SETTLEMENT_PERIOD = params.settlementPeriod;
     }
 
-    function initialize(
-        uint256 _oracleWindowInSeconds,
-        uint256 _settlementPercentage,
-        uint256 _settlementCooldown,
-        uint256 _balancerOracleWeight
-    ) external initializer onlyNotionalOwner {
-        oracleWindowInSeconds = _oracleWindowInSeconds;
-        settlementPercentage = _settlementPercentage;
-        settlementCoolDown = _settlementCooldown;
-        balancerOracleWeight = _balancerOracleWeight;
+    function initialize(InitParams calldata params)
+        external
+        initializer
+        onlyNotionalOwner
+    {
+        oracleWindowInSeconds = params.oracleWindowInSeconds;
+        settlementCoolDownInSeconds = params.settlementCooldownInSeconds;
+        balancerOracleWeight = params.balancerOracleWeight;
+        maxBalancerPoolShare = params.maxBalancerPoolShare;
+        maxUnderylingSurplus = params.maxUnderylingSurplus;
+        settlementSlippageLimit = params.settlementSlippageLimit;
+        emergencySettlementSlippageLimit = params
+            .emergencySettlementSlippageLimit;
+        settlementCoolDownInSeconds = params.settlementCoolDownInSeconds;
+        emergencySettlementCoolDownInSeconds = params
+            .emergencySettlementCoolDownInSeconds;
         _initRewardTokenList();
         _approveTokens();
     }
@@ -283,7 +335,10 @@ contract Balancer2TokenVault is
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
-        uint256 bptClaim = getStrategyTokenClaim(strategyTokenAmount, maturity);
+        uint256 bptClaim = convertStrategyTokensToBPTClaim(
+            strategyTokenAmount,
+            maturity
+        );
 
         uint256 primaryBalance = OracleHelper.getTimeWeightedPrimaryBalance(
             address(BALANCER_POOL_TOKEN),
@@ -452,8 +507,8 @@ contract Balancer2TokenVault is
         amounts[1 - PRIMARY_INDEX] = secondaryAmount;
     }
 
-    /// @notice Returns how many Balancer pool tokens a strategy token amount has a claim on
-    function getStrategyTokenClaim(
+    /// @notice Converts strategy tokens to BPT
+    function convertStrategyTokensToBPTClaim(
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view returns (uint256 bptClaim) {
@@ -466,6 +521,23 @@ contract Balancer2TokenVault is
         bptClaim =
             (bptHeldInMaturity * strategyTokenAmount) /
             totalStrategyTokenSupplyInMaturity;
+    }
+
+    /// @notice Converts BPT to strategy tokens
+    function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
+        public
+        view
+        returns (uint256 strategyTokenAmount)
+    {
+        if (totalStrategyTokenGlobal == 0) return bptClaim;
+
+        uint256 totalBPTHeld = bptHeld();
+        uint256 totalStrategyTokenSupplyInMaturity = totalSupply(maturity);
+        uint256 bptHeldInMaturity = (totalBPTHeld *
+            totalStrategyTokenSupplyInMaturity) / totalStrategyTokenGlobal;
+        strategyTokenAmount =
+            (totalStrategyTokenSupplyInMaturity * bptClaim) /
+            bptHeldInMaturity;
     }
 
     function _exitPool(
@@ -590,7 +662,10 @@ contract Balancer2TokenVault is
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 tokensFromRedeem) {
-        tokensFromRedeem = getStrategyTokenClaim(strategyTokens, maturity);
+        tokensFromRedeem = convertStrategyTokensToBPTClaim(
+            strategyTokens,
+            maturity
+        );
 
         if (tokensFromRedeem > 0) {
             // Withdraw gauge token from VeBALDelegator
@@ -619,11 +694,107 @@ contract Balancer2TokenVault is
         }
     }
 
+    function _validateSettlementSlippage(
+        bytes memory data,
+        uint32 slippageLimit
+    ) private {
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+        RepaySecondaryCallbackParams memory callbackParams = abi.decode(
+            params.callbackData,
+            (RepaySecondaryCallbackParams)
+        );
+        if (callbackParams.slippageLimit > slippageLimit) {
+            revert SlippageTooHigh(callbackParams.slippageLimit, slippageLimit);
+        }
+    }
+
+    function _validateSettlementCoolDown(uint32 lastTimestamp, uint32 coolDown)
+        private
+    {
+        if (lastTimestamp + coolDown > block.timestamp)
+            revert InSettlementCoolDown(lastTimestamp, coolDown);
+    }
+
     function settleVault(
         uint256 maturity,
         uint256 bptToSettle,
-        bytes calldata params
-    ) external {}
+        bytes calldata data
+    ) external {
+        uint256 redeemAmount = 0;
+        if (maturity <= block.timestamp) {
+            // Vault has reached maturity. settleVault becomes authenticated in this case
+            if (msg.sender != NOTIONAL.owner())
+                revert NotionalOwnerRequired(msg.sender);
+            _validateSettlementCoolDown(
+                lastEmergencySettlementTimestamp,
+                emergencySettlementCoolDownInSeconds
+            );
+            _validateSettlementSlippage(data, emergencySettlementSlippageLimit);
+        } else {
+            if (maturity - SETTLEMENT_PERIOD <= block.timestamp) {
+                // In settlement window
+                _validateSettlementCoolDown(
+                    lastSettlementTimestamp,
+                    settlementCoolDownInSeconds
+                );
+                _validateSettlementSlippage(data, settlementSlippageLimit);
+            } else {
+                // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
+                uint256 maxBPTAmount = (BALANCER_POOL_TOKEN.totalSupply() *
+                    maxBalancerPoolShare) / 1e8;
+                uint256 _bptHeld = bptHeld();
+                if (_bptHeld <= maxBPTAmount) revert NotInSettlementWindow();
+
+                // desiredPoolShare = maxPoolShare * bufferPercentage
+                uint256 desiredPoolShare = (maxBalancerPoolShare *
+                    BALANCER_POOL_SHARE_BUFFER) / 1e8;
+                uint256 desiredBPTAmount = (BALANCER_POOL_TOKEN.totalSupply() *
+                    desiredPoolShare) / 1e8;
+                redeemAmount = convertBPTClaimToStrategyTokens(
+                    _bptHeld - desiredBPTAmount,
+                    maturity
+                );
+            }
+        }
+
+        int256 underlyingRedeemed = convertStrategyToUnderlying(
+            address(this),
+            redeemAmount,
+            maturity
+        );
+
+        // prettier-ignore
+        (
+            int256 assetCashRequiredToSettle,
+            int256 underlyingCashRequiredToSettle
+        ) = NOTIONAL.getCashRequiredToSettle(address(this), maturity);
+
+        // Make sure we not redeeming too much to underlying
+        // This allows BPT to be accrued as the profit token.
+        if (
+            underlyingRedeemed - underlyingCashRequiredToSettle >
+            int256(maxUnderylingSurplus)
+        ) {
+            revert RedeemingTooMuch(
+                underlyingRedeemed,
+                underlyingCashRequiredToSettle
+            );
+        }
+
+        // prettier-ignore
+        (
+            int256 assetCashProfit,
+            int256 underlyingCashProfit
+        ) = NOTIONAL.redeemStrategyTokensToCash(maturity, redeemAmount, data);
+
+        // Profits are the surplus in cash after the tokens have been settled, this is the negation of
+        // what is returned from the method above
+        emit VaultSettled(
+            maturity,
+            -1 * assetCashProfit,
+            -1 * underlyingCashProfit
+        );
+    }
 
     /// @notice Claim BAL token gauge reward
     /// @return balAmount amount of BAL claimed
@@ -671,6 +842,7 @@ contract Balancer2TokenVault is
         }
 
         // TODO: validate prices
+        // TODO: make sure spot is close to pairPrice
 
         uint256 primaryAmountBefore = _tokenBalance(address(UNDERLYING_TOKEN));
         params.primaryTrade.execute(
@@ -755,41 +927,39 @@ contract Balancer2TokenVault is
         oracleWindowInSeconds = newOracleWindowInSeconds;
     }
 
-    /// @notice Updates the settlement percentage
-    /// @dev This value determines the max value per settlement trade
-    /// @param newSettlementPercentage 1e8 = 100%
-    function setSettlementPercentage(uint256 newSettlementPercentage)
-        external
-        onlyNotionalOwner
-    {
-        require(newSettlementPercentage <= MAX_SETTLEMENT_PERCENTAGE);
-        emit SettlementPercentageUpdated(
-            settlementPercentage,
-            newSettlementPercentage
-        );
-        settlementPercentage = newSettlementPercentage;
-    }
-
     /// @notice Updates the settlement cool down
     /// @dev Time limit between settlement trades
-    /// @param newSettlementCoolDown settlement cool down in seconds
-    function setSettlementCoolDown(uint256 newSettlementCoolDown)
+    /// @param newSettlementCoolDownInSeconds settlement cool down in seconds
+    function setSettlementCoolDown(uint32 newSettlementCoolDownInSeconds)
         external
         onlyNotionalOwner
     {
-        require(newSettlementCoolDown <= MAX_SETTLEMENT_COOLDOWN);
+        require(newSettlementCoolDownInSeconds <= MAX_SETTLEMENT_COOLDOWN);
         emit SettlementCoolDownUpdated(
-            settlementCoolDown,
-            newSettlementCoolDown
+            settlementCoolDownInSeconds,
+            newSettlementCoolDownInSeconds
         );
-        settlementCoolDown = newSettlementCoolDown;
+        settlementCoolDownInSeconds = newSettlementCoolDownInSeconds;
+    }
+
+    function setEmergencySettlementCoolDown(
+        uint32 newEmergencySettlementCoolDownInSeconds
+    ) external onlyNotionalOwner {
+        require(
+            newEmergencySettlementCoolDownInSeconds <= MAX_SETTLEMENT_COOLDOWN
+        );
+        emit EmergencySettlementCoolDownUpdated(
+            emergencySettlementCoolDownInSeconds,
+            newEmergencySettlementCoolDownInSeconds
+        );
+        emergencySettlementCoolDownInSeconds = newEmergencySettlementCoolDownInSeconds;
     }
 
     /// @notice Updates the Balancer oracle weight. This value determines
     /// the amount of weight given to the Balancer oracle vs Chainlink
     /// @dev 1e8 = 100%
     /// @param newBalancerOracleWeight new Balancer oracle weight
-    function setBalancerOracleWeight(uint256 newBalancerOracleWeight)
+    function setBalancerOracleWeight(uint32 newBalancerOracleWeight)
         external
         onlyNotionalOwner
     {
@@ -799,6 +969,52 @@ contract Balancer2TokenVault is
             newBalancerOracleWeight
         );
         balancerOracleWeight = newBalancerOracleWeight;
+    }
+
+    function setMaxBalancerPoolShare(uint32 newMaxBalancerPoolShare)
+        external
+        onlyNotionalOwner
+    {
+        require(newMaxBalancerPoolShare <= MAX_BALANCER_POOL_SHARE);
+        emit MaxBalancerPoolShareUpdated(
+            maxBalancerPoolShare,
+            newMaxBalancerPoolShare
+        );
+        maxBalancerPoolShare = newMaxBalancerPoolShare;
+    }
+
+    function setMaxUnderylingSurplus(uint256 newMaxUnderlyingSurplus)
+        external
+        onlyNotionalOwner
+    {
+        emit MaxUnderlyingSurplusUpdated(
+            maxUnderylingSurplus,
+            newMaxUnderlyingSurplus
+        );
+        maxUnderylingSurplus = newMaxUnderlyingSurplus;
+    }
+
+    function setSettlementSlippageLimit(uint32 newSettlementSlippageLimit)
+        external
+        onlyNotionalOwner
+    {
+        require(newSettlementSlippageLimit <= MAX_SLIPPAGE_LIMIT);
+        emit SettlementSlippageLimitUpdated(
+            settlementSlippageLimit,
+            newSettlementSlippageLimit
+        );
+        settlementSlippageLimit = newSettlementSlippageLimit;
+    }
+
+    function setEmergencySettlementSlippageLimit(
+        uint32 newEmergencySettlementSlippageLimit
+    ) external onlyNotionalOwner {
+        require(newEmergencySettlementSlippageLimit <= MAX_SLIPPAGE_LIMIT);
+        emit EmergencySettlementSlippageLimitUpdated(
+            emergencySettlementSlippageLimit,
+            newEmergencySettlementSlippageLimit
+        );
+        emergencySettlementSlippageLimit = newEmergencySettlementSlippageLimit;
     }
 
     /** Public view functions */
@@ -846,7 +1062,7 @@ contract Balancer2TokenVault is
         uint256 secondaryDecimals = address(UNDERLYING_TOKEN) == address(0)
             ? 18
             : SECONDARY_TOKEN.decimals();
-            
+
         secondaryAmount =
             (secondaryAmount * 10**secondaryDecimals) /
             10**primaryDecimals;
@@ -873,6 +1089,14 @@ contract Balancer2TokenVault is
         uint256 strategyTokenAmount
     ) public view returns (uint256 borrowedSecondaryfCashAmount) {
         if (SECONDARY_BORROW_CURRENCY_ID > 0) {
+            // Return total second currency borrowed if account is the vault address
+            if (account == address(this))
+                return
+                    NOTIONAL.getSecondaryBorrow(
+                        address(this),
+                        SECONDARY_BORROW_CURRENCY_ID,
+                        maturity
+                    );
             uint256 accountTotal = getStrategyTokenBalance(account);
             if (accountTotal > 0) {
                 borrowedSecondaryfCashAmount =

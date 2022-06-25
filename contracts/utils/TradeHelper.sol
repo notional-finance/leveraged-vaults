@@ -19,7 +19,7 @@ library TradeHelper {
         address sellToken,
         address buyToken,
         uint256 amount,
-        uint256 slippageLimit
+        uint32 slippageLimit
     ) external view returns (uint256 limitAmount) {
         // prettier-ignore
         (
@@ -46,7 +46,7 @@ library TradeHelper {
             // pull from the contract
             limitAmount =
                 ((oraclePrice +
-                    ((oraclePrice * slippageLimit) /
+                    ((oraclePrice * uint256(slippageLimit)) /
                         SLIPPAGE_LIMIT_PRECISION)) * amount) /
                 oracleDecimals;
 
@@ -62,7 +62,7 @@ library TradeHelper {
             // expects from the DEX
             limitAmount =
                 ((oraclePrice -
-                    ((oraclePrice * slippageLimit) /
+                    ((oraclePrice * uint256(slippageLimit)) /
                         SLIPPAGE_LIMIT_PRECISION)) * amount) /
                 oracleDecimals;
 
