@@ -10,6 +10,7 @@ import "./adapters/CurveAdapter.sol";
 import "./adapters/UniV2Adapter.sol";
 import "./adapters/UniV3Adapter.sol";
 import "./adapters/ZeroExAdapter.sol";
+import "./TradeHandler.sol";
 
 import "../../interfaces/trading/ITradingModule.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
@@ -48,11 +49,53 @@ contract TradingModule is BoringOwnable, UUPSUpgradeable, Initializable, ITradin
         emit PriceOracleUpdated(token, address(oracle));
     }
 
+    /// @notice Called to receive execution data for vaults that will execute trades without
+    /// delegating calls to this contract
+    /// @param dexId enum representing the id of the dex
+    /// @param from address for the contract executing the trade
+    /// @param trade trade object
+    /// @return spender the address to approve for the soldToken, will be address(0) if the
+    /// send token is ETH and therefore does not require approval
+    /// @return target contract to execute the call against
+    /// @return msgValue amount of ETH to transfer to the target, if any
+    /// @return executionCallData encoded call data for the trade
     function getExecutionData(
         uint16 dexId,
         address from,
         Trade calldata trade
     ) external view override returns (
+        address spender,
+        address target,
+        uint256 msgValue,
+        bytes memory executionCallData
+    ) {
+        return _getExecutionData(dexId, from, trade);
+    }
+
+    /// @notice Should be called via delegate call to execute a trade on behalf of the caller.
+    /// @param dexId enum representing the id of the dex
+    /// @param trade trade object
+    /// @return amountSold amount of tokens sold
+    /// @return amountBought amount of tokens purchased
+    function executeTrade(
+        uint16 dexId,
+        Trade calldata trade
+    ) external returns (uint256 amountSold, uint256 amountBought) {
+        (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionData
+        ) = _getExecutionData(dexId, address(this), trade);
+
+        return _executeInternal(trade, dexId, spender, target, msgValue, executionData);
+    }
+
+    function _getExecutionData(
+        uint16 dexId,
+        address from,
+        Trade calldata trade
+    ) internal view override returns (
         address spender,
         address target,
         uint256 msgValue,
@@ -75,6 +118,13 @@ contract TradingModule is BoringOwnable, UUPSUpgradeable, Initializable, ITradin
         revert UnknownDEX();
     }
 
+    /// @notice Returns the Chainlink oracle price between the baseToken and the quoteToken, the
+    /// Chainlink oracles. The quote currency between the oracles must match or the conversion
+    /// in this method does not work. Most Chainlink oracles are baseToken/USD pairs.
+    /// @param baseToken address of the first token in the pair, i.e. USDC in USDC/DAI
+    /// @param quoteToken address of the second token in the pair, i.e. DAI in USDC/DAI
+    /// @return answer exchange rate in rate decimals
+    /// @return decimals number of decimals in the rate, currently hardcoded to 1e18
     function getOraclePrice(address baseToken, address quoteToken)
         external view override returns (int256 answer, int256 decimals)
     {
@@ -90,7 +140,6 @@ contract TradingModule is BoringOwnable, UUPSUpgradeable, Initializable, ITradin
         (/* */, int256 quotePrice, /* */, /* */, /* */) = quoteOracle.oracle.latestRoundData();
         require(quotePrice > 0); /// @dev: Chainlink Rate Error
 
-        // TODO: this only works if we only list USD oracles....
         answer = (basePrice * quoteDecimals * RATE_DECIMALS) / (quotePrice * baseDecimals);
         decimals = RATE_DECIMALS;
     }

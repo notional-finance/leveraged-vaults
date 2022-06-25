@@ -32,18 +32,29 @@ library TradeHandler {
         ITradingModule tradingModule,
         uint16 dexId
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-        // Get pre-trade token balances
-        (uint256 preTradeSellBalance, uint256 preTradeBuyBalance) = _getBalances(trade);
-
-        // Make sure we have enough tokens to sell
-        _preValidate(trade, preTradeSellBalance);
-
         (
             address spender,
             address target,
             uint256 msgValue,
             bytes memory executionData
         ) = tradingModule.getExecutionData(dexId, address(this), trade);
+
+        return _executeInternal(trade, dexId, spender, target, msgValue, executionData);
+    }
+
+    function _executeInternal(
+        Trade memory trade,
+        uint16 dexId,
+        address spender,
+        address target,
+        uint256 msgValue,
+        bytes memory executionData
+    ) internal returns (uint256 amountSold, uint256 amountBought) {
+        // Get pre-trade token balances
+        (uint256 preTradeSellBalance, uint256 preTradeBuyBalance) = _getBalances(trade);
+
+        // Make sure we have enough tokens to sell
+        _preValidate(trade, preTradeSellBalance);
 
         // No need to approve ETH trades
         if (spender != ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
