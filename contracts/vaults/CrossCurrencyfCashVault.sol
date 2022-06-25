@@ -9,6 +9,7 @@ import {IWrappedfCashComplete as IWrappedfCash} from "../../../interfaces/notion
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {
+    AccountContext,
     BalanceActionWithTrades,
     DepositActionType,
     TradeActionType,
@@ -30,10 +31,44 @@ import {TradeHandler} from "../trading/TradeHandler.sol";
  */
 contract CrossCurrencyfCashVault is BaseStrategyVault {
     using SafeInt256 for uint256;
+    using SafeInt256 for int256;
+
+    uint256 public constant SETTLEMENT_SLIPPAGE_PRECISION = 1e18;
+
+    struct DepositParams {
+        // Minimum purchase amount of the lend underlying token, this is
+        // based on the deposit + borrowed amount and must be set to a non-zero
+        // value to establish a slippage limit.
+        uint256 minPurchaseAmount;
+        // Minimum annualized lending rate, can be set to zero for no slippage limit
+        uint32 minLendRate;
+        // ID of the desired DEX to trade on, _depositFromNotional will always trade
+        // using an EXACT_IN_SINGLE trade which is supported by all DEXes
+        uint16 dexId;
+        // Exchange data depending on the selected dexId
+        bytes exchangeData;
+    }
+
+    struct RedeemParams {
+        // Minimum purchase amount of the borrow underlying token, this is
+        // based on the amount of lend underlying received and must be set to a non-zero
+        // value to establish a slippage limit.
+        uint256 minPurchaseAmount;
+        // Maximum annualized borrow rate, can be set to zero for no slippage limit
+        uint32 maxBorrowRate;
+        // ID of the desired DEX to trade on, _depositFromNotional will always trade
+        // using an EXACT_IN_SINGLE trade which is supported by all DEXes
+        uint16 dexId;
+        // Exchange data depending on the selected dexId
+        bytes exchangeData;
+    }
 
     uint16 public LEND_CURRENCY_ID;
     ERC20 public LEND_UNDERLYING_TOKEN;
-    // NOTE: 10 bytes left in first storage slot here
+    /// @notice a maximum slippage limit in 1e18 precision, uint64 is sufficient to hold the maximum value which
+    /// is 1e18
+    uint64 public settlementSlippageLimit;
+    // NOTE: 2 bytes left in first storage slot here
 
     constructor(NotionalProxy notional_, ITradingModule tradingModule_)
         BaseStrategyVault(notional_, tradingModule_) {}
@@ -41,7 +76,8 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
     function initialize(
         string memory name_,
         uint16 borrowCurrencyId_,
-        uint16 lendCurrencyId_
+        uint16 lendCurrencyId_,
+        uint64 settlementSlippageLimit_
     ) external initializer {
         __INIT_VAULT(name_, borrowCurrencyId_);
 
@@ -56,6 +92,16 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         ERC20 tokenAddress = assetToken.tokenType == TokenType.NonMintable ?
             ERC20(assetToken.tokenAddress) : ERC20(underlyingToken.tokenAddress);
         LEND_UNDERLYING_TOKEN = tokenAddress;
+
+        // This value cannot be greater than 1e18
+        require(settlementSlippageLimit_ < SETTLEMENT_SLIPPAGE_PRECISION);
+        settlementSlippageLimit = settlementSlippageLimit_;
+    }
+
+    function updateSettlementSlippageLimit(uint64 newSlippageLimit) external {
+        require(msg.sender == NOTIONAL.owner());
+        require(newSlippageLimit < SETTLEMENT_SLIPPAGE_PRECISION);
+        settlementSlippageLimit = newSlippageLimit;
     }
 
     /**
@@ -64,17 +110,29 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
      * into the Notional contract as asset tokens and held for accounts to withdraw. Settlement can only
      * be called after maturity.
      * @param maturity the maturity to settle
-     * @param settlementTrade details for the settlement trade...
+     * @param settlementTrade details for the settlement trade
      */
     function settleVault(uint256 maturity, bytes calldata settlementTrade) external {
         require(maturity <= block.timestamp, "Cannot Settle");
         VaultState memory vaultState = NOTIONAL.getVaultState(address(this), maturity);
+        require(vaultState.isSettled == false);
         require(vaultState.totalStrategyTokens >= 0);
 
-        (
-            int256 assetCashRequiredToSettle,
-            int256 underlyingCashRequiredToSettle
-        ) = NOTIONAL.redeemStrategyTokensToCash(maturity, vaultState.totalStrategyTokens, settlementTrade);
+        RedeemParams memory params = abi.decode(settlementTrade, (RedeemParams));
+    
+        // The only way for underlying value to be negative would be if the vault has somehow ended up with a borrowing
+        // position in the lend underlying currency. This is explicitly prevented during redemption.
+        uint256 underlyingValue = convertStrategyToUnderlying(
+            address(0), vaultState.totalStrategyTokens, maturity
+        ).toUint();
+
+        // Authenticate the minimum purchase amount, all tokens will be sold given this slipage limit.
+        uint256 minAllowedPurchaseAmount = (underlyingValue * settlementSlippageLimit) / SETTLEMENT_SLIPPAGE_PRECISION;
+        require(params.minPurchaseAmount >= minAllowedPurchaseAmount, "Purchase Limit");
+
+        // TODO: update this to allow for phased settlement
+        NOTIONAL.redeemStrategyTokensToCash(maturity, vaultState.totalStrategyTokens, settlementTrade);
+        NOTIONAL.settleVault(address(this), maturity);
     }
 
     /**
@@ -112,7 +170,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
      * corresponding maturity.
      * @param depositUnderlyingExternal amount of tokens deposited in the borrow currency
      * @param maturity the maturity that was borrowed at, will also be the maturity that is lent to
-     * @param data minPurchaseAmount, minLendRate and target dex for trading borrowed currency to lend currency
+     * @param data DepositParams
      * @return lendfCashMinted the amount of strategy tokens (fCash lent) generated
      */
     function _depositFromNotional(
@@ -121,25 +179,25 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 lendfCashMinted) {
-        (uint256 minPurchaseAmount, uint32 minLendRate, uint16 dexId) = abi.decode(data, (uint256, uint32, uint16));
+        DepositParams memory params = abi.decode(data, (DepositParams));
         Trade memory trade = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
             sellToken: address(_underlyingToken()),
             buyToken: address(LEND_UNDERLYING_TOKEN),
             amount: depositUnderlyingExternal,
-            limit: minPurchaseAmount,
+            limit: params.minPurchaseAmount,
             deadline: block.timestamp,
-            exchangeData: "" // TODO, implement this
+            exchangeData: params.exchangeData
         });
 
-        (/* */, uint256 lendUnderlyingTokens) = TradeHandler._execute(trade, TRADING_MODULE, dexId);
+        (/* */, uint256 lendUnderlyingTokens) = TradeHandler._execute(trade, TRADING_MODULE, params.dexId);
 
         // Now we lend the underlying amount
         (uint256 fCashAmount, /* */, bytes32 encodedTrade) = NOTIONAL.getfCashLendFromDeposit(
             LEND_CURRENCY_ID,
             lendUnderlyingTokens, // TODO: may need to buffer this down a bit
             maturity,
-            minLendRate,
+            params.minLendRate,
             block.timestamp,
             true // useUnderlying is true
         );
@@ -161,7 +219,8 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
      * @param account the account that is doing the redemption
      * @param strategyTokens the amount of fCash to redeem
      * @param maturity the maturity of the fCash
-     * @param data calldata that sets trading limits
+     * @param data RedeemParams
+     * @return borrowedCurrencyAmount the amount of borrowed currency raised by the redemption
      */
     function _redeemFromNotional(
         address account,
@@ -170,7 +229,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         bytes calldata data
     ) internal override returns (uint256 borrowedCurrencyAmount) {
         uint256 balanceBefore = LEND_UNDERLYING_TOKEN.balanceOf(address(this));
-        (uint256 minPurchaseAmount, uint32 maxBorrowRate, uint16 dexId) = abi.decode(data, (uint256, uint32, uint16));
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         if (block.timestamp <= maturity) {
             // Only allow the vault to redeem past maturity to settle all positions
@@ -188,25 +247,30 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             BalanceActionWithTrades[] memory action = _encodeBorrowTrade(
                 maturity,
                 strategyTokens,
-                maxBorrowRate
+                params.maxBorrowRate
             );
             NOTIONAL.batchBalanceAndTradeAction(address(this), action);
+
+            // Check that we have not somehow borrowed into a negative fCash position, vault borrows
+            // are not included in account context
+            AccountContext memory accountContext = NOTIONAL.getAccountContext(address(this));
+            require(accountContext.hasDebt == 0x00);
         }
 
         uint256 balanceAfter = LEND_UNDERLYING_TOKEN.balanceOf(address(this));
         
-        // Trade out
+        // Trade back to borrow currency for repayment
         Trade memory trade = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
             sellToken: address(LEND_UNDERLYING_TOKEN),
             buyToken: address(_underlyingToken()),
             amount: balanceAfter - balanceBefore,
-            limit: minPurchaseAmount,
+            limit: params.minPurchaseAmount,
             deadline: block.timestamp,
-            exchangeData: "" // TODO, implement this
+            exchangeData: params.exchangeData
         });
 
-        (/* */, borrowedCurrencyAmount) = TradeHandler._execute(trade, TRADING_MODULE, dexId);
+        (/* */, borrowedCurrencyAmount) = TradeHandler._execute(trade, TRADING_MODULE, params.dexId);
     }
 
     function _encodeBorrowTrade(
