@@ -246,9 +246,8 @@ class Environment:
 
         # Deploy external libs
         BalancerUtils.deploy({"from": self.deployer})
-        TradeHandler.deploy({"from": self.deployer})
+        self.tradeHandler = TradeHandler.deploy({"from": self.deployer})
         OracleHelper.deploy({"from": self.deployer})
-        self.tradeHelper = TradeHelper.deploy({"from": self.deployer})
 
         # Upgrade to actual implementation
         stratVault = Balancer2TokenVault.deploy(

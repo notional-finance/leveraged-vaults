@@ -3,6 +3,7 @@ pragma solidity =0.8.11;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../../interfaces/WETH9.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/trading/ITradingModule.sol";
@@ -10,6 +11,8 @@ import "../../interfaces/trading/ITradingModule.sol";
 /// @notice TradeHandler is an internal library to be compiled into StrategyVaults to interact
 /// with the TradeModule and execute trades
 library TradeHandler {
+    using TradeHandler for Trade;
+
     error ERC20Error();
     error TradeExecution(bytes returnData);
     error PreValidationExactIn(uint256 maxAmountIn, uint256 preTradeSellBalance);
@@ -19,6 +22,7 @@ library TradeHandler {
 
     address public constant ETH_ADDRESS = address(0);
     WETH9 public constant WETH = WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
 
     event TradeExecuted(
         address indexed sellToken,
@@ -189,5 +193,97 @@ library TradeHandler {
         }
 
         if (!success) revert ERC20Error();
+    }
+
+    function getLimitAmount(
+        address tradingModule,
+        uint16 tradeType,
+        address sellToken,
+        address buyToken,
+        uint256 amount,
+        uint32 slippageLimit
+    ) external view returns (uint256 limitAmount) {
+        // prettier-ignore
+        (
+            int256 oraclePrice, 
+            int256 oracleDecimals
+        ) = ITradingModule(tradingModule).getOraclePrice(
+            sellToken,
+            buyToken
+        );
+
+        require(oraclePrice >= 0); /// @dev Chainlink rate error
+        require(oracleDecimals >= 0); /// @dev Chainlink decimals error
+
+        uint256 sellTokenDecimals = 10 **
+            (sellToken == address(0) ? 18 : ERC20(sellToken).decimals());
+        uint256 buyTokenDecimals = 10 **
+            (buyToken == address(0) ? 18 : ERC20(buyToken).decimals());
+
+        if (TradeType(tradeType) == TradeType.EXACT_OUT_SINGLE) {
+            // 0 means no slippage limit
+            if (slippageLimit == 0) {
+                return type(uint256).max;
+            }
+            // Invert oracle price
+            oraclePrice = (oracleDecimals * oracleDecimals) / oraclePrice;
+            // For exact out trades, limitAmount is the max amount of sellToken the DEX can
+            // pull from the contract
+            limitAmount =
+                ((uint256(oraclePrice) +
+                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
+                        SLIPPAGE_LIMIT_PRECISION)) * amount) /
+                uint256(oracleDecimals);
+
+            // limitAmount is in buyToken precision after the previous calculation,
+            // convert it to sellToken precision
+            limitAmount = (limitAmount * sellTokenDecimals) / buyTokenDecimals;
+        } else {
+            // 0 means no slippage limit
+            if (slippageLimit == 0) {
+                return 0;
+            }
+            // For exact in trades, limitAmount is the min amount of buyToken the contract
+            // expects from the DEX
+            limitAmount =
+                ((uint256(oraclePrice) -
+                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
+                        SLIPPAGE_LIMIT_PRECISION)) * amount) /
+                uint256(oracleDecimals);
+
+            // limitAmount is in sellToken precision after the previous calculation,
+            // convert it to buyToken precision
+            limitAmount = (limitAmount * buyTokenDecimals) / sellTokenDecimals;
+        }
+    }
+
+    function approveTokens(
+        address balancerVault,
+        address underylingToken,
+        address secondaryToken,
+        address balancerPool,
+        address liquidityGauge,
+        address vebalDelegator
+    ) external {
+        // Allow Balancer vault to pull UNDERLYING_TOKEN
+        if (address(underylingToken) != address(0)) {
+            IERC20(underylingToken).approve(
+                balancerVault,
+                type(uint256).max
+            );
+            _checkReturnCode();
+        }
+        // Allow balancer vault to pull SECONDARY_TOKEN
+        if (address(secondaryToken) != address(0)) {
+            IERC20(secondaryToken).approve(balancerVault, type(uint256).max);
+            _checkReturnCode();
+        }
+        // Allow LIQUIDITY_GAUGE to pull BALANCER_POOL_TOKEN
+        IERC20(balancerPool).approve(liquidityGauge, type(uint256).max);
+        _checkReturnCode();
+
+        // Allow VEBAL_DELEGATOR to pull LIQUIDITY_GAUGE tokens
+        IERC20(liquidityGauge).approve(vebalDelegator, type(uint256).max);
+        _checkReturnCode();
     }
 }

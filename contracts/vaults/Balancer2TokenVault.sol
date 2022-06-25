@@ -10,7 +10,6 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Token, VaultState, VaultAccount} from "../global/Types.sol";
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
 import {OracleHelper} from "../utils/OracleHelper.sol";
-import {TradeHelper} from "../utils/TradeHelper.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
@@ -304,7 +303,7 @@ contract Balancer2TokenVault is
     /// @notice Approve necessary token transfers
     function _approveTokens() private {
         // Approving in external lib to reduce contract size
-        TradeHelper.approveTokens(
+        TradeHandler.approveTokens(
             address(BALANCER_VAULT),
             address(UNDERLYING_TOKEN),
             address(SECONDARY_TOKEN),
@@ -551,7 +550,7 @@ contract Balancer2TokenVault is
                 address(UNDERLYING_TOKEN),
                 address(SECONDARY_TOKEN),
                 underlyingRequired - secondaryBalance,
-                TradeHelper.getLimitAmount(
+                TradeHandler.getLimitAmount(
                     address(TRADING_MODULE),
                     uint16(TradeType.EXACT_OUT_SINGLE),
                     address(UNDERLYING_TOKEN),
@@ -583,7 +582,7 @@ contract Balancer2TokenVault is
                 address(SECONDARY_TOKEN),
                 address(UNDERLYING_TOKEN),
                 secondaryBalance,
-                TradeHelper.getLimitAmount(
+                TradeHandler.getLimitAmount(
                     address(TRADING_MODULE),
                     uint16(TradeType.EXACT_OUT_SINGLE),
                     address(SECONDARY_TOKEN),
