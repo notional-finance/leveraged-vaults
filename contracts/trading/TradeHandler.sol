@@ -2,139 +2,58 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/WETH9.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 
+/// @notice TradeHandler is an internal library to be compiled into StrategyVaults to interact
+/// with the TradeModule and execute trades
 library TradeHandler {
-    using SafeERC20 for IERC20;
+    error ERC20Error();
+    error TradeExecution(bytes returnData);
+    error PreValidationExactIn(uint256 maxAmountIn, uint256 preTradeSellBalance);
+    error PreValidationExactOut(uint256 maxAmountIn, uint256 preTradeSellBalance);
+    error PostValidationExactIn(uint256 minAmountOut, uint256 amountReceived);
+    error PostValidationExactOut(uint256 exactAmountOut, uint256 amountReceived);
 
     address public constant ETH_ADDRESS = address(0);
+    WETH9 public constant WETH = WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     event TradeExecuted(
-        address sellToken,
-        address buyToken,
+        address indexed sellToken,
+        address indexed buyToken,
         uint256 sellAmount,
         uint256 buyAmount
     );
 
-    function _preValidate(Trade memory trade, uint256 preTradeBalance)
-        internal
-        view
-    {
-        if (_isExactIn(trade)) {
-            require(preTradeBalance >= trade.amount, "preValidate amount");
-        } else if (_isExactOut(trade)) {
-            require(preTradeBalance >= trade.limit, "preValidate amount");
-        } else {
-            revert("preValidate type");
-        }
-    }
-
-    function _postValidate(Trade memory trade, uint256 amountReceived)
-        internal
-        view
-    {
-        if (_isExactIn(trade)) {
-            require(amountReceived >= trade.limit, "postValidate amount");
-        } else if (_isExactOut(trade)) {
-            require(amountReceived == trade.amount, "postValidate amount");
-        }
-    }
-
-    /// @notice Approve exchange to pull from this contract
-    /// @dev approve up to trade.amount for EXACT_IN trades and up to trade.limit
-    /// for EXACT_OUT trades
-    function _approve(Trade memory trade, address spender) internal {
-        if (_isExactIn(trade)) {
-            IERC20(trade.sellToken).safeApprove(spender, 0);
-            IERC20(trade.sellToken).safeApprove(spender, trade.amount);
-        } else if (_isExactOut(trade)) {
-            IERC20(trade.sellToken).safeApprove(spender, 0);
-            IERC20(trade.sellToken).safeApprove(spender, trade.limit);
-        }
-    }
-
-    /// @notice Revoke exchange approvals
-    function _revoke(Trade memory trade, address spender) internal {
-        IERC20(trade.sellToken).safeApprove(spender, 0);
-    }
-
-    function _executeInternal(
-        Trade memory trade,
-        ITradingModule tradingModule,
-        uint16 dexId
-    ) private {
-        // prettier-ignore
-        (
-            address target, 
-            uint256 value, 
-            bytes memory params
-        ) = tradingModule.getExecutionData(dexId, payable(address(this)), trade);
-
-        (bool success, ) = target.call{value: value}(params);
-        require(success);
-    }
-
     function _execute(
         Trade memory trade,
         ITradingModule tradingModule,
-        uint16 dexId,
-        WETH9 weth
+        uint16 dexId
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-        require(trade.buyToken != trade.sellToken, "same token");
-
         // Get pre-trade token balances
-        // prettier-ignore
-        (
-            uint256 preTradeSellBalance,
-            uint256 preTradeBuyBalance
-        ) = _getBalances(trade);
+        (uint256 preTradeSellBalance, uint256 preTradeBuyBalance) = _getBalances(trade);
 
         // Make sure we have enough tokens to sell
         _preValidate(trade, preTradeSellBalance);
 
-        // Get approval target based on the current trade
-        address spender = tradingModule.getSpender(dexId, trade);
+        (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionData
+        ) = tradingModule.getExecutionData(dexId, address(this), trade);
 
         // No need to approve ETH trades
         if (spender != ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
-            // Approve exchange
             _approve(trade, spender);
         }
 
-        uint256 preTradeETHBalance = address(this).balance;
-
-        // Some exchanges don't support WETH (spender == address(0))
-        if (trade.sellToken == address(weth) && spender == ETH_ADDRESS) {
-            if (_isExactIn(trade)) {
-                weth.withdraw(trade.amount);
-            } else if (_isExactOut(trade)) {
-                weth.withdraw(trade.limit);
-            }
-        }
-
-        // Avoids stack too deep
-        _executeInternal(trade, tradingModule, dexId);
-
-        uint256 postTradeETHBalance = address(this).balance;
-
-        // Wrap into WETH if we received ETH from this trade
-        if (
-            trade.buyToken == address(weth) &&
-            postTradeETHBalance > preTradeETHBalance
-        ) {
-            weth.deposit{value: postTradeETHBalance - preTradeETHBalance}();
-        }
+        _executeTrade(target, msgValue, executionData, spender, trade);
 
         // Get post-trade token balances
-        // prettier-ignore
-        (
-            uint256 postTradeSellBalance,
-            uint256 postTradeBuyBalance
-        ) = _getBalances(trade);
+        (uint256 postTradeSellBalance, uint256 postTradeBuyBalance) = _getBalances(trade);
 
         _postValidate(trade, postTradeBuyBalance - preTradeBuyBalance);
 
@@ -146,19 +65,10 @@ library TradeHandler {
         amountSold = preTradeSellBalance - postTradeSellBalance;
         amountBought = postTradeBuyBalance - preTradeBuyBalance;
 
-        emit TradeExecuted(
-            trade.sellToken,
-            trade.buyToken,
-            amountSold,
-            amountBought
-        );
+        emit TradeExecuted(trade.sellToken, trade.buyToken, amountSold, amountBought);
     }
 
-    function _getBalances(Trade memory trade)
-        private
-        view
-        returns (uint256, uint256)
-    {
+    function _getBalances(Trade memory trade) private view returns (uint256, uint256) {
         return (
             trade.sellToken == ETH_ADDRESS
                 ? address(this).balance
@@ -171,13 +81,102 @@ library TradeHandler {
 
     function _isExactIn(Trade memory trade) private pure returns (bool) {
         return
-            TradeType(trade.tradeType) == TradeType.EXACT_IN_SINGLE ||
-            TradeType(trade.tradeType) == TradeType.EXACT_IN_BATCH;
+            trade.tradeType == TradeType.EXACT_IN_SINGLE ||
+            trade.tradeType == TradeType.EXACT_IN_BATCH;
     }
 
     function _isExactOut(Trade memory trade) private pure returns (bool) {
         return
-            TradeType(trade.tradeType) == TradeType.EXACT_OUT_SINGLE ||
-            TradeType(trade.tradeType) == TradeType.EXACT_OUT_BATCH;
+            trade.tradeType == TradeType.EXACT_OUT_SINGLE ||
+            trade.tradeType == TradeType.EXACT_OUT_BATCH;
+    }
+
+    function _preValidate(Trade memory trade, uint256 preTradeSellBalance) private pure {
+        if (_isExactIn(trade) && preTradeSellBalance < trade.amount) {
+            revert PreValidationExactIn(trade.amount, preTradeSellBalance);
+        } 
+        
+        if (_isExactOut(trade) && preTradeSellBalance < trade.limit) {
+            // NOTE: this implies that vaults cannot execute market trades on exact out
+            revert PreValidationExactOut(trade.limit, preTradeSellBalance);
+        }
+    }
+
+    function _postValidate(Trade memory trade, uint256 amountReceived) private pure {
+        if (_isExactIn(trade) && amountReceived < trade.limit) {
+            revert PostValidationExactIn(trade.limit, amountReceived);
+        }
+
+        if (_isExactOut(trade) && amountReceived != trade.amount) {
+            revert PostValidationExactOut(trade.amount, amountReceived);
+        }
+    }
+
+    /// @notice Approve exchange to pull from this contract
+    /// @dev approve up to trade.amount for EXACT_IN trades and up to trade.limit
+    /// for EXACT_OUT trades
+    function _approve(Trade memory trade, address spender) private {
+        uint256 allowance = _isExactIn(trade) ? trade.amount : trade.limit;
+        IERC20(trade.sellToken).approve(spender, allowance);
+        _checkReturnCode();
+    }
+
+    /// @notice Revoke exchange approvals
+    function _revoke(Trade memory trade, address spender) private {
+        IERC20(trade.sellToken).approve(spender, 0);
+        _checkReturnCode();
+    }
+
+    function _executeTrade(
+        address target,
+        uint256 msgValue,
+        bytes memory params,
+        address spender,
+        Trade memory trade
+    ) private {
+        uint256 preTradeETHBalance = address(this).balance;
+
+        // Curve doesn't support WETH (spender == address(0))
+        if (trade.sellToken == address(WETH) && spender == ETH_ADDRESS) {
+            uint256 withdrawAmount = _isExactIn(trade) ? trade.amount : trade.limit;
+            WETH.withdraw(withdrawAmount);
+        }
+
+        (bool success, bytes memory returnData) = target.call{value: msgValue}(params);
+        if (!success) revert TradeExecution(returnData);
+
+        uint256 postTradeETHBalance = address(this).balance;
+
+        // If the caller specifies that they want to receive WETH but we have received ETH,
+        // wrap the ETH to WETH.
+        if (trade.buyToken == address(WETH) && postTradeETHBalance > preTradeETHBalance) {
+            uint256 depositAmount;
+            unchecked { depositAmount = postTradeETHBalance - preTradeETHBalance; }
+            WETH.deposit{value: depositAmount}();
+        }
+    }
+
+    // Supports checking return codes on non-standard ERC20 contracts
+    function _checkReturnCode() private pure {
+        bool success;
+        uint256[1] memory result;
+        assembly {
+            switch returndatasize()
+                case 0 {
+                    // This is a non-standard ERC-20
+                    success := 1 // set success to true
+                }
+                case 32 {
+                    // This is a compliant ERC-20
+                    returndatacopy(result, 0, 32)
+                    success := mload(result) // Set `success = returndata` of external call
+                }
+                default {
+                    // This is an excessively non-compliant ERC-20, revert.
+                    revert(0, 0)
+                }
+        }
+
+        if (!success) revert ERC20Error();
     }
 }

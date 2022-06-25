@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: MIT
+pragma solidity =0.8.11;
+pragma abicoder v2;
+
+import "../../../interfaces/trading/IExchangeAdapter.sol";
+import "../../../interfaces/trading/IVaultExchange.sol";
+
+// TODO: is this even worth it? maybe we just put it in the trade handler...
+contract NotionalVaultAdapter is IExchangeAdapter {
+    struct NotionalVaultData {
+        address vault;
+    }
+
+    function getExecutionData(address from, Trade calldata trade)
+        external view override returns (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionCallData
+        )
+    {
+        NotionalVaultData memory data = abi.decode(trade.exchangeData, (NotionalVaultData));
+        spender = data.vault;
+        target = data.vault;
+
+        executionCallData = abi.encodeWithSelector(
+            IVaultExchange.exchange.selector,
+            VaultExchange(
+                trade.tradeType,
+                trade.sellToken,
+                trade.buyToken,
+                trade.amount,
+                trade.limit
+            )
+        );
+    }
+}
