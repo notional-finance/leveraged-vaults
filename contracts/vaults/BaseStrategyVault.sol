@@ -5,18 +5,18 @@ pragma abicoder v2;
 import {Token, TokenType} from "../global/Types.sol";
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import {IVaultController} from "../../../interfaces/notional/IVaultController.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ILendingPool} from "../../interfaces/aave/ILendingPool.sol";
-import {CErc20Interface} from "../../../../interfaces/compound/CErc20Interface.sol";
-import {CEtherInterface} from "../../../../interfaces/compound/CEtherInterface.sol";
 
 abstract contract BaseStrategyVault is IStrategyVault {
     using SafeERC20 for ERC20;
 
     /** These view methods need to be implemented by the vault */
-    function convertStrategyToUnderlying(address account, uint256 strategyTokens, uint256 maturity) public view virtual returns (int256 underlyingValue);
+    function convertStrategyToUnderlying(
+        address account,
+        uint256 strategyTokens,
+        uint256 maturity
+    ) public view virtual returns (int256 underlyingValue);
     
     // Vaults need to implement these two methods
     function _depositFromNotional(
@@ -99,21 +99,21 @@ abstract contract BaseStrategyVault is IStrategyVault {
         uint256 underlyingToRepayDebt,
         bytes calldata data
     ) external onlyNotional {
-        uint256 tokensFromRedeem = _redeemFromNotional(account, strategyTokens, maturity, data);
+        uint256 borrowedCurrencyAmount = _redeemFromNotional(account, strategyTokens, maturity, data);
 
         uint256 transferToNotional;
         uint256 transferToAccount;
-        if (account == address(this) || tokensFromRedeem <= underlyingToRepayDebt) {
+        if (account == address(this) || borrowedCurrencyAmount <= underlyingToRepayDebt) {
             // It may be the case that insufficient tokens were redeemed to repay the debt. If this
             // happens the Notional will attempt to recover the shortfall from the account directly.
             // This can happen if an account wants to reduce their leverage by paying off debt but
             // does not want to sell strategy tokens to do so.
             // The other situation would be that the vault is calling redemption to deleverage or
             // settle. In that case all tokens go back to Notional.
-            transferToNotional = tokensFromRedeem;
+            transferToNotional = borrowedCurrencyAmount;
         } else {
             transferToNotional = underlyingToRepayDebt;
-            unchecked { transferToAccount = tokensFromRedeem - underlyingToRepayDebt; }
+            unchecked { transferToAccount = borrowedCurrencyAmount - underlyingToRepayDebt; }
         }
 
         if (UNDERLYING_IS_ETH) {

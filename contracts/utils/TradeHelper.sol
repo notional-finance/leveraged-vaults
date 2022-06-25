@@ -23,12 +23,15 @@ library TradeHelper {
     ) external view returns (uint256 limitAmount) {
         // prettier-ignore
         (
-            uint256 oraclePrice, 
-            uint256 oracleDecimals
+            int256 oraclePrice, 
+            int256 oracleDecimals
         ) = ITradingModule(tradingModule).getOraclePrice(
             sellToken,
             buyToken
         );
+
+        require(oraclePrice >= 0); /// @dev Chainlink rate error
+        require(oracleDecimals >= 0); /// @dev Chainlink decimals error
 
         uint256 sellTokenDecimals = 10 **
             (sellToken == address(0) ? 18 : ERC20(sellToken).decimals());
@@ -45,10 +48,10 @@ library TradeHelper {
             // For exact out trades, limitAmount is the max amount of sellToken the DEX can
             // pull from the contract
             limitAmount =
-                ((oraclePrice +
-                    ((oraclePrice * uint256(slippageLimit)) /
+                ((uint256(oraclePrice) +
+                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
                         SLIPPAGE_LIMIT_PRECISION)) * amount) /
-                oracleDecimals;
+                uint256(oracleDecimals);
 
             // limitAmount is in buyToken precision after the previous calculation,
             // convert it to sellToken precision
@@ -61,10 +64,10 @@ library TradeHelper {
             // For exact in trades, limitAmount is the min amount of buyToken the contract
             // expects from the DEX
             limitAmount =
-                ((oraclePrice -
-                    ((oraclePrice * uint256(slippageLimit)) /
+                ((uint256(oraclePrice) -
+                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
                         SLIPPAGE_LIMIT_PRECISION)) * amount) /
-                oracleDecimals;
+                uint256(oracleDecimals);
 
             // limitAmount is in sellToken precision after the previous calculation,
             // convert it to buyToken precision

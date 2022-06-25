@@ -14,7 +14,7 @@ library OracleHelper {
     function getTimeWeightedPrimaryBalance(
         address pool,
         uint256 oracleWindowInSeconds,
-        uint256 primaryindex,
+        uint8 primaryindex,
         uint256 primaryWeight,
         uint256 secondaryWeight,
         uint256 primaryDecimals,
@@ -89,9 +89,12 @@ library OracleHelper {
             /* uint256 lastChangeBlock */
         ) = IBalancerVault(vault).getPoolTokens(poolId);
 
-        (uint256 chainlinkPrice, uint256 decimals) = ITradingModule(
+        (int256 chainlinkPrice, int256 decimals) = ITradingModule(
             tradingModule
         ).getOraclePrice(tokens[1], tokens[0]);
+
+        require(chainlinkPrice >= 0); /// @dev Chainlink rate error
+        require(decimals >= 0); /// @dev Chainlink decimals error
 
         // Normalize price to 18 decimals
         chainlinkPrice = (chainlinkPrice * 1e18) / decimals;
@@ -99,7 +102,53 @@ library OracleHelper {
         return
             (balancerPrice * balancerOracleWeight) /
             1e8 +
-            (chainlinkPrice * (1e8 - balancerOracleWeight)) /
+            (uint256(chainlinkPrice) * (1e8 - balancerOracleWeight)) /
             1e8;
+    }
+
+    function getOptimalSecondaryBorrowAmount(
+        address pool,
+        uint256 oracleWindowInSeconds,
+        uint8 primaryindex,
+        uint256 primaryWeight,
+        uint256 secondaryWeight,
+        uint256 primaryDecimals,
+        uint256 secondaryDecimals,
+        uint256 primaryAmount
+    )
+        external
+        view
+        returns (uint256 secondaryAmount)
+    {
+        // Gets the PAIR price
+        uint256 pairPrice = BalancerUtils.getTimeWeightedOraclePrice(
+            pool,
+            IPriceOracle.Variable.PAIR_PRICE,
+            oracleWindowInSeconds
+        );
+
+        // Calculate weighted primary amount
+        primaryAmount = ((primaryAmount * 1e18) / primaryWeight);
+
+        // Calculate price adjusted primary amount, price is always in 1e18
+        // Since price is always expressed as the price of the second token in units of the
+        // first token, we need to invert the math if the second token is the primary token
+        if (primaryindex == 0) {
+            // PairPrice = (PrimaryAmount / PrimaryWeight) / (SecondaryAmount / SecondaryWeight)
+            // SecondaryAmount = (PrimaryAmount / PrimaryWeight) / PairPrice * SecondaryWeight
+            primaryAmount = ((primaryAmount * 1e18) / pairPrice);
+        } else {
+            // PairPrice = (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
+            // SecondaryAmount = (PrimaryAmount / PrimaryWeight) * PairPrice * SecondaryWeight
+            primaryAmount = ((primaryAmount * pairPrice) / 1e18);
+        }
+
+        // Calculate secondary amount (precision is still 1e18)
+        secondaryAmount = (primaryAmount * secondaryWeight) / 1e18;
+
+        // Normalize precision to secondary precision
+        secondaryAmount =
+            (secondaryAmount * 10**secondaryDecimals) /
+            10**primaryDecimals;
     }
 }

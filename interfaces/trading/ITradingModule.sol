@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.11;
 
+import "../chainlink/AggregatorV2V3Interface.sol";
+
 enum DexId {
     UNISWAP_V2,
     UNISWAP_V3,
@@ -18,7 +20,7 @@ enum TradeType {
 }
 
 struct Trade {
-    uint16 tradeType;
+    TradeType tradeType;
     address sellToken;
     address buyToken;
     uint256 amount;
@@ -28,31 +30,19 @@ struct Trade {
     bytes exchangeData;
 }
 
+error InvalidTrade();
+
 interface ITradingModule {
-    function owner() external view returns (address);
-
-    function getSpender(uint16 dexId, Trade calldata trade)
-        external
-        view
-        returns (address);
-
-    function getExecutionData(
-        uint16 dexId,
-        address payable from,
-        Trade calldata trade
-    )
-        external
-        view
-        returns (
+    function getExecutionData(uint16 dexId, address from, Trade calldata trade)
+        external view returns (
+            address spender,
             address target,
             uint256 value,
             bytes memory params
         );
 
-    function setPriceOracle(address token, address oracle) external;
+    function setPriceOracle(address token, AggregatorV2V3Interface oracle) external;
 
     function getOraclePrice(address inToken, address outToken)
-        external
-        view
-        returns (uint256 answer, uint256 decimals);
+        external view returns (int256 answer, int256 decimals);
 }

@@ -2,11 +2,14 @@
 pragma solidity =0.8.11;
 
 import "../../interfaces/balancer/IPriceOracle.sol";
-import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
+import {IBalancerVault, IAsset} from "../../interfaces/balancer/IBalancerVault.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {WETH9} from "../../interfaces/WETH9.sol";
 
 library BalancerUtils {
-    
+    WETH9 public constant WETH =
+        WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+
     error InvalidTokenIndex(uint256 tokenIndex);
 
     function getTimeWeightedOraclePrice(
@@ -53,7 +56,7 @@ library BalancerUtils {
         IBalancerVault vault,
         bytes32 poolId,
         uint256 tokenIndex,
-        uint256 primaryIndex,
+        uint8 primaryIndex,
         uint256 primaryWeight,
         uint256 secondaryWeight,
         uint256 primaryDecimals,
@@ -87,5 +90,104 @@ library BalancerUtils {
         }
 
         revert InvalidTokenIndex(tokenIndex);
+    }
+
+    function _getPoolParams(
+        address primaryAddress,
+        uint256 primaryAmount,
+        address secondaryAddress,
+        uint256 secondaryAmount,
+        uint8 primaryIndex
+    ) private view returns (IAsset[] memory assets, uint256[] memory amounts) {
+        assets = new IAsset[](2);
+        assets[primaryIndex] = IAsset(primaryAddress);
+        assets[1 - primaryIndex] = IAsset(secondaryAddress);
+
+        amounts = new uint256[](2);
+        amounts[primaryIndex] = primaryAmount;
+        amounts[1 - primaryIndex] = secondaryAmount;
+    }
+
+    function joinPool(
+        address vault,
+        bytes32 poolId,
+        address primaryAddress,
+        uint256 maxPrimaryAmount,
+        address secondaryAddress,
+        uint256 maxSecondaryAmount,
+        uint8 primaryIndex,
+        uint256 minBPT
+    ) external {
+        // prettier-ignore
+        (
+            IAsset[] memory assets,
+            uint256[] memory maxAmountsIn
+        ) = _getPoolParams(
+            primaryAddress,
+            maxPrimaryAmount,
+            secondaryAddress,
+            maxSecondaryAmount,
+            primaryIndex
+        );
+
+        uint256 msgValue = assets[primaryIndex] == IAsset(address(0))
+            ? maxAmountsIn[primaryIndex]
+            : 0;
+
+        // Join pool
+        IBalancerVault(vault).joinPool{value: msgValue}(
+            poolId,
+            address(this),
+            address(this),
+            IBalancerVault.JoinPoolRequest(
+                assets,
+                maxAmountsIn,
+                abi.encode(
+                    IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+                    maxAmountsIn,
+                    minBPT // Apply minBPT to prevent front running
+                ),
+                false // Don't use internal balances
+            )
+        );
+    }
+
+    function exitPool(
+        address vault,
+        bytes32 poolId,
+        address primaryAddress,
+        uint256 minPrimaryAmount,
+        address secondaryAddress,
+        uint256 minSecondaryAmount,
+        uint8 primaryIndex,
+        uint256 bptExitAmount,
+        bool withdrawFromWETH
+    ) external {
+        // prettier-ignore
+        (
+            IAsset[] memory assets,
+            uint256[] memory minAmountsOut
+        ) = _getPoolParams(
+            withdrawFromWETH ? address(0) : address(WETH),
+            minPrimaryAmount,
+            secondaryAddress,
+            minSecondaryAmount,
+            primaryIndex
+        );
+
+        IBalancerVault(vault).exitPool(
+            poolId,
+            address(this),
+            payable(msg.sender), // Owner will receive the underlying assets
+            IBalancerVault.ExitPoolRequest(
+                assets,
+                minAmountsOut,
+                abi.encode(
+                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+                    bptExitAmount
+                ),
+                false // Don't use internal balances
+            )
+        );
     }
 }

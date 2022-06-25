@@ -17,7 +17,7 @@ import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../interfaces/notional/IVaultController.sol";
 import {IBoostController} from "../../interfaces/notional/IBoostController.sol";
 import {IVeBalDelegator} from "../../interfaces/notional/IVeBalDelegator.sol";
-import {IBalancerVault, IAsset} from "../../interfaces/balancer/IBalancerVault.sol";
+import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../interfaces/balancer/IBalancerMinter.sol";
 import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
@@ -36,7 +36,6 @@ contract Balancer2TokenVault is
 
     struct DeploymentParams {
         uint16 secondaryBorrowCurrencyId;
-        WETH9 weth;
         IBalancerVault balancerVault;
         bytes32 balancerPoolId;
         IBoostController boostController;
@@ -103,20 +102,7 @@ contract Balancer2TokenVault is
     error InSettlementCoolDown(uint32 lastTimestamp, uint32 coolDown);
 
     /** Events */
-    event OracleWindowUpdated(uint256 oldWindow, uint256 newWindow);
-    event SettlementCoolDownUpdated(uint32 oldCoolDown, uint32 newCoolDown);
-    event EmergencySettlementCoolDownUpdated(
-        uint32 oldCoolDown,
-        uint32 newCoolDown
-    );
-    event BalancerOracleWeightUpdated(uint32 oldWeight, uint32 newWeight);
-    event MaxBalancerPoolShareUpdated(uint32 oldShare, uint32 newShare);
-    event MaxUnderlyingSurplusUpdated(uint256 oldSurplus, uint256 newSurplus);
-    event SettlementSlippageLimitUpdated(uint32 oldLimit, uint32 newLimit);
-    event EmergencySettlementSlippageLimitUpdated(
-        uint32 oldLimit,
-        uint32 newLimit
-    );
+    event InitParamsUpdated(InitParams params);
 
     /// @notice Emitted when a vault is settled
     /// @param assetTokenProfits total amount of profit to vault account holders, if this is negative
@@ -137,6 +123,8 @@ contract Balancer2TokenVault is
     uint32 internal constant MAX_SLIPPAGE_LIMIT = 1e8; // 100%
     uint32 internal constant MAX_BALANCER_POOL_SHARE = 1e8; // 100%
     uint32 internal constant BALANCER_POOL_SHARE_BUFFER = 8e7; // 80%
+    WETH9 public constant WETH =
+        WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     /** Immutables */
     uint16 public immutable SECONDARY_BORROW_CURRENCY_ID;
@@ -149,8 +137,7 @@ contract Balancer2TokenVault is
     IVeBalDelegator public immutable VEBAL_DELEGATOR;
     ITradingModule public immutable TRADING_MODULE;
     ERC20 public immutable BAL_TOKEN;
-    uint256 public immutable PRIMARY_INDEX;
-    WETH9 public immutable WETH;
+    uint8 public immutable PRIMARY_INDEX;
     uint256 public immutable SETTLEMENT_PERIOD;
     uint256 public immutable PRIMARY_WEIGHT;
     uint256 public immutable SECONDARY_WEIGHT;
@@ -203,7 +190,6 @@ contract Balancer2TokenVault is
         initializer
     {
         SECONDARY_BORROW_CURRENCY_ID = params.secondaryBorrowCurrencyId;
-        WETH = params.weth;
         BALANCER_VAULT = params.balancerVault;
         BALANCER_POOL_ID = params.balancerPoolId;
         BALANCER_POOL_TOKEN = IBalancerPool(
@@ -259,6 +245,12 @@ contract Balancer2TokenVault is
         initializer
         onlyNotionalOwner
     {
+        _initParams(params);
+        _initRewardTokenList();
+        _approveTokens();
+    }
+
+    function _initParams(InitParams calldata params) private {
         oracleWindowInSeconds = params.oracleWindowInSeconds;
         settlementCoolDownInSeconds = params.settlementCooldownInSeconds;
         balancerOracleWeight = params.balancerOracleWeight;
@@ -270,8 +262,6 @@ contract Balancer2TokenVault is
         settlementCoolDownInSeconds = params.settlementCoolDownInSeconds;
         emergencySettlementCoolDownInSeconds = params
             .emergencySettlementCoolDownInSeconds;
-        _initRewardTokenList();
-        _approveTokens();
     }
 
     /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
@@ -372,7 +362,7 @@ contract Balancer2TokenVault is
             balancerOracleWeight
         );
 
-        uint256 borrowedPrimaryAmount = 0;
+        uint256 borrowedPrimaryAmount;
         if (PRIMARY_INDEX == 0) {
             borrowedPrimaryAmount =
                 (borrowedSecondaryfCashAmount * 1e18) /
@@ -394,7 +384,7 @@ contract Balancer2TokenVault is
     ) private {
         DepositParams memory params = abi.decode(data, (DepositParams));
 
-        uint256 borrowedSecondaryAmount = 0;
+        uint256 borrowedSecondaryAmount;
         if (SECONDARY_BORROW_CURRENCY_ID > 0) {
             uint256 optimalSecondaryAmount = getOptimalSecondaryBorrowAmount(
                 deposit
@@ -425,35 +415,15 @@ contract Balancer2TokenVault is
                 .secondaryfCashAmount;
         }
 
-        // prettier-ignore
-        (
-            IAsset[] memory assets,
-            uint256[] memory maxAmountsIn
-        ) = _getPoolParams(
-            address(UNDERLYING_TOKEN),
-            deposit,
-            borrowedSecondaryAmount
-        );
-
-        uint256 msgValue = assets[PRIMARY_INDEX] == IAsset(address(0))
-            ? maxAmountsIn[PRIMARY_INDEX]
-            : 0;
-
-        // Join pool
-        BALANCER_VAULT.joinPool{value: msgValue}(
-            BALANCER_POOL_ID,
-            address(this),
-            address(this),
-            IBalancerVault.JoinPoolRequest(
-                assets,
-                maxAmountsIn,
-                abi.encode(
-                    IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-                    maxAmountsIn,
-                    params.minBPT // Apply minBPT to prevent front running
-                ),
-                false // Don't use internal balances
-            )
+        BalancerUtils.joinPool(
+            address(BALANCER_VAULT), 
+            BALANCER_POOL_ID, 
+            address(UNDERLYING_TOKEN), 
+            deposit, 
+            address(SECONDARY_TOKEN), 
+            borrowedSecondaryAmount, 
+            PRIMARY_INDEX, 
+            params.minBPT
         );
     }
 
@@ -491,20 +461,6 @@ contract Balancer2TokenVault is
 
         // Update global supply count
         totalStrategyTokenGlobal += strategyTokensMinted;
-    }
-
-    function _getPoolParams(
-        address primaryAddress,
-        uint256 primaryAmount,
-        uint256 secondaryAmount
-    ) private view returns (IAsset[] memory assets, uint256[] memory amounts) {
-        assets = new IAsset[](2);
-        assets[PRIMARY_INDEX] = IAsset(primaryAddress);
-        assets[1 - PRIMARY_INDEX] = IAsset(address(SECONDARY_TOKEN));
-
-        amounts = new uint256[](2);
-        amounts[PRIMARY_INDEX] = primaryAmount;
-        amounts[1 - PRIMARY_INDEX] = secondaryAmount;
     }
 
     /// @notice Converts strategy tokens to BPT
@@ -549,29 +505,16 @@ contract Balancer2TokenVault is
     ) internal {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
-        // prettier-ignore
-        (
-            IAsset[] memory assets,
-            uint256[] memory minAmountsOut
-        ) = _getPoolParams(
-            params.withdrawFromWETH ? address(0) : address(WETH),
-            params.minPrimary,
-            params.minSecondary
-        );
-
-        BALANCER_VAULT.exitPool(
-            BALANCER_POOL_ID,
-            address(this),
-            payable(msg.sender), // Owner will receive the underlying assets
-            IBalancerVault.ExitPoolRequest(
-                assets,
-                minAmountsOut,
-                abi.encode(
-                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
-                    bptExitAmount
-                ),
-                false // Don't use internal balances
-            )
+        BalancerUtils.exitPool(
+            address(BALANCER_VAULT), 
+            BALANCER_POOL_ID, 
+            address(UNDERLYING_TOKEN), 
+            params.minPrimary, 
+            address(SECONDARY_TOKEN), 
+            params.minSecondary, 
+            PRIMARY_INDEX, 
+            bptExitAmount, 
+            params.withdrawFromWETH
         );
 
         // Repay secondary debt
@@ -604,7 +547,7 @@ contract Balancer2TokenVault is
         if (secondaryBalance < underlyingRequired) {
             // Not enough secondary balance to repay debt, sell some primary currency
             trade = Trade(
-                uint16(TradeType.EXACT_OUT_SINGLE),
+                TradeType.EXACT_OUT_SINGLE,
                 address(UNDERLYING_TOKEN),
                 address(SECONDARY_TOKEN),
                 underlyingRequired - secondaryBalance,
@@ -620,7 +563,7 @@ contract Balancer2TokenVault is
                 params.exchangeData
             );
 
-            trade.execute(TRADING_MODULE, params.dexId, WETH);
+            trade.execute(TRADING_MODULE, params.dexId);
         }
 
         // Update balance before transfer
@@ -636,7 +579,7 @@ contract Balancer2TokenVault is
         if (secondaryBalance > 0) {
             // Sell residual secondary balance
             trade = Trade(
-                uint16(TradeType.EXACT_IN_SINGLE),
+                TradeType.EXACT_IN_SINGLE,
                 address(SECONDARY_TOKEN),
                 address(UNDERLYING_TOKEN),
                 secondaryBalance,
@@ -652,7 +595,7 @@ contract Balancer2TokenVault is
                 params.exchangeData
             );
 
-            trade.execute(TRADING_MODULE, params.dexId, WETH);
+            trade.execute(TRADING_MODULE, params.dexId);
         }
     }
 
@@ -720,7 +663,7 @@ contract Balancer2TokenVault is
         uint256 bptToSettle,
         bytes calldata data
     ) external {
-        uint256 redeemAmount = 0;
+        uint256 redeemAmount;
         if (maturity <= block.timestamp) {
             // Vault has reached maturity. settleVault becomes authenticated in this case
             if (msg.sender != NOTIONAL.owner())
@@ -845,11 +788,7 @@ contract Balancer2TokenVault is
         // TODO: make sure spot is close to pairPrice
 
         uint256 primaryAmountBefore = _tokenBalance(address(UNDERLYING_TOKEN));
-        params.primaryTrade.execute(
-            TRADING_MODULE,
-            params.primaryTradeDexId,
-            WETH
-        );
+        params.primaryTrade.execute(TRADING_MODULE, params.primaryTradeDexId);
         primaryAmount =
             _tokenBalance(address(UNDERLYING_TOKEN)) -
             primaryAmountBefore;
@@ -857,8 +796,7 @@ contract Balancer2TokenVault is
         uint256 secondaryAmountBefore = _tokenBalance(address(SECONDARY_TOKEN));
         params.secondaryTrade.execute(
             TRADING_MODULE,
-            params.secondaryTradeDexId,
-            WETH
+            params.secondaryTradeDexId
         );
         secondaryAmount =
             _tokenBalance(address(SECONDARY_TOKEN)) -
@@ -873,35 +811,15 @@ contract Balancer2TokenVault is
             params.tradeData
         );
 
-        // prettier-ignore
-        (
-            IAsset[] memory assets,
-            uint256[] memory maxAmountsIn
-        ) = _getPoolParams(
+        BalancerUtils.joinPool(
+            address(BALANCER_VAULT),
+            BALANCER_POOL_ID,
             address(UNDERLYING_TOKEN),
             primaryAmount,
-            secondaryAmount
-        );
-
-        uint256 msgValue = assets[PRIMARY_INDEX] == IAsset(address(0))
-            ? maxAmountsIn[PRIMARY_INDEX]
-            : 0;
-
-        // Join pool
-        BALANCER_VAULT.joinPool{value: msgValue}(
-            BALANCER_POOL_ID,
-            address(this),
-            address(this),
-            IBalancerVault.JoinPoolRequest(
-                assets,
-                maxAmountsIn,
-                abi.encode(
-                    IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-                    maxAmountsIn,
-                    params.minBPT // Apply minBPT to prevent front running
-                ),
-                false // Don't use internal balances
-            )
+            address(SECONDARY_TOKEN),
+            secondaryAmount,
+            PRIMARY_INDEX,
+            params.minBPT
         );
 
         // TODO: emit event here
@@ -910,111 +828,28 @@ contract Balancer2TokenVault is
     /** Setters */
 
     /// @notice Updates the oracle window
-    /// @param newOracleWindowInSeconds new oracle window in seconds
-    function setOracleWindow(uint256 newOracleWindowInSeconds)
+    function setInitParams(InitParams calldata params)
         external
         onlyNotionalOwner
     {
         require(
-            newOracleWindowInSeconds <=
+            params.oracleWindowInSeconds <=
                 IPriceOracle(address(BALANCER_POOL_TOKEN))
                     .getLargestSafeQueryWindow()
         );
-        emit OracleWindowUpdated(
-            oracleWindowInSeconds,
-            newOracleWindowInSeconds
-        );
-        oracleWindowInSeconds = newOracleWindowInSeconds;
-    }
-
-    /// @notice Updates the settlement cool down
-    /// @dev Time limit between settlement trades
-    /// @param newSettlementCoolDownInSeconds settlement cool down in seconds
-    function setSettlementCoolDown(uint32 newSettlementCoolDownInSeconds)
-        external
-        onlyNotionalOwner
-    {
-        require(newSettlementCoolDownInSeconds <= MAX_SETTLEMENT_COOLDOWN);
-        emit SettlementCoolDownUpdated(
-            settlementCoolDownInSeconds,
-            newSettlementCoolDownInSeconds
-        );
-        settlementCoolDownInSeconds = newSettlementCoolDownInSeconds;
-    }
-
-    function setEmergencySettlementCoolDown(
-        uint32 newEmergencySettlementCoolDownInSeconds
-    ) external onlyNotionalOwner {
+        require(params.settlementCoolDownInSeconds <= MAX_SETTLEMENT_COOLDOWN);
         require(
-            newEmergencySettlementCoolDownInSeconds <= MAX_SETTLEMENT_COOLDOWN
+            params.emergencySettlementCoolDownInSeconds <=
+                MAX_SETTLEMENT_COOLDOWN
         );
-        emit EmergencySettlementCoolDownUpdated(
-            emergencySettlementCoolDownInSeconds,
-            newEmergencySettlementCoolDownInSeconds
-        );
-        emergencySettlementCoolDownInSeconds = newEmergencySettlementCoolDownInSeconds;
-    }
+        require(params.balancerOracleWeight <= MAX_ORACLE_WEIGHT);
+        require(params.maxBalancerPoolShare <= MAX_BALANCER_POOL_SHARE);
+        require(params.settlementSlippageLimit <= MAX_SLIPPAGE_LIMIT);
+        require(params.emergencySettlementSlippageLimit <= MAX_SLIPPAGE_LIMIT);
 
-    /// @notice Updates the Balancer oracle weight. This value determines
-    /// the amount of weight given to the Balancer oracle vs Chainlink
-    /// @dev 1e8 = 100%
-    /// @param newBalancerOracleWeight new Balancer oracle weight
-    function setBalancerOracleWeight(uint32 newBalancerOracleWeight)
-        external
-        onlyNotionalOwner
-    {
-        require(newBalancerOracleWeight <= MAX_ORACLE_WEIGHT);
-        emit BalancerOracleWeightUpdated(
-            balancerOracleWeight,
-            newBalancerOracleWeight
-        );
-        balancerOracleWeight = newBalancerOracleWeight;
-    }
+        _initParams(params);
 
-    function setMaxBalancerPoolShare(uint32 newMaxBalancerPoolShare)
-        external
-        onlyNotionalOwner
-    {
-        require(newMaxBalancerPoolShare <= MAX_BALANCER_POOL_SHARE);
-        emit MaxBalancerPoolShareUpdated(
-            maxBalancerPoolShare,
-            newMaxBalancerPoolShare
-        );
-        maxBalancerPoolShare = newMaxBalancerPoolShare;
-    }
-
-    function setMaxUnderylingSurplus(uint256 newMaxUnderlyingSurplus)
-        external
-        onlyNotionalOwner
-    {
-        emit MaxUnderlyingSurplusUpdated(
-            maxUnderylingSurplus,
-            newMaxUnderlyingSurplus
-        );
-        maxUnderylingSurplus = newMaxUnderlyingSurplus;
-    }
-
-    function setSettlementSlippageLimit(uint32 newSettlementSlippageLimit)
-        external
-        onlyNotionalOwner
-    {
-        require(newSettlementSlippageLimit <= MAX_SLIPPAGE_LIMIT);
-        emit SettlementSlippageLimitUpdated(
-            settlementSlippageLimit,
-            newSettlementSlippageLimit
-        );
-        settlementSlippageLimit = newSettlementSlippageLimit;
-    }
-
-    function setEmergencySettlementSlippageLimit(
-        uint32 newEmergencySettlementSlippageLimit
-    ) external onlyNotionalOwner {
-        require(newEmergencySettlementSlippageLimit <= MAX_SLIPPAGE_LIMIT);
-        emit EmergencySettlementSlippageLimitUpdated(
-            emergencySettlementSlippageLimit,
-            newEmergencySettlementSlippageLimit
-        );
-        emergencySettlementSlippageLimit = newEmergencySettlementSlippageLimit;
+        emit InitParamsUpdated(params);
     }
 
     /** Public view functions */
@@ -1029,43 +864,20 @@ contract Balancer2TokenVault is
         view
         returns (uint256 secondaryAmount)
     {
-        // Gets the PAIR price
-        uint256 pairPrice = BalancerUtils.getTimeWeightedOraclePrice(
+        secondaryAmount = OracleHelper.getOptimalSecondaryBorrowAmount(
             address(BALANCER_POOL_TOKEN),
-            IPriceOracle.Variable.PAIR_PRICE,
-            oracleWindowInSeconds
+            oracleWindowInSeconds,
+            PRIMARY_INDEX,
+            PRIMARY_WEIGHT,
+            SECONDARY_WEIGHT,
+            address(UNDERLYING_TOKEN) == address(0)
+                ? 18
+                : UNDERLYING_TOKEN.decimals(),
+            address(SECONDARY_TOKEN) == address(0)
+                ? 18
+                : SECONDARY_TOKEN.decimals(),
+            primaryAmount
         );
-
-        // Calculate weighted primary amount
-        primaryAmount = ((primaryAmount * 1e18) / PRIMARY_WEIGHT);
-
-        // Calculate price adjusted primary amount, price is always in 1e18
-        // Since price is always expressed as the price of the second token in units of the
-        // first token, we need to invert the math if the second token is the primary token
-        if (PRIMARY_INDEX == 0) {
-            // PairPrice = (PrimaryAmount / PrimaryWeight) / (SecondaryAmount / SecondaryWeight)
-            // SecondaryAmount = (PrimaryAmount / PrimaryWeight) / PairPrice * SecondaryWeight
-            primaryAmount = ((primaryAmount * 1e18) / pairPrice);
-        } else {
-            // PairPrice = (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
-            // SecondaryAmount = (PrimaryAmount / PrimaryWeight) * PairPrice * SecondaryWeight
-            primaryAmount = ((primaryAmount * pairPrice) / 1e18);
-        }
-
-        // Calculate secondary amount (precision is still 1e18)
-        secondaryAmount = (primaryAmount * SECONDARY_WEIGHT) / 1e18;
-
-        // Normalize precision to secondary precision
-        uint256 primaryDecimals = address(UNDERLYING_TOKEN) == address(0)
-            ? 18
-            : UNDERLYING_TOKEN.decimals();
-        uint256 secondaryDecimals = address(UNDERLYING_TOKEN) == address(0)
-            ? 18
-            : SECONDARY_TOKEN.decimals();
-
-        secondaryAmount =
-            (secondaryAmount * 10**secondaryDecimals) /
-            10**primaryDecimals;
     }
 
     /// @dev Gets the total BPT held across the LIQUIDITY GAUGE, VeBal Delegator and the contract itself

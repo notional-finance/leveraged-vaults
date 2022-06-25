@@ -4,7 +4,7 @@ pragma solidity =0.8.11;
 import "./ITradingModule.sol";
 
 struct VaultExchange {
-    uint16 tradeType;
+    TradeType tradeType;
     address sellToken;
     address buyToken;
     uint256 amount;

@@ -2,12 +2,12 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
-import "../../../interfaces/trading/IExchangeAdapter.sol";
+import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/balancer/IBalancerVault.sol";
 
-contract BalancerV2Adapter is IExchangeAdapter {
+library BalancerV2Adapter {
     address internal constant ETH_ADDRESS = address(0);
-    IBalancerVault public immutable VAULT;
+    IBalancerVault public constant VAULT = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     struct SingleSwapData {
         bytes32 poolId;
@@ -19,125 +19,78 @@ contract BalancerV2Adapter is IExchangeAdapter {
         int256[] limits;
     }
 
-    constructor(IBalancerVault _vault) {
-        VAULT = _vault;
-    }
+    function _single(IBalancerVault.SwapKind kind, address from, Trade memory trade)
+        internal pure returns (bytes memory) {
+        SingleSwapData memory data = abi.decode(trade.exchangeData, (SingleSwapData));
 
-    function _single(IBalancerVault.SwapKind kind, address payable from, Trade memory trade)
-        internal
-        view
-        returns (
-            address,
-            uint256,
-            bytes memory
-        )
-    {
-        SingleSwapData memory data = abi.decode(
-            trade.exchangeData,
-            (SingleSwapData)
-        );
-
-        return (
-            address(VAULT),
-            trade.sellToken == ETH_ADDRESS ? trade.amount : 0,
-            abi.encodeWithSelector(
-                IBalancerVault.swap.selector,
-                IBalancerVault.SingleSwap(
-                    data.poolId,
-                    kind,
-                    IAsset(trade.sellToken),
-                    IAsset(trade.buyToken),
-                    trade.amount,
-                    new bytes(0)
-                ),
-                IBalancerVault.FundManagement(
-                    from,
-                    false,
-                    from,
-                    false
-                ),
-                trade.limit,
-                trade.deadline
-            )
-        );
-    }
-
-    function _batch(IBalancerVault.SwapKind kind, address payable from, Trade memory trade)
-        internal
-        view
-        returns (
-            address,
-            uint256,
-            bytes memory
-        )
-    {
-        BatchSwapData memory data = abi.decode(
-            trade.exchangeData,
-            (BatchSwapData)
-        );
-
-        return (
-            address(VAULT),
-            trade.sellToken == ETH_ADDRESS ? trade.amount : 0,
-            abi.encodeWithSelector(
-                IBalancerVault.batchSwap.selector,
+        return abi.encodeWithSelector(
+            IBalancerVault.swap.selector,
+            IBalancerVault.SingleSwap(
+                data.poolId,
                 kind,
-                data.swaps,
-                data.assets,
-                IBalancerVault.FundManagement(
-                    from,
-                    false,
-                    from,
-                    false
-                ),
-                data.limits,
-                trade.deadline
-            )
+                IAsset(trade.sellToken),
+                IAsset(trade.buyToken),
+                trade.amount,
+                new bytes(0) // userData
+            ),
+            IBalancerVault.FundManagement(
+                from, // sender
+                false, // fromInternalBalance
+                payable(from), // recipient
+                false // toInternalBalance
+            ),
+            trade.limit,
+            trade.deadline
         );
     }
 
-    function getExecutionData(address payable from, Trade calldata trade)
-        external
-        view
-        override
-        returns (
-            address,
-            uint256,
-            bytes memory
+    function _batch(IBalancerVault.SwapKind kind, address from, Trade memory trade)
+        internal pure returns (bytes memory) {
+        BatchSwapData memory data = abi.decode(trade.exchangeData, (BatchSwapData));
+
+        return abi.encodeWithSelector(
+            IBalancerVault.batchSwap.selector,
+            kind, // swapKind
+            data.swaps,
+            data.assets,
+            IBalancerVault.FundManagement(
+                from, // sender
+                false, // fromInternalBalance
+                payable(from), // recipient
+                false // toInternalBalance
+            ),
+            data.limits,
+            trade.deadline
+        );
+    }
+
+    function getExecutionData(address from, Trade calldata trade)
+        internal view returns (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionCallData
         )
     {
-        if (TradeType(trade.tradeType) == TradeType.EXACT_IN_SINGLE) {
-            return _single(IBalancerVault.SwapKind.GIVEN_IN, from, trade);
-        } else if (TradeType(trade.tradeType) == TradeType.EXACT_OUT_SINGLE) {
-            return _single(IBalancerVault.SwapKind.GIVEN_OUT, from, trade);
-        } else if (TradeType(trade.tradeType) == TradeType.EXACT_IN_BATCH) {
-            return _batch(IBalancerVault.SwapKind.GIVEN_IN, from, trade);
-        } else if (TradeType(trade.tradeType) == TradeType.EXACT_OUT_BATCH) {
-            return _batch(IBalancerVault.SwapKind.GIVEN_OUT, from, trade);
+        target = address(VAULT);
+        if (trade.sellToken == ETH_ADDRESS) {
+            spender = address(0);
+            msgValue = trade.amount;
+        } else {
+            spender = address(VAULT);
+            // msgValue is zero in this case
         }
 
-        revert("invalid trade");
-    }
+        if (TradeType(trade.tradeType) == TradeType.EXACT_IN_SINGLE) {
+            executionCallData = _single(IBalancerVault.SwapKind.GIVEN_IN, from, trade);
+        } else if (TradeType(trade.tradeType) == TradeType.EXACT_OUT_SINGLE) {
+            executionCallData = _single(IBalancerVault.SwapKind.GIVEN_OUT, from, trade);
+        } else if (TradeType(trade.tradeType) == TradeType.EXACT_IN_BATCH) {
+            executionCallData = _batch(IBalancerVault.SwapKind.GIVEN_IN, from, trade);
+        } else if (TradeType(trade.tradeType) == TradeType.EXACT_OUT_BATCH) {
+            executionCallData = _batch(IBalancerVault.SwapKind.GIVEN_OUT, from, trade);
+        }
 
-    function getSpender(Trade calldata trade)
-        external
-        view
-        override
-        returns (address)
-    {
-        if (trade.sellToken == ETH_ADDRESS) return address(0);
-        return address(VAULT);
-    }
-
-    function getLiquidity(bytes calldata params)
-        external
-        view
-        override
-        returns (address[] memory, uint256[] memory)
-    {
-        address[] memory tokens = new address[](0);
-        uint256[] memory balances = new uint256[](0);
-
-        return (tokens, balances);
+        revert InvalidTrade();
     }
 }
