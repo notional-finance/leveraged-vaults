@@ -31,26 +31,27 @@ import {TradeHandler} from "../trading/TradeHandler.sol";
 contract CrossCurrencyfCashVault is BaseStrategyVault {
     using SafeInt256 for uint256;
 
-    uint16 public immutable LEND_CURRENCY_ID;
-    ERC20 public immutable LEND_UNDERLYING_TOKEN;
-    ITradingModule public immutable TRADING_MODULE;
+    uint16 public LEND_CURRENCY_ID;
+    ERC20 public LEND_UNDERLYING_TOKEN;
+    // NOTE: 10 bytes left in first storage slot here
 
-    constructor(
+    constructor(NotionalProxy notional_, ITradingModule tradingModule_)
+        BaseStrategyVault(notional_, tradingModule_) {}
+
+    function initialize(
         string memory name_,
-        address notional_,
-        ITradingModule tradingModule_,
         uint16 borrowCurrencyId_,
         uint16 lendCurrencyId_
-    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_) {
-        LEND_CURRENCY_ID = lendCurrencyId_;
-        TRADING_MODULE = tradingModule_;
+    ) external initializer {
+        __INIT_VAULT(name_, borrowCurrencyId_);
 
+        LEND_CURRENCY_ID = lendCurrencyId_;
         (
             Token memory assetToken,
             Token memory underlyingToken,
             /* ETHRate memory ethRate */,
             /* AssetRateParameters memory assetRate */
-        ) = NotionalProxy(notional_).getCurrencyAndRates(lendCurrencyId_);
+        ) = NOTIONAL.getCurrencyAndRates(lendCurrencyId_);
 
         ERC20 tokenAddress = assetToken.tokenType == TokenType.NonMintable ?
             ERC20(assetToken.tokenAddress) : ERC20(underlyingToken.tokenAddress);
@@ -93,10 +94,11 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             LEND_CURRENCY_ID, maturity, strategyTokens.toInt(), block.timestamp, false
         );
 
+        ERC20 underlyingToken = _underlyingToken();
         (int256 rate, int256 rateDecimals) = TRADING_MODULE.getOraclePrice(
-            address(LEND_UNDERLYING_TOKEN), address(UNDERLYING_TOKEN)
+            address(LEND_UNDERLYING_TOKEN), address(underlyingToken)
         );
-        int256 borrowTokenDecimals = int256(10**UNDERLYING_TOKEN.decimals());
+        int256 borrowTokenDecimals = int256(10**underlyingToken.decimals());
 
         // Convert this back to the borrow currency, external precision
         // (pv (8 decimals) * borrowTokenDecimals * rate) / (rateDecimals * 8 decimals)
@@ -122,7 +124,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         (uint256 minPurchaseAmount, uint32 minLendRate, uint16 dexId) = abi.decode(data, (uint256, uint32, uint16));
         Trade memory trade = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
-            sellToken: address(UNDERLYING_TOKEN),
+            sellToken: address(_underlyingToken()),
             buyToken: address(LEND_UNDERLYING_TOKEN),
             amount: depositUnderlyingExternal,
             limit: minPurchaseAmount,
@@ -197,7 +199,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         Trade memory trade = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
             sellToken: address(LEND_UNDERLYING_TOKEN),
-            buyToken: address(UNDERLYING_TOKEN),
+            buyToken: address(_underlyingToken()),
             amount: balanceAfter - balanceBefore,
             limit: minPurchaseAmount,
             deadline: block.timestamp,

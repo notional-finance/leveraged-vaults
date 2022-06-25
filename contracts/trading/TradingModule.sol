@@ -88,14 +88,16 @@ contract TradingModule is BoringOwnable, UUPSUpgradeable, Initializable, ITradin
             bytes memory executionData
         ) = _getExecutionData(dexId, address(this), trade);
 
-        return _executeInternal(trade, dexId, spender, target, msgValue, executionData);
+        return TradeHandler._executeInternal(
+            trade, dexId, spender, target, msgValue, executionData
+        );
     }
 
     function _getExecutionData(
         uint16 dexId,
         address from,
         Trade calldata trade
-    ) internal view override returns (
+    ) internal view returns (
         address spender,
         address target,
         uint256 msgValue,
