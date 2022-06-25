@@ -93,6 +93,9 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             ERC20(assetToken.tokenAddress) : ERC20(underlyingToken.tokenAddress);
         LEND_UNDERLYING_TOKEN = tokenAddress;
 
+        // Allow Notional to pull the lend underlying currency
+        tokenAddress.approve(address(NOTIONAL), type(uint256).max);
+
         // This value cannot be greater than 1e18
         require(settlementSlippageLimit_ < SETTLEMENT_SLIPPAGE_PRECISION);
         settlementSlippageLimit = settlementSlippageLimit_;
@@ -147,10 +150,18 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         uint256 strategyTokens,
         uint256 maturity
     ) public override view returns (int256 underlyingValue) {
-        // This is the non-risk adjusted oracle price for fCash
-        int256 pvInternal = NOTIONAL.getPresentfCashValue(
-            LEND_CURRENCY_ID, maturity, strategyTokens.toInt(), block.timestamp, false
-        );
+        int256 pvInternal;
+        if (maturity <= block.timestamp) {
+            // After maturity, strategy tokens no longer have a present value
+            pvInternal = strategyTokens.toInt();
+        } else {
+            // This is the non-risk adjusted oracle price for fCash, present value is used in case
+            // liquidation is required. The liquidator may need to exit the fCash position in order
+            // to repay a flash loan.
+            pvInternal = NOTIONAL.getPresentfCashValue(
+                LEND_CURRENCY_ID, maturity, strategyTokens.toInt(), block.timestamp, false
+            );
+        }
 
         ERC20 underlyingToken = _underlyingToken();
         (int256 rate, int256 rateDecimals) = TRADING_MODULE.getOraclePrice(
@@ -195,7 +206,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         // Now we lend the underlying amount
         (uint256 fCashAmount, /* */, bytes32 encodedTrade) = NOTIONAL.getfCashLendFromDeposit(
             LEND_CURRENCY_ID,
-            lendUnderlyingTokens, // TODO: may need to buffer this down a bit
+            lendUnderlyingTokens,
             maturity,
             params.minLendRate,
             block.timestamp,
@@ -231,7 +242,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         uint256 balanceBefore = LEND_UNDERLYING_TOKEN.balanceOf(address(this));
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
-        if (block.timestamp <= maturity) {
+        if (maturity <= block.timestamp) {
             // Only allow the vault to redeem past maturity to settle all positions
             require(account == address(this));
             NOTIONAL.settleAccount(address(this));

@@ -39,7 +39,13 @@ def env():
 def tradingModule(env, TradingModule, nProxy, accounts):
     impl = TradingModule.deploy(env.notional.address, {"from": accounts[0]})
     proxy = nProxy.deploy(impl.address, bytes(0), {"from": accounts[0]})
-    return Contract.from_abi("TradingModule", proxy.address, abi=TradingModule.abi)
+    trading =  Contract.from_abi("TradingModule", proxy.address, abi=TradingModule.abi)
+    # DAI/USD oracle
+    trading.setPriceOracle(env.tokens["DAI"].address, "0xaed0c38402a5d19df6e4c03f4e2dced6e29c1ee9", {"from": env.notional.owner()})
+    # USDC/USD oracle
+    trading.setPriceOracle(env.tokens["USDC"].address, "0x8fffffd4afb6115b954bd326cbe7b4ba576818f6", {"from": env.notional.owner()})
+    return trading
+
 
 def set_flags(flags, **kwargs):
     binList = list(format(flags, "b").rjust(16, "0"))
@@ -57,10 +63,8 @@ def set_flags(flags, **kwargs):
         binList[5] = "1"
     if "ONLY_VAULT_SETTLE" in kwargs:
         binList[6] = "1"
-    if "TRANSFER_SHARES_ON_DELEVERAGE" in kwargs:
+    if "ALLOW_REENTRANCY" in kwargs:
         binList[7] = "1"
-    if "ALLOW_REENTRNACY" in kwargs:
-        binList[8] = "1"
     return int("".join(reversed(binList)), 2)
 
 
