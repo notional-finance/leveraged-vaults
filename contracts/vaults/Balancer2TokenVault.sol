@@ -711,6 +711,8 @@ contract Balancer2TokenVault is
                 data
             );
         }
+
+        // @audit totalStrategyTokenGlobal is not decremented here but it should be
     }
 
     function _validateSettlementSlippage(
