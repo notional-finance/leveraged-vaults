@@ -15,14 +15,21 @@ contract BalancerBoostController is IBoostController {
         IVeBalDelegator vebalDelegator_,
         IVaultController vaultController_
     ) {
+        // @audit is this the same veBAL delegator as here? or is it something different?
+        // I don't see the methods listed here in that PR
+        // https://github.com/notional-finance/staked-note/pull/21/files#diff-0ac5df9ed70c320524413853cca5d63fd6a06fe31ea3244cb0cc3a62c864fe7b
         VEBAL_DELEGATOR = vebalDelegator_;
         VAULT_CONTROLLER = vaultController_;
     }
 
+    // @audit would it be safer to just manually whitelist each token / vault pair into
+    // the delegator rather than allow any strategy vault to do this?
     modifier onlyStrategyVault() {
         VaultConfig memory vaultConfig = VAULT_CONTROLLER.getVaultConfig(
             msg.sender
         );
+        // @audit this won't work because vaultConfig.vault will just return msg.sender,
+        // you would have to check that vaultConfig.flags != 0 (meaning it is enabled)
         if (vaultConfig.vault != msg.sender)
             revert StrategyVaultRequired(msg.sender);
         _;

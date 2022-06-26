@@ -195,6 +195,8 @@ library TradeHandler {
         if (!success) revert ERC20Error();
     }
 
+    // @audit there should be an internal and external version of this method, the external method should
+    // be exposed on the TradingModule directly
     function getLimitAmount(
         address tradingModule,
         uint16 tradeType,
@@ -220,12 +222,15 @@ library TradeHandler {
         uint256 buyTokenDecimals = 10 **
             (buyToken == address(0) ? 18 : ERC20(buyToken).decimals());
 
+        // @audit what about EXACT_OUT_BATCH, won't that fall into the wrong else condition?
         if (TradeType(tradeType) == TradeType.EXACT_OUT_SINGLE) {
             // 0 means no slippage limit
             if (slippageLimit == 0) {
                 return type(uint256).max;
             }
             // Invert oracle price
+            // @audit comment this formula and re-arrange such that division is pushed to the end
+            // to the extent possible
             oraclePrice = (oracleDecimals * oracleDecimals) / oraclePrice;
             // For exact out trades, limitAmount is the max amount of sellToken the DEX can
             // pull from the contract
@@ -257,6 +262,7 @@ library TradeHandler {
         }
     }
 
+    /// @audit maybe call this method something more specific for the balancer vault
     function approveTokens(
         address balancerVault,
         address underylingToken,

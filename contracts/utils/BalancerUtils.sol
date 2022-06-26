@@ -6,7 +6,10 @@ import {IBalancerVault, IAsset} from "../../interfaces/balancer/IBalancerVault.s
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 
+// @audit since this is actually balancer specific, maybe we should make a sub folder in vaults/Balancer
+// and just put this in there instead?
 library BalancerUtils {
+    // @audit this is declared as well in Balancer2TokenVault, perhaps just remove one.
     WETH9 public constant WETH =
         WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
@@ -24,10 +27,13 @@ library BalancerUtils {
         queries[0].secs = secs;
         queries[0].ago = 0; // now
 
+        // @audit is this comment correct? isn't the price denominated in the first token?
         // Gets the balancer time weighted average price denominated in ETH
         return IPriceOracle(pool).getTimeWeightedAverage(queries)[0];
     }
 
+    // @audit this is marked external which means Balancer2TokenVault will use a significant
+    // amount of gas to call this method, maybe just inline it into the constructor
     function getPoolAddress(IBalancerVault vault, bytes32 poolId)
         external
         view
@@ -39,6 +45,7 @@ library BalancerUtils {
         return poolAddress;
     }
 
+    // @audit this method is never called FYI, it is called directly in the constructor
     function getTokenAddress(
         IBalancerVault vault,
         bytes32 poolId,
@@ -62,6 +69,9 @@ library BalancerUtils {
         uint256 primaryDecimals,
         uint256 secondaryDecimals
     ) external view returns (uint256) {
+        // @audit can this method be replaced with this method call instead?
+        // https://dev.balancer.fi/references/contracts/apis/pools/weightedpool2tokens#getlatest
+
         // prettier-ignore
         (
             /* address[] memory tokens */,
@@ -70,6 +80,8 @@ library BalancerUtils {
         ) = vault.getPoolTokens(poolId);
 
         // Make everything 1e18
+        // @audit check if the decimals != 18 to save some gas since 18 is so common, also this is an edge case but if
+        // your decimals are greater than 18 this will underflow (probably will never happen)
         uint256 primaryBalance = balances[primaryIndex] *
             10**(18 - primaryDecimals);
         uint256 secondaryBalance = balances[1 - primaryIndex] *
@@ -78,17 +90,21 @@ library BalancerUtils {
         // First we multiply everything by 1e18 for the weight division (weights are in 1e18),
         // then we multiply the numerator by 1e18 to to preserve enough precision for the division
         if (tokenIndex == primaryIndex) {
+            // @audit rearrange this so that multiplication always comes before division
             // PrimarySpotPrice = (SecondaryBalance / SecondaryWeight * 1e18) / (PrimaryBalance / PrimaryWeight)
             return
                 (((secondaryBalance * 1e18) / secondaryWeight) * 1e18) /
                 ((primaryBalance * 1e18) / primaryWeight);
         } else if (tokenIndex == (1 - primaryIndex)) {
+            // @audit rearrange this so that multiplication always comes before division
             // SecondarySpotPrice = (PrimaryBalance / PrimaryWeight * 1e18) / (SecondaryBalance / SecondaryWeight)
             return
                 (((primaryBalance * 1e18) / primaryWeight) * 1e18) /
                 ((secondaryBalance * 1e18) / secondaryWeight);
         }
 
+        // @audit move the revert to the top of the method, then you can get rid of the else if above since you will
+        // know that tokenIndex is always 1 or 0
         revert InvalidTokenIndex(tokenIndex);
     }
 
@@ -101,6 +117,8 @@ library BalancerUtils {
     ) private view returns (IAsset[] memory assets, uint256[] memory amounts) {
         assets = new IAsset[](2);
         assets[primaryIndex] = IAsset(primaryAddress);
+        // @audit mark unchecked { 1 - primaryIndex } to reduce bytecode size, checked
+        // arithmetic is costs 15x gas versus unchecked
         assets[1 - primaryIndex] = IAsset(secondaryAddress);
 
         amounts = new uint256[](2);
@@ -108,6 +126,8 @@ library BalancerUtils {
         amounts[1 - primaryIndex] = secondaryAmount;
     }
 
+    // @audit this should be renamed joinPoolExactTokensIn since there are other join methods we may
+    // use in the future
     function joinPool(
         address vault,
         bytes32 poolId,
@@ -130,6 +150,7 @@ library BalancerUtils {
             primaryIndex
         );
 
+        // @audit use a named constant for address(0)
         uint256 msgValue = assets[primaryIndex] == IAsset(address(0))
             ? maxAmountsIn[primaryIndex]
             : 0;
@@ -152,6 +173,7 @@ library BalancerUtils {
         );
     }
 
+    // @audit this should be renamed exitPoolExactBPTIn since there are other exit methods we may use in the future
     function exitPool(
         address vault,
         bytes32 poolId,
@@ -161,13 +183,14 @@ library BalancerUtils {
         uint256 minSecondaryAmount,
         uint8 primaryIndex,
         uint256 bptExitAmount,
-        bool withdrawFromWETH
+        bool withdrawFromWETH // @audit would this be more clear if it was redeemToETH
     ) external {
         // prettier-ignore
         (
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
+            // @audit this code won't work for any other token pair
             withdrawFromWETH ? address(0) : address(WETH),
             minPrimaryAmount,
             secondaryAddress,
@@ -178,6 +201,9 @@ library BalancerUtils {
         IBalancerVault(vault).exitPool(
             poolId,
             address(this),
+            // @audit i don't think this is correct, the vault should receive all the underlying
+            // assets and then it will return them to Notional or the account depending on the
+            // situations
             payable(msg.sender), // Owner will receive the underlying assets
             IBalancerVault.ExitPoolRequest(
                 assets,

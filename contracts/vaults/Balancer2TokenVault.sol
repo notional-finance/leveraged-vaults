@@ -31,6 +31,7 @@ contract Balancer2TokenVault is
 {
     using TradeHandler for Trade;
     using SafeERC20 for ERC20;
+    // @audit SafeInt256 has casts between uint and int and probably uses less bytecode space
     using SafeCast for uint256;
 
     struct DeploymentParams {
@@ -71,7 +72,7 @@ contract Balancer2TokenVault is
 
     struct RepaySecondaryCallbackParams {
         uint16 dexId;
-        uint32 slippageLimit;
+        uint32 slippageLimit; // @audit the denomination of this should be marked in the variable name
         uint256 deadline;
         bytes exchangeData;
     }
@@ -126,6 +127,9 @@ contract Balancer2TokenVault is
         WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     /** Immutables */
+    // @audit similar remark here, each public variable adds an external getter so all of these
+    // will result in larger bytecode size, consider just making one method that returns all the
+    // immutables
     uint16 public immutable SECONDARY_BORROW_CURRENCY_ID;
     IBalancerVault public immutable BALANCER_VAULT;
     bytes32 public immutable BALANCER_POOL_ID;
@@ -151,11 +155,21 @@ contract Balancer2TokenVault is
     /// @notice Total number of strategy tokens across all maturities
     uint256 public totalStrategyTokenGlobal;
 
+    // @audit this can probably be a smaller value in storage, if you move this down a slot
+    // it will pack in with the rest of the uint32 values
     /// @notice Balancer oracle window in seconds
     uint256 public oracleWindowInSeconds;
 
     uint256 public maxUnderylingSurplus;
 
+    // @audit if you move oracleWindowInSeconds to right here and then you reduce the size of
+    // settlementCoolDownInSeconds and emergencySettlementCoolDownInSeconds to uint16 on both,
+    // using minutes instead of seconds to define them you will be able to pack all the rest of the
+    // storage into a single slot. That should save some gas. To make it clearer you could make
+    // a struct with all of these values.
+    // @audit marking all of these storage values as public adds a getter for each one, which
+    // adds a decent amount of bytecode. consider making them internal and then creating a single
+    // getter for all the parameters (or just move them into structs and mark those as public)
     uint32 public maxBalancerPoolShare;
 
     /// @notice Slippage limit for normal settlement
@@ -167,9 +181,11 @@ contract Balancer2TokenVault is
     uint32 public balancerOracleWeight;
 
     /// @notice Cool down in seconds for normal settlement
+    // @audit this can be a smaller value in storage especially if you use minutes in storage instead
     uint32 public settlementCoolDownInSeconds;
 
     /// @notice Cool down in seconds for emergency settlement
+    // @audit this can be a smaller value in storage especially if you use minutes in storage instead
     uint32 public emergencySettlementCoolDownInSeconds;
 
     uint32 public lastSettlementTimestamp;
@@ -182,12 +198,21 @@ contract Balancer2TokenVault is
         DeploymentParams memory params
     )
         BaseStrategyVault(
+            // @audit this should have the token names in it if we have multiple versions of this
+            // vault, consider using string(abi.encodePacked("Wrapped f", _symbol, " @ ", _maturity))
+            // so that we can generate a consistent name based on the underlying tokens for the
+            // vault. In the newer version of BaseStrategyVault the name is set in the initializer
+            // since it is always a storage variable anyway.
             "Balancer 2-Token Strategy Vault",
             notional_,
             borrowCurrencyId_
         )
         initializer
     {
+        // @audit we should validate in this method that the balancer oracle is enabled otherwise none
+        // of the methods will work:
+        // https://dev.balancer.fi/references/contracts/apis/pools/weightedpool2tokens#getmiscdata
+
         SECONDARY_BORROW_CURRENCY_ID = params.secondaryBorrowCurrencyId;
         BALANCER_VAULT = params.balancerVault;
         BALANCER_POOL_ID = params.balancerPoolId;
@@ -236,6 +261,7 @@ contract Balancer2TokenVault is
                 .getBalancerToken()
         );
         TRADING_MODULE = params.tradingModule;
+        // @audit mark what units this will should be set in, (seconds?)
         SETTLEMENT_PERIOD = params.settlementPeriod;
     }
 
@@ -250,6 +276,7 @@ contract Balancer2TokenVault is
     }
 
     function _initParams(InitParams calldata params) private {
+        // @audit this should call a version of setInitParams instead so that there is validation on the first call
         oracleWindowInSeconds = params.oracleWindowInSeconds;
         settlementCoolDownInSeconds = params.settlementCooldownInSeconds;
         balancerOracleWeight = params.balancerOracleWeight;
@@ -266,10 +293,12 @@ contract Balancer2TokenVault is
     /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
     /// and Balancer uses WETH
     function _tokenAddress(address token) private view returns (address) {
+        // @audit consider using a constant for address(0) here like ETH_ADDRESS or something
         return token == address(0) ? address(WETH) : address(token);
     }
 
     function _tokenBalance(address token) private view returns (uint256) {
+        // @audit consider using a constant for address(0) here like ETH_ADDRESS or something
         return
             token == address(0)
                 ? address(this).balance
@@ -282,6 +311,10 @@ contract Balancer2TokenVault is
         view
         returns (address)
     {
+        // @audit there is an edge case around non-mintable tokens, you can see how this is
+        // handled in the constructor in the base strategy vault. if this method is only called
+        // once in the constructor maybe just inline the method call there otherwise this may
+        // get called accidentally in non constructor methods?
         // prettier-ignore
         (
             /* Token memory assetToken */, 
@@ -292,6 +325,10 @@ contract Balancer2TokenVault is
 
     /// @notice This list is used to validate trades
     function _initRewardTokenList() private {
+        // @audit is it possible that this token list ever updates? should we make this method callable
+        // by the owner to update it? Also what if a a reward token is de-listed? It appears that this
+        // is only used once, do you think we could just validate the rewardToken each time in
+        // _executeRewardTrades?
         if (address(LIQUIDITY_GAUGE) != address(0)) {
             address[] memory rewardTokens = VEBAL_DELEGATOR
                 .getGaugeRewardTokens(address(LIQUIDITY_GAUGE));
@@ -303,6 +340,7 @@ contract Balancer2TokenVault is
     /// @notice Approve necessary token transfers
     function _approveTokens() private {
         // Approving in external lib to reduce contract size
+        // @audit would be nice to move this back into the contract if we have the space
         TradeHandler.approveTokens(
             address(BALANCER_VAULT),
             address(UNDERLYING_TOKEN),
@@ -329,12 +367,16 @@ contract Balancer2TokenVault is
             maturity
         );
 
+        // @audit it would be more efficient to combine this method call with
+        // the second method call to get the pairPrice. it looks like it is already
+        // calculated inside this method so I would return it here.
         uint256 primaryBalance = OracleHelper.getTimeWeightedPrimaryBalance(
             address(BALANCER_POOL_TOKEN),
             oracleWindowInSeconds,
             PRIMARY_INDEX,
             PRIMARY_WEIGHT,
             SECONDARY_WEIGHT,
+            // @audit consider storing this as immutable to save gas
             address(UNDERLYING_TOKEN) == address(0)
                 ? 18
                 : UNDERLYING_TOKEN.decimals(),
@@ -352,6 +394,12 @@ contract Balancer2TokenVault is
             strategyTokenAmount
         );
 
+        // @audit every external method call adds a significant amount of bytecode for
+        // loading the memory buffer and then unpacking it, reducing external calls will
+        // save a lot of gas and bytecode space.
+        // @audit this variable should be renamed to weightedOraclePairPrice or something to
+        // make it clear it is an oracle price
+        // @audit leave a comment here mentioning that the oracle price is normalized to 18 decimals
         uint256 pairPrice = OracleHelper.getPairPrice(
             address(BALANCER_POOL_TOKEN),
             address(BALANCER_VAULT),
@@ -361,9 +409,12 @@ contract Balancer2TokenVault is
             balancerOracleWeight
         );
 
+        // @audit I find this variable name a little confusing, maybe this should be named
+        // "secondaryBorrowedDenominatedInPrimary"
         uint256 borrowedPrimaryAmount;
         if (PRIMARY_INDEX == 0) {
             borrowedPrimaryAmount =
+                // @audit 1e18 should be a named constant here
                 (borrowedSecondaryfCashAmount * 1e18) /
                 pairPrice;
         } else {
@@ -372,6 +423,9 @@ contract Balancer2TokenVault is
                 1e18;
         }
 
+        // @audit are you sure the precision here is matching? borrowedSecondaryfCashAmount is
+        // always 8 decimal precision whereas primaryBalance should be in the native underlying
+        // token precision
         return primaryBalance.toInt256() - borrowedPrimaryAmount.toInt256();
     }
 
@@ -400,16 +454,25 @@ contract Balancer2TokenVault is
             // Require the secondary borrow amount to be within SECONDARY_BORROW_LOWER_LIMIT percent
             // of the optimal amount
             require(
+                // @audit rearrange these so that the inequalities are always <= for clarity.
                 borrowedSecondaryAmount >=
                     ((optimalSecondaryAmount * (SECONDARY_BORROW_LOWER_LIMIT)) /
                         100) &&
                     borrowedSecondaryAmount <=
                     (optimalSecondaryAmount * (SECONDARY_BORROW_UPPER_LIMIT)) /
                         100,
+                // @audit return a typed error here like:
+                // InvalidSecondaryBorrow(borrowedSecondaryAmount, optimalSecondaryAmount, params.secondaryfCashAmount)
                 "invalid secondary amount"
             );
 
             // Track the amount borrowed per account and maturity on the contract
+            // @audit the borrowed secondary fCash amount tracking is incorrect here, i'll have to think a bit more
+            // about how we handle it but it needs to be a share of the total secondary fCash borrowed to account
+            // for the situation where settlement occurs and the secondary fCash borrowed is repaid for the vault
+            // as a whole.
+            // @audit I will write a helper library for tracking secondary borrowed amounts, perhaps we should just
+            // put it on the main Notional vault instead of doing it inside the vault here.
             secondaryAmountfCashBorrowed[account][maturity] += params
                 .secondaryfCashAmount;
         }
@@ -449,12 +512,15 @@ contract Balancer2TokenVault is
         if (totalStrategyTokenGlobal == 0) {
             strategyTokensMinted = bptAmount;
         } else {
+            // @audit the calculation for the next three variables can be made into a helper method since
+            // it is used more than once
             uint256 totalBPTHeld = bptHeld();
             uint256 totalStrategyTokenSupplyInMaturity = totalSupply(maturity);
             uint256 bptHeldInMaturity = (totalBPTHeld *
                 totalStrategyTokenSupplyInMaturity) / totalStrategyTokenGlobal;
             strategyTokensMinted =
                 (totalStrategyTokenSupplyInMaturity * bptAmount) /
+                // @audit leave a comment on this math here, but looks correct
                 (bptHeldInMaturity - bptAmount);
         }
 
@@ -462,13 +528,17 @@ contract Balancer2TokenVault is
         totalStrategyTokenGlobal += strategyTokensMinted;
     }
 
+    // @audit for readability, it might be nice to group some of these methods closer to where they are
+    // called by other functions (this would be better to group near convertStrategyToUnderlying)
     /// @notice Converts strategy tokens to BPT
     function convertStrategyTokensToBPTClaim(
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view returns (uint256 bptClaim) {
+        // @audit-ok math looks good
         if (totalStrategyTokenGlobal == 0) return strategyTokenAmount;
 
+        // @audit use a helper method for these next three calculations
         uint256 totalBPTHeld = bptHeld();
         uint256 totalStrategyTokenSupplyInMaturity = totalSupply(maturity);
         uint256 bptHeldInMaturity = (totalBPTHeld *
@@ -486,6 +556,7 @@ contract Balancer2TokenVault is
     {
         if (totalStrategyTokenGlobal == 0) return bptClaim;
 
+        // @audit use a helper method for these next three calculations
         uint256 totalBPTHeld = bptHeld();
         uint256 totalStrategyTokenSupplyInMaturity = totalSupply(maturity);
         uint256 bptHeldInMaturity = (totalBPTHeld *
@@ -513,7 +584,8 @@ contract Balancer2TokenVault is
             params.minSecondary, 
             PRIMARY_INDEX, 
             bptExitAmount, 
-            params.withdrawFromWETH
+            params.withdrawFromWETH // @audit Notional expects ETH in the BaseStrategyVault so this
+                                    // parameter is something to be careful about allowing the user to set
         );
 
         // Repay secondary debt
@@ -525,6 +597,7 @@ contract Balancer2TokenVault is
                 params.secondarySlippageLimit,
                 params.callbackData
             );
+            // @audit the user's secondaryfCash borrowed is never decremented here
         }
     }
 
@@ -533,6 +606,7 @@ contract Balancer2TokenVault is
         uint256 underlyingRequired,
         bytes calldata data
     ) internal override returns (bytes memory returnData) {
+        // @audit this is already checked in the external method
         require(msg.sender == address(NOTIONAL)); /// @dev invalid caller
         require(SECONDARY_BORROW_CURRENCY_ID > 0); /// @dev invalid secondary currency
         RepaySecondaryCallbackParams memory params = abi.decode(
@@ -549,16 +623,16 @@ contract Balancer2TokenVault is
                 TradeType.EXACT_OUT_SINGLE,
                 address(UNDERLYING_TOKEN),
                 address(SECONDARY_TOKEN),
-                underlyingRequired - secondaryBalance,
+                underlyingRequired - secondaryBalance, // @audit can mark unchecked
                 TradeHandler.getLimitAmount(
                     address(TRADING_MODULE),
                     uint16(TradeType.EXACT_OUT_SINGLE),
                     address(UNDERLYING_TOKEN),
                     address(SECONDARY_TOKEN),
-                    underlyingRequired - secondaryBalance,
+                    underlyingRequired - secondaryBalance, // @audit can mark unchecked, put this on the stack and calculate once
                     params.slippageLimit
                 ),
-                params.deadline,
+                params.deadline, // @audit deadline should always be block.timestamp
                 params.exchangeData
             );
 
@@ -566,10 +640,11 @@ contract Balancer2TokenVault is
         }
 
         // Update balance before transfer
+        // @audit this will revert if secondaryBalance < underlyingRequired
         secondaryBalance -= underlyingRequired;
 
         // Transfer required secondary balance to Notional
-        if (SECONDARY_BORROW_CURRENCY_ID == 1) {
+        if (SECONDARY_BORROW_CURRENCY_ID == 1) { // @audit use a named constant for 1
             payable(address(NOTIONAL)).transfer(underlyingRequired);
         } else {
             SECONDARY_TOKEN.safeTransfer(address(NOTIONAL), underlyingRequired);
@@ -588,9 +663,9 @@ contract Balancer2TokenVault is
                     address(SECONDARY_TOKEN),
                     address(UNDERLYING_TOKEN),
                     secondaryBalance,
-                    params.slippageLimit
+                    params.slippageLimit // @audit what denomination is slippage limit in here?
                 ),
-                params.deadline,
+                params.deadline, // @audit deadline should be block.timestamp
                 params.exchangeData
             );
 
@@ -604,6 +679,8 @@ contract Balancer2TokenVault is
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 tokensFromRedeem) {
+        // @audit the returned value for tokensForRedeem is incorrect here, it should be
+        // the amount of primary underlying tokens as a result of the redemption
         tokensFromRedeem = convertStrategyTokensToBPTClaim(
             strategyTokens,
             maturity
@@ -662,11 +739,16 @@ contract Balancer2TokenVault is
         uint256 bptToSettle,
         bytes calldata data
     ) external {
+        // @audit name this redeemStrategyTokenAmount so the denomination is clear, this also appears to be set to
+        // zero in 2 of the 3 cases.
         uint256 redeemAmount;
+        // @audit would this code be cleaner and safer if we just split it into three different external methods?
         if (maturity <= block.timestamp) {
             // Vault has reached maturity. settleVault becomes authenticated in this case
             if (msg.sender != NOTIONAL.owner())
                 revert NotionalOwnerRequired(msg.sender);
+            // @audit I'm not sure if it is correct to call this the the emergencySettlement, it is maybe more
+            // correct to call this this post maturity settlement
             _validateSettlementCoolDown(
                 lastEmergencySettlementTimestamp,
                 emergencySettlementCoolDownInSeconds
@@ -682,14 +764,17 @@ contract Balancer2TokenVault is
                 _validateSettlementSlippage(data, settlementSlippageLimit);
             } else {
                 // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
+                // @audit this variable should be emergencyBPTWithdrawThreshold
                 uint256 maxBPTAmount = (BALANCER_POOL_TOKEN.totalSupply() *
-                    maxBalancerPoolShare) / 1e8;
+                    maxBalancerPoolShare) / 1e8; // @audit use a named constant for 1e8
                 uint256 _bptHeld = bptHeld();
+                // @audit this error message should be InvalidEmergencySettlement()
                 if (_bptHeld <= maxBPTAmount) revert NotInSettlementWindow();
 
                 // desiredPoolShare = maxPoolShare * bufferPercentage
                 uint256 desiredPoolShare = (maxBalancerPoolShare *
                     BALANCER_POOL_SHARE_BUFFER) / 1e8;
+                // @audit BalancerPool.totalSupply() is called twice here, just put it on the stack
                 uint256 desiredBPTAmount = (BALANCER_POOL_TOKEN.totalSupply() *
                     desiredPoolShare) / 1e8;
                 redeemAmount = convertBPTClaimToStrategyTokens(
@@ -699,6 +784,7 @@ contract Balancer2TokenVault is
             }
         }
 
+        // @audit this variable should be named the expected oracle value of underlying redeemed
         int256 underlyingRedeemed = convertStrategyToUnderlying(
             address(this),
             redeemAmount,
@@ -714,6 +800,8 @@ contract Balancer2TokenVault is
         // Make sure we not redeeming too much to underlying
         // This allows BPT to be accrued as the profit token.
         if (
+            // @audit this can use a comment on the nature of how the different signs will behave since
+            // underlyingRedeemed can be negative and underlyingCashRequiredToSettle can be negative as well
             underlyingRedeemed - underlyingCashRequiredToSettle >
             int256(maxUnderylingSurplus)
         ) {
@@ -728,11 +816,14 @@ contract Balancer2TokenVault is
             int256 assetCashProfit,
             int256 underlyingCashProfit
         ) = NOTIONAL.redeemStrategyTokensToCash(maturity, redeemAmount, data);
+        // @audit if assetCashProfit (i would rename this value) is < 0 AND we are past maturity 
+        // then call NOTIONAL.settleVault(...) to mark the vault as settled in here.
 
         // Profits are the surplus in cash after the tokens have been settled, this is the negation of
         // what is returned from the method above
         emit VaultSettled(
             maturity,
+            // @audit it's not necessary to emit these values, they are not profits they are just residuals from settlement
             -1 * assetCashProfit,
             -1 * underlyingCashProfit
         );
@@ -741,6 +832,10 @@ contract Balancer2TokenVault is
     /// @notice Claim BAL token gauge reward
     /// @return balAmount amount of BAL claimed
     function claimBAL() external returns (uint256) {
+        // @audit perhaps it would be more efficient to then call executeRewardTrades right after
+        // this claim is done inside the same method?
+        // @audit part of this BAL that is claimed needs to be donated to the Notional protocol,
+        // we should set an percentage and then transfer to the TreasuryManager contract.
         return BOOST_CONTROLLER.claimBAL(address(LIQUIDITY_GAUGE));
     }
 
@@ -751,6 +846,8 @@ contract Balancer2TokenVault is
         external
         returns (address[] memory, uint256[] memory)
     {
+        // @audit perhaps it would be more efficient to then call executeRewardTrades right after
+        // this claim is done inside the same method?
         return BOOST_CONTROLLER.claimGaugeTokens(address(LIQUIDITY_GAUGE));
     }
 
@@ -863,15 +960,26 @@ contract Balancer2TokenVault is
         view
         returns (uint256 secondaryAmount)
     {
+        // @audit when you have a large amount of inputs into a method like this, there is a solidity
+        // grammar you can use that works like this, it might help the readability for long parameter
+        // lists and ensure that arguments don't get accidentally switched around
+        //
+        // OracleHelper.getOptimalSecondaryBorrowAmount({
+        //     pool: address(BALANCER_POOL_TOKEN),
+        //     oracleWindowInSeconds: oracleWindowInSeconds,
+        //     ...
+        // })
         secondaryAmount = OracleHelper.getOptimalSecondaryBorrowAmount(
             address(BALANCER_POOL_TOKEN),
             oracleWindowInSeconds,
             PRIMARY_INDEX,
             PRIMARY_WEIGHT,
             SECONDARY_WEIGHT,
+            // @audit there is a bool called UNDERLYING_IS_ETH which can be used here instead.
             address(UNDERLYING_TOKEN) == address(0)
                 ? 18
                 : UNDERLYING_TOKEN.decimals(),
+            // @audit consider putting this into an immutable variable
             address(SECONDARY_TOKEN) == address(0)
                 ? 18
                 : SECONDARY_TOKEN.decimals(),
@@ -881,6 +989,8 @@ contract Balancer2TokenVault is
 
     /// @dev Gets the total BPT held across the LIQUIDITY GAUGE, VeBal Delegator and the contract itself
     function bptHeld() public view returns (uint256) {
+        // @audit this does add pretty significant gas costs, if we can guarantee that two of these
+        // are always zero then let's simplify it.
         return (LIQUIDITY_GAUGE.balanceOf(address(this)) +
             BALANCER_POOL_TOKEN.balanceOf(address(this)) +
             VEBAL_DELEGATOR.getTokenBalance(
@@ -902,6 +1012,8 @@ contract Balancer2TokenVault is
         if (SECONDARY_BORROW_CURRENCY_ID > 0) {
             // Return total second currency borrowed if account is the vault address
             if (account == address(this))
+                // @audit this needs to be pro-rata as well when the vault partially settles. it
+                // should also be rounded up by 1 in the same manner as the per account total
                 return
                     NOTIONAL.getSecondaryBorrow(
                         address(this),
@@ -910,6 +1022,12 @@ contract Balancer2TokenVault is
                     );
             uint256 accountTotal = getStrategyTokenBalance(account);
             if (accountTotal > 0) {
+                // @audit this math probably deserves a comment, this is the pro-rata amount
+                // of secondaryfCash borrowed based for the strategy tokens.
+                // @audit we should round up here instead of rounding down so that dust amounts
+                // do not accrue in the borrowed secondary fCash amount. so every time we
+                // return this value we would want to add 1 unless accountTotal == strategyTokenAmount
+                // in which case we return the entire balance.
                 borrowedSecondaryfCashAmount =
                     (secondaryAmountfCashBorrowed[account][maturity] *
                         strategyTokenAmount) /
@@ -920,6 +1038,8 @@ contract Balancer2TokenVault is
 
     /// @notice Gets the total number of strategy tokens owned by the given account
     /// @param account account address
+    // @audit this is not correct, if the vault holds asset cash then vault shares != strategy tokens,
+    // I can expose a method to return the strategy token balance
     function getStrategyTokenBalance(address account)
         public
         view
@@ -932,6 +1052,7 @@ contract Balancer2TokenVault is
         return vaultAccount.vaultShares;
     }
 
+    // @audit would consider renaming this to totalSupplyInMaturity so it does not get confused
     function totalSupply(uint256 maturity) public view returns (uint256) {
         VaultState memory vaultState = NOTIONAL.getVaultState(
             address(this),
@@ -943,4 +1064,6 @@ contract Balancer2TokenVault is
     function _authorizeUpgrade(
         address /* newImplementation */
     ) internal override onlyNotionalOwner {}
+
+    // @audit add a storage gap down here `uint256[100] private __gap;`
 }
