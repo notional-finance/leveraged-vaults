@@ -17,7 +17,6 @@ library UniV2Adapter {
             bytes memory executionCallData
         )
     {
-        if (trade.tradeType == TradeType.EXACT_OUT_BATCH) revert InvalidTrade();
         TradeType tradeType = trade.tradeType;
         UniV2Data memory data = abi.decode(trade.exchangeData, (UniV2Data));
 
