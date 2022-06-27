@@ -12,6 +12,7 @@ library BalancerUtils {
     // @audit this is declared as well in Balancer2TokenVault, perhaps just remove one.
     WETH9 public constant WETH =
         WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    address internal constant ETH_ADDRESS = address(0);
 
     error InvalidTokenIndex(uint256 tokenIndex);
 
@@ -190,8 +191,12 @@ library BalancerUtils {
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
+<<<<<<< Updated upstream
             // @audit this code won't work for any other token pair
             withdrawFromWETH ? address(0) : address(WETH),
+=======
+            primaryAddress == ETH_ADDRESS ? (withdrawFromWETH ? ETH_ADDRESS : address(WETH)) : primaryAddress,
+>>>>>>> Stashed changes
             minPrimaryAmount,
             secondaryAddress,
             minSecondaryAmount,
@@ -201,10 +206,14 @@ library BalancerUtils {
         IBalancerVault(vault).exitPool(
             poolId,
             address(this),
+<<<<<<< Updated upstream
             // @audit i don't think this is correct, the vault should receive all the underlying
             // assets and then it will return them to Notional or the account depending on the
             // situations
             payable(msg.sender), // Owner will receive the underlying assets
+=======
+            address(this), // Vault will receive the underlying assets
+>>>>>>> Stashed changes
             IBalancerVault.ExitPoolRequest(
                 assets,
                 minAmountsOut,

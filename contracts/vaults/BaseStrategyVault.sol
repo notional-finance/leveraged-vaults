@@ -130,8 +130,4 @@ abstract contract BaseStrategyVault is IStrategyVault {
     ) external onlyNotional returns (bytes memory returnData) {
         return _repaySecondaryBorrowCallback(assetCashRequired, data);
     }
-
-    receive() external payable {
-        // Allow ETH transfers to succeed
-    }
 }

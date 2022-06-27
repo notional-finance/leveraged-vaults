@@ -11,6 +11,7 @@ import {Token, VaultState, VaultAccount} from "../global/Types.sol";
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
 import {OracleHelper} from "../utils/OracleHelper.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
+import {BalancerVaultStorageLayoutV1} from "./BalancerVaultStorageLayoutV1.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../interfaces/notional/IVaultController.sol";
@@ -27,7 +28,8 @@ import {TradeHandler} from "../trading/TradeHandler.sol";
 contract Balancer2TokenVault is
     UUPSUpgradeable,
     Initializable,
-    BaseStrategyVault
+    BaseStrategyVault,
+    BalancerVaultStorageLayoutV1
 {
     using TradeHandler for Trade;
     using SafeERC20 for ERC20;
@@ -45,15 +47,19 @@ contract Balancer2TokenVault is
     }
 
     struct InitParams {
+        string name;
+        VaultSettings settings;
+    }
+
+    struct VaultSettings {
         uint32 oracleWindowInSeconds;
-        uint32 settlementCooldownInSeconds;
         uint32 balancerOracleWeight;
         uint32 maxBalancerPoolShare;
-        uint256 maxUnderylingSurplus;
+        uint256 maxUnderlyingSurplus;
         uint32 settlementSlippageLimit;
-        uint32 emergencySettlementSlippageLimit;
-        uint32 settlementCoolDownInSeconds;
-        uint32 emergencySettlementCoolDownInSeconds;
+        uint16 settlementCoolDownInMinutes;
+        uint32 postMaturitySettlementSlippageLimit;
+        uint16 postMaturitySettlementCoolDownInMinutes;
     }
 
     struct DepositParams {
@@ -145,65 +151,12 @@ contract Balancer2TokenVault is
     uint256 public immutable PRIMARY_WEIGHT;
     uint256 public immutable SECONDARY_WEIGHT;
 
-    /// @notice account => (maturity => balance)
-    mapping(address => mapping(uint256 => uint256))
-        private secondaryAmountfCashBorrowed;
-
-    /// @notice Keeps track of the possible gauge reward tokens
-    mapping(address => bool) private gaugeRewardTokens;
-
-    /// @notice Total number of strategy tokens across all maturities
-    uint256 public totalStrategyTokenGlobal;
-
-    // @audit this can probably be a smaller value in storage, if you move this down a slot
-    // it will pack in with the rest of the uint32 values
-    /// @notice Balancer oracle window in seconds
-    uint256 public oracleWindowInSeconds;
-
-    uint256 public maxUnderylingSurplus;
-
-    // @audit if you move oracleWindowInSeconds to right here and then you reduce the size of
-    // settlementCoolDownInSeconds and emergencySettlementCoolDownInSeconds to uint16 on both,
-    // using minutes instead of seconds to define them you will be able to pack all the rest of the
-    // storage into a single slot. That should save some gas. To make it clearer you could make
-    // a struct with all of these values.
-    // @audit marking all of these storage values as public adds a getter for each one, which
-    // adds a decent amount of bytecode. consider making them internal and then creating a single
-    // getter for all the parameters (or just move them into structs and mark those as public)
-    uint32 public maxBalancerPoolShare;
-
-    /// @notice Slippage limit for normal settlement
-    uint32 public settlementSlippageLimit;
-
-    /// @notice Slippage limit for emergency settlement (vault owns too much of the Balancer pool)
-    uint32 public emergencySettlementSlippageLimit;
-
-    uint32 public balancerOracleWeight;
-
-    /// @notice Cool down in seconds for normal settlement
-    // @audit this can be a smaller value in storage especially if you use minutes in storage instead
-    uint32 public settlementCoolDownInSeconds;
-
-    /// @notice Cool down in seconds for emergency settlement
-    // @audit this can be a smaller value in storage especially if you use minutes in storage instead
-    uint32 public emergencySettlementCoolDownInSeconds;
-
-    uint32 public lastSettlementTimestamp;
-
-    uint32 public lastEmergencySettlementTimestamp;
-
     constructor(
         address notional_,
         uint16 borrowCurrencyId_,
         DeploymentParams memory params
     )
         BaseStrategyVault(
-            // @audit this should have the token names in it if we have multiple versions of this
-            // vault, consider using string(abi.encodePacked("Wrapped f", _symbol, " @ ", _maturity))
-            // so that we can generate a consistent name based on the underlying tokens for the
-            // vault. In the newer version of BaseStrategyVault the name is set in the initializer
-            // since it is always a storage variable anyway.
-            "Balancer 2-Token Strategy Vault",
             notional_,
             borrowCurrencyId_
         )
@@ -281,7 +234,7 @@ contract Balancer2TokenVault is
         settlementCoolDownInSeconds = params.settlementCooldownInSeconds;
         balancerOracleWeight = params.balancerOracleWeight;
         maxBalancerPoolShare = params.maxBalancerPoolShare;
-        maxUnderylingSurplus = params.maxUnderylingSurplus;
+        maxUnderlyingSurplus = params.maxUnderlyingSurplus;
         settlementSlippageLimit = params.settlementSlippageLimit;
         emergencySettlementSlippageLimit = params
             .emergencySettlementSlippageLimit;
@@ -386,7 +339,7 @@ contract Balancer2TokenVault is
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt256();
 
         // Get the amount of secondary fCash borrowed
-        // We directly use the fCash amount instead of converting to underyling
+        // We directly use the fCash amount instead of converting to underlying
         // as an approximation with built-in interest and haircut parameters
         uint256 borrowedSecondaryfCashAmount = getSecondaryBorrowedfCashAmount(
             account,
@@ -478,13 +431,13 @@ contract Balancer2TokenVault is
         }
 
         BalancerUtils.joinPool(
-            address(BALANCER_VAULT), 
-            BALANCER_POOL_ID, 
-            address(UNDERLYING_TOKEN), 
-            deposit, 
-            address(SECONDARY_TOKEN), 
-            borrowedSecondaryAmount, 
-            PRIMARY_INDEX, 
+            address(BALANCER_VAULT),
+            BALANCER_POOL_ID,
+            address(UNDERLYING_TOKEN),
+            deposit,
+            address(SECONDARY_TOKEN),
+            borrowedSecondaryAmount,
+            PRIMARY_INDEX,
             params.minBPT
         );
     }
@@ -572,8 +525,10 @@ contract Balancer2TokenVault is
         uint256 maturity,
         uint256 borrowedSecondaryfCashAmount,
         bytes calldata data
-    ) internal {
+    ) internal returns (uint256) {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
+
+        uint256 primaryBalance = UNDERLYING_TOKEN.balanceOf(this);
 
         BalancerUtils.exitPool(
             address(BALANCER_VAULT), 
@@ -599,6 +554,8 @@ contract Balancer2TokenVault is
             );
             // @audit the user's secondaryfCash borrowed is never decremented here
         }
+
+        return UNDERLYING_TOKEN.balanceOf(this) - primaryBalance;
     }
 
     /// @notice Callback function for repaying secondary debt
@@ -681,20 +638,17 @@ contract Balancer2TokenVault is
     ) internal override returns (uint256 tokensFromRedeem) {
         // @audit the returned value for tokensForRedeem is incorrect here, it should be
         // the amount of primary underlying tokens as a result of the redemption
-        tokensFromRedeem = convertStrategyTokensToBPTClaim(
+        uint256 bptClaim = convertStrategyTokensToBPTClaim(
             strategyTokens,
             maturity
         );
 
-        if (tokensFromRedeem > 0) {
+        if (bptClaim > 0) {
             // Withdraw gauge token from VeBALDelegator
-            BOOST_CONTROLLER.withdrawToken(
-                address(LIQUIDITY_GAUGE),
-                tokensFromRedeem
-            );
+            BOOST_CONTROLLER.withdrawToken(address(LIQUIDITY_GAUGE), bptClaim);
 
             // Unstake BPT
-            LIQUIDITY_GAUGE.withdraw(tokensFromRedeem, false);
+            LIQUIDITY_GAUGE.withdraw(bptClaim, false);
 
             // Calculate the amount of secondary tokens to repay
             uint256 borrowedSecondaryfCashAmount = getSecondaryBorrowedfCashAmount(
@@ -703,13 +657,15 @@ contract Balancer2TokenVault is
                     strategyTokens
                 );
 
-            _exitPool(
+            tokensFromRedeem = _exitPool(
                 account,
-                tokensFromRedeem,
+                bptClaim,
                 maturity,
                 borrowedSecondaryfCashAmount,
                 data
             );
+
+            totalStrategyTokenGlobal -= bptClaim;
         }
 
         // @audit totalStrategyTokenGlobal is not decremented here but it should be
@@ -749,13 +705,11 @@ contract Balancer2TokenVault is
             // Vault has reached maturity. settleVault becomes authenticated in this case
             if (msg.sender != NOTIONAL.owner())
                 revert NotionalOwnerRequired(msg.sender);
-            // @audit I'm not sure if it is correct to call this the the emergencySettlement, it is maybe more
-            // correct to call this this post maturity settlement
             _validateSettlementCoolDown(
-                lastEmergencySettlementTimestamp,
-                emergencySettlementCoolDownInSeconds
+                lastPostMaturitySettlementTimestamp,
+                postMaturitySettlementCoolDownInSeconds
             );
-            _validateSettlementSlippage(data, emergencySettlementSlippageLimit);
+            _validateSettlementSlippage(data, postMaturitySettlementSlippageLimit);
         } else {
             if (maturity - SETTLEMENT_PERIOD <= block.timestamp) {
                 // In settlement window
@@ -767,7 +721,8 @@ contract Balancer2TokenVault is
             } else {
                 // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
                 // @audit this variable should be emergencyBPTWithdrawThreshold
-                uint256 maxBPTAmount = (BALANCER_POOL_TOKEN.totalSupply() *
+                uint256 bptTotalSupply = BALANCER_POOL_TOKEN.totalSupply(); 
+                uint256 maxBPTAmount = (bptTotalSupply *
                     maxBalancerPoolShare) / 1e8; // @audit use a named constant for 1e8
                 uint256 _bptHeld = bptHeld();
                 // @audit this error message should be InvalidEmergencySettlement()
@@ -776,8 +731,7 @@ contract Balancer2TokenVault is
                 // desiredPoolShare = maxPoolShare * bufferPercentage
                 uint256 desiredPoolShare = (maxBalancerPoolShare *
                     BALANCER_POOL_SHARE_BUFFER) / 1e8;
-                // @audit BalancerPool.totalSupply() is called twice here, just put it on the stack
-                uint256 desiredBPTAmount = (BALANCER_POOL_TOKEN.totalSupply() *
+                uint256 desiredBPTAmount = (bptTotalSupply *
                     desiredPoolShare) / 1e8;
                 redeemAmount = convertBPTClaimToStrategyTokens(
                     _bptHeld - desiredBPTAmount,
@@ -805,7 +759,7 @@ contract Balancer2TokenVault is
             // @audit this can use a comment on the nature of how the different signs will behave since
             // underlyingRedeemed can be negative and underlyingCashRequiredToSettle can be negative as well
             underlyingRedeemed - underlyingCashRequiredToSettle >
-            int256(maxUnderylingSurplus)
+            int256(maxUnderlyingSurplus)
         ) {
             revert RedeemingTooMuch(
                 underlyingRedeemed,
