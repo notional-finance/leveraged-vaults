@@ -2,8 +2,6 @@
 pragma solidity =0.8.11;
 
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "../utils/BoringOwnable.sol";
 
 import "./adapters/BalancerV2Adapter.sol";
 import "./adapters/CurveAdapter.sol";
@@ -12,13 +10,16 @@ import "./adapters/UniV3Adapter.sol";
 import "./adapters/ZeroExAdapter.sol";
 import "./TradeHandler.sol";
 
+import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 /// @notice TradingModule is meant to be an upgradeable contract deployed to help Strategy Vaults
 /// exchange tokens via multiple DEXes as well as receive price oracle information
-contract TradingModule is BoringOwnable, UUPSUpgradeable, Initializable, ITradingModule {
+contract TradingModule is UUPSUpgradeable, ITradingModule {
+    NotionalProxy public immutable NOTIONAL;
+
     error SellTokenEqualsBuyToken();
     error UnknownDEX();
 
@@ -32,16 +33,16 @@ contract TradingModule is BoringOwnable, UUPSUpgradeable, Initializable, ITradin
 
     event PriceOracleUpdated(address token, address oracle);
 
-    constructor() initializer { }
+    constructor(NotionalProxy notional_) { NOTIONAL = notional_; }
 
-    function initialize(address _owner) external initializer {
-        owner = _owner;
-        emit OwnershipTransferred(address(0), _owner);
+    modifier onlyNotionalOwner() {
+        require(msg.sender == NOTIONAL.owner());
+        _;
     }
 
-    function _authorizeUpgrade(address /* newImplementation */) internal override onlyOwner {}
+    function _authorizeUpgrade(address /* newImplementation */) internal override onlyNotionalOwner { }
 
-    function setPriceOracle(address token, AggregatorV2V3Interface oracle) external override onlyOwner {
+    function setPriceOracle(address token, AggregatorV2V3Interface oracle) external override onlyNotionalOwner {
         PriceOracle storage oracleStorage = priceOracles[token];
         oracleStorage.oracle = oracle;
         oracleStorage.rateDecimals = oracle.decimals();
@@ -88,7 +89,9 @@ contract TradingModule is BoringOwnable, UUPSUpgradeable, Initializable, ITradin
             bytes memory executionData
         ) = _getExecutionData(dexId, address(this), trade);
 
-        return TradeHandler._executeInternal(trade, dexId, spender, target, msgValue, executionData);
+        return TradeHandler._executeInternal(
+            trade, dexId, spender, target, msgValue, executionData
+        );
     }
 
     function _getExecutionData(

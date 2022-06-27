@@ -17,11 +17,15 @@ contract SimpleStrategyVault is BaseStrategyVault {
     function setExchangeRate(uint256 e) external { _tokenExchangeRate = e; }
     function setSecondary(uint16 c) external { _secondaryCurrency = c; }
 
-    constructor(
+    constructor(NotionalProxy notional_, ITradingModule tradingModule_)
+        BaseStrategyVault(notional_, tradingModule_) {}
+
+    function initialize(
         string memory name_,
-        address notional_,
         uint16 borrowCurrencyId_
-    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_) { }
+    ) external initializer {
+        __INIT_VAULT(name_, borrowCurrencyId_);
+    }
 
     // Vaults need to implement these two methods
     function _depositFromNotional(
