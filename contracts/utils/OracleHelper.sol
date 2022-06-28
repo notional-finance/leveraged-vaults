@@ -18,7 +18,7 @@ library OracleHelper {
     function getTimeWeightedPrimaryBalance(
         address pool,
         uint256 oracleWindowInSeconds,
-        uint8 primaryindex, // @audit this should be camelCase
+        uint8 primaryIndex,
         uint256 primaryWeight,
         uint256 secondaryWeight,
         // @audit primary decimals should be typed as uint8 or they can potentially overflow in the exponent
@@ -37,7 +37,7 @@ library OracleHelper {
         // Since bptPrice is always denominated in the first token,
         // Both bptPrice and bptAmount are in 1e18
         // underlyingValue = bptPrice * bptAmount / 1e18
-        if (primaryindex == 0) {
+        if (primaryIndex == 0) {
             uint256 primaryAmount = (bptPrice * bptAmount) / 1e18;
 
             // Normalize precision to primary precision
@@ -127,13 +127,11 @@ library OracleHelper {
     function getOptimalSecondaryBorrowAmount(
         address pool,
         uint256 oracleWindowInSeconds,
-        uint8 primaryindex,
+        uint8 primaryIndex,
         uint256 primaryWeight,
         uint256 secondaryWeight,
-        // @audit primary decimals and secondary decimals should be typed as uint8 or they
-        // can potentially overflow in the exponent
-        uint256 primaryDecimals,
-        uint256 secondaryDecimals,
+        uint8 primaryDecimals,
+        uint8 secondaryDecimals,
         uint256 primaryAmount
     )
         external
@@ -158,7 +156,7 @@ library OracleHelper {
         // Calculate price adjusted primary amount, price is always in 1e18
         // Since price is always expressed as the price of the second token in units of the
         // first token, we need to invert the math if the second token is the primary token
-        if (primaryindex == 0) {
+        if (primaryIndex == 0) {
             // PairPrice = (PrimaryAmount / PrimaryWeight) / (SecondaryAmount / SecondaryWeight)
             // SecondaryAmount = (PrimaryAmount / PrimaryWeight) / PairPrice * SecondaryWeight
             primaryAmount = ((primaryAmount * 1e18) / pairPrice);

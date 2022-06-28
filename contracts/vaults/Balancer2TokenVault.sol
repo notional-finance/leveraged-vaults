@@ -136,27 +136,25 @@ contract Balancer2TokenVault is
     uint16 internal constant BALANCER_POOL_SHARE_BUFFER = 8e3; // 1e4 = 100%, 8e3 = 80%
     /// @notice Internal precision is 1e8
     uint256 internal constant INTERNAL_PRECISION_DIFF = 1e10;
-    WETH9 public constant WETH =
-        WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     /** Immutables */
     // @audit similar remark here, each public variable adds an external getter so all of these
     // will result in larger bytecode size, consider just making one method that returns all the
     // immutables
-    uint16 public immutable SECONDARY_BORROW_CURRENCY_ID;
-    bytes32 public immutable BALANCER_POOL_ID;
-    IBalancerPool public immutable BALANCER_POOL_TOKEN;
-    ERC20 public immutable SECONDARY_TOKEN;
-    IBoostController public immutable BOOST_CONTROLLER;
-    ILiquidityGauge public immutable LIQUIDITY_GAUGE;
-    IVeBalDelegator public immutable VEBAL_DELEGATOR;
-    ERC20 public immutable BAL_TOKEN;
-    uint8 public immutable PRIMARY_INDEX;
-    uint32 public immutable SETTLEMENT_PERIOD_IN_SECONDS;
-    uint256 public immutable PRIMARY_WEIGHT;
-    uint256 public immutable SECONDARY_WEIGHT;
-    uint256 internal immutable PRIMARY_DECIMALS;
-    uint256 internal immutable SECONDARY_DECIMALS;
+    uint16 internal immutable SECONDARY_BORROW_CURRENCY_ID;
+    bytes32 internal immutable BALANCER_POOL_ID;
+    IBalancerPool internal immutable BALANCER_POOL_TOKEN;
+    ERC20 internal immutable SECONDARY_TOKEN;
+    IBoostController internal immutable BOOST_CONTROLLER;
+    ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
+    IVeBalDelegator internal immutable VEBAL_DELEGATOR;
+    ERC20 internal immutable BAL_TOKEN;
+    uint8 internal immutable PRIMARY_INDEX;
+    uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
+    uint256 internal immutable PRIMARY_WEIGHT;
+    uint256 internal immutable SECONDARY_WEIGHT;
+    uint8 internal immutable PRIMARY_DECIMALS;
+    uint8 internal immutable SECONDARY_DECIMALS;
 
     /// @notice Keeps track of the possible gauge reward tokens
     mapping(address => bool) private gaugeRewardTokens;
@@ -213,14 +211,19 @@ contract Balancer2TokenVault is
         if (tokens[secondaryIndex] != _tokenAddress(address(SECONDARY_TOKEN)))
             revert InvalidSecondaryToken(tokens[secondaryIndex]);
 
-        PRIMARY_DECIMALS = address(_underlyingToken()) ==
+        uint256 primaryDecimals = address(_underlyingToken()) ==
             TradeHandler.ETH_ADDRESS
             ? 18
             : _underlyingToken().decimals();
-        SECONDARY_DECIMALS = address(SECONDARY_TOKEN) ==
+        require(primaryDecimals <= type(uint8).max);
+        PRIMARY_DECIMALS = uint8(primaryDecimals);
+
+        uint256 secondaryDecimals = address(SECONDARY_TOKEN) ==
             TradeHandler.ETH_ADDRESS
             ? 18
             : SECONDARY_TOKEN.decimals();
+        require(primaryDecimals <= type(uint8).max);
+        SECONDARY_DECIMALS = uint8(secondaryDecimals);
 
         uint256[] memory weights = BALANCER_POOL_TOKEN.getNormalizedWeights();
 
@@ -289,7 +292,8 @@ contract Balancer2TokenVault is
     /// and Balancer uses WETH
     function _tokenAddress(address token) private view returns (address) {
         // @audit consider using a constant for address(0) here like ETH_ADDRESS or something
-        return token == address(0) ? address(WETH) : address(token);
+        return
+            token == address(0) ? address(BalancerUtils.WETH) : address(token);
     }
 
     function _tokenBalance(address token) private view returns (uint256) {
@@ -625,27 +629,31 @@ contract Balancer2TokenVault is
         // @audit this is already checked in the external method
         require(msg.sender == address(NOTIONAL)); /// @dev invalid caller
         require(SECONDARY_BORROW_CURRENCY_ID > 0); /// @dev invalid secondary currency
-        RepaySecondaryCallbackParams memory params = abi.decode(
-            data,
-            (RepaySecondaryCallbackParams)
-        );
+        (
+            RepaySecondaryCallbackParams memory params,
+            uint256 secondaryBalance
+        ) = abi.decode(data, (RepaySecondaryCallbackParams, uint256));
 
-        uint256 secondaryBalance = _tokenBalance(address(SECONDARY_TOKEN));
         Trade memory trade;
+        uint256 secondaryShortfall;
 
         if (secondaryBalance < underlyingRequired) {
             // Not enough secondary balance to repay debt, sell some primary currency
+            unchecked {
+                secondaryShortfall = underlyingRequired - secondaryBalance;
+            }
+
             trade = Trade(
                 TradeType.EXACT_OUT_SINGLE,
                 address(_underlyingToken()),
                 address(SECONDARY_TOKEN),
-                underlyingRequired - secondaryBalance, // @audit can mark unchecked
+                secondaryShortfall,
                 TradeHandler.getLimitAmount(
                     address(TRADING_MODULE),
                     uint16(TradeType.EXACT_OUT_SINGLE),
                     address(_underlyingToken()),
                     address(SECONDARY_TOKEN),
-                    underlyingRequired - secondaryBalance, // @audit can mark unchecked, put this on the stack and calculate once
+                    secondaryShortfall,
                     params.slippageLimit
                 ),
                 params.deadline, // @audit deadline should always be block.timestamp
@@ -666,6 +674,10 @@ contract Balancer2TokenVault is
         } else {
             SECONDARY_TOKEN.safeTransfer(address(NOTIONAL), underlyingRequired);
         }
+
+        uint256 primaryBalanceBefore = _tokenBalance(
+            address(_underlyingToken())
+        );
 
         if (secondaryBalance > 0) {
             // Sell residual secondary balance
@@ -688,6 +700,17 @@ contract Balancer2TokenVault is
 
             trade.execute(TRADING_MODULE, params.dexId);
         }
+
+        // At this point, secondaryBalance = secondary residual
+        // Return secondary shortfall, secondary residual and primary amount
+        // received from the residual trade
+        return
+            abi.encode(
+                secondaryShortfall,
+                secondaryBalance,
+                _tokenBalance(address(_underlyingToken())) -
+                    primaryBalanceBefore
+            );
     }
 
     function _redeemFromNotional(
@@ -716,7 +739,7 @@ contract Balancer2TokenVault is
             // prettier-ignore
             (
                 uint256 primaryBalance, 
-                /* uint256 secondaryBalance */
+                uint256 secondaryBalance
             ) = _exitPool(
                 account,
                 bptClaim,
@@ -728,19 +751,19 @@ contract Balancer2TokenVault is
             // Calculate the amount of debt shares to repay
             // prettier-ignore
             (
-                uint256 debtShares, 
+                uint256 debtSharesToRepay, 
                 /* uint256 borrowedSecondaryfCashAmount */
             ) = getDebtSharesToRepay(account, maturity, strategyTokens);
 
             // Repay secondary debt
-            if (debtShares > 0) {
+            if (debtSharesToRepay > 0) {
                 NOTIONAL.repaySecondaryCurrencyFromVault(
                     account,
                     SECONDARY_BORROW_CURRENCY_ID,
                     maturity,
-                    debtShares,
+                    debtSharesToRepay,
                     params.secondarySlippageLimit,
-                    params.callbackData
+                    abi.encode(params.callbackData, secondaryBalance)
                 );
             }
 
@@ -756,12 +779,12 @@ contract Balancer2TokenVault is
         uint32 slippageLimit
     ) private {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
-        RepaySecondaryCallbackParams memory callbackParams = abi.decode(
+        RepaySecondaryCallbackParams memory callbackData = abi.decode(
             params.callbackData,
             (RepaySecondaryCallbackParams)
         );
-        if (callbackParams.slippageLimit > slippageLimit) {
-            revert SlippageTooHigh(callbackParams.slippageLimit, slippageLimit);
+        if (callbackData.slippageLimit > slippageLimit) {
+            revert SlippageTooHigh(callbackData.slippageLimit, slippageLimit);
         }
     }
 
@@ -791,7 +814,7 @@ contract Balancer2TokenVault is
                 vaultSettings.postMaturitySettlementSlippageLimit
             );
 
-            _normalSettlement(maturity);
+            _normalSettlement(bptToSettle, maturity, data);
         } else {
             if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
                 // In settlement window
@@ -804,7 +827,7 @@ contract Balancer2TokenVault is
                     vaultSettings.settlementSlippageLimit
                 );
 
-                _normalSettlement(maturity);
+                _normalSettlement(bptToSettle, maturity, data);
             } else {
                 // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
                 // @audit this variable should be emergencyBPTWithdrawThreshold
@@ -822,25 +845,131 @@ contract Balancer2TokenVault is
                     BALANCER_POOL_SHARE_BUFFER) / VAULT_PERCENTAGE_PRECISION;
                 uint256 desiredBPTAmount = (bptTotalSupply * desiredPoolShare) /
                     VAULT_PERCENTAGE_PRECISION;
-                uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
-                        totalBPTHeld - desiredBPTAmount,
-                        maturity
-                    );
-
-                _emergencySettlement(redeemStrategyTokenAmount, maturity, data);
+                _emergencySettlement(
+                    totalBPTHeld - desiredBPTAmount,
+                    maturity,
+                    data
+                );
             }
         }
     }
 
-    function _normalSettlement(uint256 maturity) private {
-        // TODO: implement this
+    function _normalSettlement(
+        uint256 bptToSettle,
+        uint256 maturity,
+        bytes memory data
+    ) private {
+        uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
+            bptToSettle,
+            maturity
+        );
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+
+        // Redeem BPT
+        (uint256 primaryBalance, uint256 secondaryBalance) = _exitPool(
+            address(this),
+            bptToSettle,
+            maturity,
+            params.minPrimary,
+            params.minSecondary
+        );
+
+        uint256 totalPrimary = primarySettlementBalance[maturity] +
+            primaryBalance;
+        uint256 totalSecondary = secondarySettlementBalance[maturity] +
+            secondaryBalance;
+
+        // Get primary and secondary debt amounts from Notional
+        // prettier-ignore
+        (
+            /* int256 assetCashRequiredToSettle */,
+            int256 underlyingCashRequiredToSettle
+        ) = NOTIONAL.getCashRequiredToSettle(address(this), maturity);
+
+        require(underlyingCashRequiredToSettle >= 0);
+
+        // prettier-ignore
+        (
+            uint256 debtSharesToRepay,
+            uint256 borrowedSecondaryfCashAmount            
+        ) = getDebtSharesToRepay(address(this), maturity, redeemStrategyTokenAmount);
+
+        if (
+            totalPrimary >= uint256(underlyingCashRequiredToSettle) &&
+            totalSecondary >= borrowedSecondaryfCashAmount
+        ) {
+            _settleBoth(
+                totalPrimary,
+                maturity,
+                debtSharesToRepay,
+                uint256(underlyingCashRequiredToSettle),
+                params.secondarySlippageLimit,
+                abi.encode(params.callbackData, secondaryBalance)
+            );
+            primarySettlementBalance[maturity] = 0;
+            secondarySettlementBalance[maturity] = 0;
+        } else if (totalSecondary >= borrowedSecondaryfCashAmount) {
+            _settleSecondary();
+        } else if (totalPrimary >= uint256(underlyingCashRequiredToSettle)) {
+            _settlePrimary();
+        }
     }
 
+    function _settleBoth(
+        uint256 primaryAmount,
+        uint256 maturity,
+        uint256 debtSharesToRepay,
+        uint256 underlyingCashRequiredToSettle,
+        uint32 secondarySlippageLimit,
+        bytes memory callbackData
+    ) private {
+        // Both primary and secondary debt positions can be paid off
+        // In this case, we repay secondary debt first, then trade
+        // the residuals into the primary currency
+        // (handled in repaySecondaryCurrencyFromVault)
+        uint256 primaryAmountToRepay = primaryAmount;
+        if (debtSharesToRepay > 0) {
+            bytes memory returnData = NOTIONAL.repaySecondaryCurrencyFromVault(
+                address(this),
+                SECONDARY_BORROW_CURRENCY_ID,
+                maturity,
+                debtSharesToRepay,
+                secondarySlippageLimit,
+                callbackData
+            );
+
+            // prettier-ignore
+            (
+                /* uint256 secondaryShortfall */,
+                /* uint256 secondaryResidual */,
+                uint256 primaryAmountReceived
+            ) = abi.decode(returnData, (uint256, uint256, uint256));
+
+            primaryAmountToRepay += primaryAmountReceived;
+        }
+
+        repayPrimaryBorrow(
+            address(this),
+            address(NOTIONAL),
+            primaryAmountToRepay,
+            underlyingCashRequiredToSettle
+        );
+    }
+
+    function _settlePrimary() private {}
+
+    function _settleSecondary() private {}
+
     function _emergencySettlement(
-        uint256 redeemStrategyTokenAmount,
+        uint256 bptToSettle,
         uint256 maturity,
         bytes calldata data
     ) private {
+        uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
+            bptToSettle,
+            maturity
+        );
+
         // @audit this variable should be named the expected oracle value of underlying redeemed
         int256 underlyingRedeemed = convertStrategyToUnderlying(
             address(this),

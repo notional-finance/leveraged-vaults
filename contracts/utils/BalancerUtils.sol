@@ -23,7 +23,7 @@ library BalancerUtils {
         address pool,
         IPriceOracle.Variable variable,
         uint256 secs
-    ) external view returns (uint256) {
+    ) internal view returns (uint256) {
         IPriceOracle.OracleAverageQuery[]
             memory queries = new IPriceOracle.OracleAverageQuery[](1);
 
@@ -68,8 +68,8 @@ library BalancerUtils {
         uint8 primaryIndex,
         uint256 primaryWeight,
         uint256 secondaryWeight,
-        uint256 primaryDecimals,
-        uint256 secondaryDecimals
+        uint8 primaryDecimals,
+        uint8 secondaryDecimals
     ) external view returns (uint256) {
         // @audit can this method be replaced with this method call instead?
         // https://dev.balancer.fi/references/contracts/apis/pools/weightedpool2tokens#getlatest
