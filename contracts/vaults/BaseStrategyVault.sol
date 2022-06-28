@@ -151,15 +151,6 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
     ) external onlyNotional {
         uint256 borrowedCurrencyAmount = _redeemFromNotional(account, strategyTokens, maturity, data);
 
-        repayPrimaryBorrow(account, receiver, borrowedCurrencyAmount, underlyingToRepayDebt);
-    }
-
-    function repayPrimaryBorrow(
-        address account, 
-        address receiver, 
-        uint256 borrowedCurrencyAmount, 
-        uint256 underlyingToRepayDebt
-    ) internal {
         uint256 transferToNotional;
         uint256 transferToAccount;
         if (account == address(this) || borrowedCurrencyAmount <= underlyingToRepayDebt) {
@@ -175,6 +166,14 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
             unchecked { transferToAccount = borrowedCurrencyAmount - underlyingToRepayDebt; }
         }
 
+        repayPrimaryBorrow(receiver, transferToAccount, transferToNotional);
+    }
+
+    function repayPrimaryBorrow(
+        address receiver, 
+        uint256 transferToAccount, 
+        uint256 transferToNotional
+    ) internal {
         if (_UNDERLYING_IS_ETH) {
             if (transferToAccount > 0) payable(receiver).transfer(transferToAccount);
             if (transferToNotional > 0) payable(address(NOTIONAL)).transfer(transferToNotional);

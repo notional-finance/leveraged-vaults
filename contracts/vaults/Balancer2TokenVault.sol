@@ -34,6 +34,7 @@ contract Balancer2TokenVault is
     using SafeERC20 for ERC20;
     // @audit SafeInt256 has casts between uint and int and probably uses less bytecode space
     using SafeCast for uint256;
+    using SafeCast for int256;
 
     struct DeploymentParams {
         uint16 secondaryBorrowCurrencyId;
@@ -116,6 +117,8 @@ contract Balancer2TokenVault is
     );
     error SlippageTooHigh(uint32 slippage, uint32 limit);
     error InSettlementCoolDown(uint32 lastTimestamp, uint32 coolDown);
+    /// @notice settleVault called when there is no debt
+    error SettlementNotRequired();
 
     /** Events */
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
@@ -134,8 +137,9 @@ contract Balancer2TokenVault is
     /// @notice Precision for all percentages, 1e4 = 100% (i.e. settlementSlippageLimit)
     uint16 internal constant VAULT_PERCENTAGE_PRECISION = 1e4;
     uint16 internal constant BALANCER_POOL_SHARE_BUFFER = 8e3; // 1e4 = 100%, 8e3 = 80%
-    /// @notice Internal precision is 1e8
+    /// @notice Difference between 1e18 and internal precision
     uint256 internal constant INTERNAL_PRECISION_DIFF = 1e10;
+    uint256 internal constant INTERNAL_PRECISION = 1e8;
 
     /** Immutables */
     // @audit similar remark here, each public variable adds an external getter so all of these
@@ -366,43 +370,27 @@ contract Balancer2TokenVault is
             maturity
         );
 
-        // @audit it would be more efficient to combine this method call with
-        // the second method call to get the pairPrice. it looks like it is already
-        // calculated inside this method so I would return it here.
-        uint256 primaryBalance = OracleHelper.getTimeWeightedPrimaryBalance(
-            address(BALANCER_POOL_TOKEN),
-            vaultSettings.oracleWindowInSeconds,
-            PRIMARY_INDEX,
-            PRIMARY_WEIGHT,
-            SECONDARY_WEIGHT,
-            PRIMARY_DECIMALS,
-            bptClaim
-        );
+        (uint256 primaryBalance, uint256 pairPrice) = OracleHelper
+            .getTimeWeightedPrimaryBalance(
+                address(BALANCER_POOL_TOKEN),
+                vaultSettings.oracleWindowInSeconds,
+                PRIMARY_INDEX,
+                PRIMARY_WEIGHT,
+                SECONDARY_WEIGHT,
+                PRIMARY_DECIMALS,
+                bptClaim
+            );
 
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt256();
 
         // Get the amount of secondary fCash borrowed
         // We directly use the fCash amount instead of converting to underlying
         // as an approximation with built-in interest and haircut parameters
+        // prettier-ignore
         (
-            ,
-            /* uint256 debtShares */
+            /* uint256 debtShares */,
             uint256 borrowedSecondaryfCashAmount
         ) = getDebtSharesToRepay(account, maturity, strategyTokenAmount);
-
-        // @audit every external method call adds a significant amount of bytecode for
-        // loading the memory buffer and then unpacking it, reducing external calls will
-        // save a lot of gas and bytecode space.
-        // @audit this variable should be renamed to weightedOraclePairPrice or something to
-        // make it clear it is an oracle price
-        // @audit leave a comment here mentioning that the oracle price is normalized to 18 decimals
-        uint256 pairPrice = OracleHelper.getPairPrice(
-            address(BALANCER_POOL_TOKEN),
-            BALANCER_POOL_ID,
-            address(TRADING_MODULE),
-            vaultSettings.oracleWindowInSeconds,
-            vaultSettings.balancerOracleWeight
-        );
 
         // borrowedSecondaryfCashAmount is in internal precision (1e8), raise it to 1e18
         borrowedSecondaryfCashAmount *= INTERNAL_PRECISION_DIFF;
@@ -418,6 +406,11 @@ contract Balancer2TokenVault is
                 (borrowedSecondaryfCashAmount * pairPrice) /
                 BalancerUtils.BALANCER_PRECISION;
         }
+
+        // Convert to primary precision
+        secondaryBorrowedDenominatedInPrimary =
+            (secondaryBorrowedDenominatedInPrimary * (10**PRIMARY_DECIMALS)) /
+            BalancerUtils.BALANCER_PRECISION;
 
         return
             primaryBalance.toInt256() -
@@ -886,48 +879,60 @@ contract Balancer2TokenVault is
             int256 underlyingCashRequiredToSettle
         ) = NOTIONAL.getCashRequiredToSettle(address(this), maturity);
 
-        require(underlyingCashRequiredToSettle >= 0);
-
         // prettier-ignore
         (
             uint256 debtSharesToRepay,
             uint256 borrowedSecondaryfCashAmount            
         ) = getDebtSharesToRepay(address(this), maturity, redeemStrategyTokenAmount);
 
+        // Convert fCash to secondary currency precision
+        borrowedSecondaryfCashAmount =
+            (borrowedSecondaryfCashAmount * (10**SECONDARY_DECIMALS)) /
+            INTERNAL_PRECISION;
+
+        // If underlyingCashRequiredToSettle is 0 (no debt) or negative (surplus cash)
+        // and borrowedSecondaryfCashAmount is also 0, no settlement is required
         if (
-            totalPrimary >= uint256(underlyingCashRequiredToSettle) &&
-            totalSecondary >= borrowedSecondaryfCashAmount
+            underlyingCashRequiredToSettle <= 0 &&
+            borrowedSecondaryfCashAmount == 0
         ) {
-            _settleBoth(
-                totalPrimary,
-                maturity,
-                debtSharesToRepay,
-                uint256(underlyingCashRequiredToSettle),
-                params.secondarySlippageLimit,
-                abi.encode(params.callbackData, secondaryBalance)
-            );
-            primarySettlementBalance[maturity] = 0;
-            secondarySettlementBalance[maturity] = 0;
-        } else if (totalSecondary >= borrowedSecondaryfCashAmount) {
-            _settleSecondary();
-        } else if (totalPrimary >= uint256(underlyingCashRequiredToSettle)) {
-            _settlePrimary();
+            revert SettlementNotRequired(); /// @dev no debt
         }
+
+        // Let the token balances accumulate in this contract if we don't have
+        // enough to pay off either side
+        if (
+            totalPrimary.toInt256() < underlyingCashRequiredToSettle &&
+            totalSecondary < borrowedSecondaryfCashAmount
+        ) {
+            primarySettlementBalance[maturity] = totalPrimary;
+            secondarySettlementBalance[maturity] = totalSecondary;
+            return;
+        }
+
+        // If we get to this point, we have enough to pay off either the primary
+        // side or the secondary side
+        _executeSettlement(
+            totalPrimary,
+            maturity,
+            debtSharesToRepay,
+            underlyingCashRequiredToSettle,
+            params.secondarySlippageLimit,
+            abi.encode(params.callbackData, secondaryBalance)
+        );
     }
 
-    function _settleBoth(
+    function _executeSettlement(
         uint256 primaryAmount,
         uint256 maturity,
         uint256 debtSharesToRepay,
-        uint256 underlyingCashRequiredToSettle,
+        int256 underlyingCashRequiredToSettle,
         uint32 secondarySlippageLimit,
         bytes memory callbackData
     ) private {
-        // Both primary and secondary debt positions can be paid off
-        // In this case, we repay secondary debt first, then trade
-        // the residuals into the primary currency
-        // (handled in repaySecondaryCurrencyFromVault)
-        uint256 primaryAmountToRepay = primaryAmount;
+        // We repay the secondary debt first, then trade
+        // the residual balance into the primary currency
+        // (trading is handled in repaySecondaryCurrencyFromVault)
         if (debtSharesToRepay > 0) {
             bytes memory returnData = NOTIONAL.repaySecondaryCurrencyFromVault(
                 address(this),
@@ -945,20 +950,38 @@ contract Balancer2TokenVault is
                 uint256 primaryAmountReceived
             ) = abi.decode(returnData, (uint256, uint256, uint256));
 
-            primaryAmountToRepay += primaryAmountReceived;
+            // address(this) should have 0 secondary balance at this point
+            secondarySettlementBalance[maturity] = 0;
+            primaryAmount += primaryAmountReceived;
         }
 
-        repayPrimaryBorrow(
-            address(this),
-            address(NOTIONAL),
-            primaryAmountToRepay,
-            underlyingCashRequiredToSettle
-        );
+        int256 primaryAmountToRepay = primaryAmount.toInt256();
+        if (primaryAmountToRepay < underlyingCashRequiredToSettle) {
+            // If primaryAmountToRepay < underlyingCashRequiredToSettle,
+            // we need to redeem more BPT, so we set it to primarySettlementBalance[maturity]
+            primarySettlementBalance[maturity] = primaryAmount;
+        } else {
+            // if underlyingCashRequiredToSettle < 0, that means there is excess
+            // cash in the system. We add it to the surplus in this case.
+            int256 surplus = primaryAmountToRepay -
+                underlyingCashRequiredToSettle;
+
+            // Make sure we are not settling too much because we want
+            // to preserve as much BPT as possible
+            if (surplus > vaultSettings.maxUnderlyingSurplus.toInt256()) {
+                revert RedeemingTooMuch(
+                    primaryAmountToRepay,
+                    underlyingCashRequiredToSettle
+                );
+            }
+
+            // Transfer everything to Notional including the surplus
+            repayPrimaryBorrow(address(NOTIONAL), 0, primaryAmount);
+
+            // address(this) should have 0 primary currency at this point
+            primarySettlementBalance[maturity] = 0;
+        }
     }
-
-    function _settlePrimary() private {}
-
-    function _settleSecondary() private {}
 
     function _emergencySettlement(
         uint256 bptToSettle,
@@ -970,8 +993,7 @@ contract Balancer2TokenVault is
             maturity
         );
 
-        // @audit this variable should be named the expected oracle value of underlying redeemed
-        int256 underlyingRedeemed = convertStrategyToUnderlying(
+        int256 expectedUnderlyingRedeemed = convertStrategyToUnderlying(
             address(this),
             redeemStrategyTokenAmount,
             maturity
@@ -979,31 +1001,40 @@ contract Balancer2TokenVault is
 
         // prettier-ignore
         (
-            int256 assetCashRequiredToSettle,
+            /* int256 assetCashRequiredToSettle */,
             int256 underlyingCashRequiredToSettle
         ) = NOTIONAL.getCashRequiredToSettle(address(this), maturity);
 
+        // A negative surplus here means the account is insolvent
+        // (either expectedUnderlyingRedeemed is negative or
+        // expectedUnderlyingRedeemed is less than underlyingCashRequiredToSettle).
+        // If that's the case, we should just redeem and repay as much as possible (surplus
+        // check is ignored because maxUnderlyingSurplus can never be negative).
+        // If underlyingCashRequiredToSettle is negative, that means we already have surplus cash
+        // on the Notional side, it will just make surplus larger and potentially
+        // cause it to go over maxUnderlyingSurplus.
+        int256 surplus = expectedUnderlyingRedeemed -
+            underlyingCashRequiredToSettle;
+
         // Make sure we not redeeming too much to underlying
         // This allows BPT to be accrued as the profit token.
-        if (
-            // @audit this can use a comment on the nature of how the different signs will behave since
-            // underlyingRedeemed can be negative and underlyingCashRequiredToSettle can be negative as well
-            underlyingRedeemed - underlyingCashRequiredToSettle >
-            int256(vaultSettings.maxUnderlyingSurplus)
-        ) {
+        if (surplus > vaultSettings.maxUnderlyingSurplus.toInt256()) {
             revert RedeemingTooMuch(
-                underlyingRedeemed,
+                expectedUnderlyingRedeemed,
                 underlyingCashRequiredToSettle
             );
         }
 
         // prettier-ignore
         (
-            int256 assetCashProfit,
-            int256 underlyingCashProfit
+            int256 assetCashPostRedemption,
+            /* int256 underlyingCashPostRedemption */
         ) = NOTIONAL.redeemStrategyTokensToCash(maturity, redeemStrategyTokenAmount, data);
-        // @audit if assetCashProfit (i would rename this value) is < 0 AND we are past maturity
-        // then call NOTIONAL.settleVault(...) to mark the vault as settled in here.
+
+        // Mark the vault as settled
+        if (assetCashPostRedemption < 0 && maturity <= block.timestamp) {
+            NOTIONAL.settleVault(address(this), maturity);
+        }
 
         emit EmergencyVaultSettlement(maturity, redeemStrategyTokenAmount);
     }
@@ -1100,7 +1131,6 @@ contract Balancer2TokenVault is
             PRIMARY_INDEX,
             params.minBPT
         );
-
         // TODO: emit event here
     }
 

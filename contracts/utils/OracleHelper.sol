@@ -21,10 +21,9 @@ library OracleHelper {
         uint8 primaryIndex,
         uint256 primaryWeight,
         uint256 secondaryWeight,
-        // @audit primary decimals should be typed as uint8 or they can potentially overflow in the exponent
-        uint256 primaryDecimals,
+        uint8 primaryDecimals,
         uint256 bptAmount
-    ) external view returns (uint256) {
+    ) external view returns (uint256, uint256) {
         // Gets the BPT token price
         // @audit combine these into a single library to avoid cross library calls like this
         uint256 bptPrice = BalancerUtils.getTimeWeightedOraclePrice(
@@ -32,25 +31,6 @@ library OracleHelper {
             IPriceOracle.Variable.BPT_PRICE,
             oracleWindowInSeconds
         );
-
-        // The first token in the BPT pool is the primary token.
-        // Since bptPrice is always denominated in the first token,
-        // Both bptPrice and bptAmount are in 1e18
-        // underlyingValue = bptPrice * bptAmount / 1e18
-        if (primaryIndex == 0) {
-            uint256 primaryAmount = (bptPrice * bptAmount) / 1e18;
-
-            // Normalize precision to primary precision
-            return (primaryAmount * primaryDecimals) / 1e18;
-        }
-        // @audit use an else here for readability since it's not obvious that
-        // the method will return in the if clause above
-
-        // The second token in the BPT pool is the primary token.
-        // In this case, we need to convert secondaryTokenValue
-        // to underlyingValue using the pairPrice.
-        // Both bptPrice and bptAmount are in 1e18
-        uint256 secondaryAmount = (bptPrice * bptAmount) / 1e18;
 
         // Gets the pair price
         // @audit another cross contract call, probably unnecessary
@@ -60,6 +40,31 @@ library OracleHelper {
             oracleWindowInSeconds
         );
 
+        // The first token in the BPT pool is the primary token.
+        // Since bptPrice is always denominated in the first token,
+        // Both bptPrice and bptAmount are in 1e18
+        // underlyingValue = bptPrice * bptAmount / 1e18
+        if (primaryIndex == 0) {
+            uint256 primaryAmount = (bptPrice * bptAmount) /
+                BalancerUtils.BALANCER_PRECISION;
+
+            // Normalize precision to primary precision
+            return (
+                (primaryAmount * primaryDecimals) /
+                    BalancerUtils.BALANCER_PRECISION,
+                pairPrice
+            );
+        }
+        // @audit use an else here for readability since it's not obvious that
+        // the method will return in the if clause above
+
+        // The second token in the BPT pool is the primary token.
+        // In this case, we need to convert secondaryTokenValue
+        // to underlyingValue using the pairPrice.
+        // Both bptPrice and bptAmount are in 1e18
+        uint256 secondaryAmount = (bptPrice * bptAmount) /
+            BalancerUtils.BALANCER_PRECISION;
+
         // PairPrice =  (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
         // (SecondaryAmount / SecondaryWeight) / PairPrice = (PrimaryAmount / PrimaryWeight)
         // PrimaryAmount = (SecondaryAmount / SecondaryWeight) / PairPrice * PrimaryWeight
@@ -68,16 +73,24 @@ library OracleHelper {
         // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
 
         // Calculate weighted secondary amount
-        secondaryAmount = ((secondaryAmount * 1e18) / secondaryWeight);
+        secondaryAmount = ((secondaryAmount *
+            BalancerUtils.BALANCER_PRECISION) / secondaryWeight);
 
         // Calculate primary amount using pair price
-        uint256 primaryAmount = ((secondaryAmount * 1e18) / pairPrice);
+        uint256 primaryAmount = ((secondaryAmount *
+            BalancerUtils.BALANCER_PRECISION) / pairPrice);
 
         // Calculate secondary amount (precision is still 1e18)
-        primaryAmount = (primaryAmount * primaryWeight) / 1e18;
+        primaryAmount =
+            (primaryAmount * primaryWeight) /
+            BalancerUtils.BALANCER_PRECISION;
 
         // Normalize precision to secondary precision (Balancer uses 1e18)
-        return (primaryAmount * 10**primaryDecimals) / 1e18;
+        return (
+            (primaryAmount * 10**primaryDecimals) /
+                BalancerUtils.BALANCER_PRECISION,
+            pairPrice
+        );
     }
 
     // @audit this should be calculated in the method above and returned to reduce gas
@@ -103,9 +116,8 @@ library OracleHelper {
         ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(poolId);
 
         // @audit this should only be called if balancerOracleWeight < 1e8
-        (int256 chainlinkPrice, int256 decimals) = ITradingModule(
-            tradingModule
-        ).getOraclePrice(tokens[1], tokens[0]);
+        (int256 chainlinkPrice, int256 decimals) = ITradingModule(tradingModule)
+            .getOraclePrice(tokens[1], tokens[0]);
 
         // @audit zero may be a valid price
         require(chainlinkPrice >= 0); /// @dev Chainlink rate error
@@ -133,11 +145,7 @@ library OracleHelper {
         uint8 primaryDecimals,
         uint8 secondaryDecimals,
         uint256 primaryAmount
-    )
-        external
-        view
-        returns (uint256 secondaryAmount)
-    {
+    ) external view returns (uint256 secondaryAmount) {
         // Gets the PAIR price
         uint256 pairPrice = BalancerUtils.getTimeWeightedOraclePrice(
             pool,
