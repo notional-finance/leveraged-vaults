@@ -83,7 +83,6 @@ library OracleHelper {
     // @audit this should be calculated in the method above and returned to reduce gas
     function getPairPrice(
         address pool,
-        address vault,
         bytes32 poolId,
         address tradingModule,
         uint256 oracleWindowInSeconds,
@@ -101,7 +100,7 @@ library OracleHelper {
             address[] memory tokens,
             /* uint256[] memory balances */,
             /* uint256 lastChangeBlock */
-        ) = IBalancerVault(vault).getPoolTokens(poolId);
+        ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(poolId);
 
         // @audit this should only be called if balancerOracleWeight < 1e8
         (int256 chainlinkPrice, int256 decimals) = ITradingModule(

@@ -20,6 +20,14 @@ interface IVaultAction {
     /// cash reserve
     event ProtocolInsolvency(uint16 indexed currencyId, address indexed vault, int256 shortfall);
 
+    event RepaidSecondaryBorrow(
+        address indexed vault,
+        address indexed account,
+        uint16 indexed currencyId,
+        uint256 debtSharesRepaid,
+        int256 fCashLent
+    );
+
     /** Vault Action Methods */
 
     /// @notice Governance only method to whitelist a particular vault
@@ -69,6 +77,7 @@ interface IVaultAction {
     );
 
     function borrowSecondaryCurrencyToVault(
+        address account,
         uint16 currencyId,
         uint256 maturity,
         uint256 fCashToBorrow,
@@ -76,9 +85,10 @@ interface IVaultAction {
     ) external returns (uint256 underlyingTokensTransferred);
 
     function repaySecondaryCurrencyFromVault(
+        address account,
         uint16 currencyId,
         uint256 maturity,
-        uint256 fCashToRepay,
+        uint256 debtSharesToRepay,
         uint32 slippageLimit,
         bytes calldata callbackData
     ) external returns (bytes memory returnData);
@@ -94,7 +104,7 @@ interface IVaultAction {
         external view returns (uint256 totalUsedBorrowCapacity, uint256 maxBorrowCapacity);
 
     function getSecondaryBorrow(address vault, uint16 currencyId, uint256 maturity) 
-        external view returns (uint256 totalfCashBorrowed);
+        external view returns (uint256 totalfCashBorrowed, uint256 totalAccountDebtShares);
 
     /// @notice View method to get vault state
     function getVaultState(address vault, uint256 maturity) external view returns (VaultState memory vaultState);
@@ -203,7 +213,11 @@ interface IVaultAccountAction {
     ) external returns (uint256 profitFromLiquidation);
 
     function getVaultAccount(address account, address vault) external view returns (VaultAccount memory);
-    function getVaultAccountMaturity(address account, address vault) external view returns (uint256 maturity);
+    function getVaultAccountDebtShares(address account, address vault) external view returns (
+        uint256 debtSharesMaturity,
+        uint256[2] memory accountDebtShares,
+        uint256 accountStrategyTokens
+    );
     function getVaultAccountCollateralRatio(address account, address vault) external view returns (
         int256 collateralRatio,
         int256 minCollateralRatio,

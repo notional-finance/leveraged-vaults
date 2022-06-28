@@ -12,7 +12,10 @@ library BalancerUtils {
     // @audit this is declared as well in Balancer2TokenVault, perhaps just remove one.
     WETH9 public constant WETH =
         WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IBalancerVault public constant BALANCER_VAULT =
+        IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
     address internal constant ETH_ADDRESS = address(0);
+    uint256 public constant BALANCER_PRECISION = 1e18;
 
     error InvalidTokenIndex(uint256 tokenIndex);
 
@@ -35,25 +38,24 @@ library BalancerUtils {
 
     // @audit this is marked external which means Balancer2TokenVault will use a significant
     // amount of gas to call this method, maybe just inline it into the constructor
-    function getPoolAddress(IBalancerVault vault, bytes32 poolId)
+    function getPoolAddress(bytes32 poolId)
         external
         view
         returns (address)
     {
         // Balancer will revert if pool is not found
         // prettier-ignore
-        (address poolAddress, /* */) = vault.getPool(poolId);
+        (address poolAddress, /* */) = BALANCER_VAULT.getPool(poolId);
         return poolAddress;
     }
 
     // @audit this method is never called FYI, it is called directly in the constructor
     function getTokenAddress(
-        IBalancerVault vault,
         bytes32 poolId,
         uint256 tokenIndex
     ) external view returns (IERC20) {
         // prettier-ignore
-        (address[] memory tokens, /* */, /* */) = vault.getPoolTokens(poolId);
+        (address[] memory tokens, /* */, /* */) = BALANCER_VAULT.getPoolTokens(poolId);
         return IERC20(tokens[tokenIndex]);
     }
 
@@ -61,7 +63,6 @@ library BalancerUtils {
     /// @param tokenIndex 0 = PRIMARY_TOKEN, 1 = SECONDARY_TOKEN
     /// @return spotPrice token spot price
     function getSpotPrice(
-        IBalancerVault vault,
         bytes32 poolId,
         uint256 tokenIndex,
         uint8 primaryIndex,
@@ -78,7 +79,7 @@ library BalancerUtils {
             /* address[] memory tokens */,
             uint256[] memory balances,
             /* uint256 lastChangeBlock */
-        ) = vault.getPoolTokens(poolId);
+        ) = BALANCER_VAULT.getPoolTokens(poolId);
 
         // Make everything 1e18
         // @audit check if the decimals != 18 to save some gas since 18 is so common, also this is an edge case but if
@@ -130,7 +131,6 @@ library BalancerUtils {
     // @audit this should be renamed joinPoolExactTokensIn since there are other join methods we may
     // use in the future
     function joinPool(
-        address vault,
         bytes32 poolId,
         address primaryAddress,
         uint256 maxPrimaryAmount,
@@ -157,7 +157,7 @@ library BalancerUtils {
             : 0;
 
         // Join pool
-        IBalancerVault(vault).joinPool{value: msgValue}(
+        BALANCER_VAULT.joinPool{value: msgValue}(
             poolId,
             address(this),
             address(this),
@@ -176,7 +176,6 @@ library BalancerUtils {
 
     // @audit this should be renamed exitPoolExactBPTIn since there are other exit methods we may use in the future
     function exitPool(
-        address vault,
         bytes32 poolId,
         address primaryAddress,
         uint256 minPrimaryAmount,
@@ -191,29 +190,17 @@ library BalancerUtils {
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
-<<<<<<< Updated upstream
-            // @audit this code won't work for any other token pair
-            withdrawFromWETH ? address(0) : address(WETH),
-=======
             primaryAddress == ETH_ADDRESS ? (withdrawFromWETH ? ETH_ADDRESS : address(WETH)) : primaryAddress,
->>>>>>> Stashed changes
             minPrimaryAmount,
             secondaryAddress,
             minSecondaryAmount,
             primaryIndex
         );
 
-        IBalancerVault(vault).exitPool(
+        BALANCER_VAULT.exitPool(
             poolId,
             address(this),
-<<<<<<< Updated upstream
-            // @audit i don't think this is correct, the vault should receive all the underlying
-            // assets and then it will return them to Notional or the account depending on the
-            // situations
-            payable(msg.sender), // Owner will receive the underlying assets
-=======
-            address(this), // Vault will receive the underlying assets
->>>>>>> Stashed changes
+            payable(address(this)), // Vault will receive the underlying assets
             IBalancerVault.ExitPoolRequest(
                 assets,
                 minAmountsOut,

@@ -262,7 +262,7 @@ library TradeHandler {
         }
     }
 
-    /// @audit maybe call this method something more specific for the balancer vault
+    // @audit maybe call this method something more specific for the balancer vault
     function approveTokens(
         address balancerVault,
         address underylingToken,

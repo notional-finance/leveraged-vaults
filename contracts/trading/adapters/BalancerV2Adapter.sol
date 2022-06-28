@@ -90,7 +90,5 @@ library BalancerV2Adapter {
         } else if (TradeType(trade.tradeType) == TradeType.EXACT_OUT_BATCH) {
             executionCallData = _batch(IBalancerVault.SwapKind.GIVEN_OUT, from, trade);
         }
-
-        revert InvalidTrade();
     }
 }

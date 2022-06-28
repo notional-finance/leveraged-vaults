@@ -17,11 +17,15 @@ contract SimpleStrategyVault is BaseStrategyVault {
     function setExchangeRate(uint256 e) external { _tokenExchangeRate = e; }
     function setSecondary(uint16 c) external { _secondaryCurrency = c; }
 
-    constructor(
+    constructor(NotionalProxy notional_, ITradingModule tradingModule_)
+        BaseStrategyVault(notional_, tradingModule_) {}
+
+    function initialize(
         string memory name_,
-        address notional_,
         uint16 borrowCurrencyId_
-    ) BaseStrategyVault(name_, notional_, borrowCurrencyId_) { }
+    ) external initializer {
+        __INIT_VAULT(name_, borrowCurrencyId_);
+    }
 
     // Vaults need to implement these two methods
     function _depositFromNotional(
@@ -55,25 +59,27 @@ contract SimpleStrategyVault is BaseStrategyVault {
     }
 
     function borrowSecondaryCurrency(
+        address account,
         uint16 currencyId,
         uint256 maturity,
         uint256 fCashToBorrow,
         uint32 slippageLimit
     ) external {
         uint256 underlyingTokensTransferred = NOTIONAL.borrowSecondaryCurrencyToVault(
-            currencyId, maturity, fCashToBorrow, slippageLimit
+            account, currencyId, maturity, fCashToBorrow, slippageLimit
         );
         emit SecondaryBorrow(underlyingTokensTransferred);
     }
 
     function repaySecondaryCurrency(
+        address account,
         uint16 currencyId,
         uint256 maturity,
         uint256 fCashToRepay,
         uint32 slippageLimit
     ) external {
         NOTIONAL.repaySecondaryCurrencyFromVault(
-            currencyId, maturity, fCashToRepay, slippageLimit, ""
+            account, currencyId, maturity, fCashToRepay, slippageLimit, ""
         );
     }
 }
