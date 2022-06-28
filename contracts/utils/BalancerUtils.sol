@@ -39,7 +39,7 @@ library BalancerUtils {
     // @audit this is marked external which means Balancer2TokenVault will use a significant
     // amount of gas to call this method, maybe just inline it into the constructor
     function getPoolAddress(bytes32 poolId)
-        external
+        internal
         view
         returns (address)
     {
@@ -53,7 +53,7 @@ library BalancerUtils {
     function getTokenAddress(
         bytes32 poolId,
         uint256 tokenIndex
-    ) external view returns (IERC20) {
+    ) internal view returns (IERC20) {
         // prettier-ignore
         (address[] memory tokens, /* */, /* */) = BALANCER_VAULT.getPoolTokens(poolId);
         return IERC20(tokens[tokenIndex]);
@@ -138,7 +138,7 @@ library BalancerUtils {
         uint256 maxSecondaryAmount,
         uint8 primaryIndex,
         uint256 minBPT
-    ) external {
+    ) internal {
         // prettier-ignore
         (
             IAsset[] memory assets,
@@ -174,8 +174,7 @@ library BalancerUtils {
         );
     }
 
-    // @audit this should be renamed exitPoolExactBPTIn since there are other exit methods we may use in the future
-    function exitPool(
+    function exitPoolExactBPTIn(
         bytes32 poolId,
         address primaryAddress,
         uint256 minPrimaryAmount,
@@ -183,14 +182,14 @@ library BalancerUtils {
         uint256 minSecondaryAmount,
         uint8 primaryIndex,
         uint256 bptExitAmount,
-        bool withdrawFromWETH // @audit would this be more clear if it was redeemToETH
-    ) external {
+        bool redeemToETH
+    ) internal {
         // prettier-ignore
         (
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
-            primaryAddress == ETH_ADDRESS ? (withdrawFromWETH ? ETH_ADDRESS : address(WETH)) : primaryAddress,
+            primaryAddress == ETH_ADDRESS ? (redeemToETH ? ETH_ADDRESS : address(WETH)) : primaryAddress,
             minPrimaryAmount,
             secondaryAddress,
             minSecondaryAmount,
