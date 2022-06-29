@@ -180,7 +180,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
 
     constructor(NotionalProxy notional_, DeploymentParams memory params)
         BaseStrategyVault(notional_, params.tradingModule)
-        initializer
     {
         // @audit we should validate in this method that the balancer oracle is enabled otherwise none
         // of the methods will work:

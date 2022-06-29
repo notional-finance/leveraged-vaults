@@ -59,6 +59,7 @@ def encode_redeem_params(**kwargs):
         )]
     )
 
+@pytest.mark.only
 def test_enter_vault_success(env, usdcDaiVault, accounts, tradingModule):
     markets = env.notional.getActiveMarkets(3)
     params = encode_deposit_params(
@@ -199,7 +200,6 @@ def test_exit_vault_success(env, usdcDaiVault, accounts):
 #def test_roll_vault_reverts(env, usdcDaiVault, accounts):
 #def test_liquidate_vault_success(env, usdcDaiVault, accounts):
 
-@pytest.mark.only
 def test_settle_vault_success(env, usdcDaiVault, accounts):
     markets = env.notional.getActiveMarkets(3)
     maturity = markets[1][1]
