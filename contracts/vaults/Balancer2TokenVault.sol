@@ -984,7 +984,7 @@ contract Balancer2TokenVault is
         // Secondary debt is paid off, handle potential primary payoff
         int256 primaryAmountAvailable = primaryAmount.toInt256();
         if (primaryAmountAvailable < underlyingCashRequiredToSettle) {
-            // If primaryAmountToRepay < underlyingCashRequiredToSettle,
+            // If primaryAmountAvailable < underlyingCashRequiredToSettle,
             // we need to redeem more BPT. So, we update primarySettlementBalance[maturity]
             // and wait for the next settlement call.
             primarySettlementBalance[maturity] = primaryAmount;
