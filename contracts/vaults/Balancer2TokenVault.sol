@@ -9,7 +9,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Token, VaultState, VaultAccount} from "../global/Types.sol";
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
-import {OracleHelper} from "../utils/OracleHelper.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
@@ -193,9 +192,10 @@ contract Balancer2TokenVault is
 
         SECONDARY_BORROW_CURRENCY_ID = params.secondaryBorrowCurrencyId;
         BALANCER_POOL_ID = params.balancerPoolId;
-        BALANCER_POOL_TOKEN = IBalancerPool(
-            BalancerUtils.getPoolAddress(params.balancerPoolId)
-        );
+        {
+            (address pool, /* */) = BalancerUtils.BALANCER_VAULT.getPool(params.balancerPoolId);
+            BALANCER_POOL_TOKEN = IBalancerPool(pool);
+        }
 
         // prettier-ignore
         (
@@ -380,7 +380,8 @@ contract Balancer2TokenVault is
             maturity
         );
 
-        (uint256 primaryBalance, uint256 pairPrice) = OracleHelper
+        // @audit this pair price is incorrect
+        (uint256 primaryBalance, uint256 pairPrice) = BalancerUtils
             .getTimeWeightedPrimaryBalance(
                 address(BALANCER_POOL_TOKEN),
                 vaultSettings.oracleWindowInSeconds,
@@ -446,7 +447,7 @@ contract Balancer2TokenVault is
             //     oracleWindowInSeconds: oracleWindowInSeconds,
             //     ...
             // })
-            uint256 optimalSecondaryAmount = OracleHelper
+            uint256 optimalSecondaryAmount = BalancerUtils
                 .getOptimalSecondaryBorrowAmount(
                     address(BALANCER_POOL_TOKEN),
                     vaultSettings.oracleWindowInSeconds,
@@ -494,7 +495,7 @@ contract Balancer2TokenVault is
             }
         }
 
-        BalancerUtils.joinPool(
+        BalancerUtils.joinPoolExactTokensIn(
             BALANCER_POOL_ID,
             address(_underlyingToken()),
             deposit,
@@ -623,8 +624,7 @@ contract Balancer2TokenVault is
             address(SECONDARY_TOKEN),
             minSecondary,
             PRIMARY_INDEX,
-            bptExitAmount,
-            true // redeem WETH to ETH
+            bptExitAmount
         );
 
         primaryBalance =
@@ -1186,7 +1186,7 @@ contract Balancer2TokenVault is
             params.tradeData
         );
 
-        BalancerUtils.joinPool(
+        BalancerUtils.joinPoolExactTokensIn(
             BALANCER_POOL_ID,
             address(_underlyingToken()),
             primaryAmount,
@@ -1261,16 +1261,15 @@ contract Balancer2TokenVault is
                 maturity
             );
 
-            // @audit this variable name shadows a method declaration
-            uint256 _totalSupplyInMaturity = _totalSupplyInMaturity(maturity);
+            uint256 totalSupplyInMaturity = _totalSupplyInMaturity(maturity);
 
             if (account == address(this)) {
                 debtSharesToRepay =
                     (totalAccountDebtShares * strategyTokenAmount) /
-                    _totalSupplyInMaturity;
+                    totalSupplyInMaturity;
                 borrowedSecondaryfCashAmount =
                     (totalfCashBorrowed * strategyTokenAmount) /
-                    _totalSupplyInMaturity;
+                    totalSupplyInMaturity;
             } else {
                 // prettier-ignore
                 (
