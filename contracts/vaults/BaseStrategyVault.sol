@@ -124,7 +124,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
 
     // This can be overridden if the vault borrows in a secondary currency, but reverts by default.
     function _repaySecondaryBorrowCallback(
-        uint256 assetCashRequired, bytes calldata data
+        address token,  uint256 underlyingRequired, bytes calldata data
     ) internal virtual returns (bytes memory returnData) {
         revert();
     }
@@ -166,11 +166,10 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
             unchecked { transferToAccount = borrowedCurrencyAmount - underlyingToRepayDebt; }
         }
 
-        repayPrimaryBorrow(receiver, transferToAccount, transferToNotional);
+        _repayPrimaryBorrow(receiver, transferToAccount, transferToNotional);
     }
 
-    // @audit this should have an underscore in front of the name since it is internal
-    function repayPrimaryBorrow(
+    function _repayPrimaryBorrow(
         address receiver, 
         uint256 transferToAccount, 
         uint256 transferToNotional
@@ -185,9 +184,9 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
     }
 
     function repaySecondaryBorrowCallback(
-        uint256 assetCashRequired, bytes calldata data
+        address token, uint256 underlyingRequired, bytes calldata data
     ) external onlyNotional returns (bytes memory returnData) {
-        return _repaySecondaryBorrowCallback(assetCashRequired, data);
+        return _repaySecondaryBorrowCallback(token, underlyingRequired, data);
     }
 
     // Storage gap for future potential upgrades

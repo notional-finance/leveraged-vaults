@@ -459,13 +459,22 @@ contract Balancer2TokenVault is
                 );
 
             // Borrow secondary currency from Notional (tokens will be transferred to this contract)
-            borrowedSecondaryAmount = NOTIONAL.borrowSecondaryCurrencyToVault(
-                account,
-                SECONDARY_BORROW_CURRENCY_ID,
-                maturity,
-                params.secondaryfCashAmount,
-                params.secondarySlippageLimit
-            );
+            {
+                uint256[2] memory fCashToBorrow;
+                uint32[2] memory maxBorrowRate;
+                uint32[2] memory minRollLendRate;
+                fCashToBorrow[0] = params.secondaryfCashAmount;
+                maxBorrowRate[0] = params.secondarySlippageLimit;
+                uint256[2] memory tokensTransferred = NOTIONAL.borrowSecondaryCurrencyToVault(
+                    account,
+                    maturity,
+                    fCashToBorrow,
+                    maxBorrowRate,
+                    minRollLendRate
+                );
+
+                borrowedSecondaryAmount = tokensTransferred[0];
+            }
 
             // Require the secondary borrow amount to be within SECONDARY_BORROW_LOWER_LIMIT percent
             // of the optimal amount
@@ -628,6 +637,7 @@ contract Balancer2TokenVault is
 
     /// @notice Callback function for repaying secondary debt
     function _repaySecondaryBorrowCallback(
+        address /* secondaryToken */,
         uint256 underlyingRequired,
         bytes calldata data
     ) internal override returns (bytes memory returnData) {
@@ -1021,7 +1031,7 @@ contract Balancer2TokenVault is
         }
 
         // Transfer everything to Notional including the surplus
-        repayPrimaryBorrow(address(NOTIONAL), 0, primaryAmount);
+        _repayPrimaryBorrow(address(NOTIONAL), 0, primaryAmount);
 
         // address(this) should have 0 primary currency at this point
         primarySettlementBalance[maturity] = 0;
@@ -1251,6 +1261,7 @@ contract Balancer2TokenVault is
                 maturity
             );
 
+            // @audit this variable name shadows a method declaration
             uint256 _totalSupplyInMaturity = _totalSupplyInMaturity(maturity);
 
             if (account == address(this)) {
