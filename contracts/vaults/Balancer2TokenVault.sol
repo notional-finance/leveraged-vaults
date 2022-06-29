@@ -630,7 +630,14 @@ contract Balancer2TokenVault is
         Trade memory trade;
         uint256 secondaryShortfall;
 
-        if (secondaryBalance < underlyingRequired) {
+        int256 primaryBalanceBefore = _tokenBalance(address(_underlyingToken()))
+            .toInt256();
+
+        if (secondaryBalance >= underlyingRequired) {
+            unchecked {
+                secondaryBalance -= underlyingRequired;
+            }
+        } else {
             // Not enough secondary balance to repay debt, sell some primary currency
             unchecked {
                 secondaryShortfall = underlyingRequired - secondaryBalance;
@@ -654,11 +661,12 @@ contract Balancer2TokenVault is
             );
 
             trade.execute(TRADING_MODULE, params.dexId);
-        }
 
-        // Update balance before transfer
-        // @audit this will revert if secondaryBalance < underlyingRequired
-        secondaryBalance -= underlyingRequired;
+            // Setting secondaryBalance to 0 here because it should be
+            // equal to underlyingRequired after the trade and 0 after the
+            // transfer.
+            secondaryBalance = 0;
+        }
 
         // Transfer required secondary balance to Notional
         if (SECONDARY_BORROW_CURRENCY_ID == 1) {
@@ -667,10 +675,6 @@ contract Balancer2TokenVault is
         } else {
             SECONDARY_TOKEN.safeTransfer(address(NOTIONAL), underlyingRequired);
         }
-
-        uint256 primaryBalanceBefore = _tokenBalance(
-            address(_underlyingToken())
-        );
 
         if (secondaryBalance > 0) {
             // Sell residual secondary balance
@@ -694,16 +698,15 @@ contract Balancer2TokenVault is
             trade.execute(TRADING_MODULE, params.dexId);
         }
 
-        // At this point, secondaryBalance = secondary residual
-        // Return secondary shortfall, secondary residual and primary amount
-        // received from the residual trade
-        return
-            abi.encode(
-                secondaryShortfall,
-                secondaryBalance,
-                _tokenBalance(address(_underlyingToken())) -
-                    primaryBalanceBefore
-            );
+        int256 primaryBalanceAfter = _tokenBalance(address(_underlyingToken()))
+            .toInt256();
+
+        // Return primaryBalanceDiff
+        // If primaryBalanceAfter > primaryBalanceBefore, residual secondary currency was
+        // sold for primary currency
+        // If primaryBalanceBefore > primaryBalanceAfter, primary currency was sold
+        // for secondary to cover the shortfall
+        return abi.encode(primaryBalanceAfter - primaryBalanceBefore);
     }
 
     function _redeemFromNotional(
@@ -943,16 +946,12 @@ contract Balancer2TokenVault is
                 callbackData
             );
 
-            // prettier-ignore
-            (
-                /* uint256 secondaryShortfall */,
-                /* uint256 secondaryResidual */,
-                uint256 primaryAmountReceived
-            ) = abi.decode(returnData, (uint256, uint256, uint256));
+            int256 primaryAmountDiff = abi.decode(returnData, (int256));
 
             // address(this) should have 0 secondary balance at this point
             secondarySettlementBalance[maturity] = 0;
-            primaryAmount += primaryAmountReceived;
+            primaryAmount = (primaryAmount.toInt256() + primaryAmountDiff)
+                .toUint256();
         }
 
         int256 primaryAmountToRepay = primaryAmount.toInt256();
