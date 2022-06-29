@@ -11,6 +11,7 @@ library Constants {
     uint256 internal constant INCENTIVE_ACCUMULATION_PRECISION = 1e18;
 
     // ETH will be initialized as the first currency
+    address internal constant ETH_ADDRESS = address(0);
     uint256 internal constant ETH_CURRENCY_ID = 1;
     uint8 internal constant ETH_DECIMAL_PLACES = 18;
     int256 internal constant ETH_DECIMALS = 1e18;

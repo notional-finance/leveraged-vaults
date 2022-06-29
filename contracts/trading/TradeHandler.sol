@@ -2,8 +2,10 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
+import "../global/Constants.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {TokenUtils} from "../utils/TokenUtils.sol";
 import "../../interfaces/WETH9.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/trading/ITradingModule.sol";
@@ -12,6 +14,7 @@ import "../../interfaces/trading/ITradingModule.sol";
 /// with the TradeModule and execute trades
 library TradeHandler {
     using TradeHandler for Trade;
+    using TokenUtils for IERC20;
 
     error ERC20Error();
     error TradeExecution(bytes returnData);
@@ -20,7 +23,6 @@ library TradeHandler {
     error PostValidationExactIn(uint256 minAmountOut, uint256 amountReceived);
     error PostValidationExactOut(uint256 exactAmountOut, uint256 amountReceived);
 
-    address public constant ETH_ADDRESS = address(0);
     WETH9 public constant WETH = WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
 
@@ -61,7 +63,7 @@ library TradeHandler {
         _preValidate(trade, preTradeSellBalance);
 
         // No need to approve ETH trades
-        if (spender != ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
+        if (spender != Constants.ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
             _approve(trade, spender);
         }
 
@@ -73,8 +75,8 @@ library TradeHandler {
         _postValidate(trade, postTradeBuyBalance - preTradeBuyBalance);
 
         // No need to revoke ETH trades
-        if (spender != ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
-            _revoke(trade, spender);
+        if (spender != Constants.ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
+            IERC20(trade.sellToken).checkRevoke(spender);
         }
 
         amountSold = preTradeSellBalance - postTradeSellBalance;
@@ -85,10 +87,10 @@ library TradeHandler {
 
     function _getBalances(Trade memory trade) private view returns (uint256, uint256) {
         return (
-            trade.sellToken == ETH_ADDRESS
+            trade.sellToken == Constants.ETH_ADDRESS
                 ? address(this).balance
                 : IERC20(trade.sellToken).balanceOf(address(this)),
-            trade.buyToken == ETH_ADDRESS
+            trade.buyToken == Constants.ETH_ADDRESS
                 ? address(this).balance
                 : IERC20(trade.buyToken).balanceOf(address(this))
         );
@@ -132,14 +134,7 @@ library TradeHandler {
     /// for EXACT_OUT trades
     function _approve(Trade memory trade, address spender) private {
         uint256 allowance = _isExactIn(trade) ? trade.amount : trade.limit;
-        IERC20(trade.sellToken).approve(spender, allowance);
-        _checkReturnCode();
-    }
-
-    /// @notice Revoke exchange approvals
-    function _revoke(Trade memory trade, address spender) private {
-        IERC20(trade.sellToken).approve(spender, 0);
-        _checkReturnCode();
+        IERC20(trade.sellToken).checkApprove(spender, allowance);
     }
 
     function _executeTrade(
@@ -152,7 +147,7 @@ library TradeHandler {
         uint256 preTradeETHBalance = address(this).balance;
 
         // Curve doesn't support WETH (spender == address(0))
-        if (trade.sellToken == address(WETH) && spender == ETH_ADDRESS) {
+        if (trade.sellToken == address(WETH) && spender == Constants.ETH_ADDRESS) {
             uint256 withdrawAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             WETH.withdraw(withdrawAmount);
         }
@@ -169,30 +164,6 @@ library TradeHandler {
             unchecked { depositAmount = postTradeETHBalance - preTradeETHBalance; }
             WETH.deposit{value: depositAmount}();
         }
-    }
-
-    // Supports checking return codes on non-standard ERC20 contracts
-    function _checkReturnCode() private pure {
-        bool success;
-        uint256[1] memory result;
-        assembly {
-            switch returndatasize()
-                case 0 {
-                    // This is a non-standard ERC-20
-                    success := 1 // set success to true
-                }
-                case 32 {
-                    // This is a compliant ERC-20
-                    returndatacopy(result, 0, 32)
-                    success := mload(result) // Set `success = returndata` of external call
-                }
-                default {
-                    // This is an excessively non-compliant ERC-20, revert.
-                    revert(0, 0)
-                }
-        }
-
-        if (!success) revert ERC20Error();
     }
 
     // @audit there should be an internal and external version of this method, the external method should
@@ -262,34 +233,4 @@ library TradeHandler {
         }
     }
 
-    // @audit maybe call this method something more specific for the balancer vault
-    function approveTokens(
-        address balancerVault,
-        address underylingToken,
-        address secondaryToken,
-        address balancerPool,
-        address liquidityGauge,
-        address vebalDelegator
-    ) external {
-        // Allow Balancer vault to pull UNDERLYING_TOKEN
-        if (address(underylingToken) != address(0)) {
-            IERC20(underylingToken).approve(
-                balancerVault,
-                type(uint256).max
-            );
-            _checkReturnCode();
-        }
-        // Allow balancer vault to pull SECONDARY_TOKEN
-        if (address(secondaryToken) != address(0)) {
-            IERC20(secondaryToken).approve(balancerVault, type(uint256).max);
-            _checkReturnCode();
-        }
-        // Allow LIQUIDITY_GAUGE to pull BALANCER_POOL_TOKEN
-        IERC20(balancerPool).approve(liquidityGauge, type(uint256).max);
-        _checkReturnCode();
-
-        // Allow VEBAL_DELEGATOR to pull LIQUIDITY_GAUGE tokens
-        IERC20(liquidityGauge).approve(vebalDelegator, type(uint256).max);
-        _checkReturnCode();
-    }
 }

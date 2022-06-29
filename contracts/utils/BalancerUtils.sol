@@ -4,14 +4,18 @@ pragma solidity =0.8.11;
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {IBalancerVault, IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
+import {Constants} from "../global/Constants.sol";
 import {WETH9} from "../../../interfaces/WETH9.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {TokenUtils} from "./TokenUtils.sol";
 
 library BalancerUtils {
+    using TokenUtils for IERC20;
+
     WETH9 public constant WETH =
         WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IBalancerVault public constant BALANCER_VAULT =
         IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-    address internal constant ETH_ADDRESS = address(0);
     uint256 internal constant BALANCER_PRECISION = 1e18;
     uint256 internal constant BALANCER_PRECISION_SQUARED = 1e36;
 
@@ -125,7 +129,7 @@ library BalancerUtils {
         );
 
         uint256 msgValue;
-        if (assets[primaryIndex] == IAsset(ETH_ADDRESS)) msgValue = maxAmountsIn[primaryIndex];
+        if (assets[primaryIndex] == IAsset(Constants.ETH_ADDRESS)) msgValue = maxAmountsIn[primaryIndex];
 
         // Join pool
         BALANCER_VAULT.joinPool{value: msgValue}(
@@ -327,4 +331,19 @@ library BalancerUtils {
             10**primaryDecimals;
     }
 
+    function approveBalancerTokens(
+        address balancerVault,
+        IERC20 underlyingToken,
+        IERC20 secondaryToken,
+        IERC20 balancerPool,
+        IERC20 liquidityGauge,
+        address vebalDelegator
+    ) external {
+        underlyingToken.checkApprove(balancerVault, type(uint256).max);
+        secondaryToken.checkApprove(balancerVault, type(uint256).max);
+        // Allow LIQUIDITY_GAUGE to pull BALANCER_POOL_TOKEN
+        balancerPool.checkApprove(address(liquidityGauge), type(uint256).max);
+        // Allow VEBAL_DELEGATOR to pull LIQUIDITY_GAUGE tokens
+        liquidityGauge.checkApprove(vebalDelegator, type(uint256).max);
+    }
 }

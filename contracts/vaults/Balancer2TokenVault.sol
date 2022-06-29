@@ -6,10 +6,16 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import {Token, VaultState, VaultAccount} from "../global/Types.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
+import {Constants} from "../global/Constants.sol";
+
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
+import {TradeHandler} from "../trading/TradeHandler.sol";
+
 import {WETH9} from "../../interfaces/WETH9.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../interfaces/notional/IVaultController.sol";
@@ -22,7 +28,6 @@ import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule, Trade, TradeType} from "../../interfaces/trading/ITradingModule.sol";
-import {TradeHandler} from "../trading/TradeHandler.sol";
 
 contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVault {
     using TradeHandler for Trade;
@@ -146,9 +151,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
     uint256 internal constant INTERNAL_PRECISION = 1e8;
 
     /** Immutables */
-    // @audit similar remark here, each public variable adds an external getter so all of these
-    // will result in larger bytecode size, consider just making one method that returns all the
-    // immutables
     uint16 internal immutable SECONDARY_BORROW_CURRENCY_ID;
     bytes32 internal immutable BALANCER_POOL_ID;
     IBalancerPool internal immutable BALANCER_POOL_TOKEN;
@@ -221,14 +223,14 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
             revert InvalidSecondaryToken(tokens[secondaryIndex]);
 
         uint256 primaryDecimals = address(_underlyingToken()) ==
-            TradeHandler.ETH_ADDRESS
+            Constants.ETH_ADDRESS
             ? 18
             : _underlyingToken().decimals();
         require(primaryDecimals <= type(uint8).max);
         PRIMARY_DECIMALS = uint8(primaryDecimals);
 
         uint256 secondaryDecimals = address(SECONDARY_TOKEN) ==
-            TradeHandler.ETH_ADDRESS
+            Constants.ETH_ADDRESS
             ? 18
             : SECONDARY_TOKEN.decimals();
         require(primaryDecimals <= type(uint8).max);
@@ -302,13 +304,13 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
     function _tokenAddress(address token) private view returns (address) {
         // @audit consider using a constant for address(0) here like ETH_ADDRESS or something
         return
-            token == address(0) ? address(BalancerUtils.WETH) : address(token);
+            token == Constants.ETH_ADDRESS ? address(BalancerUtils.WETH) : address(token);
     }
 
     function _tokenBalance(address token) private view returns (uint256) {
         // @audit consider using a constant for address(0) here like ETH_ADDRESS or something
         return
-            token == address(0)
+            token == Constants.ETH_ADDRESS
                 ? address(this).balance
                 : ERC20(token).balanceOf(address(this));
     }
@@ -349,12 +351,12 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
     function _approveTokens() private {
         // Approving in external lib to reduce contract size
         // @audit would be nice to move this back into the contract if we have the space
-        TradeHandler.approveTokens(
+        BalancerUtils.approveBalancerTokens(
             address(BalancerUtils.BALANCER_VAULT),
-            address(_underlyingToken()),
-            address(SECONDARY_TOKEN),
-            address(BALANCER_POOL_TOKEN),
-            address(LIQUIDITY_GAUGE),
+            _underlyingToken(),
+            SECONDARY_TOKEN,
+            IERC20(address(BALANCER_POOL_TOKEN)),
+            IERC20(address(LIQUIDITY_GAUGE)),
             address(VEBAL_DELEGATOR)
         );
     }
