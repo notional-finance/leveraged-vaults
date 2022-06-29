@@ -1,25 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.11;
 
-import "../../interfaces/balancer/IPriceOracle.sol";
-import {IBalancerVault, IAsset} from "../../interfaces/balancer/IBalancerVault.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {WETH9} from "../../interfaces/WETH9.sol";
+import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
+import {IBalancerVault, IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
+import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
+import {Constants} from "../global/Constants.sol";
+import {WETH9} from "../../../interfaces/WETH9.sol";
+import {TokenUtils, IERC20} from "./TokenUtils.sol";
 
-// @audit since this is actually balancer specific, maybe we should make a sub folder in vaults/Balancer
-// and just put this in there instead?
 library BalancerUtils {
-    // @audit this is declared as well in Balancer2TokenVault, perhaps just remove one.
+    using TokenUtils for IERC20;
+
     WETH9 public constant WETH =
         WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IBalancerVault public constant BALANCER_VAULT =
         IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-    address internal constant ETH_ADDRESS = address(0);
-    uint256 public constant BALANCER_PRECISION = 1e18;
+    uint256 internal constant BALANCER_PRECISION = 1e18;
+    uint256 internal constant BALANCER_PRECISION_SQUARED = 1e36;
 
     error InvalidTokenIndex(uint256 tokenIndex);
 
-    function getTimeWeightedOraclePrice(
+    function _getTimeWeightedOraclePrice(
         address pool,
         IPriceOracle.Variable variable,
         uint256 secs
@@ -34,29 +35,6 @@ library BalancerUtils {
         // @audit is this comment correct? isn't the price denominated in the first token?
         // Gets the balancer time weighted average price denominated in ETH
         return IPriceOracle(pool).getTimeWeightedAverage(queries)[0];
-    }
-
-    // @audit this is marked external which means Balancer2TokenVault will use a significant
-    // amount of gas to call this method, maybe just inline it into the constructor
-    function getPoolAddress(bytes32 poolId)
-        internal
-        view
-        returns (address)
-    {
-        // Balancer will revert if pool is not found
-        // prettier-ignore
-        (address poolAddress, /* */) = BALANCER_VAULT.getPool(poolId);
-        return poolAddress;
-    }
-
-    // @audit this method is never called FYI, it is called directly in the constructor
-    function getTokenAddress(
-        bytes32 poolId,
-        uint256 tokenIndex
-    ) internal view returns (IERC20) {
-        // prettier-ignore
-        (address[] memory tokens, /* */, /* */) = BALANCER_VAULT.getPoolTokens(poolId);
-        return IERC20(tokens[tokenIndex]);
     }
 
     /// @notice Gets the current spot price with a given token index
@@ -119,18 +97,16 @@ library BalancerUtils {
     ) private view returns (IAsset[] memory assets, uint256[] memory amounts) {
         assets = new IAsset[](2);
         assets[primaryIndex] = IAsset(primaryAddress);
-        // @audit mark unchecked { 1 - primaryIndex } to reduce bytecode size, checked
-        // arithmetic is costs 15x gas versus unchecked
-        assets[1 - primaryIndex] = IAsset(secondaryAddress);
+        uint8 secondaryIndex;
+        unchecked { secondaryIndex = 1 - primaryIndex; }
+        assets[secondaryIndex] = IAsset(secondaryAddress);
 
         amounts = new uint256[](2);
         amounts[primaryIndex] = primaryAmount;
-        amounts[1 - primaryIndex] = secondaryAmount;
+        amounts[secondaryIndex] = secondaryAmount;
     }
 
-    // @audit this should be renamed joinPoolExactTokensIn since there are other join methods we may
-    // use in the future
-    function joinPool(
+    function joinPoolExactTokensIn(
         bytes32 poolId,
         address primaryAddress,
         uint256 maxPrimaryAmount,
@@ -151,10 +127,8 @@ library BalancerUtils {
             primaryIndex
         );
 
-        // @audit use a named constant for address(0)
-        uint256 msgValue = assets[primaryIndex] == IAsset(address(0))
-            ? maxAmountsIn[primaryIndex]
-            : 0;
+        uint256 msgValue;
+        if (assets[primaryIndex] == IAsset(Constants.ETH_ADDRESS)) msgValue = maxAmountsIn[primaryIndex];
 
         // Join pool
         BALANCER_VAULT.joinPool{value: msgValue}(
@@ -181,15 +155,14 @@ library BalancerUtils {
         address secondaryAddress,
         uint256 minSecondaryAmount,
         uint8 primaryIndex,
-        uint256 bptExitAmount,
-        bool redeemToETH
+        uint256 bptExitAmount
     ) internal {
         // prettier-ignore
         (
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
-            primaryAddress == ETH_ADDRESS ? (redeemToETH ? ETH_ADDRESS : address(WETH)) : primaryAddress,
+            primaryAddress,
             minPrimaryAmount,
             secondaryAddress,
             minSecondaryAmount,
@@ -210,5 +183,166 @@ library BalancerUtils {
                 false // Don't use internal balances
             )
         );
+    }
+
+    /// @notice Gets the time-weighted primary token balance for a given bptAmount
+    /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
+    /// @param bptAmount BPT amount
+    /// @return primaryAmount primary token balance
+    /// @return pairPrice price of the token pair denominated in the first token
+    function getTimeWeightedPrimaryBalance(
+        address pool,
+        uint256 oracleWindowInSeconds,
+        uint8 primaryIndex,
+        uint256 primaryWeight,
+        uint256 secondaryWeight,
+        uint8 primaryDecimals,
+        uint256 bptAmount
+    ) external view returns (uint256 primaryAmount, uint256 pairPrice) {
+        // Gets the BPT token price
+        uint256 bptPrice = _getTimeWeightedOraclePrice(
+            pool,
+            IPriceOracle.Variable.BPT_PRICE,
+            oracleWindowInSeconds
+        );
+
+        // Gets the pair price
+        pairPrice = _getTimeWeightedOraclePrice(
+            pool,
+            IPriceOracle.Variable.PAIR_PRICE,
+            oracleWindowInSeconds
+        );
+
+        uint256 primaryPrecision = 10 ** primaryDecimals;
+
+        if (primaryIndex == 0) {
+            // The first token in the BPT pool is the primary token.
+            // Since bptPrice is always denominated in the first token,
+            // Both bptPrice and bptAmount are in 1e18
+            // underlyingValue = bptPrice * bptAmount / 1e18
+            primaryAmount = (bptPrice * bptAmount * primaryPrecision) / BALANCER_PRECISION_SQUARED;
+        } else {
+            // The second token in the BPT pool is the primary token.
+            // In this case, we need to convert secondaryTokenValue
+            // to underlyingValue using the pairPrice.
+            // Both bptPrice and bptAmount are in 1e18
+            uint256 secondaryAmount = (bptPrice * bptAmount) / BALANCER_PRECISION;
+
+            // PairPrice =  (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
+            // (SecondaryAmount / SecondaryWeight) / PairPrice = (PrimaryAmount / PrimaryWeight)
+            // PrimaryAmount = (SecondaryAmount / SecondaryWeight) / PairPrice * PrimaryWeight
+
+            // @audit this can be further simplified to, use this formula instead because it uses
+            // less division between steps and therefore will result in less precision loss.
+            // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
+
+            primaryAmount = (secondaryAmount * primaryWeight * primaryPrecision) /
+                (secondaryWeight * pairPrice * BALANCER_PRECISION);
+        }
+    }
+
+    function _getPairPrice(
+        address pool,
+        bytes32 poolId,
+        address tradingModule,
+        uint256 oracleWindowInSeconds,
+        uint256 balancerOracleWeight
+    ) internal view returns (uint256) {
+        // @audit this should only be called if balancerOracleWeight > 0
+        uint256 balancerPrice = _getTimeWeightedOraclePrice(
+            pool,
+            IPriceOracle.Variable.PAIR_PRICE,
+            oracleWindowInSeconds
+        );
+
+        // prettier-ignore
+        (
+            address[] memory tokens,
+            /* uint256[] memory balances */,
+            /* uint256 lastChangeBlock */
+        ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(poolId);
+
+        // @audit this should only be called if balancerOracleWeight < 1e8
+        (int256 chainlinkPrice, int256 decimals) = ITradingModule(tradingModule)
+            .getOraclePrice(tokens[1], tokens[0]);
+
+        // @audit zero may be a valid price
+        require(chainlinkPrice >= 0); /// @dev Chainlink rate error
+        require(decimals >= 0); /// @dev Chainlink decimals error
+
+        // Normalize price to 18 decimals
+        // @audit this should only be done if decimals != 1e18
+        chainlinkPrice = (chainlinkPrice * 1e18) / decimals;
+
+        // @audit 1e8 should be a constant with a defined name here
+        // @audit for readability these should be split into two named variables
+        return
+            (balancerPrice * balancerOracleWeight) /
+            1e8 +
+            (uint256(chainlinkPrice) * (1e8 - balancerOracleWeight)) /
+            1e8;
+    }
+
+    function getOptimalSecondaryBorrowAmount(
+        address pool,
+        uint256 oracleWindowInSeconds,
+        uint8 primaryIndex,
+        uint256 primaryWeight,
+        uint256 secondaryWeight,
+        uint8 primaryDecimals,
+        uint8 secondaryDecimals,
+        uint256 primaryAmount
+    ) external view returns (uint256 secondaryAmount) {
+        // Gets the PAIR price
+        uint256 pairPrice = _getTimeWeightedOraclePrice(
+            pool,
+            IPriceOracle.Variable.PAIR_PRICE,
+            oracleWindowInSeconds
+        );
+
+        // @audit these two formulas can be further simplified to the following which uses
+        // less division between steps and therefore will result in less precision loss.
+        // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
+        // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice) / PrimaryWeight
+
+        // Calculate weighted primary amount
+        primaryAmount = ((primaryAmount * 1e18) / primaryWeight);
+
+        // Calculate price adjusted primary amount, price is always in 1e18
+        // Since price is always expressed as the price of the second token in units of the
+        // first token, we need to invert the math if the second token is the primary token
+        if (primaryIndex == 0) {
+            // PairPrice = (PrimaryAmount / PrimaryWeight) / (SecondaryAmount / SecondaryWeight)
+            // SecondaryAmount = (PrimaryAmount / PrimaryWeight) / PairPrice * SecondaryWeight
+            primaryAmount = ((primaryAmount * 1e18) / pairPrice);
+        } else {
+            // PairPrice = (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
+            // SecondaryAmount = (PrimaryAmount / PrimaryWeight) * PairPrice * SecondaryWeight
+            primaryAmount = ((primaryAmount * pairPrice) / 1e18);
+        }
+
+        // Calculate secondary amount (precision is still 1e18)
+        secondaryAmount = (primaryAmount * secondaryWeight) / 1e18;
+
+        // Normalize precision to secondary precision
+        secondaryAmount =
+            (secondaryAmount * 10**secondaryDecimals) /
+            10**primaryDecimals;
+    }
+
+    function approveBalancerTokens(
+        address balancerVault,
+        IERC20 underlyingToken,
+        IERC20 secondaryToken,
+        IERC20 balancerPool,
+        IERC20 liquidityGauge,
+        address vebalDelegator
+    ) external {
+        underlyingToken.checkApprove(balancerVault, type(uint256).max);
+        secondaryToken.checkApprove(balancerVault, type(uint256).max);
+        // Allow LIQUIDITY_GAUGE to pull BALANCER_POOL_TOKEN
+        balancerPool.checkApprove(address(liquidityGauge), type(uint256).max);
+        // Allow VEBAL_DELEGATOR to pull LIQUIDITY_GAUGE tokens
+        liquidityGauge.checkApprove(vebalDelegator, type(uint256).max);
     }
 }

@@ -3,12 +3,12 @@ pragma solidity =0.8.11;
 
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-import "./adapters/BalancerV2Adapter.sol";
-import "./adapters/CurveAdapter.sol";
-import "./adapters/UniV2Adapter.sol";
-import "./adapters/UniV3Adapter.sol";
-import "./adapters/ZeroExAdapter.sol";
-import "./TradeHandler.sol";
+import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
+import {CurveAdapter} from "./adapters/CurveAdapter.sol";
+import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
+import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
+import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
+import {TradeHandler} from "./TradeHandler.sol";
 
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import "../../interfaces/trading/ITradingModule.sol";

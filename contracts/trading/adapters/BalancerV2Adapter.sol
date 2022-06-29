@@ -2,11 +2,11 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
+import "../../global/Constants.sol";
 import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/balancer/IBalancerVault.sol";
 
 library BalancerV2Adapter {
-    address internal constant ETH_ADDRESS = address(0);
     IBalancerVault public constant VAULT = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     struct SingleSwapData {
@@ -73,7 +73,7 @@ library BalancerV2Adapter {
         )
     {
         target = address(VAULT);
-        if (trade.sellToken == ETH_ADDRESS) {
+        if (trade.sellToken == Constants.ETH_ADDRESS) {
             spender = address(0);
             msgValue = trade.amount;
         } else {
