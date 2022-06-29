@@ -59,9 +59,9 @@ def encode_redeem_params(**kwargs):
         )]
     )
 
-@pytest.mark.only
 def test_enter_vault_success(env, usdcDaiVault, accounts, tradingModule):
     markets = env.notional.getActiveMarkets(3)
+    maturity = markets[1][1]
     params = encode_deposit_params(
         minPurchaseAmount=Wei(107_000e18),
         minLendRate=0,
@@ -76,12 +76,25 @@ def test_enter_vault_success(env, usdcDaiVault, accounts, tradingModule):
         accounts[0],
         usdcDaiVault.address,
         10_000e6,
-        markets[1][1],
+        maturity,
         100_000e8,
         0,
         params,
         {"from": accounts[0]}
     )
+
+    (_, _, portfolio) = env.notional.getAccount(usdcDaiVault.address)
+    vaultState = env.notional.getVaultState(usdcDaiVault.address, maturity)
+    vaultAccount = env.notional.getVaultAccount(accounts[0], usdcDaiVault.address)
+    assert vaultAccount['fCash'] == -100_000e8
+    assert vaultAccount['vaultShares'] == vaultState['totalVaultShares']
+    assert vaultAccount['vaultShares'] == vaultState['totalStrategyTokens']
+    assert portfolio[0][0] == 2 # DAI
+    assert portfolio[0][1] == maturity # DAI
+    assert portfolio[0][3] == vaultState['totalStrategyTokens']
+    # Dust accumulation (can we reduce this?)
+    assert env.tokens["DAI"].balanceOf(usdcDaiVault.address) < 1e14
+    assert env.tokens["USDC"].balanceOf(usdcDaiVault.address) == 0
 
 def test_enter_vault_fail_lend_rate(env, usdcDaiVault, accounts):
     markets = env.notional.getActiveMarkets(3)
@@ -154,6 +167,7 @@ def test_enter_vault_fail_collateral_ratio(env, usdcDaiVault, accounts):
 
 def test_exit_vault_success(env, usdcDaiVault, accounts):
     markets = env.notional.getActiveMarkets(3)
+    maturity = markets[1][1]
 
     env.notional.enterVault(
         accounts[0],
@@ -192,6 +206,20 @@ def test_exit_vault_success(env, usdcDaiVault, accounts):
         {"from": accounts[0]}
     )
 
+    (_, _, portfolio) = env.notional.getAccount(usdcDaiVault.address)
+    vaultState = env.notional.getVaultState(usdcDaiVault.address, maturity)
+    vaultAccount = env.notional.getVaultAccount(accounts[0], usdcDaiVault.address)
+    assert vaultAccount['fCash'] == -100_000e8
+    assert vaultAccount['vaultShares'] == vaultState['totalVaultShares']
+    assert vaultAccount['vaultShares'] == vaultState['totalStrategyTokens']
+    assert portfolio[0][0] == 2 # DAI
+    assert portfolio[0][1] == maturity # DAI
+    assert portfolio[0][3] == vaultState['totalStrategyTokens']
+    # Dust accumulation (can we reduce this?)
+    assert env.tokens["DAI"].balanceOf(usdcDaiVault.address) < 1e14
+    assert env.tokens["USDC"].balanceOf(usdcDaiVault.address) == 0
+
+
 #def test_exit_vault_fail_after_maturity(env, usdcDaiVault, accounts):
 #def test_exit_vault_fail_borrow_limit(env, usdcDaiVault, accounts):
 #def test_exit_vault_fail_purchase_limit(env, usdcDaiVault, accounts):
@@ -200,6 +228,7 @@ def test_exit_vault_success(env, usdcDaiVault, accounts):
 #def test_roll_vault_reverts(env, usdcDaiVault, accounts):
 #def test_liquidate_vault_success(env, usdcDaiVault, accounts):
 
+@pytest.mark.only
 def test_settle_vault_success(env, usdcDaiVault, accounts):
     markets = env.notional.getActiveMarkets(3)
     maturity = markets[1][1]
@@ -233,7 +262,7 @@ def test_settle_vault_success(env, usdcDaiVault, accounts):
     txn = usdcDaiVault.settleVault(
         maturity,
         encode_redeem_params(
-            minPurchaseAmount=Wei(129_700e6),
+            minPurchaseAmount=Wei(129_500e6),
             maxBorrowRate=0,
             dexId='UNISWAP_V3',
             exchangeData={
@@ -242,6 +271,46 @@ def test_settle_vault_success(env, usdcDaiVault, accounts):
         ),
         {"from": accounts[1]}
     )
+
+    (context, balances, portfolio) = env.notional.getAccount(usdcDaiVault.address)
+    assert context == (0, "0x00", 0, 0, "0x000000000000000000000000000000000000")
+    assert balances[0] == (0, 0, 0, 0, 0)
+    assert len(portfolio) == (0)
+
+    vaultState = env.notional.getVaultState(usdcDaiVault.address, maturity)
+    assert vaultState['isSettled'] == True
+
+    # Dust accumulation (can we reduce this?)
+    assert env.tokens["DAI"].balanceOf(usdcDaiVault.address) < 1e14
+    assert env.tokens["USDC"].balanceOf(usdcDaiVault.address) == 0
+
+    # 306_000 gas
+    balanceBefore = env.tokens["USDC"].balanceOf(accounts[0])
+    txn = env.notional.exitVault(
+        accounts[0],
+        usdcDaiVault.address,
+        accounts[0],
+        0,
+        0,
+        0,
+        encode_redeem_params(
+            minPurchaseAmount=0,
+            maxBorrowRate=0,
+            dexId='UNISWAP_V3',
+            exchangeData={
+                'fee': 100
+            }
+        ),
+        {"from": accounts[0]}
+    )
+
+    vaultAccount = env.notional.getVaultAccount(accounts[0], usdcDaiVault.address)
+    assert vaultAccount['maturity'] == 0
+    assert vaultAccount['fCash'] == 0
+    assert vaultAccount['vaultShares'] == 0
+    balanceAfter = env.tokens["USDC"].balanceOf(accounts[0])
+
+    assert pytest.approx(balanceAfter - balanceBefore, rel=1e-6) == 19502343854
 
 #def test_settle_vault_fail_purchase_limit(env, usdcDaiVault, accounts):
 #def test_settle_vault_insolvent(env, usdcDaiVault, accounts):
