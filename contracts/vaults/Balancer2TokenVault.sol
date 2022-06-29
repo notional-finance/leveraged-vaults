@@ -634,11 +634,14 @@ contract Balancer2TokenVault is
             .toInt256();
 
         if (secondaryBalance >= underlyingRequired) {
+            // We already have enough to repay secondary debt
+            // Update secondary balance before the transfer
             unchecked {
                 secondaryBalance -= underlyingRequired;
             }
         } else {
-            // Not enough secondary balance to repay debt, sell some primary currency
+            // Not enough secondary balance to repay secondary debt,
+            // sell some primary currency to cover the shortfall
             unchecked {
                 secondaryShortfall = underlyingRequired - secondaryBalance;
             }
@@ -663,8 +666,8 @@ contract Balancer2TokenVault is
             trade.execute(TRADING_MODULE, params.dexId);
 
             // Setting secondaryBalance to 0 here because it should be
-            // equal to underlyingRequired after the trade and 0 after the
-            // transfer.
+            // equal to underlyingRequired after the trade (validated by the TradingModule)
+            // and 0 after the transfer. Updating it here before the transfer
             secondaryBalance = 0;
         }
 
