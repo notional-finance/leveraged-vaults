@@ -519,6 +519,7 @@ contract Balancer2TokenVault is
 
         // Mint strategy tokens
         if (vaultState.totalStrategyTokenGlobal == 0) {
+            // @audit this needs to be returned in 8 decimal precision
             strategyTokensMinted = bptAmount;
         } else {
             //prettier-ignore
