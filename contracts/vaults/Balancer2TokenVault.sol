@@ -875,6 +875,8 @@ contract Balancer2TokenVault is
             bptToSettle,
             maturity
         );
+        // @audit you decode this twice (already decoded in validateSlippageParams), maybe just
+        // pass RedeemParams down
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         // Redeem BPT
@@ -882,6 +884,9 @@ contract Balancer2TokenVault is
             address(this),
             bptToSettle,
             maturity,
+            // @audit We need to validate that the spot price is within some band of the
+            // oracle price before we exit here, we cannot trust that these minPrimary / minSecondary
+            // values are correctly specified
             params.minPrimary,
             params.minSecondary
         );
@@ -901,7 +906,7 @@ contract Balancer2TokenVault is
         // prettier-ignore
         (
             uint256 debtSharesToRepay,
-            uint256 borrowedSecondaryfCashAmount            
+            uint256 borrowedSecondaryfCashAmount
         ) = getDebtSharesToRepay(address(this), maturity, redeemStrategyTokenAmount);
 
         // Convert fCash to secondary currency precision
@@ -915,6 +920,7 @@ contract Balancer2TokenVault is
             underlyingCashRequiredToSettle <= 0 &&
             borrowedSecondaryfCashAmount == 0
         ) {
+            // @audit i think we can move this check higher in the method, we can fail earlier
             revert SettlementNotRequired(); /// @dev no debt
         }
 
@@ -928,6 +934,8 @@ contract Balancer2TokenVault is
             secondarySettlementBalance[maturity] = totalSecondary;
             return;
         }
+        // @audit for readability i think this should be an if / else condition, the return
+        // statement is not easy to see
 
         // If we get to this point, we have enough to pay off either the primary
         // side or the secondary side
@@ -977,11 +985,16 @@ contract Balancer2TokenVault is
 
             // address(this) should have 0 secondary balance at this point
             secondarySettlementBalance[maturity] = 0;
+            // @audit there is an edge condition here where the repay secondary currency from
+            // vault sells more primary than is available in the current maturity. I'm not sure
+            // how this can actually occur in practice but something to be mindful of.
             primaryAmount = (primaryAmount.toInt256() + primaryAmountDiff)
                 .toUint256();
         }
 
         // Secondary debt is paid off, handle potential primary payoff
+        // @audit there's a lot of flipping between uint and int here, maybe just convert primaryAmount to
+        // int up front and then leave it that way?
         int256 primaryAmountAvailable = primaryAmount.toInt256();
         if (primaryAmountAvailable < underlyingCashRequiredToSettle) {
             // If primaryAmountAvailable < underlyingCashRequiredToSettle,
@@ -990,6 +1003,7 @@ contract Balancer2TokenVault is
             primarySettlementBalance[maturity] = primaryAmount;
             return false;
         }
+        // @audit make this an else statement
 
         // Calculate the amount of surplus cash after primary repayment
         // If underlyingCashRequiredToSettle < 0, that means there is excess
@@ -1065,6 +1079,8 @@ contract Balancer2TokenVault is
 
         // Mark the vault as settled
         if (assetCashPostRedemption < 0 && maturity <= block.timestamp) {
+            // @audit I would remove this call, emergency settlement should only occur pre-maturity
+            // before the settlement period. otherwise we would just go via the normal path.
             NOTIONAL.settleVault(address(this), maturity);
         }
 

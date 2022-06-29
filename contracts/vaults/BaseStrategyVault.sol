@@ -169,6 +169,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         repayPrimaryBorrow(receiver, transferToAccount, transferToNotional);
     }
 
+    // @audit this should have an underscore in front of the name since it is internal
     function repayPrimaryBorrow(
         address receiver, 
         uint256 transferToAccount, 
