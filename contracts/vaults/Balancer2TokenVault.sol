@@ -1051,6 +1051,8 @@ contract Balancer2TokenVault is
             int256 underlyingCashRequiredToSettle
         ) = NOTIONAL.getCashRequiredToSettle(address(this), maturity);
 
+        // @audit i don't see where you actually exit the pool in this method
+
         // A negative surplus here means the account is insolvent
         // (either expectedUnderlyingRedeemed is negative or
         // expectedUnderlyingRedeemed is less than underlyingCashRequiredToSettle).
