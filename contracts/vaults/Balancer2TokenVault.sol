@@ -4,18 +4,17 @@ pragma abicoder v2;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Token, VaultState, VaultAccount} from "../global/Types.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
 import {Constants} from "../global/Constants.sol";
 
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
+import {TokenUtils} from "../utils/TokenUtils.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {TradeHandler} from "../trading/TradeHandler.sol";
 
+import {IERC20} from "../../interfaces/IERC20.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../interfaces/notional/IVaultController.sol";
@@ -31,7 +30,7 @@ import {ITradingModule, Trade, TradeType} from "../../interfaces/trading/ITradin
 
 contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVault {
     using TradeHandler for Trade;
-    using SafeERC20 for ERC20;
+    using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
 
@@ -154,11 +153,11 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
     uint16 internal immutable SECONDARY_BORROW_CURRENCY_ID;
     bytes32 internal immutable BALANCER_POOL_ID;
     IBalancerPool internal immutable BALANCER_POOL_TOKEN;
-    ERC20 internal immutable SECONDARY_TOKEN;
+    IERC20 internal immutable SECONDARY_TOKEN;
     IBoostController internal immutable BOOST_CONTROLLER;
     ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
     IVeBalDelegator internal immutable VEBAL_DELEGATOR;
-    ERC20 internal immutable BAL_TOKEN;
+    IERC20 internal immutable BAL_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
     uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
     uint256 internal immutable PRIMARY_WEIGHT;
@@ -213,8 +212,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
 
         // Since this is always a 2-token vault, SECONDARY_INDEX = 1-PRIMARY_INDEX
         SECONDARY_TOKEN = SECONDARY_BORROW_CURRENCY_ID > 0
-            ? ERC20(_getUnderlyingAddress(SECONDARY_BORROW_CURRENCY_ID))
-            : ERC20(tokens[secondaryIndex]);
+            ? IERC20(_getUnderlyingAddress(SECONDARY_BORROW_CURRENCY_ID))
+            : IERC20(tokens[secondaryIndex]);
 
         // Make sure the deployment parameters are correct
         if (tokens[PRIMARY_INDEX] != _tokenAddress(address(_underlyingToken())))
@@ -244,7 +243,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
         BOOST_CONTROLLER = params.boostController;
         LIQUIDITY_GAUGE = params.liquidityGauge;
         VEBAL_DELEGATOR = IVeBalDelegator(BOOST_CONTROLLER.VEBAL_DELEGATOR());
-        BAL_TOKEN = ERC20(
+        BAL_TOKEN = IERC20(
             IBalancerMinter(VEBAL_DELEGATOR.BALANCER_MINTER())
                 .getBalancerToken()
         );
@@ -312,7 +311,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
         return
             token == Constants.ETH_ADDRESS
                 ? address(this).balance
-                : ERC20(token).balanceOf(address(this));
+                : IERC20(token).balanceOf(address(this));
     }
 
     /// @notice Gets the underlying token address by currency ID
@@ -696,7 +695,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
             // @audit use a named constant for 1
             payable(address(NOTIONAL)).transfer(underlyingRequired);
         } else {
-            SECONDARY_TOKEN.safeTransfer(address(NOTIONAL), underlyingRequired);
+            SECONDARY_TOKEN.checkTransfer(address(NOTIONAL), underlyingRequired);
         }
 
         if (secondaryBalance > 0) {

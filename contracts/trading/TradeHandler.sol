@@ -3,10 +3,8 @@ pragma solidity =0.8.11;
 pragma abicoder v2;
 
 import "../global/Constants.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {TokenUtils} from "../utils/TokenUtils.sol";
-import "../../interfaces/WETH9.sol";
+import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
+import {WETH9} from "../../interfaces/WETH9.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 
@@ -189,9 +187,9 @@ library TradeHandler {
         require(oracleDecimals >= 0); /// @dev Chainlink decimals error
 
         uint256 sellTokenDecimals = 10 **
-            (sellToken == address(0) ? 18 : ERC20(sellToken).decimals());
+            (sellToken == address(0) ? 18 : IERC20(sellToken).decimals());
         uint256 buyTokenDecimals = 10 **
-            (buyToken == address(0) ? 18 : ERC20(buyToken).decimals());
+            (buyToken == address(0) ? 18 : IERC20(buyToken).decimals());
 
         // @audit what about EXACT_OUT_BATCH, won't that fall into the wrong else condition?
         if (TradeType(tradeType) == TradeType.EXACT_OUT_SINGLE) {

@@ -6,12 +6,12 @@ import {Token, TokenType} from "../global/Types.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
+import {IERC20} from "../../interfaces/IERC20.sol";
+import {TokenUtils} from "../utils/TokenUtils.sol";
 
 abstract contract BaseStrategyVault is Initializable, IStrategyVault {
-    using SafeERC20 for ERC20;
+    using TokenUtils for IERC20;
 
     /// @notice Hardcoded on the implementation contract during deployment
     NotionalProxy public immutable NOTIONAL;
@@ -23,7 +23,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
     // True if the underlying is ETH
     bool private _UNDERLYING_IS_ETH;
     // Address of the underlying token
-    ERC20 private _UNDERLYING_TOKEN;
+    IERC20 private _UNDERLYING_TOKEN;
     // NOTE: end of first storage slot here
 
     // Name of the vault
@@ -69,7 +69,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         return _BORROW_CURRENCY_ID;
     }
 
-    function _underlyingToken() internal view returns (ERC20) {
+    function _underlyingToken() internal view returns (IERC20) {
         return _UNDERLYING_TOKEN;
     }
 
@@ -94,7 +94,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
 
         address underlyingAddress = assetToken.tokenType == TokenType.NonMintable ?
             assetToken.tokenAddress : underlyingToken.tokenAddress;
-        _UNDERLYING_TOKEN = ERC20(underlyingAddress);
+        _UNDERLYING_TOKEN = IERC20(underlyingAddress);
         _UNDERLYING_IS_ETH = underlyingToken.tokenType == TokenType.Ether;
     }
 
@@ -178,8 +178,8 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
             if (transferToAccount > 0) payable(receiver).transfer(transferToAccount);
             if (transferToNotional > 0) payable(address(NOTIONAL)).transfer(transferToNotional);
         } else {
-            if (transferToAccount > 0) _UNDERLYING_TOKEN.safeTransfer(receiver, transferToAccount);
-            if (transferToNotional > 0) _UNDERLYING_TOKEN.safeTransfer(address(NOTIONAL), transferToNotional);
+            if (transferToAccount > 0) _UNDERLYING_TOKEN.checkTransfer(receiver, transferToAccount);
+            if (transferToNotional > 0) _UNDERLYING_TOKEN.checkTransfer(address(NOTIONAL), transferToNotional);
         }
     }
 

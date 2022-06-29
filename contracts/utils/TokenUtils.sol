@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity =0.8.11;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "../../interfaces/IERC20.sol";
+import {IEIP20NonStandard} from "../../interfaces/IEIP20NonStandard.sol";
 
 library TokenUtils {
     error ERC20Error();
@@ -17,6 +18,11 @@ library TokenUtils {
         if (address(token) == address(0)) return;
 
         token.approve(spender, 0);
+        _checkReturnCode();
+    }
+
+    function checkTransfer(IERC20 token, address receiver, uint256 amount) internal {
+        IEIP20NonStandard(address(token)).transfer(receiver, amount);
         _checkReturnCode();
     }
 

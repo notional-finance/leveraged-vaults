@@ -6,8 +6,7 @@ import {IBalancerVault, IAsset} from "../../../interfaces/balancer/IBalancerVaul
 import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
 import {Constants} from "../global/Constants.sol";
 import {WETH9} from "../../../interfaces/WETH9.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {TokenUtils} from "./TokenUtils.sol";
+import {TokenUtils, IERC20} from "./TokenUtils.sol";
 
 library BalancerUtils {
     using TokenUtils for IERC20;
