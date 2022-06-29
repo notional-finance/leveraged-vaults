@@ -2,12 +2,12 @@
 pragma solidity =0.8.11;
 pragma abicoder v2;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Token, VaultState, VaultAccount} from "../global/Types.sol";
+import {SafeInt256} from "../global/SafeInt256.sol";
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
@@ -24,16 +24,11 @@ import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule, Trade, TradeType} from "../../interfaces/trading/ITradingModule.sol";
 import {TradeHandler} from "../trading/TradeHandler.sol";
 
-contract Balancer2TokenVault is
-    UUPSUpgradeable,
-    Initializable,
-    BaseStrategyVault
-{
+contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVault {
     using TradeHandler for Trade;
     using SafeERC20 for ERC20;
-    // @audit SafeInt256 has casts between uint and int and probably uses less bytecode space
-    using SafeCast for uint256;
-    using SafeCast for int256;
+    using SafeInt256 for uint256;
+    using SafeInt256 for int256;
 
     struct DeploymentParams {
         uint16 secondaryBorrowCurrencyId;
@@ -392,7 +387,7 @@ contract Balancer2TokenVault is
                 bptClaim
             );
 
-        if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt256();
+        if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt();
 
         // Get the amount of secondary fCash borrowed
         // We directly use the fCash amount instead of converting to underlying
@@ -424,8 +419,8 @@ contract Balancer2TokenVault is
             BalancerUtils.BALANCER_PRECISION;
 
         return
-            primaryBalance.toInt256() -
-            secondaryBorrowedDenominatedInPrimary.toInt256();
+            primaryBalance.toInt() -
+            secondaryBorrowedDenominatedInPrimary.toInt();
     }
 
     function _joinPool(
@@ -652,7 +647,7 @@ contract Balancer2TokenVault is
 
         Trade memory trade;
         int256 primaryBalanceBefore = _tokenBalance(address(_underlyingToken()))
-            .toInt256();
+            .toInt();
 
         if (secondaryBalance >= underlyingRequired) {
             // We already have enough to repay secondary debt
@@ -725,7 +720,7 @@ contract Balancer2TokenVault is
         }
 
         int256 primaryBalanceAfter = _tokenBalance(address(_underlyingToken()))
-            .toInt256();
+            .toInt();
 
         // Return primaryBalanceDiff
         // If primaryBalanceAfter > primaryBalanceBefore, residual secondary currency was
@@ -937,7 +932,7 @@ contract Balancer2TokenVault is
         // Let the token balances accumulate in this contract if we don't have
         // enough to pay off either side
         if (
-            totalPrimary.toInt256() < underlyingCashRequiredToSettle &&
+            totalPrimary.toInt() < underlyingCashRequiredToSettle &&
             totalSecondary < borrowedSecondaryfCashAmount
         ) {
             primarySettlementBalance[maturity] = totalPrimary;
@@ -998,14 +993,14 @@ contract Balancer2TokenVault is
             // @audit there is an edge condition here where the repay secondary currency from
             // vault sells more primary than is available in the current maturity. I'm not sure
             // how this can actually occur in practice but something to be mindful of.
-            primaryAmount = (primaryAmount.toInt256() + primaryAmountDiff)
-                .toUint256();
+            primaryAmount = (primaryAmount.toInt() + primaryAmountDiff)
+                .toUint();
         }
 
         // Secondary debt is paid off, handle potential primary payoff
         // @audit there's a lot of flipping between uint and int here, maybe just convert primaryAmount to
         // int up front and then leave it that way?
-        int256 primaryAmountAvailable = primaryAmount.toInt256();
+        int256 primaryAmountAvailable = primaryAmount.toInt();
         if (primaryAmountAvailable < underlyingCashRequiredToSettle) {
             // If primaryAmountAvailable < underlyingCashRequiredToSettle,
             // we need to redeem more BPT. So, we update primarySettlementBalance[maturity]
@@ -1023,7 +1018,7 @@ contract Balancer2TokenVault is
 
         // Make sure we are not settling too much because we want
         // to preserve as much BPT as possible
-        if (surplus > vaultSettings.maxUnderlyingSurplus.toInt256()) {
+        if (surplus > vaultSettings.maxUnderlyingSurplus.toInt()) {
             revert RedeemingTooMuch(
                 primaryAmountAvailable,
                 underlyingCashRequiredToSettle
@@ -1076,7 +1071,7 @@ contract Balancer2TokenVault is
 
         // Make sure we not redeeming too much to underlying
         // This allows BPT to be accrued as the profit token.
-        if (surplus > vaultSettings.maxUnderlyingSurplus.toInt256()) {
+        if (surplus > vaultSettings.maxUnderlyingSurplus.toInt()) {
             revert RedeemingTooMuch(
                 expectedUnderlyingRedeemed,
                 underlyingCashRequiredToSettle
