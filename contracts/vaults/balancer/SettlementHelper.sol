@@ -2,8 +2,8 @@
 pragma solidity =0.8.11;
 
 import {VaultHelper} from "./VaultHelper.sol";
-import {Constants} from "../global/Constants.sol";
-import {SafeInt256} from "../global/SafeInt256.sol";
+import {Constants} from "../../global/Constants.sol";
+import {SafeInt256} from "../../global/SafeInt256.sol";
 
 library SettlementHelper {
     using SafeInt256 for uint256;

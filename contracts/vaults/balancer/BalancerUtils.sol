@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.11;
 
-import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
-import {IBalancerVault, IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
-import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
-import {Constants} from "../global/Constants.sol";
-import {WETH9} from "../../../interfaces/WETH9.sol";
-import {TokenUtils, IERC20} from "./TokenUtils.sol";
+import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
+import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
+import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
+import {Constants} from "../../global/Constants.sol";
+import {WETH9} from "../../../../interfaces/WETH9.sol";
+import {TokenUtils, IERC20} from "../../utils/TokenUtils.sol";
 
 library BalancerUtils {
     using TokenUtils for IERC20;

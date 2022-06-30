@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity =0.8.11;
 
-import {TokenUtils} from "./TokenUtils.sol";
+import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
-import {Constants} from "../global/Constants.sol";
-import {SafeInt256} from "../global/SafeInt256.sol";
-import {TradeHandler} from "../trading/TradeHandler.sol";
-import {IERC20} from "../../interfaces/IERC20.sol";
-import {ITradingModule, Trade, TradeType} from "../../interfaces/trading/ITradingModule.sol";
-import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
-import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
-import {IBoostController} from "../../interfaces/notional/IBoostController.sol";
+import {Constants} from "../../global/Constants.sol";
+import {SafeInt256} from "../../global/SafeInt256.sol";
+import {TradeHandler} from "../../trading/TradeHandler.sol";
+import {IERC20} from "../../../interfaces/IERC20.sol";
+import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
+import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
+import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
+import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
 
 library VaultHelper {
     using TradeHandler for Trade;

@@ -2,11 +2,11 @@
 pragma solidity =0.8.11;
 
 import {BalancerUtils} from "./BalancerUtils.sol";
-import {TokenUtils} from "./TokenUtils.sol";
-import {TradeHandler} from "../trading/TradeHandler.sol";
-import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
-import {IVeBalDelegator} from "../../interfaces/notional/IVeBalDelegator.sol";
-import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
+import {TokenUtils} from "../../utils/TokenUtils.sol";
+import {TradeHandler} from "../../trading/TradeHandler.sol";
+import {ITradingModule, Trade} from "../../../interfaces/trading/ITradingModule.sol";
+import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
+import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 
 library RewardHelper {
     using TradeHandler for Trade;

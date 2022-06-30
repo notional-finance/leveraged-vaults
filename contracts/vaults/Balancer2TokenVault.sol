@@ -9,12 +9,12 @@ import {Token, VaultState, VaultAccount} from "../global/Types.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
 import {Constants} from "../global/Constants.sol";
 
-import {BalancerUtils} from "../utils/BalancerUtils.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
-import {RewardHelper} from "../utils/RewardHelper.sol";
-import {SettlementHelper} from "../utils/SettlementHelper.sol";
-import {VaultHelper} from "../utils/VaultHelper.sol";
+import {BalancerUtils} from "./balancer/BalancerUtils.sol";
+import {RewardHelper} from "./balancer/RewardHelper.sol";
+import {SettlementHelper} from "./balancer/SettlementHelper.sol";
+import {VaultHelper} from "./balancer/VaultHelper.sol";
 
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
