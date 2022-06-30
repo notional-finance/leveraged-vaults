@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity =0.8.11;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
 import {Token, TokenType} from "../global/Types.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -85,17 +84,16 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         _NAME = name_;
         _BORROW_CURRENCY_ID = borrowCurrencyId_;
 
-        (
-            Token memory assetToken,
-            Token memory underlyingToken,
-            /* ETHRate memory ethRate */,
-            /* AssetRateParameters memory assetRate */
-        ) = NOTIONAL.getCurrencyAndRates(borrowCurrencyId_);
-
-        address underlyingAddress = assetToken.tokenType == TokenType.NonMintable ?
-            assetToken.tokenAddress : underlyingToken.tokenAddress;
+        address underlyingAddress = _getNotionalUnderlyingToken(borrowCurrencyId_);
         _UNDERLYING_TOKEN = IERC20(underlyingAddress);
-        _UNDERLYING_IS_ETH = underlyingToken.tokenType == TokenType.Ether;
+        _UNDERLYING_IS_ETH = underlyingAddress == address(0);
+    }
+
+    function _getNotionalUnderlyingToken(uint16 currencyId) internal view returns (address) {
+        (Token memory assetToken, Token memory underlyingToken) = NOTIONAL.getCurrency(currencyId);
+
+        return assetToken.tokenType == TokenType.NonMintable ?
+            assetToken.tokenAddress : underlyingToken.tokenAddress;
     }
 
     /**************************************************************************/

@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity =0.8.11;
+pragma solidity 0.8.15;
 
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {IEIP20NonStandard} from "../../interfaces/IEIP20NonStandard.sol";
+import {Constants} from "../global/Constants.sol";
 
 library TokenUtils {
     error ERC20Error();
+
+    function tokenBalance(address token) internal view returns (uint256) {
+        return
+            token == Constants.ETH_ADDRESS
+                ? address(this).balance
+                : IERC20(token).balanceOf(address(this));
+    }
 
     function checkApprove(IERC20 token, address spender, uint256 amount) internal {
         if (address(token) == address(0)) return;

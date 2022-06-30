@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.7.6;
 
+import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
+
 /// @title All shared constants for the Notional system should be declared here.
 library Constants {
+    NotionalProxy internal constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
     uint8 internal constant CETH_DECIMAL_PLACES = 8;
 
     // Token precision used for all internal balances, TokenHandler library ensures that we
@@ -24,8 +27,7 @@ library Constants {
     address internal constant RESERVE = address(0);
 
     // Most significant bit
-    bytes32 internal constant MSB =
-        0x8000000000000000000000000000000000000000000000000000000000000000;
+    bytes32 internal constant MSB = 0x8000000000000000000000000000000000000000000000000000000000000000;
 
     // Each bit set in this mask marks where an active market should be in the bitmap
     // if the first bit refers to the reference time. Used to detect idiosyncratic
@@ -56,7 +58,7 @@ library Constants {
     uint256 internal constant MONTH = WEEK * 5;
     uint256 internal constant QUARTER = MONTH * 3;
     uint256 internal constant YEAR = QUARTER * 4;
-    
+
     // These constants are used in DateTime.sol
     uint256 internal constant DAYS_IN_WEEK = 6;
     uint256 internal constant DAYS_IN_MONTH = 30;
