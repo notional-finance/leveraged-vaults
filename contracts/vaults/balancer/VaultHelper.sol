@@ -196,20 +196,12 @@ abstract contract VaultHelper is BalancerVaultStorage {
                 primaryToken,
                 address(SECONDARY_TOKEN),
                 secondaryShortfall,
-                // TradeHandler.getLimitAmount(
-                //     address(TRADING_MODULE),
-                //     uint16(TradeType.EXACT_OUT_SINGLE),
-                //     primaryToken,
-                //     address(SECONDARY_TOKEN),
-                //     secondaryShortfall,
-                //     params.oracleSlippagePercent
-                // ),
                 0,
                 block.timestamp, // deadline
                 params.exchangeData
             );
 
-            _executeTrade(params.dexId, trade);
+            _executeTradeWithDynamicSlippage(params.dexId, trade, params.oracleSlippagePercent);
 
             // @audit this should be validated by the returned parameters from the
             // trade execution
@@ -250,19 +242,13 @@ abstract contract VaultHelper is BalancerVaultStorage {
             address(SECONDARY_TOKEN),
             primaryToken,
             secondaryBalance,
-            // TradeHandler.getLimitAmount(
-            //     address(TRADING_MODULE),
-            //     uint16(TradeType.EXACT_IN_SINGLE),
-            //     address(SECONDARY_TOKEN),
-            //     primaryToken,
-            //     secondaryBalance,
-            //     params.oracleSlippagePercent
-            // ),
             0,
             block.timestamp, // deadline
             params.exchangeData
         );
 
-        (/* */, primaryPurchased) = _executeTrade(params.dexId, trade);
+        (/* */, primaryPurchased) = _executeTradeWithDynamicSlippage(
+            params.dexId, trade, params.oracleSlippagePercent
+        );
     }
 }

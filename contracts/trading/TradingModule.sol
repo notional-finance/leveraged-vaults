@@ -76,6 +76,19 @@ contract TradingModule is UUPSUpgradeable, ITradingModule {
         return _getExecutionData(dexId, from, trade);
     }
 
+    function executeTradeWithDynamicSlippage(
+        uint16 dexId,
+        Trade memory trade,
+        uint32 dynamicSlippageLimit
+    ) external override returns (uint256 amountSold, uint256 amountBought) {
+        trade.limit = getLimitAmount(
+            trade.tradeType, trade.sellToken, trade.buyToken, trade.amount, dynamicSlippageLimit
+        );
+
+        // @audit I don't think this will actually work
+        return this.executeTrade(dexId, trade);
+    }
+
     /// @notice Should be called via delegate call to execute a trade on behalf of the caller.
     /// @param dexId enum representing the id of the dex
     /// @param trade trade object
@@ -153,12 +166,12 @@ contract TradingModule is UUPSUpgradeable, ITradingModule {
     // @audit there should be an internal and external version of this method, the external method should
     // be exposed on the TradingModule directly
     function getLimitAmount(
-        uint16 tradeType,
+        TradeType tradeType,
         address sellToken,
         address buyToken,
         uint256 amount,
         uint32 slippageLimit
-    ) external view returns (uint256 limitAmount) {
+    ) public view returns (uint256 limitAmount) {
         // prettier-ignore
         (int256 oraclePrice, int256 oracleDecimals) = getOraclePrice(sellToken, buyToken);
 
@@ -171,7 +184,7 @@ contract TradingModule is UUPSUpgradeable, ITradingModule {
             (buyToken == Constants.ETH_ADDRESS ? 18 : IERC20(buyToken).decimals());
 
         // @audit what about EXACT_OUT_BATCH, won't that fall into the wrong else condition?
-        if (TradeType(tradeType) == TradeType.EXACT_OUT_SINGLE) {
+        if (tradeType == TradeType.EXACT_OUT_SINGLE) {
             // 0 means no slippage limit
             if (slippageLimit == 0) {
                 return type(uint256).max;
