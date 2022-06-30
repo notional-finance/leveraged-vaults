@@ -270,48 +270,45 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
             maturity
         );
 
-        // @audit this pair price is incorrect
-        (uint256 primaryBalance, uint256 pairPrice) = BalancerUtils
-            .getTimeWeightedPrimaryBalance(
-                address(BALANCER_POOL_TOKEN),
-                vaultSettings.oracleWindowInSeconds,
-                PRIMARY_INDEX,
-                PRIMARY_WEIGHT,
-                SECONDARY_WEIGHT,
-                PRIMARY_DECIMALS,
-                bptClaim
-            );
+        uint256 primaryBalance = BalancerUtils.getTimeWeightedPrimaryBalance(
+            address(BALANCER_POOL_TOKEN),
+            vaultSettings.oracleWindowInSeconds,
+            PRIMARY_INDEX,
+            PRIMARY_WEIGHT,
+            SECONDARY_WEIGHT,
+            PRIMARY_DECIMALS,
+            bptClaim
+        );
+        
+        // Oracle price for the pair in 18 decimals
+        uint256 oraclePairPrice = BalancerUtils.getOraclePairPrice(
+            address(BALANCER_POOL_TOKEN),
+            PRIMARY_INDEX,
+            vaultSettings.oracleWindowInSeconds,
+            vaultSettings.balancerOracleWeight,
+            address(_underlyingToken()),
+            address(SECONDARY_TOKEN),
+            TRADING_MODULE
+        );
 
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt();
 
-        // Get the amount of secondary fCash borrowed
-        // We directly use the fCash amount instead of converting to underlying
-        // as an approximation with built-in interest and haircut parameters
         // prettier-ignore
         (
             /* uint256 debtShares */,
             uint256 borrowedSecondaryfCashAmount
         ) = getDebtSharesToRepay(account, maturity, strategyTokenAmount);
 
-        // borrowedSecondaryfCashAmount is in internal precision (1e8), raise it to 1e18
-        borrowedSecondaryfCashAmount *= INTERNAL_PRECISION_DIFF;
+        // Do not discount secondary fCash amount to present value so that we do not introduce
+        // interest rate risk in this calculation. fCash is always in 8 decimal precision, the
+        // oraclePairPrice is always in 18 decimal precision and we want our result denominated
+        // in the primary token precision.
+        // primaryTokenValue = (fCash * rateDecimals * primaryDecimals) / (rate * 1e8)
+        uint256 primaryPrecision = 10 ** PRIMARY_DECIMALS;
 
-        uint256 secondaryBorrowedDenominatedInPrimary;
-        if (PRIMARY_INDEX == 0) {
-            secondaryBorrowedDenominatedInPrimary =
-                (borrowedSecondaryfCashAmount *
-                    BalancerUtils.BALANCER_PRECISION) /
-                pairPrice;
-        } else {
-            secondaryBorrowedDenominatedInPrimary =
-                (borrowedSecondaryfCashAmount * pairPrice) /
-                BalancerUtils.BALANCER_PRECISION;
-        }
-
-        // Convert to primary precision
-        secondaryBorrowedDenominatedInPrimary =
-            (secondaryBorrowedDenominatedInPrimary * (10**PRIMARY_DECIMALS)) /
-            BalancerUtils.BALANCER_PRECISION;
+        uint256 secondaryBorrowedDenominatedInPrimary = 
+            (borrowedSecondaryfCashAmount * BalancerUtils.BALANCER_PRECISION * primaryPrecision)
+                / (oraclePairPrice * uint256(Constants.INTERNAL_TOKEN_PRECISION));
 
         return
             primaryBalance.toInt() -

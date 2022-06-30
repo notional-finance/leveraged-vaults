@@ -17,6 +17,7 @@ library BalancerUtils {
         IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
     uint256 internal constant BALANCER_PRECISION = 1e18;
     uint256 internal constant BALANCER_PRECISION_SQUARED = 1e36;
+    uint256 internal constant BALANCER_ORACLE_WEIGHT_PRECISION = 1e8;
 
     error InvalidTokenIndex(uint256 tokenIndex);
 
@@ -38,7 +39,7 @@ library BalancerUtils {
         queries[0].secs = secs;
         queries[0].ago = 0; // now
 
-        // Gets the balancer time weighted average price denominated in the primary token
+        // Gets the balancer time weighted average price denominated in the first token
         return IPriceOracle(pool).getTimeWeightedAverage(queries)[0];
     }
 
@@ -104,9 +105,14 @@ library BalancerUtils {
 
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
     /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
-    /// @param bptAmount BPT amount
+    /// @param pool address of the balancer pool
+    /// @param oracleWindowInSeconds window of time for the balancer oracle to scan over
+    /// @param primaryIndex the index of the primary token in the balancer pool
+    /// @param primaryWeight weight of the primary token
+    /// @param secondaryWeight weight of the secondary token
+    /// @param primaryDecimals decimal places of the primary token
+    /// @param bptAmount amount of balancer pool lp tokens
     /// @return primaryAmount primary token balance
-    /// @return pairPrice price of the token pair denominated in the first token
     function getTimeWeightedPrimaryBalance(
         address pool,
         uint256 oracleWindowInSeconds,
@@ -115,8 +121,8 @@ library BalancerUtils {
         uint256 secondaryWeight,
         uint8 primaryDecimals,
         uint256 bptAmount
-    ) internal view returns (uint256 primaryAmount, uint256 pairPrice) {
-        // Gets the BPT token price
+    ) internal view returns (uint256 primaryAmount) {
+        // Gets the BPT token price denominated in token index = 0
         uint256 bptPrice = _getTimeWeightedOraclePrice(
             pool,
             IPriceOracle.Variable.BPT_PRICE,
@@ -124,7 +130,7 @@ library BalancerUtils {
         );
 
         // Gets the pair price
-        pairPrice = _getTimeWeightedOraclePrice(
+        uint256 pairPrice = _getTimeWeightedOraclePrice(
             pool,
             IPriceOracle.Variable.PAIR_PRICE,
             oracleWindowInSeconds
@@ -133,71 +139,81 @@ library BalancerUtils {
         uint256 primaryPrecision = 10 ** primaryDecimals;
 
         if (primaryIndex == 0) {
-            // The first token in the BPT pool is the primary token.
-            // Since bptPrice is always denominated in the first token,
-            // Both bptPrice and bptAmount are in 1e18
-            // underlyingValue = bptPrice * bptAmount / 1e18
+            // Since bptPrice is always denominated in the first token, we can just multiply by
+            // the amount in this case. Both bptPrice and bptAmount are in 1e18 but we need to scale
+            // this back to the primary token's native precision.
+            // underlyingValue = (bptPrice * bptAmount * primaryPrecision) / (1e18 * 1e18)
             primaryAmount = (bptPrice * bptAmount * primaryPrecision) / BALANCER_PRECISION_SQUARED;
         } else {
-            // The second token in the BPT pool is the primary token.
-            // In this case, we need to convert secondaryTokenValue
-            // to underlyingValue using the pairPrice.
+            // The second token in the BPT pool is the price that we want to get. In this case, we need to
+            // convert secondaryTokenValue to underlyingValue using the pairPrice.
             // Both bptPrice and bptAmount are in 1e18
             uint256 secondaryAmount = (bptPrice * bptAmount) / BALANCER_PRECISION;
 
-            // PairPrice =  (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
-            // (SecondaryAmount / SecondaryWeight) / PairPrice = (PrimaryAmount / PrimaryWeight)
-            // PrimaryAmount = (SecondaryAmount / SecondaryWeight) / PairPrice * PrimaryWeight
-
-            // @audit this can be further simplified to, use this formula instead because it uses
-            // less division between steps and therefore will result in less precision loss.
+            // PairPrice = (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
+            // PairPrice = (SecondaryAmount * PrimaryWeight) / (PrimaryAmount * SecondaryWeight)
             // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
 
+            // And then normalizing to primary token precision we add:
+            // PrimaryAmount = (SecondaryAmount * PrimaryWeight * primaryPrecision) /
+            //          (SecondaryWeight * PairPrice * BalancerPrecision)
             primaryAmount = (secondaryAmount * primaryWeight * primaryPrecision) /
                 (secondaryWeight * pairPrice * BALANCER_PRECISION);
         }
     }
 
-    function _getPairPrice(
+    /// @notice Gets the oracle price pair price between two tokens using a weighted
+    /// average between a chainlink oracle and the balancer TWAP oracle.
+    /// @param pool address of the balancer pool
+    /// @param primaryIndex the index of the primary token in the balancer pool
+    /// @param balancerOracleWindowInSeconds window of time for the balancer oracle to scan over
+    /// @param balancerOracleWeight share of the weighted average to the balancer oracle
+    /// @param baseToken base token for the chainlink oracle
+    /// @param quoteToken quote token for the chainlink oracle
+    /// @param tradingModule address of the trading module
+    /// @return oraclePairPrice oracle price for the pair in 18 decimals
+    function getOraclePairPrice(
         address pool,
-        bytes32 poolId,
-        address tradingModule,
-        uint256 oracleWindowInSeconds,
-        uint256 balancerOracleWeight
-    ) internal view returns (uint256) {
-        // @audit this should only be called if balancerOracleWeight > 0
-        uint256 balancerPrice = _getTimeWeightedOraclePrice(
-            pool,
-            IPriceOracle.Variable.PAIR_PRICE,
-            oracleWindowInSeconds
-        );
+        uint8 primaryIndex,
+        uint256 balancerOracleWindowInSeconds,
+        uint256 balancerOracleWeight,
+        address baseToken,
+        address quoteToken,
+        ITradingModule tradingModule
+    ) internal view returns (uint256 oraclePairPrice) {
+        // NOTE: this balancer price is denominated in 18 decimal places
+        uint256 balancerWeightedPrice;
+        if (balancerOracleWeight > 0) {
+            uint256 balancerPrice = _getTimeWeightedOraclePrice(
+                pool,
+                IPriceOracle.Variable.PAIR_PRICE,
+                balancerOracleWindowInSeconds
+            );
 
-        // prettier-ignore
-        (
-            address[] memory tokens,
-            /* uint256[] memory balances */,
-            /* uint256 lastChangeBlock */
-        ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(poolId);
+            if (primaryIndex == 1) {
+                // If the primary index is the second token, we need to invert
+                // the balancer price.
+                balancerPrice = BALANCER_PRECISION_SQUARED / balancerPrice;
+            }
 
-        // @audit this should only be called if balancerOracleWeight < 1e8
-        (int256 chainlinkPrice, int256 decimals) = ITradingModule(tradingModule)
-            .getOraclePrice(tokens[1], tokens[0]);
+            balancerWeightedPrice = balancerPrice * balancerOracleWeight;
+        }
 
-        // @audit zero may be a valid price
-        require(chainlinkPrice >= 0); /// @dev Chainlink rate error
-        require(decimals >= 0); /// @dev Chainlink decimals error
+        uint256 chainlinkWeightedPrice;
+        if (balancerOracleWeight < BALANCER_ORACLE_WEIGHT_PRECISION) {
+            (int256 rate, int256 decimals) = tradingModule.getOraclePrice(baseToken, quoteToken);
+            require(rate > 0);
+            require(decimals >= 0);
 
-        // Normalize price to 18 decimals
-        // @audit this should only be done if decimals != 1e18
-        chainlinkPrice = (chainlinkPrice * 1e18) / decimals;
+            if (uint256(decimals) != BALANCER_PRECISION) {
+                rate = (rate * int256(BALANCER_PRECISION)) / decimals;
+            }
 
-        // @audit 1e8 should be a constant with a defined name here
-        // @audit for readability these should be split into two named variables
-        return
-            (balancerPrice * balancerOracleWeight) /
-            1e8 +
-            (uint256(chainlinkPrice) * (1e8 - balancerOracleWeight)) /
-            1e8;
+            // No overflow in rate conversion, checked above
+            chainlinkWeightedPrice = uint256(rate) * (BALANCER_ORACLE_WEIGHT_PRECISION - balancerOracleWeight);
+        }
+
+        oraclePairPrice = (balancerWeightedPrice + chainlinkWeightedPrice) / BALANCER_ORACLE_WEIGHT_PRECISION;
     }
 
     function getOptimalSecondaryBorrowAmount(
