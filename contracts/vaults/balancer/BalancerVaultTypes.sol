@@ -74,9 +74,9 @@ struct NormalSettlementContext {
     uint256 redeemStrategyTokenAmount;
     int256 underlyingCashRequiredToSettle;
     uint256 debtSharesToRepay;
-    uint256 borrowedSecondaryfCashAmount;
+    /// @notice Amount of secondary fCash borrowed in external precision
+    uint256 borrowedSecondaryfCashAmountExternal;
     uint16 secondaryBorrowCurrencyId;
-    uint8 secondaryDecimals;
     PoolContext poolContext;
 }
 
