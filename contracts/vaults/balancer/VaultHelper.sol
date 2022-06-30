@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
+import {BalancerVaultStorage} from "./BalancerVaultStorage.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
 import {TradeHandler} from "../../trading/TradeHandler.sol";
@@ -12,15 +13,11 @@ import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol"
 import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
 
-library VaultHelper {
+abstract contract VaultHelper is BalancerVaultStorage {
     using TradeHandler for Trade;
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
-
-    /// @notice Precision for all percentages, 1e4 = 100% (i.e. settlementSlippageLimit)
-    uint16 internal constant VAULT_PERCENTAGE_PRECISION = 1e4;
-    uint16 internal constant BALANCER_POOL_SHARE_BUFFER = 8e3; // 1e4 = 100%, 8e3 = 80%
 
     error InvalidSecondaryBorrow(
         uint256 borrowedSecondaryAmount,
@@ -31,7 +28,8 @@ library VaultHelper {
     struct DepositParams {
         uint256 minBPT;
         uint256 secondaryfCashAmount;
-        uint32 secondarySlippageLimit;
+        uint32 secondaryBorrowLimit;
+        uint32 secondaryRollLendLimit;
     }
 
     struct RedeemParams {
@@ -66,112 +64,89 @@ library VaultHelper {
         uint8 primaryIndex;
     }
 
-    function borrowSecondaryCurrency(
+    /// @notice Borrows the second token in the pool from Notional. Notional will handle
+    /// accounting for this borrow and return the borrowed amount of tokens. Run a check
+    /// here to ensure that the borrowed amount is within the optimal secondary borrow amount.
+    /// @param account account that is executing the borrow
+    /// @param maturity maturity to borrow at
+    /// @param primaryAmount primary deposit amount, used to calculate optimal secondary
+    /// @param params amount of fCash to borrow and slippage factors
+    /// @return borrowedSecondaryAmount amount of tokens returned from Notional for the secondary borrow
+    function _borrowSecondaryCurrency(
         address account,
-        uint256 deposit,
         uint256 maturity,
-        uint256 secondaryfCashAmount,
-        uint32 secondarySlippageLimit,
-        uint256 optimalSecondaryAmount,
-        uint256 secondaryBorrowLowerLimit,
-        uint256 secondaryBorrowUpperLimit
+        uint256 primaryAmount,
+        DepositParams memory params
     ) internal returns (uint256 borrowedSecondaryAmount) {
-        // TODO: move this back into the main thing
+        // If secondary currency is not specified then return
+        if (SECONDARY_BORROW_CURRENCY_ID == 0) return 0;
+
+        uint256 optimalSecondaryAmount = BalancerUtils.getOptimalSecondaryBorrowAmount(
+            address(BALANCER_POOL_TOKEN),
+            vaultSettings.oracleWindowInSeconds,
+            PRIMARY_INDEX,
+            PRIMARY_WEIGHT,
+            SECONDARY_WEIGHT,
+            PRIMARY_DECIMALS,
+            SECONDARY_DECIMALS,
+            primaryAmount
+        );
+
         // Borrow secondary currency from Notional (tokens will be transferred to this contract)
         {
             uint256[2] memory fCashToBorrow;
             uint32[2] memory maxBorrowRate;
             uint32[2] memory minRollLendRate;
-            fCashToBorrow[0] = secondaryfCashAmount;
-            maxBorrowRate[0] = secondarySlippageLimit;
-            uint256[2] memory tokensTransferred = Constants
-                .NOTIONAL
-                .borrowSecondaryCurrencyToVault(
-                    account,
-                    maturity,
-                    fCashToBorrow,
-                    maxBorrowRate,
-                    minRollLendRate
-                );
+            fCashToBorrow[0] = params.secondaryfCashAmount;
+            maxBorrowRate[0] = params.secondaryBorrowLimit;
+            minRollLendRate[0] = params.secondaryRollLendLimit;
+            uint256[2] memory tokensTransferred = NOTIONAL.borrowSecondaryCurrencyToVault(
+                account,
+                maturity,
+                fCashToBorrow,
+                maxBorrowRate,
+                minRollLendRate
+            );
 
             borrowedSecondaryAmount = tokensTransferred[0];
         }
 
-        // Require the secondary borrow amount to be within SECONDARY_BORROW_LOWER_LIMIT percent
-        // of the optimal amount
-        uint256 lowerLimit = (optimalSecondaryAmount * secondaryBorrowLowerLimit) / 100;
-        uint256 upperLimit = (optimalSecondaryAmount * secondaryBorrowUpperLimit) / 100;
+        // Require the secondary borrow amount to be within some bounds of the optimal amount
+        uint256 lowerLimit = (optimalSecondaryAmount * SECONDARY_BORROW_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (optimalSecondaryAmount * SECONDARY_BORROW_UPPER_LIMIT) / 100;
         if (borrowedSecondaryAmount < lowerLimit || upperLimit < borrowedSecondaryAmount) {
             revert InvalidSecondaryBorrow(
                 borrowedSecondaryAmount,
                 optimalSecondaryAmount,
-                secondaryfCashAmount
+                params.secondaryfCashAmount
             );
         }
     }
 
-    function _joinPool(
-        PoolContext memory context,
-        uint256 deposit,
+    function _joinPoolAndStake(
+        uint256 primaryAmount,
         uint256 borrowedSecondaryAmount,
         uint256 minBPT
-    ) private returns (uint256 bptAmount) {
-        // Join pool
-        bptAmount = context.pool.balanceOf(address(this));
-        BalancerUtils.joinPoolExactTokensIn(
-            context.poolId,
-            context.primaryToken,
-            deposit,
-            context.secondaryToken,
-            borrowedSecondaryAmount,
-            context.primaryIndex,
-            minBPT
-        );
-        bptAmount = context.pool.balanceOf(address(this)) - bptAmount;
+    ) internal returns (uint256 bptAmount) {
+        uint256 balanceBefore = BALANCER_POOL_TOKEN.balanceOf(address(this));
+        BalancerUtils.joinPoolExactTokensIn({
+            poolId: BALANCER_POOL_ID,
+            primaryAddress: address(_underlyingToken()),
+            secondaryAddress: address(SECONDARY_TOKEN),
+            primaryIndex: PRIMARY_INDEX,
+            maxPrimaryAmount: primaryAmount,
+            maxSecondaryAmount: borrowedSecondaryAmount,
+            minBPT: minBPT
+        });
+        uint256 balanceAfter = BALANCER_POOL_TOKEN.balanceOf(address(this));
+
+        bptAmount = balanceAfter - balanceBefore;
 
         // TODO: check maxBalancerPoolShare
-    }
 
-    function _stakeBPT(BoostContext memory context, uint256 bptAmount) private {
-        // Stake liquidity
-        context.liquidityGauge.deposit(bptAmount);
-
+        LIQUIDITY_GAUGE.deposit(bptAmount);
         // Transfer gauge token to VeBALDelegator
-        context.boostController.depositToken(
-            address(context.liquidityGauge),
-            bptAmount
-        );
-    }
-
-    function depositFromNotional(
-        VaultContext memory context,
-        uint256 deposit,
-        uint256 borrowedSecondaryAmount,
-        uint256 minBPT,
-        uint256 totalStrategyTokenGlobal,
-        uint256 bptHeldInMaturity,
-        uint256 totalStrategyTokenSupplyInMaturity
-    ) internal returns (uint256 strategyTokensMinted) {
-        uint256 bptAmount = _joinPool(
-            context.poolContext,
-            deposit,
-            borrowedSecondaryAmount,
-            minBPT
-        );
-
-        _stakeBPT(context.boostContext, bptAmount);
-
-        // Mint strategy tokens
-        if (totalStrategyTokenGlobal == 0) {
-            // @audit this needs to be returned in 8 decimal precision
-            strategyTokensMinted = bptAmount;
-        } else {
-            //prettier-ignore
-            strategyTokensMinted =
-                (totalStrategyTokenSupplyInMaturity * bptAmount) /
-                // @audit leave a comment on this math here, but looks correct
-                (bptHeldInMaturity - bptAmount);
-        }
+        BOOST_CONTROLLER.depositToken(address(LIQUIDITY_GAUGE), bptAmount);
     }
 
     function _exitPool(

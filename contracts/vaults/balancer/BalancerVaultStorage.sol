@@ -25,6 +25,9 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
     error InvalidSecondaryToken(address token);
 
     /** Constants */
+    /// @notice Precision for all percentages, 1e4 = 100% (i.e. settlementSlippageLimit)
+    uint16 internal constant VAULT_PERCENTAGE_PRECISION = 1e4;
+    uint16 internal constant BALANCER_POOL_SHARE_BUFFER = 8e3; // 1e4 = 100%, 8e3 = 80%
     uint256 internal constant SECONDARY_BORROW_UPPER_LIMIT = 105;
     uint256 internal constant SECONDARY_BORROW_LOWER_LIMIT = 95;
     uint16 internal constant MAX_SETTLEMENT_COOLDOWN_IN_MINUTES = 24 * 60; // 1 day

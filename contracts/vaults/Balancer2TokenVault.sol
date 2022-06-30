@@ -35,7 +35,7 @@ import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 
-contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BalancerVaultStorage {
+contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -80,19 +80,19 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BalancerVaultSto
         );
         require(
             settings.balancerOracleWeight <=
-                VaultHelper.VAULT_PERCENTAGE_PRECISION
+                VAULT_PERCENTAGE_PRECISION
         );
         require(
             settings.maxBalancerPoolShare <=
-                VaultHelper.VAULT_PERCENTAGE_PRECISION
+                VAULT_PERCENTAGE_PRECISION
         );
         require(
             settings.settlementSlippageLimit <=
-                VaultHelper.VAULT_PERCENTAGE_PRECISION
+                VAULT_PERCENTAGE_PRECISION
         );
         require(
             settings.postMaturitySettlementSlippageLimit <=
-                VaultHelper.VAULT_PERCENTAGE_PRECISION
+                VAULT_PERCENTAGE_PRECISION
         );
 
         vaultSettings.oracleWindowInSeconds = settings.oracleWindowInSeconds;
@@ -214,46 +214,33 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BalancerVaultSto
             (VaultHelper.DepositParams)
         );
 
-        uint256 borrowedSecondaryAmount;
-        if (SECONDARY_BORROW_CURRENCY_ID > 0) {
-            borrowedSecondaryAmount = BalancerUtils.getOptimalSecondaryBorrowAmount(
-                address(BALANCER_POOL_TOKEN),
-                vaultSettings.oracleWindowInSeconds,
-                PRIMARY_INDEX,
-                PRIMARY_WEIGHT,
-                SECONDARY_WEIGHT,
-                PRIMARY_DECIMALS,
-                SECONDARY_DECIMALS,
-                deposit
-            );
-
-            borrowedSecondaryAmount = VaultHelper.borrowSecondaryCurrency(
-                account,
-                deposit,
-                maturity,
-                params.secondaryfCashAmount,
-                params.secondarySlippageLimit,
-                borrowedSecondaryAmount,
-                SECONDARY_BORROW_LOWER_LIMIT,
-                SECONDARY_BORROW_UPPER_LIMIT
-            );
-        }
-
         // prettier-ignore
         (
+            // @audit this number is not correct when rolling since it does not account for
+            // tokens rolled into the maturity yet
             uint256 bptHeldInMaturity,
             uint256 totalStrategyTokenSupplyInMaturity
         ) = _getBPTHeldInMaturity(maturity);
 
-        strategyTokensMinted = VaultHelper.depositFromNotional(
-            _getVaultContext(),
-            deposit,
-            borrowedSecondaryAmount,
-            params.minBPT,
-            vaultState.totalStrategyTokenGlobal,
-            bptHeldInMaturity,
-            totalStrategyTokenSupplyInMaturity
+        // First borrow any secondary tokens (if required)
+        uint256 borrowedSecondaryAmount = _borrowSecondaryCurrency(
+            account, maturity, deposit, params
         );
+
+        // Join the balancer pool and stake the tokens for boosting
+        uint256 bptMinted = _joinPoolAndStake(deposit, borrowedSecondaryAmount, params.minBPT);
+
+        // Calculate strategy token share for this account
+        if (vaultState.totalStrategyTokenGlobal == 0) {
+            // Strategy tokens are in 8 decimal precision, BPT is in 18. Scale the minted amount down.
+            strategyTokensMinted = (bptMinted * uint256(Constants.INTERNAL_TOKEN_PRECISION))
+                / BalancerUtils.BALANCER_PRECISION;
+        } else {
+            // BPT held in maturity is calculated before the new BPT tokens are minted, so this calculation
+            // is the tokens minted that will give the account a corresponding share of the new bpt balance held.
+            // The precision here will be the same as strategy token supply.
+            strategyTokensMinted = (bptMinted * totalStrategyTokenSupplyInMaturity) / bptHeldInMaturity;
+        }
 
         // Update global supply count
         vaultState.totalStrategyTokenGlobal += strategyTokensMinted;

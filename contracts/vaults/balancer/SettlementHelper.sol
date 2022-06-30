@@ -9,6 +9,9 @@ library SettlementHelper {
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
 
+    uint16 internal constant VAULT_PERCENTAGE_PRECISION = 1e4;
+    uint16 internal constant BALANCER_POOL_SHARE_BUFFER = 8e3; // 1e4 = 100%, 8e3 = 80%
+
     error NotInSettlementWindow();
     error InvalidEmergencySettlement();
     error HasNotMatured();
@@ -167,19 +170,20 @@ library SettlementHelper {
         }
 
         // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
+        // TODO: move this calculation out
         uint256 emergencyBPTWithdrawThreshold = (context.bptTotalSupply *
             context.maxBalancerPoolShare) /
-            VaultHelper.VAULT_PERCENTAGE_PRECISION;
+            VAULT_PERCENTAGE_PRECISION;
 
         if (context.totalBPTHeld <= emergencyBPTWithdrawThreshold)
             revert InvalidEmergencySettlement();
 
         // desiredPoolShare = maxPoolShare * bufferPercentage
         uint256 desiredPoolShare = (context.maxBalancerPoolShare *
-            VaultHelper.BALANCER_POOL_SHARE_BUFFER) /
-            VaultHelper.VAULT_PERCENTAGE_PRECISION;
+            BALANCER_POOL_SHARE_BUFFER) /
+            VAULT_PERCENTAGE_PRECISION;
         uint256 desiredBPTAmount = (context.bptTotalSupply * desiredPoolShare) /
-            VaultHelper.VAULT_PERCENTAGE_PRECISION;
+            VAULT_PERCENTAGE_PRECISION;
 
         _emergencySettlement(
             context,
@@ -213,14 +217,16 @@ library SettlementHelper {
         }
 
         // Redeem BPT (doing this in another function to avoid stack issues)
-        (uint256 primaryBalance, uint256 secondaryBalance) = VaultHelper
-            ._exitPool(
-                context.poolContext,
-                bptToSettle,
-                maturity,
-                redeemParams.minPrimary,
-                redeemParams.minSecondary
-            );
+        uint256 primaryBalance;
+        uint256 secondaryBalance;
+        // (uint256 primaryBalance, uint256 secondaryBalance) = VaultHelper
+        //     ._exitPool(
+        //         context.poolContext,
+        //         bptToSettle,
+        //         maturity,
+        //         redeemParams.minPrimary,
+        //         redeemParams.minSecondary
+        //     );
 
         primaryBalance += context.primarySettlementBalance;
         secondaryBalance += context.secondarySettlementBalance;
@@ -247,16 +253,16 @@ library SettlementHelper {
             // (trading is handled in repaySecondaryCurrencyFromVault)
             if (context.debtSharesToRepay > 0) {
                 // Primary balance is updated after secondary currency repayment
-                primaryBalance = VaultHelper.repaySecondaryBorrow(
-                    address(this),
-                    context.secondaryBorrowCurrencyId,
-                    maturity,
-                    context.debtSharesToRepay,
-                    redeemParams.secondarySlippageLimit,
-                    redeemParams.callbackData,
-                    primaryBalance,
-                    secondaryBalance
-                );
+                // primaryBalance = VaultHelper.repaySecondaryBorrow(
+                //     address(this),
+                //     context.secondaryBorrowCurrencyId,
+                //     maturity,
+                //     context.debtSharesToRepay,
+                //     redeemParams.secondarySlippageLimit,
+                //     redeemParams.callbackData,
+                //     primaryBalance,
+                //     secondaryBalance
+                // );
             }
 
             // Settle primary debt
