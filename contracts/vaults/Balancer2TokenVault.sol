@@ -767,7 +767,7 @@ contract Balancer2TokenVault is
         // this claim is done inside the same method?
         // @audit part of this BAL that is claimed needs to be donated to the Notional protocol,
         // we should set an percentage and then transfer to the TreasuryManager contract.
-        return BOOST_CONTROLLER.claimBAL(address(LIQUIDITY_GAUGE));
+        return BOOST_CONTROLLER.claimBAL(LIQUIDITY_GAUGE);
     }
 
     /// @notice Claim other liquidity gauge reward tokens (i.e. LIDO)
@@ -779,7 +779,7 @@ contract Balancer2TokenVault is
     {
         // @audit perhaps it would be more efficient to then call executeRewardTrades right after
         // this claim is done inside the same method?
-        return BOOST_CONTROLLER.claimGaugeTokens(address(LIQUIDITY_GAUGE));
+        return BOOST_CONTROLLER.claimGaugeTokens(LIQUIDITY_GAUGE);
     }
 
     /// @notice Sell reward tokens for BPT and reinvest the proceeds

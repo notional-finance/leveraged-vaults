@@ -2,6 +2,7 @@
 pragma solidity >=0.7.6;
 
 import "./IVeBalDelegator.sol";
+import {ILiquidityGauge} from "../balancer/ILiquidityGauge.sol";
 
 interface IBoostController {
     function VEBAL_DELEGATOR() external view returns (IVeBalDelegator);
@@ -10,11 +11,11 @@ interface IBoostController {
 
     function withdrawToken(address token, uint256 amount) external;
 
-    function claimBAL(address liquidityGauge)
+    function claimBAL(ILiquidityGauge liquidityGauge)
         external
         returns (uint256 claimAmount);
 
-    function claimGaugeTokens(address liquidityGauge)
+    function claimGaugeTokens(ILiquidityGauge liquidityGauge)
         external
         returns (address[] memory tokens, uint256[] memory balancesTransferred);
 }
