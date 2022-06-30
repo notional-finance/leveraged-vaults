@@ -20,6 +20,15 @@ library BalancerUtils {
 
     error InvalidTokenIndex(uint256 tokenIndex);
 
+    /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
+    /// and Balancer uses WETH
+    function tokenAddress(address token) internal view returns (address) {
+        return
+            token == Constants.ETH_ADDRESS
+                ? address(WETH)
+                : address(token);
+    }
+
     function _getTimeWeightedOraclePrice(
         address pool,
         IPriceOracle.Variable variable,
