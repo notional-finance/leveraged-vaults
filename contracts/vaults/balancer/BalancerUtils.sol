@@ -329,7 +329,10 @@ library BalancerUtils {
 
     /// @notice Exits a balancer pool using exact BPT in
     function exitPoolExactBPTIn(
-        PoolContext memory context,
+        bytes32 poolId,
+        address primaryAddress,
+        address secondaryAddress,
+        uint8 primaryIndex,
         uint256 minPrimaryAmount,
         uint256 minSecondaryAmount,
         uint256 bptExitAmount
@@ -339,15 +342,15 @@ library BalancerUtils {
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
-            context.primaryToken,
+            primaryAddress,
             minPrimaryAmount,
-            context.secondaryToken,
+            secondaryAddress,
             minSecondaryAmount,
-            context.primaryIndex
+            primaryIndex
         );
 
         BALANCER_VAULT.exitPool(
-            context.poolId,
+            poolId,
             address(this),
             payable(address(this)), // Vault will receive the underlying assets
             IBalancerVault.ExitPoolRequest(

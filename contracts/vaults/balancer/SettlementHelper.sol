@@ -5,7 +5,7 @@ import {
     PoolContext, 
     NormalSettlementContext, 
     RedeemParams, 
-    RepaySecondaryCallbackParams
+    SecondaryTradeParams
 } from "./BalancerVaultTypes.sol";
 import {VaultHelper} from "./VaultHelper.sol";
 import {Constants} from "../../global/Constants.sol";
@@ -47,12 +47,11 @@ library SettlementHelper {
         if (lastTimestamp + coolDown * 60 > block.timestamp)
             revert InSettlementCoolDown(lastTimestamp, coolDown);
         params = abi.decode(data, (RedeemParams));
-        RepaySecondaryCallbackParams memory callbackData = abi.decode(
-            params.callbackData,
-            (RepaySecondaryCallbackParams)
+        SecondaryTradeParams memory callbackData = abi.decode(
+            params.secondaryTradeParams, (SecondaryTradeParams)
         );
-        if (callbackData.slippageLimitBPS > slippageLimit) {
-            revert SlippageTooHigh(callbackData.slippageLimitBPS, slippageLimit);
+        if (callbackData.oracleSlippagePercent > slippageLimit) {
+            revert SlippageTooHigh(callbackData.oracleSlippagePercent, slippageLimit);
         }
     }
 
