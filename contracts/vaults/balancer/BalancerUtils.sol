@@ -216,6 +216,16 @@ library BalancerUtils {
         oraclePairPrice = (balancerWeightedPrice + chainlinkWeightedPrice) / BALANCER_ORACLE_WEIGHT_PRECISION;
     }
 
+    /// @notice Returns the optimal amount to borrow for the secondary token
+    /// @param pool address of the balancer pool
+    /// @param oracleWindowInSeconds window of time for the balancer oracle to scan over
+    /// @param primaryIndex the index of the primary token in the balancer pool
+    /// @param primaryWeight weight of the primary token
+    /// @param secondaryWeight weight of the secondary token
+    /// @param primaryDecimals decimal places of the primary token (denomination of primaryAmount)
+    /// @param secondaryDecimals decimal places of the secondary token
+    /// @param primaryAmount amount being deposited into the primary token
+    /// @return secondaryAmount optimal amount of the secondary token to join the pool
     function getOptimalSecondaryBorrowAmount(
         address pool,
         uint256 oracleWindowInSeconds,
@@ -226,41 +236,31 @@ library BalancerUtils {
         uint8 secondaryDecimals,
         uint256 primaryAmount
     ) internal view returns (uint256 secondaryAmount) {
-        // Gets the PAIR price
+        // Use the oracle price here rather than the spot price to prevent flash loan
+        // manipulation (would force the user to join at a disadvantageous price). If
+        // the pool is being manipulated away from the oracle price and this generates
+        // excess slippage when joining, the user must specify a minBPT amount that will
+        // cause the transaction to revert.
         uint256 pairPrice = _getTimeWeightedOraclePrice(
             pool,
             IPriceOracle.Variable.PAIR_PRICE,
             oracleWindowInSeconds
         );
 
-        // @audit these two formulas can be further simplified to the following which uses
-        // less division between steps and therefore will result in less precision loss.
-        // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
-        // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice) / PrimaryWeight
-
-        // Calculate weighted primary amount
-        primaryAmount = ((primaryAmount * 1e18) / primaryWeight);
-
-        // Calculate price adjusted primary amount, price is always in 1e18
-        // Since price is always expressed as the price of the second token in units of the
-        // first token, we need to invert the math if the second token is the primary token
-        if (primaryIndex == 0) {
-            // PairPrice = (PrimaryAmount / PrimaryWeight) / (SecondaryAmount / SecondaryWeight)
-            // SecondaryAmount = (PrimaryAmount / PrimaryWeight) / PairPrice * SecondaryWeight
-            primaryAmount = ((primaryAmount * 1e18) / pairPrice);
-        } else {
-            // PairPrice = (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
-            // SecondaryAmount = (PrimaryAmount / PrimaryWeight) * PairPrice * SecondaryWeight
-            primaryAmount = ((primaryAmount * pairPrice) / 1e18);
+        if (primaryIndex == 1) {
+            // If the primary index is the second token, invert the pair price
+            pairPrice = BALANCER_PRECISION_SQUARED / pairPrice;
         }
 
-        // Calculate secondary amount (precision is still 1e18)
-        secondaryAmount = (primaryAmount * secondaryWeight) / 1e18;
-
-        // Normalize precision to secondary precision
-        secondaryAmount =
-            (secondaryAmount * 10**secondaryDecimals) /
-            10**primaryDecimals;
+        uint256 primaryPrecision = 10 ** primaryDecimals;
+        uint256 secondaryPrecision = 10 ** secondaryDecimals;
+        // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
+        // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice) / PrimaryWeight
+        // Also, we want to normalize to secondary token precision
+        // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice * SecondaryPrecision) /
+        //    (PrimaryWeight * PrimaryPrecision * BalancerPrecision[for PairPrice])
+        secondaryAmount = (primaryAmount * secondaryWeight * pairPrice * secondaryPrecision) / 
+            (primaryWeight * primaryPrecision * BALANCER_PRECISION);
     }
 
 
