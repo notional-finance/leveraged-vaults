@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
+import {
+    VaultContext, 
+    PoolContext, 
+    BoostContext,
+    DepositParams,
+    RedeemParams,
+    RepaySecondaryCallbackParams
+} from "./BalancerVaultTypes.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {BalancerVaultStorage} from "./BalancerVaultStorage.sol";
@@ -25,53 +33,6 @@ abstract contract VaultHelper is BalancerVaultStorage {
         uint256 secondaryfCashAmount
     );
 
-    struct DepositParams {
-        uint256 minBPT;
-        uint256 secondaryfCashAmount;
-        uint32 secondaryBorrowLimit;
-        uint32 secondaryRollLendLimit;
-    }
-
-    struct RedeemParams {
-        uint32 secondarySlippageLimit;
-        uint256 minPrimary;
-        uint256 minSecondary;
-        bytes callbackData;
-    }
-
-    struct RepaySecondaryCallbackParams {
-        uint16 dexId;
-        uint32 slippageLimit; // @audit the denomination of this should be marked in the variable name
-        bytes exchangeData;
-    }
-
-    struct BoostContext {
-        ILiquidityGauge liquidityGauge;
-        IBoostController boostController;
-    }
-
-    struct VaultContext {
-        PoolContext poolContext;
-        BoostContext boostContext;
-    }
-
-    /// @notice Balancer pool related fields
-    struct PoolContext {
-        IBalancerPool pool;
-        bytes32 poolId;
-        address primaryToken;
-        address secondaryToken;
-        uint8 primaryIndex;
-    }
-
-    /// @notice Borrows the second token in the pool from Notional. Notional will handle
-    /// accounting for this borrow and return the borrowed amount of tokens. Run a check
-    /// here to ensure that the borrowed amount is within the optimal secondary borrow amount.
-    /// @param account account that is executing the borrow
-    /// @param maturity maturity to borrow at
-    /// @param primaryAmount primary deposit amount, used to calculate optimal secondary
-    /// @param params amount of fCash to borrow and slippage factors
-    /// @return borrowedSecondaryAmount amount of tokens returned from Notional for the secondary borrow
     function _borrowSecondaryCurrency(
         address account,
         uint256 maturity,
@@ -163,12 +124,9 @@ abstract contract VaultHelper is BalancerVaultStorage {
         secondaryBalance = TokenUtils.tokenBalance(context.secondaryToken);
 
         BalancerUtils.exitPoolExactBPTIn(
-            context.poolId,
-            context.primaryToken,
+            context,
             minPrimary,
-            context.secondaryToken,
             minSecondary,
-            context.primaryIndex,
             bptExitAmount
         );
 
@@ -252,10 +210,10 @@ abstract contract VaultHelper is BalancerVaultStorage {
     ) internal returns (bytes memory returnData) {
         // prettier-ignore
         (
-            VaultHelper.RepaySecondaryCallbackParams memory params,
+            RepaySecondaryCallbackParams memory params,
             // secondaryBalance = secondary token amount from BPT redemption
             uint256 secondaryBalance
-        ) = abi.decode(data, (VaultHelper.RepaySecondaryCallbackParams, uint256));
+        ) = abi.decode(data, (RepaySecondaryCallbackParams, uint256));
 
         Trade memory trade;
         int256 primaryBalanceBefore = TokenUtils
@@ -287,7 +245,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
                     primaryToken,
                     secondaryToken,
                     secondaryShortfall,
-                    params.slippageLimit
+                    params.slippageLimitBPS
                 ),
                 block.timestamp, // deadline
                 params.exchangeData
@@ -325,7 +283,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
                     secondaryToken,
                     primaryToken,
                     secondaryBalance,
-                    params.slippageLimit // @audit what denomination is slippage limit in here?
+                    params.slippageLimitBPS
                 ),
                 block.timestamp, // deadline
                 params.exchangeData

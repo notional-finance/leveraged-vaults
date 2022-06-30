@@ -15,10 +15,18 @@ import {RewardHelper} from "./balancer/RewardHelper.sol";
 import {SettlementHelper} from "./balancer/SettlementHelper.sol";
 import {VaultHelper} from "./balancer/VaultHelper.sol";
 import {
-    DeploymentParams,
-    InitParams,
-    StrategyVaultSettings,
-    StrategyVaultState
+    DeploymentParams, 
+    InitParams, 
+    StrategyVaultSettings, 
+    StrategyVaultState, 
+    VaultContext, 
+    PoolContext, 
+    BoostContext,
+    NormalSettlementContext,
+    VeBalDelegatorInfo,
+    ReinvestRewardParams,
+    DepositParams,
+    RedeemParams
 } from "./balancer/BalancerVaultTypes.sol";
 
 import {IERC20} from "../../interfaces/IERC20.sol";
@@ -49,9 +57,14 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
     constructor(NotionalProxy notional_, DeploymentParams memory params)
-        BalancerVaultStorage(notional_, params) { }
+        BalancerVaultStorage(notional_, params)
+    {}
 
-    function initialize(InitParams calldata params) external initializer onlyNotionalOwner {
+    function initialize(InitParams calldata params)
+        external
+        initializer
+        onlyNotionalOwner
+    {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         _setVaultSettings(params.settings);
 
@@ -87,11 +100,11 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
                 VAULT_PERCENTAGE_PRECISION
         );
         require(
-            settings.settlementSlippageLimit <=
+            settings.settlementSlippageLimitBPS <=
                 VAULT_PERCENTAGE_PRECISION
         );
         require(
-            settings.postMaturitySettlementSlippageLimit <=
+            settings.postMaturitySettlementSlippageLimitBPS <=
                 VAULT_PERCENTAGE_PRECISION
         );
 
@@ -99,10 +112,10 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         vaultSettings.balancerOracleWeight = settings.balancerOracleWeight;
         vaultSettings.maxBalancerPoolShare = settings.maxBalancerPoolShare;
         vaultSettings.maxUnderlyingSurplus = settings.maxUnderlyingSurplus;
-        vaultSettings.settlementSlippageLimit = settings
-            .settlementSlippageLimit;
-        vaultSettings.postMaturitySettlementSlippageLimit = settings
-            .postMaturitySettlementSlippageLimit;
+        vaultSettings.settlementSlippageLimitBPS = settings
+            .settlementSlippageLimitBPS;
+        vaultSettings.postMaturitySettlementSlippageLimitBPS = settings
+            .postMaturitySettlementSlippageLimitBPS;
         vaultSettings.settlementCoolDownInMinutes = settings
             .settlementCoolDownInMinutes;
         vaultSettings.postMaturitySettlementCoolDownInMinutes = settings
@@ -136,7 +149,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             PRIMARY_DECIMALS,
             bptClaim
         );
-        
+
         // Oracle price for the pair in 18 decimals
         uint256 oraclePairPrice = BalancerUtils.getOraclePairPrice(
             address(BALANCER_POOL_TOKEN),
@@ -161,36 +174,29 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         // oraclePairPrice is always in 18 decimal precision and we want our result denominated
         // in the primary token precision.
         // primaryTokenValue = (fCash * rateDecimals * primaryDecimals) / (rate * 1e8)
-        uint256 primaryPrecision = 10 ** PRIMARY_DECIMALS;
+        uint256 primaryPrecision = 10**PRIMARY_DECIMALS;
 
-        uint256 secondaryBorrowedDenominatedInPrimary = 
-            (borrowedSecondaryfCashAmount * BalancerUtils.BALANCER_PRECISION * primaryPrecision)
-                / (oraclePairPrice * uint256(Constants.INTERNAL_TOKEN_PRECISION));
+        uint256 secondaryBorrowedDenominatedInPrimary = (borrowedSecondaryfCashAmount *
+                BalancerUtils.BALANCER_PRECISION *
+                primaryPrecision) /
+                (oraclePairPrice * uint256(Constants.INTERNAL_TOKEN_PRECISION));
 
         return
             primaryBalance.toInt() -
             secondaryBorrowedDenominatedInPrimary.toInt();
     }
 
-    function _getVaultContext()
-        private
-        view
-        returns (VaultHelper.VaultContext memory)
-    {
+    function _getVaultContext() private view returns (VaultContext memory) {
         return
-            VaultHelper.VaultContext(
+            VaultContext(
                 _getPoolContext(),
-                VaultHelper.BoostContext(LIQUIDITY_GAUGE, BOOST_CONTROLLER)
+                BoostContext(LIQUIDITY_GAUGE, BOOST_CONTROLLER)
             );
     }
 
-    function _getPoolContext()
-        private
-        view
-        returns (VaultHelper.PoolContext memory)
-    {
+    function _getPoolContext() private view returns (PoolContext memory) {
         return
-            VaultHelper.PoolContext({
+            PoolContext({
                 pool: BALANCER_POOL_TOKEN,
                 poolId: BALANCER_POOL_ID,
                 primaryToken: address(_underlyingToken()),
@@ -209,10 +215,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             revert DepositNotAllowedInSettlementWindow();
         }
 
-        VaultHelper.DepositParams memory params = abi.decode(
-            data,
-            (VaultHelper.DepositParams)
-        );
+        DepositParams memory params = abi.decode(data, (DepositParams));
 
         // prettier-ignore
         (
@@ -330,10 +333,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             revert RedeemNotAllowedInSettlementWindow();
         }
 
-        VaultHelper.RedeemParams memory params = abi.decode(
-            data,
-            (VaultHelper.RedeemParams)
-        );
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         uint256 bptClaim = convertStrategyTokensToBPTClaim(
             strategyTokens,
@@ -386,7 +386,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         uint32 lastSettlementTimestamp,
         uint32 settlementCoolDownInMinutes,
         uint16 settlementSlippageLimit
-    ) private returns (SettlementHelper.NormalSettlementContext memory) {
+    ) private returns (NormalSettlementContext memory) {
         // Get primary and secondary debt amounts from Notional
         // prettier-ignore
         (
@@ -401,7 +401,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         ) = getDebtSharesToRepay(address(this), maturity, redeemStrategyTokenAmount);
 
         return
-            SettlementHelper.NormalSettlementContext({
+            NormalSettlementContext({
                 maxUnderlyingSurplus: vaultSettings.maxUnderlyingSurplus,
                 primarySettlementBalance: primarySettlementBalance[maturity],
                 secondarySettlementBalance: secondarySettlementBalance[
@@ -443,7 +443,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
                 redeemStrategyTokenAmount,
                 vaultState.lastPostMaturitySettlementTimestamp,
                 vaultSettings.postMaturitySettlementCoolDownInMinutes,
-                vaultSettings.postMaturitySettlementSlippageLimit
+                vaultSettings.postMaturitySettlementSlippageLimitBPS
             ),
             maturity,
             bptToSettle,
@@ -493,7 +493,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
                 redeemStrategyTokenAmount,
                 vaultState.lastSettlementTimestamp,
                 vaultSettings.settlementCoolDownInMinutes,
-                vaultSettings.settlementSlippageLimit
+                vaultSettings.settlementSlippageLimitBPS
             ),
             maturity,
             bptToSettle,
@@ -521,9 +521,32 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
     function settleVaultEmergency(
         uint256 maturity,
-        uint256 bptToSettle,
         bytes calldata data
     ) external {
+        if (maturity <= block.timestamp) {
+            revert SettlementHelper.PostMaturitySettlement();
+        }
+        // TODO: is this check necessary?
+        if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
+            revert SettlementHelper.InvalidEmergencySettlement();
+        }
+
+        // prettier-ignore
+        (
+            // @audit this number is not correct when rolling since it does not account for
+            // tokens rolled into the maturity yet
+            uint256 bptHeldInMaturity,
+            /* uint256 totalStrategyTokenSupplyInMaturity */
+        ) = _getBPTHeldInMaturity(maturity);
+
+        uint256 bptToSettle = SettlementHelper._getEmergencySettlementBPTAmount({
+            maturity: maturity,
+            bptTotalSupply: BALANCER_POOL_TOKEN.totalSupply(),
+            maxBalancerPoolShare: vaultSettings.maxBalancerPoolShare,
+            totalBPTHeld: _bptHeld(),
+            bptHeldInMaturity: bptHeldInMaturity
+        });
+
         uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
             bptToSettle,
             maturity
@@ -535,20 +558,14 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             maturity
         );
 
-        SettlementHelper.settleVaultEmergency(
-            SettlementHelper.EmergencySettlementContext(
-                redeemStrategyTokenAmount,
-                expectedUnderlyingRedeemed,
-                vaultSettings.maxUnderlyingSurplus,
-                BALANCER_POOL_TOKEN.totalSupply(),
-                _bptHeld(),
-                SETTLEMENT_PERIOD_IN_SECONDS,
-                vaultSettings.maxBalancerPoolShare
-            ),
-            maturity,
-            bptToSettle,
-            data
-        );
+        SettlementHelper.settleVaultEmergency({
+            maturity: maturity,
+            bptToSettle: bptToSettle,
+            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            maxUnderlyingSurplus: vaultSettings.maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            data: data
+        });
     }
 
     /// @notice Claim BAL token gauge reward
@@ -575,14 +592,14 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
     /// @notice Sell reward tokens for BPT and reinvest the proceeds
     /// @param params reward reinvestment params
-    function reinvestReward(RewardHelper.ReinvestRewardParams calldata params)
+    function reinvestReward(ReinvestRewardParams calldata params)
         external
     {
         RewardHelper.reinvestReward(
             params,
-            RewardHelper.VeBalDelegatorInfo(
-                VEBAL_DELEGATOR,
-                LIQUIDITY_GAUGE,
+            VeBalDelegatorInfo(
+                LIQUIDITY_GAUGE, 
+                VEBAL_DELEGATOR, 
                 address(BAL_TOKEN)
             ),
             TRADING_MODULE,
@@ -698,5 +715,4 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     function _authorizeUpgrade(
         address /* newImplementation */
     ) internal override onlyNotionalOwner {}
-
 }

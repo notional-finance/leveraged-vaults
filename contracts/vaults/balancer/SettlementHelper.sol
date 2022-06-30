@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
+import {
+    PoolContext, 
+    NormalSettlementContext, 
+    RedeemParams, 
+    RepaySecondaryCallbackParams
+} from "./BalancerVaultTypes.sol";
 import {VaultHelper} from "./VaultHelper.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
@@ -8,9 +14,6 @@ import {SafeInt256} from "../../global/SafeInt256.sol";
 library SettlementHelper {
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
-
-    uint16 internal constant VAULT_PERCENTAGE_PRECISION = 1e4;
-    uint16 internal constant BALANCER_POOL_SHARE_BUFFER = 8e3; // 1e4 = 100%, 8e3 = 80%
 
     error NotInSettlementWindow();
     error InvalidEmergencySettlement();
@@ -36,45 +39,17 @@ library SettlementHelper {
         uint256 redeempStrategyTokenAmount
     );
 
-    struct NormalSettlementContext {
-        uint256 maxUnderlyingSurplus;
-        uint256 primarySettlementBalance;
-        uint256 secondarySettlementBalance;
-        uint256 redeemStrategyTokenAmount;
-        int256 underlyingCashRequiredToSettle;
-        uint256 debtSharesToRepay;
-        uint256 borrowedSecondaryfCashAmount;
-        uint32 settlementPeriodInSeconds;
-        uint32 lastSettlementTimestamp;
-        uint32 settlementCoolDownInMinutes;
-        uint16 settlementSlippageLimit;
-        uint16 secondaryBorrowCurrencyId;
-        uint8 secondaryDecimals;
-        VaultHelper.PoolContext poolContext;
-    }
-
-    struct EmergencySettlementContext {
-        uint256 redeemStrategyTokenAmount;
-        int256 expectedUnderlyingRedeemed;
-        uint256 maxUnderlyingSurplus;
-        uint256 bptTotalSupply;
-        uint256 totalBPTHeld;
-        uint32 settlementPeriodInSeconds;
-        uint16 maxBalancerPoolShare;
-    }
-
     function _validateSettlementSlippage(
         bytes memory data,
         uint32 slippageLimit
-    ) private pure returns (VaultHelper.RedeemParams memory params) {
-        params = abi.decode(data, (VaultHelper.RedeemParams));
-        VaultHelper.RepaySecondaryCallbackParams memory callbackData = abi
-            .decode(
-                params.callbackData,
-                (VaultHelper.RepaySecondaryCallbackParams)
-            );
-        if (callbackData.slippageLimit > slippageLimit) {
-            revert SlippageTooHigh(callbackData.slippageLimit, slippageLimit);
+    ) private pure returns (RedeemParams memory params) {
+        params = abi.decode(data, (RedeemParams));
+        RepaySecondaryCallbackParams memory callbackData = abi.decode(
+            params.callbackData,
+            (RepaySecondaryCallbackParams)
+        );
+        if (callbackData.slippageLimitBPS > slippageLimit) {
+            revert SlippageTooHigh(callbackData.slippageLimitBPS, slippageLimit);
         }
     }
 
@@ -110,11 +85,10 @@ library SettlementHelper {
             context.settlementCoolDownInMinutes
         );
 
-        VaultHelper.RedeemParams
-            memory redeemParams = _validateSettlementSlippage(
-                data,
-                context.settlementSlippageLimit
-            );
+        RedeemParams memory redeemParams = _validateSettlementSlippage(
+            data,
+            context.settlementSlippageLimit
+        );
 
         return _normalSettlement(context, bptToSettle, maturity, redeemParams);
     }
@@ -146,58 +120,19 @@ library SettlementHelper {
             context.settlementCoolDownInMinutes
         );
 
-        VaultHelper.RedeemParams
-            memory redeemParams = _validateSettlementSlippage(
-                data,
-                context.settlementSlippageLimit
-            );
+        RedeemParams memory redeemParams = _validateSettlementSlippage(
+            data,
+            context.settlementSlippageLimit
+        );
 
         return _normalSettlement(context, bptToSettle, maturity, redeemParams);
-    }
-
-    function settleVaultEmergency(
-        EmergencySettlementContext memory context,
-        uint256 maturity,
-        uint256 bptToSettle,
-        bytes calldata data
-    ) external {
-        if (maturity <= block.timestamp) {
-            revert PostMaturitySettlement();
-        }
-        // TODO: is this check necessary?
-        if (maturity - context.settlementPeriodInSeconds <= block.timestamp) {
-            revert InvalidEmergencySettlement();
-        }
-
-        // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
-        // TODO: move this calculation out
-        uint256 emergencyBPTWithdrawThreshold = (context.bptTotalSupply *
-            context.maxBalancerPoolShare) /
-            VAULT_PERCENTAGE_PRECISION;
-
-        if (context.totalBPTHeld <= emergencyBPTWithdrawThreshold)
-            revert InvalidEmergencySettlement();
-
-        // desiredPoolShare = maxPoolShare * bufferPercentage
-        uint256 desiredPoolShare = (context.maxBalancerPoolShare *
-            BALANCER_POOL_SHARE_BUFFER) /
-            VAULT_PERCENTAGE_PRECISION;
-        uint256 desiredBPTAmount = (context.bptTotalSupply * desiredPoolShare) /
-            VAULT_PERCENTAGE_PRECISION;
-
-        _emergencySettlement(
-            context,
-            context.totalBPTHeld - desiredBPTAmount,
-            maturity,
-            data
-        );
     }
 
     function _normalSettlement(
         NormalSettlementContext memory context,
         uint256 bptToSettle,
         uint256 maturity,
-        VaultHelper.RedeemParams memory redeemParams
+        RedeemParams memory redeemParams
     )
         private
         returns (
@@ -329,12 +264,49 @@ library SettlementHelper {
         }
     }
 
-    function _emergencySettlement(
-        EmergencySettlementContext memory context,
-        uint256 bptToSettle,
+    /// @notice Calculates the amount of BPT available for emergency settlement
+    function _getEmergencySettlementBPTAmount(
         uint256 maturity,
+        uint256 bptTotalSupply,
+        uint16 maxBalancerPoolShare,
+        uint256 totalBPTHeld,
+        uint256 bptHeldInMaturity
+    ) internal returns (uint256 bptToSettle) {
+        // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
+        // TODO: move this calculation out
+        uint256 emergencyBPTWithdrawThreshold = (bptTotalSupply *
+            maxBalancerPoolShare) /
+            Constants.VAULT_PERCENT_BASIS;
+
+        if (totalBPTHeld <= emergencyBPTWithdrawThreshold)
+            revert InvalidEmergencySettlement();
+
+        // desiredPoolShare = maxPoolShare * bufferPercentage
+        uint256 desiredPoolShare = (maxBalancerPoolShare *
+            Constants.BALANCER_POOL_SHARE_BUFFER) /
+            Constants.VAULT_PERCENT_BASIS;
+        uint256 desiredBPTAmount = (bptTotalSupply * desiredPoolShare) /
+            Constants.VAULT_PERCENT_BASIS;
+        
+        bptToSettle = totalBPTHeld - desiredBPTAmount;
+
+        // Check to make sure we are not settling more than the amount of BPT
+        // available in the current maturity
+        // If more settlement is needed, call settleVaultEmergency
+        // against with a different maturity
+        if (bptToSettle > bptHeldInMaturity) {
+            bptToSettle = bptHeldInMaturity;
+        }
+    }
+
+    function settleVaultEmergency(
+        uint256 maturity,
+        uint256 bptToSettle,
+        int256 expectedUnderlyingRedeemed,
+        uint256 maxUnderlyingSurplus,
+        uint256 redeemStrategyTokenAmount,
         bytes calldata data
-    ) private {
+    ) external {
         // prettier-ignore
         (
             /* int256 assetCashRequiredToSettle */,
@@ -349,14 +321,14 @@ library SettlementHelper {
         // If underlyingCashRequiredToSettle is negative, that means we already have surplus cash
         // on the Notional side, it will just make the surplus larger and potentially
         // cause it to go over maxUnderlyingSurplus.
-        int256 surplus = context.expectedUnderlyingRedeemed -
+        int256 surplus = expectedUnderlyingRedeemed -
             underlyingCashRequiredToSettle;
 
         // Make sure we not redeeming too much to underlying
         // This allows BPT to be accrued as the profit token.
-        if (surplus > context.maxUnderlyingSurplus.toInt()) {
+        if (surplus > maxUnderlyingSurplus.toInt()) {
             revert RedeemingTooMuch(
-                context.expectedUnderlyingRedeemed,
+                expectedUnderlyingRedeemed,
                 underlyingCashRequiredToSettle
             );
         }
@@ -365,12 +337,12 @@ library SettlementHelper {
         (
             int256 assetCashPostRedemption,
             /* int256 underlyingCashPostRedemption */
-        ) = Constants.NOTIONAL.redeemStrategyTokensToCash(maturity, context.redeemStrategyTokenAmount, data);
+        ) = Constants.NOTIONAL.redeemStrategyTokensToCash(maturity, redeemStrategyTokenAmount, data);
 
         emit EmergencyVaultSettlement(
             maturity,
             bptToSettle,
-            context.redeemStrategyTokenAmount
+            redeemStrategyTokenAmount
         );
     }
 }

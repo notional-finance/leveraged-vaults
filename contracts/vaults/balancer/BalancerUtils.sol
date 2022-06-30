@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import {PoolContext} from "./BalancerVaultTypes.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
@@ -328,12 +329,9 @@ library BalancerUtils {
 
     /// @notice Exits a balancer pool using exact BPT in
     function exitPoolExactBPTIn(
-        bytes32 poolId,
-        address primaryAddress,
+        PoolContext memory context,
         uint256 minPrimaryAmount,
-        address secondaryAddress,
         uint256 minSecondaryAmount,
-        uint8 primaryIndex,
         uint256 bptExitAmount
     ) internal {
         // prettier-ignore
@@ -341,15 +339,15 @@ library BalancerUtils {
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
-            primaryAddress,
+            context.primaryToken,
             minPrimaryAmount,
-            secondaryAddress,
+            context.secondaryToken,
             minSecondaryAmount,
-            primaryIndex
+            context.primaryIndex
         );
 
         BALANCER_VAULT.exitPool(
-            poolId,
+            context.poolId,
             address(this),
             payable(address(this)), // Vault will receive the underlying assets
             IBalancerVault.ExitPoolRequest(

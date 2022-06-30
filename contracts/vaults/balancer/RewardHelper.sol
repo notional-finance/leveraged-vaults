@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
+import {
+    VeBalDelegatorInfo,
+    RewardTokenTradeParams,
+    ReinvestRewardParams
+} from "./BalancerVaultTypes.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../trading/TradeHandler.sol";
@@ -12,24 +17,6 @@ library RewardHelper {
     using TradeHandler for Trade;
 
     error InvalidRewardToken(address token);
-
-    struct RewardTokenTradeParams {
-        uint16 primaryTradeDexId;
-        Trade primaryTrade;
-        uint16 secondaryTradeDexId;
-        Trade secondaryTrade;
-    }
-
-    struct ReinvestRewardParams {
-        bytes tradeData;
-        uint256 minBPT;
-    }
-
-    struct VeBalDelegatorInfo {
-        IVeBalDelegator veBalDelegator;
-        ILiquidityGauge liquidityGauge;
-        address balToken;
-    }
 
     function _isValidRewardToken(
         VeBalDelegatorInfo memory info,
