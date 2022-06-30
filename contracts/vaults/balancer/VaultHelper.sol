@@ -4,17 +4,16 @@ pragma solidity 0.8.15;
 import {
     VaultContext, 
     PoolContext, 
-    BoostContext, 
-    DepositParams, 
-    RedeemParams, 
-    RepaySecondaryCallbackParams
+    BoostContext,
+    DepositParams,
+    RedeemParams,
+    SecondaryTradeParams
 } from "./BalancerVaultTypes.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {BalancerVaultStorage} from "./BalancerVaultStorage.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
-import {TradeHandler} from "../../trading/TradeHandler.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
@@ -22,7 +21,6 @@ import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
 
 abstract contract VaultHelper is BalancerVaultStorage {
-    using TradeHandler for Trade;
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -108,6 +106,8 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
         bptAmount = balanceAfter - balanceBefore;
 
+        // Check BPT threshold to make sure our share of the pool is
+        // below maxBalancerPoolShare
         uint256 totalBPTSupply = BALANCER_POOL_TOKEN.totalSupply();
         uint256 totalBPTHeld = _bptHeld() + bptAmount;
         uint256 bptThreshold = _bptThreshold(totalBPTSupply);
@@ -120,115 +120,74 @@ abstract contract VaultHelper is BalancerVaultStorage {
         BOOST_CONTROLLER.depositToken(address(LIQUIDITY_GAUGE), bptAmount);
     }
 
-    function _exitPool(
-        PoolContext memory context,
-        uint256 bptExitAmount,
-        uint256 maturity,
-        // @audit We need to validate that the spot price is within some band of the
-        // oracle price before we exit here, we cannot trust that these minPrimary / minSecondary
-        // values are correctly specified
+    function _unstakeAndExitPool(
+        uint256 bptClaim,
         uint256 minPrimary,
         uint256 minSecondary
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
-        primaryBalance = TokenUtils.tokenBalance(context.primaryToken);
-        secondaryBalance = TokenUtils.tokenBalance(context.secondaryToken);
+        // Withdraw BPT tokens back to the vault for redemption
+        BOOST_CONTROLLER.withdrawToken(address(LIQUIDITY_GAUGE), bptClaim);
+        LIQUIDITY_GAUGE.withdraw(bptClaim, false);
 
-        BalancerUtils.exitPoolExactBPTIn(
-            context,
-            minPrimary,
-            minSecondary,
-            bptExitAmount
-        );
+        address primaryToken = address(_underlyingToken());
+        uint256 primaryBefore = TokenUtils.tokenBalance(primaryToken);
+        uint256 secondaryBefore = TokenUtils.tokenBalance(address(SECONDARY_TOKEN));
 
-        primaryBalance =
-            TokenUtils.tokenBalance(context.primaryToken) -
-            primaryBalance;
-        secondaryBalance =
-            TokenUtils.tokenBalance(context.secondaryToken) -
-            secondaryBalance;
-    }
+        // If inside settlement:
+        // @audit We need to validate that the spot price is within some band of the
+        // oracle price before we exit here, we cannot trust that these minPrimary / minSecondary
+        // values are correctly specified
+        BalancerUtils.exitPoolExactBPTIn({
+            poolId: BALANCER_POOL_ID,
+            primaryAddress: primaryToken,
+            secondaryAddress: address(SECONDARY_TOKEN),
+            primaryIndex: PRIMARY_INDEX,
+            minPrimaryAmount: minPrimary,
+            minSecondaryAmount: minSecondary,
+            bptExitAmount: bptClaim
+        });
 
-    function _unstakeBPT(BoostContext memory context, uint256 bptAmount)
-        private
-    {
-        // Withdraw gauge token from VeBALDelegator
-        context.boostController.withdrawToken(
-            address(context.liquidityGauge),
-            bptAmount
-        );
-
-        // Unstake BPT
-        context.liquidityGauge.withdraw(bptAmount, false);
-    }
-
-    function redeemFromNotional(
-        VaultContext memory context,
-        uint256 bptClaim,
-        uint256 maturity,
-        RedeemParams memory params
-    ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
-        _unstakeBPT(context.boostContext, bptClaim);
-
-        return
-            _exitPool(
-                context.poolContext,
-                bptClaim,
-                maturity,
-                params.minPrimary,
-                params.minSecondary
-            );
+        primaryBalance = TokenUtils.tokenBalance(primaryToken) - primaryBefore;
+        secondaryBalance = TokenUtils.tokenBalance(address(SECONDARY_TOKEN)) - secondaryBefore;
     }
 
     function repaySecondaryBorrow(
         address account,
-        uint16 secondaryBorrowCurrencyId,
         uint256 maturity,
         uint256 debtSharesToRepay,
-        uint32 secondarySlippageLimit,
+        uint32 minSecondaryLendRate,
         bytes memory callbackData,
-        uint256 primaryBalance,
         uint256 secondaryBalance
-    ) internal returns (uint256 underlyingAmount) {
-        bytes memory returnData = Constants
-            .NOTIONAL
-            .repaySecondaryCurrencyFromVault(
-                account,
-                secondaryBorrowCurrencyId,
-                maturity,
-                debtSharesToRepay,
-                secondarySlippageLimit,
-                abi.encode(callbackData, secondaryBalance)
-            );
+    ) internal returns (int256 netPrimaryBalance) {
+        bytes memory returnData = NOTIONAL.repaySecondaryCurrencyFromVault(
+            account,
+            SECONDARY_BORROW_CURRENCY_ID,
+            maturity,
+            debtSharesToRepay,
+            minSecondaryLendRate,
+            abi.encode(callbackData, secondaryBalance)
+        );
 
         // positive = primaryAmount increased (residual secondary => primary)
         // negative = primaryAmount decreased (primary => secondary shortfall)
-        int256 primaryAmountDiff = abi.decode(returnData, (int256));
-
-        // @audit there is an edge condition here where the repay secondary currency from
-        // vault sells more primary than is available in the current maturity. I'm not sure
-        // how this can actually occur in practice but something to be mindful of.
-        underlyingAmount = (primaryBalance.toInt() + primaryAmountDiff).toUint();
+        netPrimaryBalance = abi.decode(returnData, (int256));
     }
 
-    function handleRepaySecondaryBorrowCallback(
+    function _repaySecondaryBorrowCallback(
+        address, /* secondaryToken */
         uint256 underlyingRequired,
-        bytes calldata data,
-        ITradingModule tradingModule,
-        address primaryToken,
-        address secondaryToken,
-        uint16 secondaryBorrowCurrencyId
-    ) internal returns (bytes memory returnData) {
-        // prettier-ignore
+        bytes calldata data
+    ) internal override returns (bytes memory returnData) {
+        require(SECONDARY_BORROW_CURRENCY_ID != 0); /// @dev invalid secondary currency
+
         (
-            RepaySecondaryCallbackParams memory params,
+            SecondaryTradeParams memory params,
             // secondaryBalance = secondary token amount from BPT redemption
             uint256 secondaryBalance
-        ) = abi.decode(data, (RepaySecondaryCallbackParams, uint256));
+        ) = abi.decode(data, (SecondaryTradeParams, uint256));
 
-        Trade memory trade;
-        int256 primaryBalanceBefore = TokenUtils
-            .tokenBalance(primaryToken)
-            .toInt();
+        address primaryToken = address(_underlyingToken());
+        int256 primaryBalanceBefore = TokenUtils.tokenBalance(primaryToken).toInt();
 
         if (secondaryBalance >= underlyingRequired) {
             // We already have enough to repay secondary debt
@@ -244,74 +203,65 @@ abstract contract VaultHelper is BalancerVaultStorage {
                 secondaryShortfall = underlyingRequired - secondaryBalance;
             }
 
-            trade = Trade(
+            Trade memory trade = Trade(
                 TradeType.EXACT_OUT_SINGLE,
                 primaryToken,
-                secondaryToken,
+                address(SECONDARY_TOKEN),
                 secondaryShortfall,
-                TradeHandler.getLimitAmount(
-                    address(tradingModule),
-                    uint16(TradeType.EXACT_OUT_SINGLE),
-                    primaryToken,
-                    secondaryToken,
-                    secondaryShortfall,
-                    params.slippageLimitBPS
-                ),
+                0,
                 block.timestamp, // deadline
                 params.exchangeData
             );
 
-            trade.execute(tradingModule, params.dexId);
+            _executeTradeWithDynamicSlippage(params.dexId, trade, params.oracleSlippagePercent);
 
+            // @audit this should be validated by the returned parameters from the
+            // trade execution
             // Setting secondaryBalance to 0 here because it should be
             // equal to underlyingRequired after the trade (validated by the TradingModule)
             // and 0 after the repayment token transfer.
-            // Updating it here before the transfer
             secondaryBalance = 0;
         }
 
         // Transfer required secondary balance to Notional
-        if (secondaryBorrowCurrencyId == Constants.ETH_CURRENCY_ID) {
+        if (SECONDARY_BORROW_CURRENCY_ID == Constants.ETH_CURRENCY_ID) {
             payable(address(Constants.NOTIONAL)).transfer(underlyingRequired);
         } else {
-            IERC20(secondaryToken).checkTransfer(
-                address(Constants.NOTIONAL),
-                underlyingRequired
-            );
+            SECONDARY_TOKEN.checkTransfer(address(Constants.NOTIONAL), underlyingRequired);
         }
 
         if (secondaryBalance > 0) {
-            // Sell residual secondary balance
-            trade = Trade(
-                TradeType.EXACT_IN_SINGLE,
-                secondaryToken,
-                primaryToken,
-                secondaryBalance,
-                TradeHandler.getLimitAmount(
-                    address(tradingModule),
-                    uint16(TradeType.EXACT_OUT_SINGLE),
-                    secondaryToken,
-                    primaryToken,
-                    secondaryBalance,
-                    params.slippageLimitBPS
-                ),
-                block.timestamp, // deadline
-                params.exchangeData
-            );
-
-            trade.execute(tradingModule, params.dexId);
+            sellSecondaryBalance(params, primaryToken, secondaryBalance);
         }
 
-        int256 primaryBalanceAfter = TokenUtils
-            .tokenBalance(primaryToken)
-            .toInt();
-
+        int256 primaryBalanceAfter = TokenUtils.tokenBalance(primaryToken).toInt();
         // Return primaryBalanceDiff
         // If primaryBalanceAfter > primaryBalanceBefore, residual secondary currency was
         // sold for primary currency
         // If primaryBalanceBefore > primaryBalanceAfter, primary currency was sold
         // for secondary currency to cover the shortfall
         return abi.encode(primaryBalanceAfter - primaryBalanceBefore);
+    }
+
+    function sellSecondaryBalance(
+        SecondaryTradeParams memory params,
+        address primaryToken,
+        uint256 secondaryBalance
+    ) internal returns (uint256 primaryPurchased) {
+        // Sell residual secondary balance
+        Trade memory trade = Trade(
+            TradeType.EXACT_IN_SINGLE,
+            address(SECONDARY_TOKEN),
+            primaryToken,
+            secondaryBalance,
+            0,
+            block.timestamp, // deadline
+            params.exchangeData
+        );
+
+        (/* */, primaryPurchased) = _executeTradeWithDynamicSlippage(
+            params.dexId, trade, params.oracleSlippagePercent
+        );
     }
 
     function _poolContext() internal view returns (PoolContext memory) {
@@ -327,20 +277,11 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
     /// @dev Gets the total BPT held across the LIQUIDITY GAUGE, VeBal Delegator and the contract itself
     function _bptHeld() internal view returns (uint256) {
-        return
-            VEBAL_DELEGATOR.getTokenBalance(
-                address(LIQUIDITY_GAUGE),
-                address(this)
-            );
+        return VEBAL_DELEGATOR.getTokenBalance(address(LIQUIDITY_GAUGE), address(this));
     }
 
-    function _bptThreshold(uint256 totalBPTSupply)
-        internal
-        view
-        returns (uint256)
+    function _bptThreshold(uint256 totalBPTSupply) internal view returns (uint256)
     {
-        return
-            (totalBPTSupply * vaultSettings.maxBalancerPoolShare) /
-            Constants.VAULT_PERCENT_BASIS;
+        return (totalBPTSupply * vaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
     }
 }

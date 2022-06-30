@@ -36,15 +36,15 @@ struct DepositParams {
 }
 
 struct RedeemParams {
-    uint32 secondarySlippageLimit;
+    uint32 minSecondaryLendRate;
     uint256 minPrimary;
     uint256 minSecondary;
-    bytes callbackData;
+    bytes secondaryTradeParams;
 }
 
-struct RepaySecondaryCallbackParams {
+struct SecondaryTradeParams {
     uint16 dexId;
-    uint32 slippageLimitBPS; // @audit the denomination of this should be marked in the variable name
+    uint32 oracleSlippagePercent;
     bytes exchangeData;
 }
 

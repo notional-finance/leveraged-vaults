@@ -45,4 +45,15 @@ interface ITradingModule {
 
     function getOraclePrice(address inToken, address outToken)
         external view returns (int256 answer, int256 decimals);
+
+    function executeTrade(
+        uint16 dexId,
+        Trade calldata trade
+    ) external returns (uint256 amountSold, uint256 amountBought);
+
+    function executeTradeWithDynamicSlippage(
+        uint16 dexId,
+        Trade memory trade,
+        uint32 dynamicSlippageLimit
+    ) external returns (uint256 amountSold, uint256 amountBought);
 }
