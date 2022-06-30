@@ -9,8 +9,8 @@ import {SafeInt256} from "../global/SafeInt256.sol";
 import {Constants} from "../global/Constants.sol";
 
 import {TokenUtils} from "../utils/TokenUtils.sol";
-import {BaseStrategyVault} from "./BaseStrategyVault.sol";
 import {BalancerUtils} from "./balancer/BalancerUtils.sol";
+import {BalancerVaultStorage} from "./balancer/BalancerVaultStorage.sol";
 import {RewardHelper} from "./balancer/RewardHelper.sol";
 import {SettlementHelper} from "./balancer/SettlementHelper.sol";
 import {VaultHelper} from "./balancer/VaultHelper.sol";
@@ -35,14 +35,12 @@ import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 
-contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVault {
+contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BalancerVaultStorage {
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
 
     /** Errors */
-    error InvalidPrimaryToken(address token);
-    error InvalidSecondaryToken(address token);
     error NotionalOwnerRequired(address sender);
     error DepositNotAllowedInSettlementWindow();
     error RedeemNotAllowedInSettlementWindow();
@@ -50,130 +48,21 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
     /** Events */
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
-    /** Constants */
-
-    uint256 internal constant SECONDARY_BORROW_UPPER_LIMIT = 105;
-    uint256 internal constant SECONDARY_BORROW_LOWER_LIMIT = 95;
-    uint16 internal constant MAX_SETTLEMENT_COOLDOWN_IN_MINUTES = 24 * 60; // 1 day
-
-    /// @notice Difference between 1e18 and internal precision
-    uint256 internal constant INTERNAL_PRECISION_DIFF = 1e10;
-    uint256 internal constant INTERNAL_PRECISION = 1e8;
-
-    /** Immutables */
-    uint16 internal immutable SECONDARY_BORROW_CURRENCY_ID;
-    bytes32 internal immutable BALANCER_POOL_ID;
-    IBalancerPool internal immutable BALANCER_POOL_TOKEN;
-    IERC20 internal immutable SECONDARY_TOKEN;
-    IBoostController internal immutable BOOST_CONTROLLER;
-    ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
-    IVeBalDelegator internal immutable VEBAL_DELEGATOR;
-    IERC20 internal immutable BAL_TOKEN;
-    uint8 internal immutable PRIMARY_INDEX;
-    uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
-    uint256 internal immutable PRIMARY_WEIGHT;
-    uint256 internal immutable SECONDARY_WEIGHT;
-    uint8 internal immutable PRIMARY_DECIMALS;
-    uint8 internal immutable SECONDARY_DECIMALS;
-
-    StrategyVaultSettings internal vaultSettings;
-
-    StrategyVaultState internal vaultState;
-
-    /// @notice Keeps track of the primary settlement balance maturity => balance
-    mapping(uint256 => uint256) internal primarySettlementBalance;
-
-    /// @notice Keeps track of the secondary settlement balance maturity => balance
-    mapping(uint256 => uint256) internal secondarySettlementBalance;
-
     constructor(NotionalProxy notional_, DeploymentParams memory params)
-        BaseStrategyVault(notional_, params.tradingModule)
-        initializer
-    {
-        // @audit we should validate in this method that the balancer oracle is enabled otherwise none
-        // of the methods will work:
-        // https://dev.balancer.fi/references/contracts/apis/pools/weightedpool2tokens#getmiscdata
+        BalancerVaultStorage(notional_, params) { }
 
-        SECONDARY_BORROW_CURRENCY_ID = params.secondaryBorrowCurrencyId;
-        BALANCER_POOL_ID = params.balancerPoolId;
-        {
-            (
-                address pool, /* */
-
-            ) = BalancerUtils.BALANCER_VAULT.getPool(params.balancerPoolId);
-            BALANCER_POOL_TOKEN = IBalancerPool(pool);
-        }
-
-        // prettier-ignore
-        (
-            address[] memory tokens,
-            /* uint256[] memory balances */,
-            /* uint256 lastChangeBlock */
-        ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
-
-        // Balancer tokens are sorted by address, so we need to figure out
-        // the correct index for the primary token
-        PRIMARY_INDEX = tokens[0] ==
-            BalancerUtils.getTokenAddress(address(_underlyingToken()))
-            ? 0
-            : 1;
-        uint8 secondaryIndex;
-        unchecked {
-            secondaryIndex = 1 - PRIMARY_INDEX;
-        }
-
-        // Since this is always a 2-token vault, SECONDARY_INDEX = 1-PRIMARY_INDEX
-        SECONDARY_TOKEN = SECONDARY_BORROW_CURRENCY_ID > 0
-            ? IERC20(_getUnderlyingAddress(SECONDARY_BORROW_CURRENCY_ID))
-            : IERC20(tokens[secondaryIndex]);
-
-        // Make sure the deployment parameters are correct
-        if (
-            tokens[PRIMARY_INDEX] !=
-            BalancerUtils.getTokenAddress(address(_underlyingToken()))
-        ) revert InvalidPrimaryToken(tokens[PRIMARY_INDEX]);
-        if (
-            tokens[secondaryIndex] !=
-            BalancerUtils.getTokenAddress(address(SECONDARY_TOKEN))
-        ) revert InvalidSecondaryToken(tokens[secondaryIndex]);
-
-        uint256 primaryDecimals = address(_underlyingToken()) ==
-            Constants.ETH_ADDRESS
-            ? 18
-            : _underlyingToken().decimals();
-        require(primaryDecimals <= type(uint8).max);
-        PRIMARY_DECIMALS = uint8(primaryDecimals);
-
-        uint256 secondaryDecimals = address(SECONDARY_TOKEN) ==
-            Constants.ETH_ADDRESS
-            ? 18
-            : SECONDARY_TOKEN.decimals();
-        require(primaryDecimals <= type(uint8).max);
-        SECONDARY_DECIMALS = uint8(secondaryDecimals);
-
-        uint256[] memory weights = BALANCER_POOL_TOKEN.getNormalizedWeights();
-
-        PRIMARY_WEIGHT = weights[PRIMARY_INDEX];
-        SECONDARY_WEIGHT = weights[secondaryIndex];
-
-        BOOST_CONTROLLER = params.boostController;
-        LIQUIDITY_GAUGE = params.liquidityGauge;
-        VEBAL_DELEGATOR = IVeBalDelegator(BOOST_CONTROLLER.VEBAL_DELEGATOR());
-        BAL_TOKEN = IERC20(
-            IBalancerMinter(VEBAL_DELEGATOR.BALANCER_MINTER())
-                .getBalancerToken()
-        );
-        SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
-    }
-
-    function initialize(InitParams calldata params)
-        external
-        initializer
-        onlyNotionalOwner
-    {
+    function initialize(InitParams calldata params) external initializer onlyNotionalOwner {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         _setVaultSettings(params.settings);
-        _approveTokens();
+
+        BalancerUtils.approveBalancerTokens(
+            address(BalancerUtils.BALANCER_VAULT),
+            _underlyingToken(),
+            SECONDARY_TOKEN,
+            IERC20(address(BALANCER_POOL_TOKEN)),
+            IERC20(address(LIQUIDITY_GAUGE)),
+            address(VEBAL_DELEGATOR)
+        );
     }
 
     function _setVaultSettings(StrategyVaultSettings memory settings) private {
@@ -220,38 +109,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
             .postMaturitySettlementCoolDownInMinutes;
 
         emit StrategyVaultSettingsUpdated(settings);
-    }
-
-    /// @notice Gets the underlying token address by currency ID
-    function _getUnderlyingAddress(uint16 currencyId)
-        private
-        view
-        returns (address)
-    {
-        // @audit there is an edge case around non-mintable tokens, you can see how this is
-        // handled in the constructor in the base strategy vault. if this method is only called
-        // once in the constructor maybe just inline the method call there otherwise this may
-        // get called accidentally in non constructor methods?
-        // prettier-ignore
-        (
-            /* Token memory assetToken */, 
-            Token memory underlyingToken
-        ) = NOTIONAL.getCurrency(currencyId);
-        return underlyingToken.tokenAddress;
-    }
-
-    /// @notice Approve necessary token transfers
-    function _approveTokens() private {
-        // Approving in external lib to reduce contract size
-        // @audit would be nice to move this back into the contract if we have the space
-        BalancerUtils.approveBalancerTokens(
-            address(BalancerUtils.BALANCER_VAULT),
-            _underlyingToken(),
-            SECONDARY_TOKEN,
-            IERC20(address(BALANCER_POOL_TOKEN)),
-            IERC20(address(LIQUIDITY_GAUGE)),
-            address(VEBAL_DELEGATOR)
-        );
     }
 
     /// @notice Converts strategy tokens to underlyingValue
@@ -359,27 +216,16 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
 
         uint256 borrowedSecondaryAmount;
         if (SECONDARY_BORROW_CURRENCY_ID > 0) {
-            // @audit when you have a large amount of inputs into a method like this, there is a solidity
-            // grammar you can use that works like this, it might help the readability for long parameter
-            // lists and ensure that arguments don't get accidentally switched around
-            //
-            // OracleHelper.getOptimalSecondaryBorrowAmount({
-            //     pool: address(BALANCER_POOL_TOKEN),
-            //     oracleWindowInSeconds: oracleWindowInSeconds,
-            //     ...
-            // })
-            // Optimal secondary amount
-            borrowedSecondaryAmount = BalancerUtils
-                .getOptimalSecondaryBorrowAmount(
-                    address(BALANCER_POOL_TOKEN),
-                    vaultSettings.oracleWindowInSeconds,
-                    PRIMARY_INDEX,
-                    PRIMARY_WEIGHT,
-                    SECONDARY_WEIGHT,
-                    PRIMARY_DECIMALS,
-                    SECONDARY_DECIMALS,
-                    deposit
-                );
+            borrowedSecondaryAmount = BalancerUtils.getOptimalSecondaryBorrowAmount(
+                address(BALANCER_POOL_TOKEN),
+                vaultSettings.oracleWindowInSeconds,
+                PRIMARY_INDEX,
+                PRIMARY_WEIGHT,
+                SECONDARY_WEIGHT,
+                PRIMARY_DECIMALS,
+                SECONDARY_DECIMALS,
+                deposit
+            );
 
             borrowedSecondaryAmount = VaultHelper.borrowSecondaryCurrency(
                 account,
@@ -401,9 +247,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
 
         strategyTokensMinted = VaultHelper.depositFromNotional(
             _getVaultContext(),
-            account,
             deposit,
-            maturity,
             borrowedSecondaryAmount,
             params.minBPT,
             vaultState.totalStrategyTokenGlobal,
@@ -868,6 +712,4 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
         address /* newImplementation */
     ) internal override onlyNotionalOwner {}
 
-    // Storage gap for future potential upgrades
-    uint256[100] private __gap;
 }

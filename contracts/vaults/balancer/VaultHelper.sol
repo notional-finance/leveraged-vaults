@@ -76,6 +76,7 @@ library VaultHelper {
         uint256 secondaryBorrowLowerLimit,
         uint256 secondaryBorrowUpperLimit
     ) internal returns (uint256 borrowedSecondaryAmount) {
+        // TODO: move this back into the main thing
         // Borrow secondary currency from Notional (tokens will be transferred to this contract)
         {
             uint256[2] memory fCashToBorrow;
@@ -98,13 +99,9 @@ library VaultHelper {
 
         // Require the secondary borrow amount to be within SECONDARY_BORROW_LOWER_LIMIT percent
         // of the optimal amount
-        if (
-            // @audit rearrange these so that the inequalities are always <= for clarity.
-            borrowedSecondaryAmount <
-            ((optimalSecondaryAmount * (secondaryBorrowLowerLimit)) / 100) ||
-            borrowedSecondaryAmount >
-            (optimalSecondaryAmount * (secondaryBorrowUpperLimit)) / 100
-        ) {
+        uint256 lowerLimit = (optimalSecondaryAmount * secondaryBorrowLowerLimit) / 100;
+        uint256 upperLimit = (optimalSecondaryAmount * secondaryBorrowUpperLimit) / 100;
+        if (borrowedSecondaryAmount < lowerLimit || upperLimit < borrowedSecondaryAmount) {
             revert InvalidSecondaryBorrow(
                 borrowedSecondaryAmount,
                 optimalSecondaryAmount,
@@ -148,9 +145,7 @@ library VaultHelper {
 
     function depositFromNotional(
         VaultContext memory context,
-        address account,
         uint256 deposit,
-        uint256 maturity,
         uint256 borrowedSecondaryAmount,
         uint256 minBPT,
         uint256 totalStrategyTokenGlobal,
