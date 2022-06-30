@@ -2,6 +2,7 @@
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import {Constants} from "../global/Constants.sol";
 import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
@@ -13,14 +14,16 @@ import {TradeHandler} from "./TradeHandler.sol";
 
 import {IERC20} from "../utils/TokenUtils.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import "../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 /// @notice TradingModule is meant to be an upgradeable contract deployed to help Strategy Vaults
 /// exchange tokens via multiple DEXes as well as receive price oracle information
-contract TradingModule is UUPSUpgradeable, ITradingModule {
+contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     NotionalProxy public immutable NOTIONAL;
+    // Used to get the proxy address inside delegate call contexts 
+    address internal SELF;
 
     error SellTokenEqualsBuyToken();
     error UnknownDEX();
@@ -37,6 +40,10 @@ contract TradingModule is UUPSUpgradeable, ITradingModule {
     event PriceOracleUpdated(address token, address oracle);
 
     constructor(NotionalProxy notional_) { NOTIONAL = notional_; }
+
+    function initialize() external initializer {
+        SELF = address(this);
+    }
 
     modifier onlyNotionalOwner() {
         require(msg.sender == NOTIONAL.owner());
@@ -85,8 +92,16 @@ contract TradingModule is UUPSUpgradeable, ITradingModule {
             trade.tradeType, trade.sellToken, trade.buyToken, trade.amount, dynamicSlippageLimit
         );
 
-        // @audit I don't think this will actually work
-        return this.executeTrade(dexId, trade);
+        (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionData
+        ) = ITradingModule(SELF).getExecutionData(dexId, address(this), trade);
+
+        return TradeHandler._executeInternal(
+            trade, dexId, spender, target, msgValue, executionData
+        );
     }
 
     /// @notice Should be called via delegate call to execute a trade on behalf of the caller.
