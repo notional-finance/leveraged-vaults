@@ -286,12 +286,9 @@ library BalancerUtils {
 
     /// @notice Joins a balancer pool using exact tokens in
     function joinPoolExactTokensIn(
-        bytes32 poolId,
-        address primaryAddress,
+        PoolContext memory context,
         uint256 maxPrimaryAmount,
-        address secondaryAddress,
         uint256 maxSecondaryAmount,
-        uint8 primaryIndex,
         uint256 minBPT
     ) internal {
         // prettier-ignore
@@ -299,19 +296,19 @@ library BalancerUtils {
             IAsset[] memory assets,
             uint256[] memory maxAmountsIn
         ) = _getPoolParams(
-            primaryAddress,
+            context.primaryToken,
             maxPrimaryAmount,
-            secondaryAddress,
+            context.secondaryToken,
             maxSecondaryAmount,
-            primaryIndex
+            context.primaryIndex
         );
 
         uint256 msgValue;
-        if (assets[primaryIndex] == IAsset(Constants.ETH_ADDRESS)) msgValue = maxAmountsIn[primaryIndex];
+        if (assets[context.primaryIndex] == IAsset(Constants.ETH_ADDRESS)) msgValue = maxAmountsIn[context.primaryIndex];
 
         // Join pool
         BALANCER_VAULT.joinPool{value: msgValue}(
-            poolId,
+            context.poolId,
             address(this),
             address(this),
             IBalancerVault.JoinPoolRequest(

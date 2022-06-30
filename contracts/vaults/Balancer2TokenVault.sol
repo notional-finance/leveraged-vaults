@@ -21,11 +21,11 @@ import {
     StrategyVaultState, 
     VaultContext, 
     PoolContext, 
-    BoostContext,
-    NormalSettlementContext,
-    VeBalDelegatorInfo,
-    ReinvestRewardParams,
-    DepositParams,
+    BoostContext, 
+    NormalSettlementContext, 
+    VeBalDelegatorInfo, 
+    ReinvestRewardParams, 
+    DepositParams, 
     RedeemParams
 } from "./balancer/BalancerVaultTypes.sol";
 
@@ -91,17 +91,10 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             settings.postMaturitySettlementCoolDownInMinutes <=
                 MAX_SETTLEMENT_COOLDOWN_IN_MINUTES
         );
+        require(settings.balancerOracleWeight <= VAULT_PERCENTAGE_PRECISION);
+        require(settings.maxBalancerPoolShare <= VAULT_PERCENTAGE_PRECISION);
         require(
-            settings.balancerOracleWeight <=
-                VAULT_PERCENTAGE_PRECISION
-        );
-        require(
-            settings.maxBalancerPoolShare <=
-                VAULT_PERCENTAGE_PRECISION
-        );
-        require(
-            settings.settlementSlippageLimitBPS <=
-                VAULT_PERCENTAGE_PRECISION
+            settings.settlementSlippageLimitBPS <= VAULT_PERCENTAGE_PRECISION
         );
         require(
             settings.postMaturitySettlementSlippageLimitBPS <=
@@ -189,20 +182,9 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     function _getVaultContext() private view returns (VaultContext memory) {
         return
             VaultContext(
-                _getPoolContext(),
+                _poolContext(),
                 BoostContext(LIQUIDITY_GAUGE, BOOST_CONTROLLER)
             );
-    }
-
-    function _getPoolContext() private view returns (PoolContext memory) {
-        return
-            PoolContext({
-                pool: BALANCER_POOL_TOKEN,
-                poolId: BALANCER_POOL_ID,
-                primaryToken: address(_underlyingToken()),
-                secondaryToken: address(SECONDARY_TOKEN),
-                primaryIndex: PRIMARY_INDEX
-            });
     }
 
     function _depositFromNotional(
@@ -227,22 +209,32 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
         // First borrow any secondary tokens (if required)
         uint256 borrowedSecondaryAmount = _borrowSecondaryCurrency(
-            account, maturity, deposit, params
+            account,
+            maturity,
+            deposit,
+            params
         );
 
         // Join the balancer pool and stake the tokens for boosting
-        uint256 bptMinted = _joinPoolAndStake(deposit, borrowedSecondaryAmount, params.minBPT);
+        uint256 bptMinted = _joinPoolAndStake(
+            deposit,
+            borrowedSecondaryAmount,
+            params.minBPT
+        );
 
         // Calculate strategy token share for this account
         if (vaultState.totalStrategyTokenGlobal == 0) {
             // Strategy tokens are in 8 decimal precision, BPT is in 18. Scale the minted amount down.
-            strategyTokensMinted = (bptMinted * uint256(Constants.INTERNAL_TOKEN_PRECISION))
-                / BalancerUtils.BALANCER_PRECISION;
+            strategyTokensMinted =
+                (bptMinted * uint256(Constants.INTERNAL_TOKEN_PRECISION)) /
+                BalancerUtils.BALANCER_PRECISION;
         } else {
             // BPT held in maturity is calculated before the new BPT tokens are minted, so this calculation
             // is the tokens minted that will give the account a corresponding share of the new bpt balance held.
             // The precision here will be the same as strategy token supply.
-            strategyTokensMinted = (bptMinted * totalStrategyTokenSupplyInMaturity) / bptHeldInMaturity;
+            strategyTokensMinted =
+                (bptMinted * totalStrategyTokenSupplyInMaturity) /
+                bptHeldInMaturity;
         }
 
         // Update global supply count
@@ -397,6 +389,20 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             uint256 borrowedSecondaryfCashAmount
         ) = getDebtSharesToRepay(address(this), maturity, redeemStrategyTokenAmount);
 
+        // If underlyingCashRequiredToSettle is 0 (no debt) or negative (surplus cash)
+        // and borrowedSecondaryfCashAmount is also 0, no settlement is required
+        if (
+            underlyingCashRequiredToSettle <= 0 &&
+            borrowedSecondaryfCashAmount == 0
+        ) {
+            revert SettlementHelper.SettlementNotRequired(); /// @dev no debt
+        }
+
+        // Convert fCash to secondary currency precision
+        borrowedSecondaryfCashAmount =
+            (borrowedSecondaryfCashAmount * (10**SECONDARY_DECIMALS)) /
+            uint256(Constants.INTERNAL_TOKEN_PRECISION);
+
         return
             NormalSettlementContext({
                 maxUnderlyingSurplus: vaultSettings.maxUnderlyingSurplus,
@@ -407,10 +413,9 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
                 redeemStrategyTokenAmount: redeemStrategyTokenAmount,
                 underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
                 debtSharesToRepay: debtSharesToRepay,
-                borrowedSecondaryfCashAmount: borrowedSecondaryfCashAmount,
+                borrowedSecondaryfCashAmountExternal: borrowedSecondaryfCashAmount,
                 secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
-                secondaryDecimals: SECONDARY_DECIMALS,
-                poolContext: _getPoolContext()
+                poolContext: _poolContext()
             });
     }
 
@@ -424,8 +429,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         }
         RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
             vaultState.lastPostMaturitySettlementTimestamp,
-            vaultSettings.postMaturitySettlementCoolDownInMinutes, 
-            vaultSettings.postMaturitySettlementSlippageLimitBPS, 
+            vaultSettings.postMaturitySettlementCoolDownInMinutes,
+            vaultSettings.postMaturitySettlementSlippageLimitBPS,
             data
         );
 
@@ -484,8 +489,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         }
         RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
             vaultState.lastSettlementTimestamp,
-            vaultSettings.settlementCoolDownInMinutes, 
-            vaultSettings.settlementSlippageLimitBPS, 
+            vaultSettings.settlementCoolDownInMinutes,
+            vaultSettings.settlementSlippageLimitBPS,
             data
         );
 
@@ -529,10 +534,9 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         }
     }
 
-    function settleVaultEmergency(
-        uint256 maturity,
-        bytes calldata data
-    ) external {
+    function settleVaultEmergency(uint256 maturity, bytes calldata data)
+        external
+    {
         if (maturity <= block.timestamp) {
             revert SettlementHelper.PostMaturitySettlement();
         }
@@ -540,6 +544,14 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
             revert SettlementHelper.InvalidEmergencySettlement();
         }
+
+        // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
+        uint256 totalBPTSupply = BALANCER_POOL_TOKEN.totalSupply();
+        uint256 totalBPTHeld = _bptHeld();
+        uint256 emergencyBPTWithdrawThreshold = _bptThreshold(totalBPTSupply);
+
+        if (totalBPTHeld <= emergencyBPTWithdrawThreshold)
+            revert SettlementHelper.InvalidEmergencySettlement();
 
         // prettier-ignore
         (
@@ -549,13 +561,13 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             /* uint256 totalStrategyTokenSupplyInMaturity */
         ) = _getBPTHeldInMaturity(maturity);
 
-        uint256 bptToSettle = SettlementHelper._getEmergencySettlementBPTAmount({
-            maturity: maturity,
-            bptTotalSupply: BALANCER_POOL_TOKEN.totalSupply(),
-            maxBalancerPoolShare: vaultSettings.maxBalancerPoolShare,
-            totalBPTHeld: _bptHeld(),
-            bptHeldInMaturity: bptHeldInMaturity
-        });
+        uint256 bptToSettle = SettlementHelper
+            ._getEmergencySettlementBPTAmount({
+                bptTotalSupply: totalBPTSupply,
+                maxBalancerPoolShare: vaultSettings.maxBalancerPoolShare,
+                totalBPTHeld: totalBPTHeld,
+                bptHeldInMaturity: bptHeldInMaturity
+            });
 
         uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
             bptToSettle,
@@ -602,21 +614,16 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
     /// @notice Sell reward tokens for BPT and reinvest the proceeds
     /// @param params reward reinvestment params
-    function reinvestReward(ReinvestRewardParams calldata params)
-        external
-    {
+    function reinvestReward(ReinvestRewardParams calldata params) external {
         RewardHelper.reinvestReward(
             params,
             VeBalDelegatorInfo(
-                LIQUIDITY_GAUGE, 
-                VEBAL_DELEGATOR, 
+                LIQUIDITY_GAUGE,
+                VEBAL_DELEGATOR,
                 address(BAL_TOKEN)
             ),
             TRADING_MODULE,
-            BALANCER_POOL_ID,
-            address(_underlyingToken()),
-            address(SECONDARY_TOKEN),
-            PRIMARY_INDEX
+            _poolContext()
         );
     }
 
@@ -643,15 +650,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         returns (StrategyVaultSettings memory)
     {
         return vaultSettings;
-    }
-
-    /// @dev Gets the total BPT held across the LIQUIDITY GAUGE, VeBal Delegator and the contract itself
-    function _bptHeld() private view returns (uint256) {
-        return
-            VEBAL_DELEGATOR.getTokenBalance(
-                address(LIQUIDITY_GAUGE),
-                address(this)
-            );
     }
 
     /// @notice Gets the amount of debt shares needed to pay off the secondary debt

@@ -70,15 +70,6 @@ library SettlementHelper {
             uint256 secondaryPostSettlement
         )
     {
-        // If underlyingCashRequiredToSettle is 0 (no debt) or negative (surplus cash)
-        // and borrowedSecondaryfCashAmount is also 0, no settlement is required
-        if (
-            context.underlyingCashRequiredToSettle <= 0 &&
-            context.borrowedSecondaryfCashAmount == 0
-        ) {
-            revert SettlementNotRequired(); /// @dev no debt
-        }
-
         // Redeem BPT (doing this in another function to avoid stack issues)
         uint256 primaryBalance;
         uint256 secondaryBalance;
@@ -94,17 +85,11 @@ library SettlementHelper {
         primaryBalance += context.primarySettlementBalance;
         secondaryBalance += context.secondarySettlementBalance;
 
-        // Convert fCash to secondary currency precision
-        context.borrowedSecondaryfCashAmount =
-            (context.borrowedSecondaryfCashAmount *
-                (10**context.secondaryDecimals)) /
-            uint256(Constants.INTERNAL_TOKEN_PRECISION);
-
         // Let the token balances accumulate in this contract if we don't have
         // enough to pay off either side
         if (
             primaryBalance.toInt() < context.underlyingCashRequiredToSettle &&
-            secondaryBalance < context.borrowedSecondaryfCashAmount
+            secondaryBalance < context.borrowedSecondaryfCashAmountExternal
         ) {
             primaryPostSettlement = primaryBalance;
             secondaryPostSettlement = secondaryBalance;
@@ -194,21 +179,11 @@ library SettlementHelper {
 
     /// @notice Calculates the amount of BPT available for emergency settlement
     function _getEmergencySettlementBPTAmount(
-        uint256 maturity,
         uint256 bptTotalSupply,
         uint16 maxBalancerPoolShare,
         uint256 totalBPTHeld,
         uint256 bptHeldInMaturity
     ) internal returns (uint256 bptToSettle) {
-        // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
-        // TODO: move this calculation out
-        uint256 emergencyBPTWithdrawThreshold = (bptTotalSupply *
-            maxBalancerPoolShare) /
-            Constants.VAULT_PERCENT_BASIS;
-
-        if (totalBPTHeld <= emergencyBPTWithdrawThreshold)
-            revert InvalidEmergencySettlement();
-
         // desiredPoolShare = maxPoolShare * bufferPercentage
         uint256 desiredPoolShare = (maxBalancerPoolShare *
             Constants.BALANCER_POOL_SHARE_BUFFER) /

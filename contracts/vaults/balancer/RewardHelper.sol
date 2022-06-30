@@ -4,7 +4,8 @@ pragma solidity 0.8.15;
 import {
     VeBalDelegatorInfo,
     RewardTokenTradeParams,
-    ReinvestRewardParams
+    ReinvestRewardParams,
+    PoolContext
 } from "./BalancerVaultTypes.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
@@ -108,26 +109,20 @@ library RewardHelper {
         ReinvestRewardParams memory params,
         VeBalDelegatorInfo memory info,
         ITradingModule tradingModule,
-        bytes32 poolId,
-        address primaryToken,
-        address secondaryToken,
-        uint8 primaryIndex
+        PoolContext memory context
     ) external {
         (uint256 primaryAmount, uint256 secondaryAmount) = _executeRewardTrades(
             info,
             tradingModule,
-            primaryToken,
-            secondaryToken,
+            context.primaryToken,
+            context.secondaryToken,
             params.tradeData
         );
 
         BalancerUtils.joinPoolExactTokensIn(
-            poolId,
-            primaryToken,
+            context,
             primaryAmount,
-            secondaryToken,
             secondaryAmount,
-            primaryIndex,
             params.minBPT
         );
 
