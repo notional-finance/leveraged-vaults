@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity =0.8.11;
+pragma solidity 0.8.15;
 
 import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
@@ -11,10 +11,7 @@ contract BalancerBoostController is IBoostController {
 
     error StrategyVaultRequired(address sender);
 
-    constructor(
-        IVeBalDelegator vebalDelegator_,
-        IVaultController vaultController_
-    ) {
+    constructor(IVeBalDelegator vebalDelegator_, IVaultController vaultController_) {
         // @audit is this the same veBAL delegator as here? or is it something different?
         // I don't see the methods listed here in that PR
         // https://github.com/notional-finance/staked-note/pull/21/files#diff-0ac5df9ed70c320524413853cca5d63fd6a06fe31ea3244cb0cc3a62c864fe7b

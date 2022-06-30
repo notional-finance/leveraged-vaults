@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity =0.8.11;
-pragma abicoder v2;
+pragma solidity 0.8.15;
+
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";

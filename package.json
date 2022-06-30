@@ -9,7 +9,9 @@
   "dependencies": {
     "hardhat": "^2.7.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "ethlint": "^1.2.5"
+  },
   "scripts": {
     "test": "mocha"
   },

@@ -27,8 +27,7 @@ library Constants {
     address internal constant RESERVE = address(0);
 
     // Most significant bit
-    bytes32 internal constant MSB =
-        0x8000000000000000000000000000000000000000000000000000000000000000;
+    bytes32 internal constant MSB = 0x8000000000000000000000000000000000000000000000000000000000000000;
 
     // Each bit set in this mask marks where an active market should be in the bitmap
     // if the first bit refers to the reference time. Used to detect idiosyncratic
