@@ -12,7 +12,6 @@ import {Constants} from "../global/Constants.sol";
 import {BalancerUtils} from "../utils/BalancerUtils.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
-import {TradeHandler} from "../trading/TradeHandler.sol";
 import {RewardHelper} from "../utils/RewardHelper.sol";
 import {SettlementHelper} from "../utils/SettlementHelper.sol";
 import {VaultHelper} from "../utils/VaultHelper.sol";
@@ -29,14 +28,13 @@ import {IBalancerMinter} from "../../interfaces/balancer/IBalancerMinter.sol";
 import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
-import {ITradingModule, Trade, TradeType} from "../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 
 contract Balancer2TokenVault is
     UUPSUpgradeable,
     Initializable,
     BaseStrategyVault
 {
-    using TradeHandler for Trade;
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -523,7 +521,11 @@ contract Balancer2TokenVault is
         return
             VaultHelper.handleRepaySecondaryBorrowCallback(
                 underlyingRequired,
-                data
+                data,
+                TRADING_MODULE,
+                address(_underlyingToken()),
+                address(SECONDARY_TOKEN),
+                SECONDARY_BORROW_CURRENCY_ID
             );
     }
 

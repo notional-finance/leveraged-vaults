@@ -5,12 +5,16 @@ import {TokenUtils} from "./TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {Constants} from "../global/Constants.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
-import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
+import {TradeHandler} from "../trading/TradeHandler.sol";
+import {IERC20} from "../../interfaces/IERC20.sol";
+import {ITradingModule, Trade, TradeType} from "../../interfaces/trading/ITradingModule.sol";
 import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IBoostController} from "../../interfaces/notional/IBoostController.sol";
 
 library VaultHelper {
+    using TradeHandler for Trade;
+    using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
 
@@ -270,18 +274,22 @@ library VaultHelper {
 
     function handleRepaySecondaryBorrowCallback(
         uint256 underlyingRequired,
-        bytes calldata data
+        bytes calldata data,
+        ITradingModule tradingModule,
+        address primaryToken,
+        address secondaryToken,
+        uint16 secondaryBorrowCurrencyId
     ) internal returns (bytes memory returnData) {
-        /*       // secondaryBalance = secondary token amount from BPT redemption
         // prettier-ignore
         (
             VaultHelper.RepaySecondaryCallbackParams memory params,
+            // secondaryBalance = secondary token amount from BPT redemption
             uint256 secondaryBalance
         ) = abi.decode(data, (VaultHelper.RepaySecondaryCallbackParams, uint256));
 
         Trade memory trade;
         int256 primaryBalanceBefore = TokenUtils
-            .tokenBalance(address(_underlyingToken()))
+            .tokenBalance(primaryToken)
             .toInt();
 
         if (secondaryBalance >= underlyingRequired) {
@@ -300,14 +308,14 @@ library VaultHelper {
 
             trade = Trade(
                 TradeType.EXACT_OUT_SINGLE,
-                address(_underlyingToken()),
-                address(SECONDARY_TOKEN),
+                primaryToken,
+                secondaryToken,
                 secondaryShortfall,
                 TradeHandler.getLimitAmount(
-                    address(TRADING_MODULE),
+                    address(tradingModule),
                     uint16(TradeType.EXACT_OUT_SINGLE),
-                    address(_underlyingToken()),
-                    address(SECONDARY_TOKEN),
+                    primaryToken,
+                    secondaryToken,
                     secondaryShortfall,
                     params.slippageLimit
                 ),
@@ -315,7 +323,7 @@ library VaultHelper {
                 params.exchangeData
             );
 
-            trade.execute(TRADING_MODULE, params.dexId);
+            trade.execute(tradingModule, params.dexId);
 
             // Setting secondaryBalance to 0 here because it should be
             // equal to underlyingRequired after the trade (validated by the TradingModule)
@@ -325,12 +333,11 @@ library VaultHelper {
         }
 
         // Transfer required secondary balance to Notional
-        if (SECONDARY_BORROW_CURRENCY_ID == 1) {
-            // @audit use a named constant for 1
-            payable(address(NOTIONAL)).transfer(underlyingRequired);
+        if (secondaryBorrowCurrencyId == Constants.ETH_CURRENCY_ID) {
+            payable(address(Constants.NOTIONAL)).transfer(underlyingRequired);
         } else {
-            SECONDARY_TOKEN.checkTransfer(
-                address(NOTIONAL),
+            IERC20(secondaryToken).checkTransfer(
+                address(Constants.NOTIONAL),
                 underlyingRequired
             );
         }
@@ -339,14 +346,14 @@ library VaultHelper {
             // Sell residual secondary balance
             trade = Trade(
                 TradeType.EXACT_IN_SINGLE,
-                address(SECONDARY_TOKEN),
-                address(_underlyingToken()),
+                secondaryToken,
+                primaryToken,
                 secondaryBalance,
                 TradeHandler.getLimitAmount(
-                    address(TRADING_MODULE),
+                    address(tradingModule),
                     uint16(TradeType.EXACT_OUT_SINGLE),
-                    address(SECONDARY_TOKEN),
-                    address(_underlyingToken()),
+                    secondaryToken,
+                    primaryToken,
                     secondaryBalance,
                     params.slippageLimit // @audit what denomination is slippage limit in here?
                 ),
@@ -354,11 +361,11 @@ library VaultHelper {
                 params.exchangeData
             );
 
-            trade.execute(TRADING_MODULE, params.dexId);
+            trade.execute(tradingModule, params.dexId);
         }
 
         int256 primaryBalanceAfter = TokenUtils
-            .tokenBalance(address(_underlyingToken()))
+            .tokenBalance(primaryToken)
             .toInt();
 
         // Return primaryBalanceDiff
@@ -366,6 +373,6 @@ library VaultHelper {
         // sold for primary currency
         // If primaryBalanceBefore > primaryBalanceAfter, primary currency was sold
         // for secondary currency to cover the shortfall
-        return abi.encode(primaryBalanceAfter - primaryBalanceBefore); */
+        return abi.encode(primaryBalanceAfter - primaryBalanceBefore);
     }
 }
