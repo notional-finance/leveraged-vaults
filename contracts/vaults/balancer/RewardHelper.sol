@@ -67,12 +67,12 @@ library RewardHelper {
         if (primaryTrade.sellToken != secondaryTrade.sellToken) {
             revert InvalidRewardToken(secondaryTrade.sellToken);
         }
-        if (primaryTrade.buyToken != BalancerUtils.tokenAddress(primaryToken)) {
+        if (primaryTrade.buyToken != BalancerUtils.getTokenAddress(primaryToken)) {
             revert InvalidRewardToken(primaryTrade.buyToken);
         }
         if (
             secondaryTrade.buyToken !=
-            BalancerUtils.tokenAddress(secondaryToken)
+            BalancerUtils.getTokenAddress(secondaryToken)
         ) {
             revert InvalidRewardToken(secondaryTrade.buyToken);
         }

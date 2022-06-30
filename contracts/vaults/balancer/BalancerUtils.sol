@@ -22,11 +22,8 @@ library BalancerUtils {
 
     /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
     /// and Balancer uses WETH
-    function tokenAddress(address token) internal view returns (address) {
-        return
-            token == Constants.ETH_ADDRESS
-                ? address(WETH)
-                : address(token);
+    function getTokenAddress(address token) internal view returns (address) {
+        return token == Constants.ETH_ADDRESS ? address(WETH) : address(token);
     }
 
     function _getTimeWeightedOraclePrice(
@@ -64,134 +61,45 @@ library BalancerUtils {
         uint8 primaryDecimals,
         uint8 secondaryDecimals
     ) internal view returns (uint256 spotPrice) {
+        // Prevents overflows, we don't expect tokens to be greater than 18 decimals, don't use
+        // equal sign for minor gas optimization
+        require(primaryDecimals < 19);
+        require(secondaryDecimals < 19);
+        require(tokenIndex < 2);
+
         // prettier-ignore
         (/* */, uint256[] memory balances, /* */) = BALANCER_VAULT.getPoolTokens(poolId);
 
-
-        // Make everything 1e18
-        // @audit check if the decimals != 18 to save some gas since 18 is so common, also this is an edge case but if
-        // your decimals are greater than 18 this will underflow (probably will never happen)
-        uint256 primaryBalance = balances[primaryIndex] *
-            10**(18 - primaryDecimals);
-        uint256 secondaryBalance = balances[1 - primaryIndex] *
-            10**(18 - secondaryDecimals);
-
-        // First we multiply everything by 1e18 for the weight division (weights are in 1e18),
-        // then we multiply the numerator by 1e18 to to preserve enough precision for the division
-        if (tokenIndex == primaryIndex) {
-            // @audit rearrange this so that multiplication always comes before division
-            // PrimarySpotPrice = (SecondaryBalance / SecondaryWeight * 1e18) / (PrimaryBalance / PrimaryWeight)
-            return
-                (((secondaryBalance * 1e18) / secondaryWeight) * 1e18) /
-                ((primaryBalance * 1e18) / primaryWeight);
-        } else if (tokenIndex == (1 - primaryIndex)) {
-            // @audit rearrange this so that multiplication always comes before division
-            // SecondarySpotPrice = (PrimaryBalance / PrimaryWeight * 1e18) / (SecondaryBalance / SecondaryWeight)
-            return
-                (((primaryBalance * 1e18) / primaryWeight) * 1e18) /
-                ((secondaryBalance * 1e18) / secondaryWeight);
+        // Normalize balances to 18 decimal places
+        if (primaryDecimals != 18) {
+            uint256 decimalAdjust;
+            unchecked { 
+                decimalAdjust = 10**(18 - primaryDecimals);
+            }
+            balances[primaryIndex] = balances[primaryIndex] * decimalAdjust;
         }
 
-        // @audit move the revert to the top of the method, then you can get rid of the else if above since you will
-        // know that tokenIndex is always 1 or 0
-        revert InvalidTokenIndex(tokenIndex);
-    }
+        if (secondaryDecimals != 18) {
+            uint8 secondaryIndex;
+            uint256 decimalAdjust;
+            unchecked { 
+                secondaryIndex = 1 - primaryIndex;
+                decimalAdjust = 10 ** (18 - secondaryDecimals);
+            }
+            balances[secondaryIndex] = balances[secondaryIndex] * decimalAdjust;
+        }
 
-    function _getPoolParams(
-        address primaryAddress,
-        uint256 primaryAmount,
-        address secondaryAddress,
-        uint256 secondaryAmount,
-        uint8 primaryIndex
-    ) private view returns (IAsset[] memory assets, uint256[] memory amounts) {
-        assets = new IAsset[](2);
-        assets[primaryIndex] = IAsset(primaryAddress);
-        uint8 secondaryIndex;
-        unchecked { secondaryIndex = 1 - primaryIndex; }
-        assets[secondaryIndex] = IAsset(secondaryAddress);
+        // Target token balance is the balance of the token we want the spot price in 
+        uint256 targetTokenBalance = balances[tokenIndex];
+        // Denominator balance is the balance of the other token
+        uint256 otherBalance = balances[1 - tokenIndex];
+        // Assign the weights based on the token index
+        (uint256 targetTokenWeight, uint256 otherWeight) = tokenIndex == primaryIndex ?
+            (primaryWeight, secondaryWeight) :
+            (secondaryWeight, primaryWeight);
 
-        amounts = new uint256[](2);
-        amounts[primaryIndex] = primaryAmount;
-        amounts[secondaryIndex] = secondaryAmount;
-    }
-
-    function joinPoolExactTokensIn(
-        bytes32 poolId,
-        address primaryAddress,
-        uint256 maxPrimaryAmount,
-        address secondaryAddress,
-        uint256 maxSecondaryAmount,
-        uint8 primaryIndex,
-        uint256 minBPT
-    ) internal {
-        // prettier-ignore
-        (
-            IAsset[] memory assets,
-            uint256[] memory maxAmountsIn
-        ) = _getPoolParams(
-            primaryAddress,
-            maxPrimaryAmount,
-            secondaryAddress,
-            maxSecondaryAmount,
-            primaryIndex
-        );
-
-        uint256 msgValue;
-        if (assets[primaryIndex] == IAsset(Constants.ETH_ADDRESS)) msgValue = maxAmountsIn[primaryIndex];
-
-        // Join pool
-        BALANCER_VAULT.joinPool{value: msgValue}(
-            poolId,
-            address(this),
-            address(this),
-            IBalancerVault.JoinPoolRequest(
-                assets,
-                maxAmountsIn,
-                abi.encode(
-                    IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-                    maxAmountsIn,
-                    minBPT // Apply minBPT to prevent front running
-                ),
-                false // Don't use internal balances
-            )
-        );
-    }
-
-    function exitPoolExactBPTIn(
-        bytes32 poolId,
-        address primaryAddress,
-        uint256 minPrimaryAmount,
-        address secondaryAddress,
-        uint256 minSecondaryAmount,
-        uint8 primaryIndex,
-        uint256 bptExitAmount
-    ) internal {
-        // prettier-ignore
-        (
-            IAsset[] memory assets,
-            uint256[] memory minAmountsOut
-        ) = _getPoolParams(
-            primaryAddress,
-            minPrimaryAmount,
-            secondaryAddress,
-            minSecondaryAmount,
-            primaryIndex
-        );
-
-        BALANCER_VAULT.exitPool(
-            poolId,
-            address(this),
-            payable(address(this)), // Vault will receive the underlying assets
-            IBalancerVault.ExitPoolRequest(
-                assets,
-                minAmountsOut,
-                abi.encode(
-                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
-                    bptExitAmount
-                ),
-                false // Don't use internal balances
-            )
-        );
+        // SpotPrice = (otherBalance * targetWeight * 1e18) / (targetBalance * otherWeight)
+        spotPrice = (otherBalance * targetTokenWeight * BALANCER_PRECISION) / (targetTokenBalance * otherWeight);
     }
 
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
@@ -337,6 +245,107 @@ library BalancerUtils {
         secondaryAmount =
             (secondaryAmount * 10**secondaryDecimals) /
             10**primaryDecimals;
+    }
+
+
+    /// @notice Returns parameters for joining and exiting pool
+    function _getPoolParams(
+        address primaryAddress,
+        uint256 primaryAmount,
+        address secondaryAddress,
+        uint256 secondaryAmount,
+        uint8 primaryIndex
+    ) private view returns (IAsset[] memory assets, uint256[] memory amounts) {
+        assets = new IAsset[](2);
+        assets[primaryIndex] = IAsset(primaryAddress);
+        uint8 secondaryIndex;
+        unchecked { secondaryIndex = 1 - primaryIndex; }
+        assets[secondaryIndex] = IAsset(secondaryAddress);
+
+        amounts = new uint256[](2);
+        amounts[primaryIndex] = primaryAmount;
+        amounts[secondaryIndex] = secondaryAmount;
+    }
+
+    /// @notice Joins a balancer pool using exact tokens in
+    function joinPoolExactTokensIn(
+        bytes32 poolId,
+        address primaryAddress,
+        uint256 maxPrimaryAmount,
+        address secondaryAddress,
+        uint256 maxSecondaryAmount,
+        uint8 primaryIndex,
+        uint256 minBPT
+    ) internal {
+        // prettier-ignore
+        (
+            IAsset[] memory assets,
+            uint256[] memory maxAmountsIn
+        ) = _getPoolParams(
+            primaryAddress,
+            maxPrimaryAmount,
+            secondaryAddress,
+            maxSecondaryAmount,
+            primaryIndex
+        );
+
+        uint256 msgValue;
+        if (assets[primaryIndex] == IAsset(Constants.ETH_ADDRESS)) msgValue = maxAmountsIn[primaryIndex];
+
+        // Join pool
+        BALANCER_VAULT.joinPool{value: msgValue}(
+            poolId,
+            address(this),
+            address(this),
+            IBalancerVault.JoinPoolRequest(
+                assets,
+                maxAmountsIn,
+                abi.encode(
+                    IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+                    maxAmountsIn,
+                    minBPT // Apply minBPT to prevent front running
+                ),
+                false // Don't use internal balances
+            )
+        );
+    }
+
+    /// @notice Exits a balancer pool using exact BPT in
+    function exitPoolExactBPTIn(
+        bytes32 poolId,
+        address primaryAddress,
+        uint256 minPrimaryAmount,
+        address secondaryAddress,
+        uint256 minSecondaryAmount,
+        uint8 primaryIndex,
+        uint256 bptExitAmount
+    ) internal {
+        // prettier-ignore
+        (
+            IAsset[] memory assets,
+            uint256[] memory minAmountsOut
+        ) = _getPoolParams(
+            primaryAddress,
+            minPrimaryAmount,
+            secondaryAddress,
+            minSecondaryAmount,
+            primaryIndex
+        );
+
+        BALANCER_VAULT.exitPool(
+            poolId,
+            address(this),
+            payable(address(this)), // Vault will receive the underlying assets
+            IBalancerVault.ExitPoolRequest(
+                assets,
+                minAmountsOut,
+                abi.encode(
+                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+                    bptExitAmount
+                ),
+                false // Don't use internal balances
+            )
+        );
     }
 
     function approveBalancerTokens(

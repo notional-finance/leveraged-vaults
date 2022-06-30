@@ -114,7 +114,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
         // Balancer tokens are sorted by address, so we need to figure out
         // the correct index for the primary token
         PRIMARY_INDEX = tokens[0] ==
-            BalancerUtils.tokenAddress(address(_underlyingToken()))
+            BalancerUtils.getTokenAddress(address(_underlyingToken()))
             ? 0
             : 1;
         uint8 secondaryIndex;
@@ -130,11 +130,11 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, BaseStrategyVaul
         // Make sure the deployment parameters are correct
         if (
             tokens[PRIMARY_INDEX] !=
-            BalancerUtils.tokenAddress(address(_underlyingToken()))
+            BalancerUtils.getTokenAddress(address(_underlyingToken()))
         ) revert InvalidPrimaryToken(tokens[PRIMARY_INDEX]);
         if (
             tokens[secondaryIndex] !=
-            BalancerUtils.tokenAddress(address(SECONDARY_TOKEN))
+            BalancerUtils.getTokenAddress(address(SECONDARY_TOKEN))
         ) revert InvalidSecondaryToken(tokens[secondaryIndex]);
 
         uint256 primaryDecimals = address(_underlyingToken()) ==
