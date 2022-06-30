@@ -75,10 +75,6 @@ struct NormalSettlementContext {
     int256 underlyingCashRequiredToSettle;
     uint256 debtSharesToRepay;
     uint256 borrowedSecondaryfCashAmount;
-    uint32 settlementPeriodInSeconds;
-    uint32 lastSettlementTimestamp;
-    uint32 settlementCoolDownInMinutes;
-    uint16 settlementSlippageLimit;
     uint16 secondaryBorrowCurrencyId;
     uint8 secondaryDecimals;
     PoolContext poolContext;

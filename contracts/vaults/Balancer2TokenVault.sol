@@ -382,10 +382,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
     function _getNormalSettlementContext(
         uint256 maturity,
-        uint256 redeemStrategyTokenAmount,
-        uint32 lastSettlementTimestamp,
-        uint32 settlementCoolDownInMinutes,
-        uint16 settlementSlippageLimit
+        uint256 redeemStrategyTokenAmount
     ) private returns (NormalSettlementContext memory) {
         // Get primary and secondary debt amounts from Notional
         // prettier-ignore
@@ -411,10 +408,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
                 underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
                 debtSharesToRepay: debtSharesToRepay,
                 borrowedSecondaryfCashAmount: borrowedSecondaryfCashAmount,
-                settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
-                lastSettlementTimestamp: lastSettlementTimestamp,
-                settlementCoolDownInMinutes: settlementCoolDownInMinutes,
-                settlementSlippageLimit: settlementSlippageLimit,
                 secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
                 secondaryDecimals: SECONDARY_DECIMALS,
                 poolContext: _getPoolContext()
@@ -426,6 +419,16 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         uint256 bptToSettle,
         bytes calldata data
     ) external onlyNotionalOwner {
+        if (block.timestamp < maturity) {
+            revert SettlementHelper.HasNotMatured();
+        }
+        RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
+            vaultState.lastPostMaturitySettlementTimestamp,
+            vaultSettings.postMaturitySettlementCoolDownInMinutes, 
+            vaultSettings.postMaturitySettlementSlippageLimitBPS, 
+            data
+        );
+
         uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
             bptToSettle,
             maturity
@@ -437,17 +440,14 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             uint256 amountToRepay,
             uint256 primaryPostSettlement,
             uint256 secondaryPostSettlement
-        ) = SettlementHelper.settleVaultPostMaturity(
+        ) = SettlementHelper.settleVaultNormal(
             _getNormalSettlementContext(
                 maturity,
-                redeemStrategyTokenAmount,
-                vaultState.lastPostMaturitySettlementTimestamp,
-                vaultSettings.postMaturitySettlementCoolDownInMinutes,
-                vaultSettings.postMaturitySettlementSlippageLimitBPS
+                redeemStrategyTokenAmount
             ),
             maturity,
             bptToSettle,
-            data
+            params
         );
 
         primarySettlementBalance[maturity] = primaryPostSettlement;
@@ -476,6 +476,19 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         uint256 bptToSettle,
         bytes calldata data
     ) external {
+        if (maturity <= block.timestamp) {
+            revert SettlementHelper.PostMaturitySettlement();
+        }
+        if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
+            revert SettlementHelper.NotInSettlementWindow();
+        }
+        RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
+            vaultState.lastSettlementTimestamp,
+            vaultSettings.settlementCoolDownInMinutes, 
+            vaultSettings.settlementSlippageLimitBPS, 
+            data
+        );
+
         uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
             bptToSettle,
             maturity
@@ -490,14 +503,11 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         ) = SettlementHelper.settleVaultNormal(
             _getNormalSettlementContext(
                 maturity,
-                redeemStrategyTokenAmount,
-                vaultState.lastSettlementTimestamp,
-                vaultSettings.settlementCoolDownInMinutes,
-                vaultSettings.settlementSlippageLimitBPS
+                redeemStrategyTokenAmount
             ),
             maturity,
             bptToSettle,
-            data
+            params
         );
 
         primarySettlementBalance[maturity] = primaryPostSettlement;

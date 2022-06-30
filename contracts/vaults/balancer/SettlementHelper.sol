@@ -39,10 +39,13 @@ library SettlementHelper {
         uint256 redeempStrategyTokenAmount
     );
 
-    function _validateSettlementSlippage(
-        bytes memory data,
-        uint32 slippageLimit
-    ) private pure returns (RedeemParams memory params) {
+    function _decodeParamsAndValidate(uint32 lastTimestamp, uint32 coolDown, uint32 slippageLimit, bytes memory data)
+        internal
+        view returns (RedeemParams memory params)
+    {
+        // Convert coolDown to seconds
+        if (lastTimestamp + coolDown * 60 > block.timestamp)
+            revert InSettlementCoolDown(lastTimestamp, coolDown);
         params = abi.decode(data, (RedeemParams));
         RepaySecondaryCallbackParams memory callbackData = abi.decode(
             params.callbackData,
@@ -53,88 +56,13 @@ library SettlementHelper {
         }
     }
 
-    function _validateSettlementCoolDown(uint32 lastTimestamp, uint32 coolDown)
-        private
-        view
-    {
-        // Convert coolDown to seconds
-        if (lastTimestamp + coolDown * 60 > block.timestamp)
-            revert InSettlementCoolDown(lastTimestamp, coolDown);
-    }
-
-    function settleVaultPostMaturity(
-        NormalSettlementContext memory context,
-        uint256 maturity,
-        uint256 bptToSettle,
-        bytes calldata data
-    )
-        external
-        returns (
-            bool settled,
-            uint256 amountToRepay,
-            uint256 primaryPostSettlement,
-            uint256 secondaryPostSettlement
-        )
-    {
-        if (block.timestamp < maturity) {
-            revert HasNotMatured();
-        }
-
-        _validateSettlementCoolDown(
-            context.lastSettlementTimestamp,
-            context.settlementCoolDownInMinutes
-        );
-
-        RedeemParams memory redeemParams = _validateSettlementSlippage(
-            data,
-            context.settlementSlippageLimit
-        );
-
-        return _normalSettlement(context, bptToSettle, maturity, redeemParams);
-    }
-
     function settleVaultNormal(
-        NormalSettlementContext memory context,
-        uint256 maturity,
-        uint256 bptToSettle,
-        bytes calldata data
-    )
-        external
-        returns (
-            bool settled,
-            uint256 amountToRepay,
-            uint256 primaryPostSettlement,
-            uint256 secondaryPostSettlement
-        )
-    {
-        if (maturity <= block.timestamp) {
-            revert PostMaturitySettlement();
-        }
-        if (block.timestamp < maturity - context.settlementPeriodInSeconds) {
-            revert NotInSettlementWindow();
-        }
-
-        // In settlement window
-        _validateSettlementCoolDown(
-            context.lastSettlementTimestamp,
-            context.settlementCoolDownInMinutes
-        );
-
-        RedeemParams memory redeemParams = _validateSettlementSlippage(
-            data,
-            context.settlementSlippageLimit
-        );
-
-        return _normalSettlement(context, bptToSettle, maturity, redeemParams);
-    }
-
-    function _normalSettlement(
         NormalSettlementContext memory context,
         uint256 bptToSettle,
         uint256 maturity,
         RedeemParams memory redeemParams
     )
-        private
+        external
         returns (
             bool settled,
             uint256 amountToRepay,
@@ -293,7 +221,7 @@ library SettlementHelper {
         // Check to make sure we are not settling more than the amount of BPT
         // available in the current maturity
         // If more settlement is needed, call settleVaultEmergency
-        // against with a different maturity
+        // again with a different maturity
         if (bptToSettle > bptHeldInMaturity) {
             bptToSettle = bptHeldInMaturity;
         }
