@@ -399,38 +399,29 @@ contract Balancer2TokenVault is
 
         uint256 borrowedSecondaryAmount;
         if (SECONDARY_BORROW_CURRENCY_ID > 0) {
-            // @audit when you have a large amount of inputs into a method like this, there is a solidity
-            // grammar you can use that works like this, it might help the readability for long parameter
-            // lists and ensure that arguments don't get accidentally switched around
-            //
-            // OracleHelper.getOptimalSecondaryBorrowAmount({
-            //     pool: address(BALANCER_POOL_TOKEN),
-            //     oracleWindowInSeconds: oracleWindowInSeconds,
-            //     ...
-            // })
             // Optimal secondary amount
             borrowedSecondaryAmount = BalancerUtils
-                .getOptimalSecondaryBorrowAmount(
-                    address(BALANCER_POOL_TOKEN),
-                    vaultSettings.oracleWindowInSeconds,
-                    PRIMARY_INDEX,
-                    PRIMARY_WEIGHT,
-                    SECONDARY_WEIGHT,
-                    PRIMARY_DECIMALS,
-                    SECONDARY_DECIMALS,
-                    deposit
-                );
+                .getOptimalSecondaryBorrowAmount({
+                    pool: address(BALANCER_POOL_TOKEN),
+                    oracleWindowInSeconds: vaultSettings.oracleWindowInSeconds,
+                    primaryIndex: PRIMARY_INDEX,
+                    primaryWeight: PRIMARY_WEIGHT,
+                    secondaryWeight: SECONDARY_WEIGHT,
+                    primaryDecimals: PRIMARY_DECIMALS,
+                    secondaryDecimals: SECONDARY_DECIMALS,
+                    primaryAmount: deposit
+                });
 
-            borrowedSecondaryAmount = VaultHelper.borrowSecondaryCurrency(
-                account,
-                deposit,
-                maturity,
-                params.secondaryfCashAmount,
-                params.secondarySlippageLimit,
-                borrowedSecondaryAmount,
-                SECONDARY_BORROW_LOWER_LIMIT,
-                SECONDARY_BORROW_UPPER_LIMIT
-            );
+            borrowedSecondaryAmount = VaultHelper.borrowSecondaryCurrency({
+                account: account,
+                deposit: deposit,
+                maturity: maturity,
+                secondaryfCashAmount: params.secondaryfCashAmount,
+                secondarySlippageLimit: params.secondarySlippageLimit,
+                optimalSecondaryAmount: borrowedSecondaryAmount,
+                secondaryBorrowLowerLimit: SECONDARY_BORROW_LOWER_LIMIT,
+                secondaryBorrowUpperLimit: SECONDARY_BORROW_UPPER_LIMIT
+            });
         }
 
         // prettier-ignore
@@ -847,7 +838,7 @@ contract Balancer2TokenVault is
         uint256 maturity,
         uint256 strategyTokenAmount
     )
-        internal
+        public
         view
         returns (
             uint256 debtSharesToRepay,

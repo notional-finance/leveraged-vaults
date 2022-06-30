@@ -212,7 +212,7 @@ library SettlementHelper {
             revert SettlementNotRequired(); /// @dev no debt
         }
 
-        // Redeem BPT (doing this in another function to avoid stack issues)
+        // Redeem BPT
         (uint256 primaryBalance, uint256 secondaryBalance) = VaultHelper
             ._exitPool(
                 context.poolContext,

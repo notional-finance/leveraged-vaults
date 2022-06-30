@@ -168,8 +168,9 @@ library VaultHelper {
 
         // Mint strategy tokens
         if (totalStrategyTokenGlobal == 0) {
-            // @audit this needs to be returned in 8 decimal precision
-            strategyTokensMinted = bptAmount;
+            strategyTokensMinted =
+                (bptAmount * uint256(Constants.INTERNAL_TOKEN_PRECISION)) /
+                BalancerUtils.BALANCER_PRECISION;
         } else {
             //prettier-ignore
             strategyTokensMinted =
