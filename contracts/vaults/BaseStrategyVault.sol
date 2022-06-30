@@ -5,7 +5,7 @@ import {Token, TokenType} from "../global/Types.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
 
@@ -94,6 +94,17 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
 
         return assetToken.tokenType == TokenType.NonMintable ?
             assetToken.tokenAddress : underlyingToken.tokenAddress;
+    }
+
+    function _executeTrade(
+        uint16 dexId,
+        Trade memory trade
+    ) internal returns (uint256 amountSold, uint256 amountBought) {
+        (bool success, bytes memory result) = address(TRADING_MODULE).delegatecall(
+            abi.encodeWithSelector(ITradingModule.executeTrade.selector, dexId, trade)
+        );
+        require(success);
+        (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
 
     /**************************************************************************/

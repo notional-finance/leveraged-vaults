@@ -202,7 +202,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             exchangeData: params.exchangeData
         });
 
-        (/* */, uint256 lendUnderlyingTokens) = TradeHandler.execute(trade, TRADING_MODULE, params.dexId);
+        (/* */, uint256 lendUnderlyingTokens) = _executeTrade(params.dexId, trade);
 
         // Now we lend the underlying amount
         (uint256 fCashAmount, /* */, bytes32 encodedTrade) = NOTIONAL.getfCashLendFromDeposit(
@@ -282,7 +282,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             exchangeData: params.exchangeData
         });
 
-        (/* */, borrowedCurrencyAmount) = TradeHandler.execute(trade, TRADING_MODULE, params.dexId);
+        (/* */, borrowedCurrencyAmount) = _executeTrade(params.dexId, trade);
     }
 
     function _encodeBorrowTrade(

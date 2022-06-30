@@ -14,7 +14,6 @@ import {BalancerUtils} from "./BalancerUtils.sol";
 import {BalancerVaultStorage} from "./BalancerVaultStorage.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
-import {TradeHandler} from "../../trading/TradeHandler.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
@@ -22,7 +21,6 @@ import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
 
 abstract contract VaultHelper is BalancerVaultStorage {
-    using TradeHandler for Trade;
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -198,19 +196,20 @@ abstract contract VaultHelper is BalancerVaultStorage {
                 primaryToken,
                 address(SECONDARY_TOKEN),
                 secondaryShortfall,
-                TradeHandler.getLimitAmount(
-                    address(TRADING_MODULE),
-                    uint16(TradeType.EXACT_OUT_SINGLE),
-                    primaryToken,
-                    address(SECONDARY_TOKEN),
-                    secondaryShortfall,
-                    params.oracleSlippagePercent
-                ),
+                // TradeHandler.getLimitAmount(
+                //     address(TRADING_MODULE),
+                //     uint16(TradeType.EXACT_OUT_SINGLE),
+                //     primaryToken,
+                //     address(SECONDARY_TOKEN),
+                //     secondaryShortfall,
+                //     params.oracleSlippagePercent
+                // ),
+                0,
                 block.timestamp, // deadline
                 params.exchangeData
             );
 
-            trade.execute(TRADING_MODULE, params.dexId);
+            _executeTrade(params.dexId, trade);
 
             // @audit this should be validated by the returned parameters from the
             // trade execution
@@ -251,18 +250,19 @@ abstract contract VaultHelper is BalancerVaultStorage {
             address(SECONDARY_TOKEN),
             primaryToken,
             secondaryBalance,
-            TradeHandler.getLimitAmount(
-                address(TRADING_MODULE),
-                uint16(TradeType.EXACT_OUT_SINGLE), // @audit is this correct? should it be EXACT_IN_SINGLE?
-                address(SECONDARY_TOKEN),
-                primaryToken,
-                secondaryBalance,
-                params.oracleSlippagePercent
-            ),
+            // TradeHandler.getLimitAmount(
+            //     address(TRADING_MODULE),
+            //     uint16(TradeType.EXACT_IN_SINGLE),
+            //     address(SECONDARY_TOKEN),
+            //     primaryToken,
+            //     secondaryBalance,
+            //     params.oracleSlippagePercent
+            // ),
+            0,
             block.timestamp, // deadline
             params.exchangeData
         );
 
-        (/* */, primaryPurchased) = trade.execute(TRADING_MODULE, params.dexId);
+        (/* */, primaryPurchased) = _executeTrade(params.dexId, trade);
     }
 }

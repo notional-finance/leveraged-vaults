@@ -213,8 +213,10 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         view
         returns (uint256 strategyTokenAmount)
     {
-        // @audit this number is wrong
-        if (vaultState.totalStrategyTokenGlobal == 0) return bptClaim;
+        if (vaultState.totalStrategyTokenGlobal == 0) {
+            return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
+                BalancerUtils.BALANCER_PRECISION;
+        }
 
         //prettier-ignore
         (

@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
+import {Constants} from "../global/Constants.sol";
 import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
 import {CurveAdapter} from "./adapters/CurveAdapter.sol";
 import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
@@ -10,6 +11,7 @@ import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
 import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
 import {TradeHandler} from "./TradeHandler.sol";
 
+import {IERC20} from "../utils/TokenUtils.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
@@ -28,6 +30,7 @@ contract TradingModule is UUPSUpgradeable, ITradingModule {
         uint8 rateDecimals;
     }
 
+    uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
     int256 internal constant RATE_DECIMALS = 1e18;
     mapping(address => PriceOracle) public priceOracles;
 
@@ -81,7 +84,7 @@ contract TradingModule is UUPSUpgradeable, ITradingModule {
     function executeTrade(
         uint16 dexId,
         Trade calldata trade
-    ) external returns (uint256 amountSold, uint256 amountBought) {
+    ) external override returns (uint256 amountSold, uint256 amountBought) {
         (
             address spender,
             address target,
@@ -129,7 +132,7 @@ contract TradingModule is UUPSUpgradeable, ITradingModule {
     /// @return answer exchange rate in rate decimals
     /// @return decimals number of decimals in the rate, currently hardcoded to 1e18
     function getOraclePrice(address baseToken, address quoteToken)
-        external view override returns (int256 answer, int256 decimals)
+        public view override returns (int256 answer, int256 decimals)
     {
         PriceOracle memory baseOracle = priceOracles[baseToken];
         PriceOracle memory quoteOracle = priceOracles[quoteToken];
@@ -145,6 +148,66 @@ contract TradingModule is UUPSUpgradeable, ITradingModule {
 
         answer = (basePrice * quoteDecimals * RATE_DECIMALS) / (quotePrice * baseDecimals);
         decimals = RATE_DECIMALS;
+    }
+
+    // @audit there should be an internal and external version of this method, the external method should
+    // be exposed on the TradingModule directly
+    function getLimitAmount(
+        uint16 tradeType,
+        address sellToken,
+        address buyToken,
+        uint256 amount,
+        uint32 slippageLimit
+    ) external view returns (uint256 limitAmount) {
+        // prettier-ignore
+        (int256 oraclePrice, int256 oracleDecimals) = getOraclePrice(sellToken, buyToken);
+
+        require(oraclePrice >= 0); /// @dev Chainlink rate error
+        require(oracleDecimals >= 0); /// @dev Chainlink decimals error
+
+        uint256 sellTokenDecimals = 10 **
+            (sellToken == Constants.ETH_ADDRESS ? 18 : IERC20(sellToken).decimals());
+        uint256 buyTokenDecimals = 10 **
+            (buyToken == Constants.ETH_ADDRESS ? 18 : IERC20(buyToken).decimals());
+
+        // @audit what about EXACT_OUT_BATCH, won't that fall into the wrong else condition?
+        if (TradeType(tradeType) == TradeType.EXACT_OUT_SINGLE) {
+            // 0 means no slippage limit
+            if (slippageLimit == 0) {
+                return type(uint256).max;
+            }
+            // Invert oracle price
+            // @audit comment this formula and re-arrange such that division is pushed to the end
+            // to the extent possible
+            oraclePrice = (oracleDecimals * oracleDecimals) / oraclePrice;
+            // For exact out trades, limitAmount is the max amount of sellToken the DEX can
+            // pull from the contract
+            limitAmount =
+                ((uint256(oraclePrice) +
+                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
+                        SLIPPAGE_LIMIT_PRECISION)) * amount) /
+                uint256(oracleDecimals);
+
+            // limitAmount is in buyToken precision after the previous calculation,
+            // convert it to sellToken precision
+            limitAmount = (limitAmount * sellTokenDecimals) / buyTokenDecimals;
+        } else {
+            // 0 means no slippage limit
+            if (slippageLimit == 0) {
+                return 0;
+            }
+            // For exact in trades, limitAmount is the min amount of buyToken the contract
+            // expects from the DEX
+            limitAmount =
+                ((uint256(oraclePrice) -
+                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
+                        SLIPPAGE_LIMIT_PRECISION)) * amount) /
+                uint256(oracleDecimals);
+
+            // limitAmount is in sellToken precision after the previous calculation,
+            // convert it to buyToken precision
+            limitAmount = (limitAmount * buyTokenDecimals) / sellTokenDecimals;
+        }
     }
 
 }

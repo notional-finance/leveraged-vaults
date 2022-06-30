@@ -89,16 +89,15 @@ library RewardHelper {
         );
 
         uint256 primaryAmountBefore = TokenUtils.tokenBalance(primaryToken);
-        params.primaryTrade.execute(tradingModule, params.primaryTradeDexId);
+        // @audit this needs to be a delegate call
+        tradingModule.executeTrade(params.primaryTradeDexId, params.primaryTrade);
         primaryAmount =
             TokenUtils.tokenBalance(primaryToken) -
             primaryAmountBefore;
 
         uint256 secondaryAmountBefore = TokenUtils.tokenBalance(secondaryToken);
-        params.secondaryTrade.execute(
-            tradingModule,
-            params.secondaryTradeDexId
-        );
+        // @audit this needs to be a delegate call
+        tradingModule.executeTrade(params.secondaryTradeDexId, params.secondaryTrade);
         secondaryAmount =
             TokenUtils.tokenBalance(secondaryToken) -
             secondaryAmountBefore;
