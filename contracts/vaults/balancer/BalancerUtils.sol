@@ -11,9 +11,9 @@ import {TokenUtils, IERC20} from "../../utils/TokenUtils.sol";
 library BalancerUtils {
     using TokenUtils for IERC20;
 
-    WETH9 public constant WETH =
+    WETH9 internal constant WETH =
         WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    IBalancerVault public constant BALANCER_VAULT =
+    IBalancerVault internal constant BALANCER_VAULT =
         IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
     uint256 internal constant BALANCER_PRECISION = 1e18;
     uint256 internal constant BALANCER_PRECISION_SQUARED = 1e36;
@@ -41,13 +41,19 @@ library BalancerUtils {
         queries[0].secs = secs;
         queries[0].ago = 0; // now
 
-        // @audit is this comment correct? isn't the price denominated in the first token?
-        // Gets the balancer time weighted average price denominated in ETH
+        // Gets the balancer time weighted average price denominated in the primary token
         return IPriceOracle(pool).getTimeWeightedAverage(queries)[0];
     }
 
-    /// @notice Gets the current spot price with a given token index
-    /// @param tokenIndex 0 = PRIMARY_TOKEN, 1 = SECONDARY_TOKEN
+    /// @notice Gets the current spot price with a given token index, this is used to check against
+    /// the oracle pair price to prevent front running
+    /// @param poolId id of the balancer pool
+    /// @param tokenIndex index of the token to receive the spot price in
+    /// @param primaryIndex primary token index
+    /// @param primaryWeight primary token weight
+    /// @param secondaryWeight secondary token weight
+    /// @param primaryDecimals primary token native decimals
+    /// @param secondaryDecimals secondary token native decimals
     /// @return spotPrice token spot price
     function getSpotPrice(
         bytes32 poolId,
@@ -57,16 +63,10 @@ library BalancerUtils {
         uint256 secondaryWeight,
         uint8 primaryDecimals,
         uint8 secondaryDecimals
-    ) external view returns (uint256) {
-        // @audit can this method be replaced with this method call instead?
-        // https://dev.balancer.fi/references/contracts/apis/pools/weightedpool2tokens#getlatest
-
+    ) internal view returns (uint256 spotPrice) {
         // prettier-ignore
-        (
-            /* address[] memory tokens */,
-            uint256[] memory balances,
-            /* uint256 lastChangeBlock */
-        ) = BALANCER_VAULT.getPoolTokens(poolId);
+        (/* */, uint256[] memory balances, /* */) = BALANCER_VAULT.getPoolTokens(poolId);
+
 
         // Make everything 1e18
         // @audit check if the decimals != 18 to save some gas since 18 is so common, also this is an edge case but if
@@ -207,7 +207,7 @@ library BalancerUtils {
         uint256 secondaryWeight,
         uint8 primaryDecimals,
         uint256 bptAmount
-    ) external view returns (uint256 primaryAmount, uint256 pairPrice) {
+    ) internal view returns (uint256 primaryAmount, uint256 pairPrice) {
         // Gets the BPT token price
         uint256 bptPrice = _getTimeWeightedOraclePrice(
             pool,
@@ -301,7 +301,7 @@ library BalancerUtils {
         uint8 primaryDecimals,
         uint8 secondaryDecimals,
         uint256 primaryAmount
-    ) external view returns (uint256 secondaryAmount) {
+    ) internal view returns (uint256 secondaryAmount) {
         // Gets the PAIR price
         uint256 pairPrice = _getTimeWeightedOraclePrice(
             pool,
@@ -346,7 +346,7 @@ library BalancerUtils {
         IERC20 balancerPool,
         IERC20 liquidityGauge,
         address vebalDelegator
-    ) external {
+    ) internal {
         underlyingToken.checkApprove(balancerVault, type(uint256).max);
         secondaryToken.checkApprove(balancerVault, type(uint256).max);
         // Allow LIQUIDITY_GAUGE to pull BALANCER_POOL_TOKEN
