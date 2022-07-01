@@ -7,6 +7,7 @@ import {
     RedeemParams, 
     SecondaryTradeParams
 } from "./BalancerVaultTypes.sol";
+import {BalancerUtils} from "./BalancerUtils.sol";
 import {VaultHelper} from "./VaultHelper.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
@@ -33,6 +34,11 @@ library SettlementHelper {
         uint256 bptToSettle,
         uint256 redeempStrategyTokenAmount
     );
+    event PostMaturityVaultSettlement(
+        uint256 maturity,
+        uint256 bptToSettle,
+        uint256 redeempStrategyTokenAmount
+    );
     event NormalVaultSettlement(
         uint256 maturity,
         uint256 bptToSettle,
@@ -55,113 +61,58 @@ library SettlementHelper {
         }
     }
 
-    function settleVaultNormal(
+    function _settleVaultNormal (
         NormalSettlementContext memory context,
         uint256 bptToSettle,
-        uint256 maturity,
-        RedeemParams memory redeemParams
-    )
-        external
-        returns (
-            bool settled,
-            uint256 amountToRepay,
-            uint256 primaryPostSettlement,
-            uint256 secondaryPostSettlement
-        )
-    {
+        RedeemParams memory params
+    ) internal returns (bool canSettle, uint256 primaryBalance, uint256 secondaryBalance) {
         // Redeem BPT (doing this in another function to avoid stack issues)
-        uint256 primaryBalance;
-        uint256 secondaryBalance;
-        // (uint256 primaryBalance, uint256 secondaryBalance) = VaultHelper
-        //     ._exitPool(
-        //         context.poolContext,
-        //         bptToSettle,
-        //         maturity,
-        //         redeemParams.minPrimary,
-        //         redeemParams.minSecondary
-        //     );
+
+        // If inside settlement:
+        // @audit We need to validate that the spot price is within some band of the
+        // oracle price before we exit here, we cannot trust that these minPrimary / minSecondary
+        // values are correctly specified
+        (primaryBalance, secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
+            context.poolContext,
+            context.boostContext,
+            bptToSettle,
+            params.minPrimary,
+            params.minSecondary
+        );
 
         primaryBalance += context.primarySettlementBalance;
         secondaryBalance += context.secondarySettlementBalance;
 
-        // Let the token balances accumulate in this contract if we don't have
-        // enough to pay off either side
-        if (
-            primaryBalance.toInt() < context.underlyingCashRequiredToSettle &&
-            secondaryBalance < context.borrowedSecondaryfCashAmountExternal
-        ) {
-            primaryPostSettlement = primaryBalance;
-            secondaryPostSettlement = secondaryBalance;
-        } else {
-            // If we get to this point, we have enough to pay off either the primary
-            // side or the secondary side
-
-            // We repay the secondary debt first
-            // (trading is handled in repaySecondaryCurrencyFromVault)
-            if (context.debtSharesToRepay > 0) {
-                // Primary balance is updated after secondary currency repayment
-                // primaryBalance = VaultHelper.repaySecondaryBorrow(
-                //     address(this),
-                //     context.secondaryBorrowCurrencyId,
-                //     maturity,
-                //     context.debtSharesToRepay,
-                //     redeemParams.secondarySlippageLimit,
-                //     redeemParams.callbackData,
-                //     primaryBalance,
-                //     secondaryBalance
-                // );
-            }
-
-            // Settle primary debt
-            (
-                settled,
-                amountToRepay,
-                primaryPostSettlement
-            ) = _settlePrimaryCurrency(
-                context,
-                bptToSettle,
-                primaryBalance.toInt(),
-                maturity
-            );
-
-            // secondaryPostSettlement is 0 in this case
-        }
+        // We can settle if we have enough to pay off either the primary side or the secondary size
+        canSettle = (context.underlyingCashRequiredToSettle <= primaryBalance.toInt() ||
+            context.borrowedSecondaryfCashAmountExternal <= secondaryBalance);
     }
 
-    function _settlePrimaryCurrency(
-        NormalSettlementContext memory context,
-        uint256 bptToSettle,
+    function _settlePrimaryCurrency (
+        int256 underlyingCashRequiredToSettle,
+        uint256 maxUnderlyingSurplus,
         int256 primaryAmount,
         uint256 maturity
     )
-        private
+        internal
         returns (
             bool settled,
-            uint256 amountToRepay,
-            uint256 primaryPostSettlement
+            uint256 primaryAmountToRepay
         )
     {
         // Secondary debt is paid off, handle potential primary payoff
-        // @audit there's a lot of flipping between uint and int here, maybe just convert primaryAmount to
-        // int up front and then leave it that way?
-        if (primaryAmount < context.underlyingCashRequiredToSettle) {
-            // If primaryAmountAvailable < underlyingCashRequiredToSettle,
-            // we need to redeem more BPT. So, we update primarySettlementBalance[maturity]
-            // and wait for the next settlement call.
-            primaryPostSettlement = primaryAmount.toUint();
-        } else {
+        if (primaryAmount >= underlyingCashRequiredToSettle) {
             // Calculate the amount of surplus cash after primary repayment
             // If underlyingCashRequiredToSettle < 0, that means there is excess
             // cash in the system. We add it to the surplus with the subtraction.
-            int256 surplus = primaryAmount -
-                context.underlyingCashRequiredToSettle;
-
+            int256 surplus = primaryAmount - underlyingCashRequiredToSettle;
+ 
             // Make sure we are not settling too much because we want
             // to preserve as much BPT as possible
-            if (surplus > context.maxUnderlyingSurplus.toInt()) {
+            if (surplus > maxUnderlyingSurplus.toInt()) {
                 revert RedeemingTooMuch(
                     primaryAmount,
-                    context.underlyingCashRequiredToSettle
+                    underlyingCashRequiredToSettle
                 );
             }
 
@@ -171,7 +122,7 @@ library SettlementHelper {
 
             // Return the amount to repay back to the caller,
             // actual repayment happens in the calling contract
-            amountToRepay = primaryAmount.toUint();
+            primaryAmountToRepay = primaryAmount.toUint();
             settled = true;
         }
     }

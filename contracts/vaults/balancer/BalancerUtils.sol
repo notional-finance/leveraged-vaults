@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import {PoolContext} from "./BalancerVaultTypes.sol";
+import {PoolContext, BoostContext} from "./BalancerVaultTypes.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
@@ -326,10 +326,7 @@ library BalancerUtils {
 
     /// @notice Exits a balancer pool using exact BPT in
     function exitPoolExactBPTIn(
-        bytes32 poolId,
-        address primaryAddress,
-        address secondaryAddress,
-        uint8 primaryIndex,
+        PoolContext memory context,
         uint256 minPrimaryAmount,
         uint256 minSecondaryAmount,
         uint256 bptExitAmount
@@ -339,15 +336,15 @@ library BalancerUtils {
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
-            primaryAddress,
+            context.primaryToken,
             minPrimaryAmount,
-            secondaryAddress,
+            context.secondaryToken,
             minSecondaryAmount,
-            primaryIndex
+            context.primaryIndex
         );
 
         BALANCER_VAULT.exitPool(
-            poolId,
+            context.poolId,
             address(this),
             payable(address(this)), // Vault will receive the underlying assets
             IBalancerVault.ExitPoolRequest(
@@ -360,6 +357,31 @@ library BalancerUtils {
                 false // Don't use internal balances
             )
         );
+    }
+
+    function _unstakeAndExitPoolExactBPTIn(
+        PoolContext memory poolContext,
+        BoostContext memory boostContext,
+        uint256 bptClaim,
+        uint256 minPrimary,
+        uint256 minSecondary
+    ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
+        // Withdraw BPT tokens back to the vault for redemption
+        boostContext.boostController.withdrawToken(address(boostContext.liquidityGauge), bptClaim);
+        boostContext.liquidityGauge.withdraw(bptClaim, false);
+
+        uint256 primaryBefore = TokenUtils.tokenBalance(poolContext.primaryToken);
+        uint256 secondaryBefore = TokenUtils.tokenBalance(poolContext.secondaryToken);
+
+        exitPoolExactBPTIn({
+            context: poolContext,
+            minPrimaryAmount: minPrimary,
+            minSecondaryAmount: minSecondary,
+            bptExitAmount: bptClaim
+        });
+
+        primaryBalance = TokenUtils.tokenBalance(poolContext.primaryToken) - primaryBefore;
+        secondaryBalance = TokenUtils.tokenBalance(address(poolContext.secondaryToken)) - secondaryBefore;
     }
 
     function approveBalancerTokens(

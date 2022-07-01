@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-import {Token, VaultState, VaultAccount} from "../global/Types.sol";
+import {Token, VaultAccount} from "../global/Types.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
 import {Constants} from "../global/Constants.sol";
 
@@ -19,10 +19,6 @@ import {
     InitParams, 
     StrategyVaultSettings, 
     StrategyVaultState, 
-    VaultContext, 
-    PoolContext, 
-    BoostContext,
-    NormalSettlementContext,
     VeBalDelegatorInfo,
     ReinvestRewardParams,
     DepositParams,
@@ -200,47 +196,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             totalStrategyTokenSupplyInMaturity;
     }
 
-    /// @notice Converts BPT to strategy tokens
-    function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
-        public
-        view
-        returns (uint256 strategyTokenAmount)
-    {
-        if (vaultState.totalStrategyTokenGlobal == 0) {
-            return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
-                BalancerUtils.BALANCER_PRECISION;
-        }
-
-        //prettier-ignore
-        (
-            uint256 bptHeldInMaturity,
-            uint256 totalStrategyTokenSupplyInMaturity
-        ) = _getBPTHeldInMaturity(maturity);
-
-        strategyTokenAmount =
-            (totalStrategyTokenSupplyInMaturity * bptClaim) /
-            bptHeldInMaturity;
-    }
-
-    function _getBPTHeldInMaturity(uint256 maturity) private view returns (
-        uint256 bptHeldInMaturity,
-        uint256 totalStrategyTokenSupplyInMaturity
-    ) {
-        uint256 totalBPTHeld = _bptHeld();
-        totalStrategyTokenSupplyInMaturity = _totalSupplyInMaturity(maturity);
-        bptHeldInMaturity =
-            (totalBPTHeld * totalStrategyTokenSupplyInMaturity) /
-            vaultState.totalStrategyTokenGlobal;
-    }
-
-    function _getVaultContext() private view returns (VaultContext memory) {
-        return
-            VaultContext(
-                _poolContext(),
-                BoostContext(LIQUIDITY_GAUGE, BOOST_CONTROLLER)
-            );
-    }
-
     function _depositFromNotional(
         address account,
         uint256 deposit,
@@ -310,8 +265,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
         if (bptClaim == 0) return 0;
         // Underlying token balances from exiting the pool
-        (uint256 primaryBalance, uint256 secondaryBalance) = _unstakeAndExitPool(
-            bptClaim, params.minPrimary, params.minSecondary
+        (uint256 primaryBalance, uint256 secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
+            _poolContext(), _boostContext(), bptClaim, params.minPrimary, params.minSecondary
         );
 
         if (SECONDARY_BORROW_CURRENCY_ID != 0) {
@@ -323,8 +278,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
                 account,
                 maturity,
                 debtSharesToRepay,
-                params.minSecondaryLendRate,
-                params.secondaryTradeParams,
+                params,
                 secondaryBalance
             );
 
@@ -346,53 +300,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         vaultState.totalStrategyTokenGlobal -= strategyTokens;
     }
 
-    function _getNormalSettlementContext(
-        uint256 maturity,
-        uint256 redeemStrategyTokenAmount
-    ) private returns (NormalSettlementContext memory) {
-        // Get primary and secondary debt amounts from Notional
-        // prettier-ignore
-        (
-            /* int256 assetCashRequiredToSettle */,
-            int256 underlyingCashRequiredToSettle
-        ) = NOTIONAL.getCashRequiredToSettle(address(this), maturity);
-
-        // prettier-ignore
-        (
-            uint256 debtSharesToRepay,
-            uint256 borrowedSecondaryfCashAmount
-        ) = getDebtSharesToRepay(address(this), maturity, redeemStrategyTokenAmount);
-
-        // If underlyingCashRequiredToSettle is 0 (no debt) or negative (surplus cash)
-        // and borrowedSecondaryfCashAmount is also 0, no settlement is required
-        if (
-            underlyingCashRequiredToSettle <= 0 &&
-            borrowedSecondaryfCashAmount == 0
-        ) {
-            revert SettlementHelper.SettlementNotRequired(); /// @dev no debt
-        }
-
-        // Convert fCash to secondary currency precision
-        borrowedSecondaryfCashAmount =
-            (borrowedSecondaryfCashAmount * (10**SECONDARY_DECIMALS)) /
-            uint256(Constants.INTERNAL_TOKEN_PRECISION);
-
-        return
-            NormalSettlementContext({
-                maxUnderlyingSurplus: vaultSettings.maxUnderlyingSurplus,
-                primarySettlementBalance: primarySettlementBalance[maturity],
-                secondarySettlementBalance: secondarySettlementBalance[
-                    maturity
-                ],
-                redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-                underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
-                debtSharesToRepay: debtSharesToRepay,
-                borrowedSecondaryfCashAmountExternal: borrowedSecondaryfCashAmount,
-                secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
-                poolContext: _poolContext()
-            });
-    }
-
     function settleVaultPostMaturity(
         uint256 maturity,
         uint256 bptToSettle,
@@ -401,6 +308,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         if (block.timestamp < maturity) {
             revert SettlementHelper.HasNotMatured();
         }
+        
         RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
             vaultState.lastPostMaturitySettlementTimestamp,
             vaultSettings.postMaturitySettlementCoolDownInMinutes,
@@ -408,46 +316,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             data
         );
 
-        uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
-            bptToSettle,
-            maturity
-        );
-
-        // prettier-ignore
-        (
-            bool settled, 
-            uint256 amountToRepay,
-            uint256 primaryPostSettlement,
-            uint256 secondaryPostSettlement
-        ) = SettlementHelper.settleVaultNormal(
-            _getNormalSettlementContext(
-                maturity,
-                redeemStrategyTokenAmount
-            ),
-            maturity,
-            bptToSettle,
-            params
-        );
-
-        primarySettlementBalance[maturity] = primaryPostSettlement;
-        secondarySettlementBalance[maturity] = secondaryPostSettlement;
-
-        if (amountToRepay > 0) {
-            // Transfer everything to Notional including the surplus
-            _repayPrimaryBorrow(address(Constants.NOTIONAL), 0, amountToRepay);
-        }
-
-        if (settled) {
-            vaultState.lastPostMaturitySettlementTimestamp = uint32(
-                block.timestamp
-            );
-
-            emit SettlementHelper.NormalVaultSettlement(
-                maturity,
-                bptToSettle,
-                redeemStrategyTokenAmount
-            );
-        }
+        _settleVaultNormal(maturity, bptToSettle, params);
     }
 
     function settleVaultNormal(
@@ -461,6 +330,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert SettlementHelper.NotInSettlementWindow();
         }
+
         RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
             vaultState.lastSettlementTimestamp,
             vaultSettings.settlementCoolDownInMinutes,
@@ -468,44 +338,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             data
         );
 
-        uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
-            bptToSettle,
-            maturity
-        );
-
-        // prettier-ignore
-        (
-            bool settled, 
-            uint256 amountToRepay,
-            uint256 primaryPostSettlement,
-            uint256 secondaryPostSettlement
-        ) = SettlementHelper.settleVaultNormal(
-            _getNormalSettlementContext(
-                maturity,
-                redeemStrategyTokenAmount
-            ),
-            maturity,
-            bptToSettle,
-            params
-        );
-
-        primarySettlementBalance[maturity] = primaryPostSettlement;
-        secondarySettlementBalance[maturity] = secondaryPostSettlement;
-
-        if (amountToRepay > 0) {
-            // Transfer everything to Notional including the surplus
-            _repayPrimaryBorrow(address(Constants.NOTIONAL), 0, amountToRepay);
-        }
-
-        if (settled) {
-            vaultState.lastSettlementTimestamp = uint32(block.timestamp);
-
-            emit SettlementHelper.NormalVaultSettlement(
-                maturity,
-                bptToSettle,
-                redeemStrategyTokenAmount
-            );
-        }
+        _settleVaultNormal(maturity, bptToSettle, params);
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data)
@@ -620,54 +453,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
     function getVaultSettings() external view returns (StrategyVaultSettings memory) {
         return vaultSettings;
-    }
-
-    /// @notice Gets the amount of debt shares needed to pay off the secondary debt
-    /// @param account account address
-    /// @param maturity maturity timestamp
-    /// @param strategyTokenAmount amount of strategy tokens
-    /// @return debtSharesToRepay amount of secondary debt shares
-    /// @return borrowedSecondaryfCashAmount amount of secondary fCash borrowed
-    function getDebtSharesToRepay(address account, uint256 maturity, uint256 strategyTokenAmount)
-        internal view returns (
-            uint256 debtSharesToRepay,
-            uint256 borrowedSecondaryfCashAmount
-    ) {
-        if (SECONDARY_BORROW_CURRENCY_ID == 0) return (0, 0);
-
-        // prettier-ignore
-        (uint256 totalfCashBorrowed, uint256 totalAccountDebtShares) = NOTIONAL.getSecondaryBorrow(
-            address(this), SECONDARY_BORROW_CURRENCY_ID, maturity
-        );
-        uint256 _totalSupply = _totalSupplyInMaturity(maturity);
-
-        if (account == address(this)) {
-            debtSharesToRepay =
-                (totalAccountDebtShares * strategyTokenAmount) /
-                _totalSupply;
-            borrowedSecondaryfCashAmount =
-                (totalfCashBorrowed * strategyTokenAmount) /
-                _totalSupply;
-        } else {
-            // prettier-ignore
-            (
-                /* uint256 debtSharesMaturity */,
-                uint256[2] memory accountDebtShares,
-                uint256 accountStrategyTokens
-            ) = NOTIONAL.getVaultAccountDebtShares(account, address(this));
-
-            debtSharesToRepay =
-                (accountDebtShares[0] * strategyTokenAmount) /
-                accountStrategyTokens;
-            borrowedSecondaryfCashAmount =
-                (debtSharesToRepay * totalfCashBorrowed) /
-                totalAccountDebtShares;
-        }
-    }
-
-    function _totalSupplyInMaturity(uint256 maturity) private view returns (uint256) {
-        VaultState memory state = NOTIONAL.getVaultState(address(this), maturity);
-        return state.totalStrategyTokens;
     }
 
     function _authorizeUpgrade(

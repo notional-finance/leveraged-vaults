@@ -53,11 +53,6 @@ struct BoostContext {
     IBoostController boostController;
 }
 
-struct VaultContext {
-    PoolContext poolContext;
-    BoostContext boostContext;
-}
-
 /// @notice Balancer pool related fields
 struct PoolContext {
     IBalancerPool pool;
@@ -73,11 +68,20 @@ struct NormalSettlementContext {
     uint256 secondarySettlementBalance;
     uint256 redeemStrategyTokenAmount;
     int256 underlyingCashRequiredToSettle;
-    uint256 debtSharesToRepay;
     /// @notice Amount of secondary fCash borrowed in external precision
+    uint256 debtSharesToRepay;
     uint256 borrowedSecondaryfCashAmountExternal;
-    uint16 secondaryBorrowCurrencyId;
     PoolContext poolContext;
+    BoostContext boostContext;
+}
+
+struct SettlementInfo {
+    bool canSettle;
+    uint256 primaryBalance;
+    uint256 secondaryBalance; 
+    uint256 debtSharesToRepay;
+    uint256 borrowedSecondaryfCashAmount;
+    int256 underlyingCashRequiredToSettle;        
 }
 
 struct RewardTokenTradeParams {
