@@ -25,44 +25,47 @@ library SettlementHelper {
         int256 underlyingCashRequiredToSettle
     );
     error SlippageTooHigh(uint32 slippage, uint32 limit);
-    error InSettlementCoolDown(uint32 lastTimestamp, uint32 coolDown);
+    error InSettlementCoolDown(uint32 lastSettlementTimestamp, uint32 coolDownInMinutes);
     /// @notice settleVault called when there is no debt
     error SettlementNotRequired();
 
     event EmergencyVaultSettlement(
         uint256 maturity,
         uint256 bptToSettle,
-        uint256 redeempStrategyTokenAmount
-    );
-    event PostMaturityVaultSettlement(
-        uint256 maturity,
-        uint256 bptToSettle,
-        uint256 redeempStrategyTokenAmount
-    );
-    event NormalVaultSettlement(
-        uint256 maturity,
-        uint256 bptToSettle,
-        uint256 redeempStrategyTokenAmount
+        uint256 redeemStrategyTokenAmount
     );
 
-    function _decodeParamsAndValidate(uint32 lastTimestamp, uint32 coolDown, uint32 slippageLimit, bytes memory data)
-        internal
-        view returns (RedeemParams memory params)
-    {
+    /// @notice Validates settlement parameters, including that the settlement is
+    /// past a specified cool down period and that the slippage passed in by the caller
+    /// does not exceed the designated threshold.
+    /// @param lastSettlementTimestamp the last time the vault was settled
+    /// @param coolDownInMinutes configured length of time required between settlements to ensure that
+    /// slippage thresholds are respected (gives the market time to arbitrage back into position)
+    /// @param slippageLimitPercent configured limit on the slippage from the oracle price allowed
+    /// @param data trade parameters passed into settlement
+    /// @return params abi decoded redemption parameters
+    function _decodeParamsAndValidate(
+        uint32 lastSettlementTimestamp,
+        uint32 coolDownInMinutes,
+        uint32 slippageLimitPercent,
+        bytes memory data
+    ) internal view returns (RedeemParams memory params) {
         // Convert coolDown to seconds
-        if (lastTimestamp + coolDown * 60 > block.timestamp)
-            revert InSettlementCoolDown(lastTimestamp, coolDown);
+        if (lastSettlementTimestamp + (coolDownInMinutes * 60) > block.timestamp)
+            revert InSettlementCoolDown(lastSettlementTimestamp, coolDownInMinutes);
 
         params = abi.decode(data, (RedeemParams));
         SecondaryTradeParams memory callbackData = abi.decode(
             params.secondaryTradeParams, (SecondaryTradeParams)
         );
 
-        if (callbackData.oracleSlippagePercent > slippageLimit) {
-            revert SlippageTooHigh(callbackData.oracleSlippagePercent, slippageLimit);
+        if (callbackData.oracleSlippagePercent > slippageLimitPercent) {
+            revert SlippageTooHigh(callbackData.oracleSlippagePercent, slippageLimitPercent);
         }
     }
 
+    /// @notice Redeems BPTs from the pool and checks if there is sufficient balance to settle on
+    /// either one of the primary or secondary balances
     function _settleVaultNormal (
         NormalSettlementContext memory context,
         uint256 bptToSettle,
@@ -92,13 +95,7 @@ library SettlementHelper {
         uint256 maxUnderlyingSurplus,
         int256 primaryAmount,
         uint256 maturity
-    )
-        internal
-        returns (
-            bool settled,
-            uint256 primaryAmountToRepay
-        )
-    {
+    ) internal returns ( bool settled, uint256 primaryAmountToRepay) {
         // Secondary debt is paid off, handle potential primary payoff
         if (primaryAmount >= underlyingCashRequiredToSettle) {
             // Calculate the amount of surplus cash after primary repayment
@@ -115,6 +112,8 @@ library SettlementHelper {
                 );
             }
 
+            // @audit the order of operations is wrong here, you need to call this after repaying the
+            // primary debt
             if (maturity <= block.timestamp) {
                 Constants.NOTIONAL.settleVault(address(this), maturity);
             }
@@ -132,7 +131,7 @@ library SettlementHelper {
         uint16 maxBalancerPoolShare,
         uint256 totalBPTHeld,
         uint256 bptHeldInMaturity
-    ) internal returns (uint256 bptToSettle) {
+    ) internal pure returns (uint256 bptToSettle) {
         // desiredPoolShare = maxPoolShare * bufferPercentage
         uint256 desiredPoolShare = (maxBalancerPoolShare *
             Constants.BALANCER_POOL_SHARE_BUFFER) /

@@ -156,7 +156,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view returns (uint256 bptClaim) {
-        // @audit-ok math looks good
         if (vaultState.totalStrategyTokenGlobal == 0)
             return strategyTokenAmount;
 
@@ -185,8 +184,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
         // prettier-ignore
         (
-            // @audit this number is not correct when rolling since it does not account for
-            // tokens rolled into the maturity yet
             uint256 bptHeldInMaturity,
             uint256 totalStrategyTokenSupplyInMaturity
         ) = _getBPTHeldInMaturity(maturity);
@@ -249,16 +246,15 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             (uint256 debtSharesToRepay, /*  */) = getDebtSharesToRepay(
                 account, maturity, strategyTokens
             );
-            int256 netPrimaryBalance = repaySecondaryBorrow(
+
+            finalPrimaryBalance = repaySecondaryBorrow(
                 account,
                 maturity,
                 debtSharesToRepay,
                 params,
-                secondaryBalance
+                secondaryBalance,
+                primaryBalance
             );
-
-            // @audit when would this go negative?
-            finalPrimaryBalance = (primaryBalance.toInt() + netPrimaryBalance).toUint();
         } else if (secondaryBalance > 0) {
             // If there is no secondary debt, we still need to sell the secondary balance
             // back to the primary token here.
@@ -275,14 +271,17 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         vaultState.totalStrategyTokenGlobal -= strategyTokens;
     }
 
-    /// @notice Settles the vault after maturity
+    /// @notice Settles the vault after maturity, at this point we assume something has gone wrong
+    /// and we allow the owner to take over to ensure that the vault is properly settled. This vault
+    /// is presumed to be able to settle fully prior to maturity.
     /// @dev This settlement call is authenticated
     /// @param maturity maturity timestamp
     /// @param bptToSettle the amount of BPT to settle
     /// @param data settlement parameters
     function settleVaultPostMaturity(
         uint256 maturity,
-        uint256 bptToSettle,
+        uint256 bptToSettle, // @audit settlement methods should take strategyTokensToRedeem not bptToSettle
+                             // to maintain proper accounting
         bytes calldata data
     ) external onlyNotionalOwner {
         if (block.timestamp < maturity) {
@@ -296,10 +295,22 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             data
         );
 
+        // These min primary and min secondary amounts must be within some configured
+        // delta of the current oracle price
         _validateMinExitAmounts(params.minPrimary, params.minSecondary);
         _settleVaultNormal(maturity, bptToSettle, params);
+        vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);
     }
 
+    /// @notice Once the settlement window begins, the vault may begin to be settled by anyone
+    /// who calls this method with valid parameters. Settlement includes redeeming BPT tokens 
+    /// for the two underlying tokens and then trading appropriately until both remaining debts
+    /// are repaid. Once the settlement window for a maturity begins, users can no longer enter
+    /// or exit the maturity until it has completed settlement.
+    /// NOTE: Calling this method is not incentivized.
+    /// @param maturity maturity timestamp
+    /// @param bptToSettle the amount of BPT to settle
+    /// @param data settlement parameters
     function settleVaultNormal(
         uint256 maturity,
         uint256 bptToSettle,
@@ -319,10 +330,16 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             data
         );
 
+        // These min primary and min secondary amounts must be within some configured
+        // delta of the current oracle price
         _validateMinExitAmounts(params.minPrimary, params.minSecondary);
         _settleVaultNormal(maturity, bptToSettle, params);
+        vaultState.lastSettlementTimestamp = uint32(block.timestamp);
     }
 
+    /// @notice In the case where the total BPT held by the vault is greater than some threshold
+    /// of the total vault supply, we may need to redeem strategy tokens to cash to ensure that
+    /// the vault will not run into liquidity issues during settlement.
     function settleVaultEmergency(uint256 maturity, bytes calldata data)
         external
     {
@@ -343,25 +360,16 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             revert SettlementHelper.InvalidEmergencySettlement();
 
         // prettier-ignore
-        (
-            // @audit this number is not correct when rolling since it does not account for
-            // tokens rolled into the maturity yet
-            uint256 bptHeldInMaturity,
-            /* uint256 totalStrategyTokenSupplyInMaturity */
-        ) = _getBPTHeldInMaturity(maturity);
+        (uint256 bptHeldInMaturity, /* */) = _getBPTHeldInMaturity(maturity);
 
-        uint256 bptToSettle = SettlementHelper
-            ._getEmergencySettlementBPTAmount({
-                bptTotalSupply: totalBPTSupply,
-                maxBalancerPoolShare: vaultSettings.maxBalancerPoolShare,
-                totalBPTHeld: totalBPTHeld,
-                bptHeldInMaturity: bptHeldInMaturity
-            });
+        uint256 bptToSettle = SettlementHelper._getEmergencySettlementBPTAmount({
+            bptTotalSupply: totalBPTSupply,
+            maxBalancerPoolShare: vaultSettings.maxBalancerPoolShare,
+            totalBPTHeld: totalBPTHeld,
+            bptHeldInMaturity: bptHeldInMaturity
+        });
 
-        uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
-            bptToSettle,
-            maturity
-        );
+        uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(bptToSettle, maturity);
 
         int256 expectedUnderlyingRedeemed = convertStrategyToUnderlying(
             address(this),

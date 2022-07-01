@@ -50,7 +50,7 @@ library BalancerUtils {
         uint8 primaryDecimals,
         uint256 secondaryBalance,
         uint8 secondaryDecimals
-    ) internal view returns (uint256 normalizedPrimary, uint256 normalizedSecondary) {
+    ) internal pure returns (uint256 normalizedPrimary, uint256 normalizedSecondary) {
         if (primaryDecimals != 18) {
             uint256 decimalAdjust;
             unchecked { 
