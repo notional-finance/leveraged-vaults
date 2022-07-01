@@ -369,7 +369,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             bptHeldInMaturity: bptHeldInMaturity
         });
 
-        uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(bptToSettle, maturity);
+        uint256 redeemStrategyTokenAmount = _convertBPTClaimToStrategyTokens(bptToSettle, maturity);
 
         int256 expectedUnderlyingRedeemed = convertStrategyToUnderlying(
             address(this),
@@ -436,7 +436,12 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     }
 
     /** Public view functions */
+    function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
+        external view returns (uint256 strategyTokenAmount) {
+        return _convertBPTClaimToStrategyTokens(bptClaim, maturity);
+    }
 
+    // @audit this name clashes with the vault state name in the main Notional contract
     function getVaultState() external view returns (StrategyVaultState memory) {
         return vaultState;
     }

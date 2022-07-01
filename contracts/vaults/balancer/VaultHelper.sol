@@ -342,7 +342,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
         RedeemParams memory params
     ) internal returns (bool completedSettlement) {
         // @audit this calculation should be the inverse
-        uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(bptToSettle, maturity);
+        uint256 redeemStrategyTokenAmount = _convertBPTClaimToStrategyTokens(bptToSettle, maturity);
         NormalSettlementContext memory context = _normalSettlementContext(maturity, redeemStrategyTokenAmount);
 
         // Exits BPT tokens from the pool and returns the most up to date balances
@@ -483,12 +483,8 @@ abstract contract VaultHelper is BalancerVaultStorage {
     }
 
     /// @notice Converts BPT to strategy tokens
-    // @audit this method is public
-    function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
-        public
-        view
-        returns (uint256 strategyTokenAmount)
-    {
+    function _convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
+        internal view returns (uint256 strategyTokenAmount) {
         if (vaultState.totalStrategyTokenGlobal == 0) {
             return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
                 BalancerUtils.BALANCER_PRECISION;
