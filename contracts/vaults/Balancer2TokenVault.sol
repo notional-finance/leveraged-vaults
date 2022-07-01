@@ -119,15 +119,9 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             maturity
         );
 
-        uint256 primaryBalance = BalancerUtils.getTimeWeightedPrimaryBalance({
-            pool: address(BALANCER_POOL_TOKEN),
-            oracleWindowInSeconds: vaultSettings.oracleWindowInSeconds,
-            primaryIndex: PRIMARY_INDEX,
-            primaryWeight: PRIMARY_WEIGHT,
-            secondaryWeight: SECONDARY_WEIGHT,
-            primaryDecimals: PRIMARY_DECIMALS,
-            bptAmount: bptClaim
-        });
+        uint256 primaryBalance = BalancerUtils.getTimeWeightedPrimaryBalance(
+            _oracleContext(), bptClaim
+        );
 
         // Oracle price for the pair in 18 decimals
         uint256 oraclePairPrice = _getOraclePairPrice();

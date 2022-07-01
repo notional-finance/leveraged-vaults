@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 import {
     PoolContext, 
     BoostContext,
+    OracleContext,
     DepositParams,
     RedeemParams,
     SecondaryTradeParams,
@@ -38,9 +39,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
     function _getOraclePairPrice() internal view returns (uint256) {
         return BalancerUtils.getOraclePairPrice({
-            pool: address(BALANCER_POOL_TOKEN),
-            primaryIndex: PRIMARY_INDEX,
-            balancerOracleWindowInSeconds: vaultSettings.oracleWindowInSeconds,
+            context: _oracleContext(),
             balancerOracleWeight: vaultSettings.balancerOracleWeight,
             baseToken: address(_underlyingToken()),
             quoteToken: address(SECONDARY_TOKEN),
@@ -75,16 +74,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return 0;
 
         uint256 optimalSecondaryAmount = BalancerUtils
-            .getOptimalSecondaryBorrowAmount(
-                address(BALANCER_POOL_TOKEN),
-                vaultSettings.oracleWindowInSeconds,
-                PRIMARY_INDEX,
-                PRIMARY_WEIGHT,
-                SECONDARY_WEIGHT,
-                PRIMARY_DECIMALS,
-                SECONDARY_DECIMALS,
-                primaryAmount
-            );
+            .getOptimalSecondaryBorrowAmount(_oracleContext(), primaryAmount);
 
         // Borrow secondary currency from Notional (tokens will be transferred to this contract)
         {
@@ -476,6 +466,19 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
     function _boostContext() internal view returns (BoostContext memory) {
         return BoostContext(LIQUIDITY_GAUGE, BOOST_CONTROLLER);
+    }
+
+    function _oracleContext() internal view returns (OracleContext memory) {
+        return OracleContext({
+            pool: BALANCER_POOL_TOKEN,
+            poolId: BALANCER_POOL_ID,
+            oracleWindowInSeconds: vaultSettings.oracleWindowInSeconds,
+            primaryWeight: PRIMARY_WEIGHT,
+            secondaryWeight: SECONDARY_WEIGHT,
+            primaryIndex: PRIMARY_INDEX,
+            primaryDecimals: PRIMARY_DECIMALS,
+            secondaryDecimals: SECONDARY_DECIMALS
+        });
     }
 
     /// @dev Gets the total BPT held across the LIQUIDITY GAUGE, VeBal Delegator and the contract itself

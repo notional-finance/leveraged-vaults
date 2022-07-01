@@ -70,10 +70,7 @@ library SettlementHelper {
     ) internal returns (bool canSettle, uint256 primaryBalance, uint256 secondaryBalance) {
         // Redeem BPT (doing this in another function to avoid stack issues)
 
-        // If inside settlement:
-        // @audit We need to validate that the spot price is within some band of the
-        // oracle price before we exit here, we cannot trust that these minPrimary / minSecondary
-        // values are correctly specified
+        /// @notice minPrimary and minSecondary are validated before this function is called
         (primaryBalance, secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
             context.poolContext,
             context.boostContext,
