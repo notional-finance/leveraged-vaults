@@ -226,6 +226,7 @@ class Environment:
         secondaryCurrencyId = stratConfig["secondaryBorrowCurrency"]["currencyId"]
         impl = Balancer2TokenVault.deploy(
             self.addresses["notional"],
+            stratConfig["primaryCurrency"],
             [
                 secondaryCurrencyId,
                 stratConfig["poolId"],

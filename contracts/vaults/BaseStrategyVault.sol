@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity =0.8.11;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
 import {Token, TokenType} from "../global/Types.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
 
@@ -85,17 +84,42 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         _NAME = name_;
         _BORROW_CURRENCY_ID = borrowCurrencyId_;
 
-        (
-            Token memory assetToken,
-            Token memory underlyingToken,
-            /* ETHRate memory ethRate */,
-            /* AssetRateParameters memory assetRate */
-        ) = NOTIONAL.getCurrencyAndRates(borrowCurrencyId_);
-
-        address underlyingAddress = assetToken.tokenType == TokenType.NonMintable ?
-            assetToken.tokenAddress : underlyingToken.tokenAddress;
+        address underlyingAddress = _getNotionalUnderlyingToken(borrowCurrencyId_);
         _UNDERLYING_TOKEN = IERC20(underlyingAddress);
-        _UNDERLYING_IS_ETH = underlyingToken.tokenType == TokenType.Ether;
+        _UNDERLYING_IS_ETH = underlyingAddress == address(0);
+    }
+
+    function _getNotionalUnderlyingToken(uint16 currencyId) internal view returns (address) {
+        (Token memory assetToken, Token memory underlyingToken) = NOTIONAL.getCurrency(currencyId);
+
+        return assetToken.tokenType == TokenType.NonMintable ?
+            assetToken.tokenAddress : underlyingToken.tokenAddress;
+    }
+
+    function _executeTrade(
+        uint16 dexId,
+        Trade memory trade
+    ) internal returns (uint256 amountSold, uint256 amountBought) {
+        (bool success, bytes memory result) = address(TRADING_MODULE).delegatecall(
+            abi.encodeWithSelector(ITradingModule.executeTrade.selector, dexId, trade)
+        );
+        require(success);
+        (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
+    }
+
+    function _executeTradeWithDynamicSlippage(
+        uint16 dexId,
+        Trade memory trade,
+        uint32 dynamicSlippageLimit
+    ) internal returns (uint256 amountSold, uint256 amountBought) {
+        (bool success, bytes memory result) = address(TRADING_MODULE).delegatecall(
+            abi.encodeWithSelector(
+                ITradingModule.executeTradeWithDynamicSlippage.selector,
+                dexId, trade, dynamicSlippageLimit
+            )
+        );
+        require(success);
+        (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
 
     /**************************************************************************/
@@ -166,14 +190,6 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
             unchecked { transferToAccount = borrowedCurrencyAmount - underlyingToRepayDebt; }
         }
 
-        _repayPrimaryBorrow(receiver, transferToAccount, transferToNotional);
-    }
-
-    function _repayPrimaryBorrow(
-        address receiver, 
-        uint256 transferToAccount, 
-        uint256 transferToNotional
-    ) internal {
         if (_UNDERLYING_IS_ETH) {
             if (transferToAccount > 0) payable(receiver).transfer(transferToAccount);
             if (transferToNotional > 0) payable(address(NOTIONAL)).transfer(transferToNotional);
