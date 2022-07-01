@@ -116,11 +116,11 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
      * @param maturity the maturity to settle
      * @param settlementTrade details for the settlement trade
      */
-    function settleVault(uint256 maturity, bytes calldata settlementTrade) external {
+    function settleVault(uint256 maturity, uint256 strategyTokens, bytes calldata settlementTrade) external {
         require(maturity <= block.timestamp, "Cannot Settle");
         VaultState memory vaultState = NOTIONAL.getVaultState(address(this), maturity);
         require(vaultState.isSettled == false);
-        require(vaultState.totalStrategyTokens >= 0);
+        require(vaultState.totalStrategyTokens >= strategyTokens);
 
         RedeemParams memory params = abi.decode(settlementTrade, (RedeemParams));
     
@@ -134,9 +134,13 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         uint256 minAllowedPurchaseAmount = (underlyingValue * settlementSlippageLimit) / SETTLEMENT_SLIPPAGE_PRECISION;
         require(params.minPurchaseAmount >= minAllowedPurchaseAmount, "Purchase Limit");
 
-        // TODO: update this to allow for phased settlement
-        NOTIONAL.redeemStrategyTokensToCash(maturity, vaultState.totalStrategyTokens, settlementTrade);
-        NOTIONAL.settleVault(address(this), maturity);
+        NOTIONAL.redeemStrategyTokensToCash(maturity, strategyTokens, settlementTrade);
+
+        // If there are no more strategy tokens left, then mark the vault as settled
+        vaultState = NOTIONAL.getVaultState(address(this), maturity);
+        if (vaultState.totalStrategyTokens == 0) {
+            NOTIONAL.settleVault(address(this), maturity);
+        }
     }
 
     /**

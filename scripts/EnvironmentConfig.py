@@ -88,6 +88,11 @@ class Environment:
             "Notional", addresses["notional"], NotionalABI
         )
 
+        self.notional.upgradeTo("0x2C67B0C0493e358cF368073bc0B5fA6F01E981e0", {"from": self.notional.owner()})
+        self.notional.updateAssetRate(1, "0x8E3D447eBE244db6D28E2303bCa86Ef3033CFAd6", {"from": self.notional.owner()})
+        self.notional.updateAssetRate(2, "0x719993E82974f5b5eA0c5ebA25c260CD5AF78E00", {"from": self.notional.owner()})
+        self.notional.updateAssetRate(3, "0x612741825ACedC6F88D8709319fe65bCB015C693", {"from": self.notional.owner()})
+        self.notional.updateAssetRate(4, "0x39D9590721331B13C8e9A42941a2B961B513E69d", {"from": self.notional.owner()})
         self.upgradeNotional()
 
         self.tokens = {}
@@ -105,15 +110,11 @@ class Environment:
         self.balancerVault = interface.IBalancerVault(addresses["balancer"]["vault"])
 
         self.deployTradingModule()
-        self.deployVeBalDelegator()
-        self.deployBoostController()
+        # self.deployVeBalDelegator()
+        # self.deployBoostController()
 
-        self.balancer2TokenStrats = {}
-        self.deployBalancer2TokenVault(StrategyConfig["balancer2TokenStrats"]["Strat50ETH50USDC"])
-        self.notional.updateAssetRate(1, "0x8E3D447eBE244db6D28E2303bCa86Ef3033CFAd6", {"from": self.notional.owner()})
-        self.notional.updateAssetRate(2, "0x719993E82974f5b5eA0c5ebA25c260CD5AF78E00", {"from": self.notional.owner()})
-        self.notional.updateAssetRate(3, "0x612741825ACedC6F88D8709319fe65bCB015C693", {"from": self.notional.owner()})
-        self.notional.updateAssetRate(4, "0x39D9590721331B13C8e9A42941a2B961B513E69d", {"from": self.notional.owner()})
+        # self.balancer2TokenStrats = {}
+        # self.deployBalancer2TokenVault(StrategyConfig["balancer2TokenStrats"]["Strat50ETH50USDC"])
 
     def upgradeNotional(self):
         tradingAction = deployArtifact(
@@ -157,11 +158,14 @@ class Environment:
         self.notional.upgradeTo(router.address, {'from': self.notional.owner()})
 
     def deployTradingModule(self):
-        self.balancerV2Adapter = BalancerV2Adapter.deploy({"from": self.deployer})
-        impl = TradingModule.deploy(self.notional.address, {"from": self.deployer})
+        emptyImpl = EmptyProxy.deploy({"from": self.deployer})
+        self.proxy = nProxy.deploy(emptyImpl.address, bytes(0), {"from": self.deployer})
 
-        self.proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
-        self.tradingModule = Contract.from_abi("TradingModule", self.proxy.address, interface.ITradingModule.abi)
+        impl = TradingModule.deploy(self.notional.address, self.proxy.address, {"from": self.deployer})
+        emptyProxy = Contract.from_abi("EmptyProxy", self.proxy.address, EmptyProxy.abi)
+        emptyProxy.upgradeTo(impl.address, {"from": self.deployer})
+
+        self.tradingModule = Contract.from_abi("TradingModule", self.proxy.address, TradingModule.abi)
 
         # ETH/USD oracle
         self.tradingModule.setPriceOracle(

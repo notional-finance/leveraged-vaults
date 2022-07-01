@@ -23,7 +23,7 @@ import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     NotionalProxy public immutable NOTIONAL;
     // Used to get the proxy address inside delegate call contexts 
-    address internal SELF;
+    ITradingModule internal immutable PROXY;
 
     error SellTokenEqualsBuyToken();
     error UnknownDEX();
@@ -39,10 +39,9 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
 
     event PriceOracleUpdated(address token, address oracle);
 
-    constructor(NotionalProxy notional_) { NOTIONAL = notional_; }
-
-    function initialize() external initializer {
-        SELF = address(this);
+    constructor(NotionalProxy notional_, ITradingModule proxy_) { 
+        NOTIONAL = notional_;
+        PROXY = proxy_;
     }
 
     modifier onlyNotionalOwner() {
@@ -83,12 +82,23 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         return _getExecutionData(dexId, from, trade);
     }
 
+    /// @notice Executes a trade with a dynamic slippage limit based on chainlink oracles.
+    /// @dev Expected to be called via delegatecall on the implementation directly. This means that
+    /// the contract's calling context does not have access to storage (accessible via the proxy
+    /// address).
+    /// @param dexId the dex to execute the trade on
+    /// @param trade trade object
+    /// @param dynamicSlippageLimit the slippage limit in 1e8 precision
+    /// @return amountSold amount of tokens sold
+    /// @return amountBought amount of tokens purchased
     function executeTradeWithDynamicSlippage(
         uint16 dexId,
         Trade memory trade,
         uint32 dynamicSlippageLimit
     ) external override returns (uint256 amountSold, uint256 amountBought) {
-        trade.limit = getLimitAmount(
+        // This method calls back into the implementation via the proxy so that it has proper
+        // access to storage.
+        trade.limit = PROXY.getLimitAmount(
             trade.tradeType, trade.sellToken, trade.buyToken, trade.amount, dynamicSlippageLimit
         );
 
@@ -97,7 +107,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             address target,
             uint256 msgValue,
             bytes memory executionData
-        ) = ITradingModule(SELF).getExecutionData(dexId, address(this), trade);
+        ) = PROXY.getExecutionData(dexId, address(this), trade);
 
         return TradeHandler._executeInternal(
             trade, dexId, spender, target, msgValue, executionData
@@ -186,7 +196,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         address buyToken,
         uint256 amount,
         uint32 slippageLimit
-    ) public view returns (uint256 limitAmount) {
+    ) external override view returns (uint256 limitAmount) {
         // prettier-ignore
         (int256 oraclePrice, int256 oracleDecimals) = getOraclePrice(sellToken, buyToken);
 
