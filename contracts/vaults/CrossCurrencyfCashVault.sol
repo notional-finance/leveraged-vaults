@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity =0.8.11;
-pragma abicoder v2;
+pragma solidity 0.8.15;
+
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
@@ -8,7 +8,7 @@ import {IWrappedfCashFactory} from "../../../interfaces/notional/IWrappedfCashFa
 import {WETH9} from "../../../interfaces/WETH9.sol";
 import {IWrappedfCashComplete as IWrappedfCash} from "../../../interfaces/notional/IWrappedfCash.sol";
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "../utils/TokenUtils.sol";
 import {
     AccountContext,
     BalanceActionWithTrades,
@@ -65,7 +65,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
     }
 
     uint16 public LEND_CURRENCY_ID;
-    ERC20 public LEND_UNDERLYING_TOKEN;
+    IERC20 public LEND_UNDERLYING_TOKEN;
     /// @notice a maximum slippage limit in 1e18 precision, uint64 is sufficient to hold the maximum value which
     /// is 1e18
     uint64 public settlementSlippageLimit;
@@ -90,8 +90,8 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             /* AssetRateParameters memory assetRate */
         ) = NOTIONAL.getCurrencyAndRates(lendCurrencyId_);
 
-        ERC20 tokenAddress = assetToken.tokenType == TokenType.NonMintable ?
-            ERC20(assetToken.tokenAddress) : ERC20(underlyingToken.tokenAddress);
+        IERC20 tokenAddress = assetToken.tokenType == TokenType.NonMintable ?
+            IERC20(assetToken.tokenAddress) : IERC20(underlyingToken.tokenAddress);
         LEND_UNDERLYING_TOKEN = tokenAddress;
 
         // Allow Notional to pull the lend underlying currency
@@ -164,7 +164,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             );
         }
 
-        ERC20 underlyingToken = _underlyingToken();
+        IERC20 underlyingToken = _underlyingToken();
         (int256 rate, int256 rateDecimals) = TRADING_MODULE.getOraclePrice(
             address(LEND_UNDERLYING_TOKEN), address(underlyingToken)
         );
@@ -202,7 +202,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             exchangeData: params.exchangeData
         });
 
-        (/* */, uint256 lendUnderlyingTokens) = TradeHandler._execute(trade, TRADING_MODULE, params.dexId);
+        (/* */, uint256 lendUnderlyingTokens) = _executeTrade(params.dexId, trade);
 
         // Now we lend the underlying amount
         (uint256 fCashAmount, /* */, bytes32 encodedTrade) = NOTIONAL.getfCashLendFromDeposit(
@@ -282,7 +282,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             exchangeData: params.exchangeData
         });
 
-        (/* */, borrowedCurrencyAmount) = TradeHandler._execute(trade, TRADING_MODULE, params.dexId);
+        (/* */, borrowedCurrencyAmount) = _executeTrade(params.dexId, trade);
     }
 
     function _encodeBorrowTrade(

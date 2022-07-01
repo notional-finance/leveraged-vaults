@@ -257,8 +257,6 @@ class Environment:
         stratVault = Balancer2TokenVault.deploy(
             self.addresses["notional"],
             stratConfig["primaryCurrency"],
-            True,
-            True,
             [
                 secondaryCurrencyId,
                 self.addresses["tokens"]["WETH"],

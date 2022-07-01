@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.11;
+pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../trading/TradeHandler.sol";
+import {TradeHandler} from "../trading/TradeHandler.sol";
 import "../trading/VaultExchangeHandler.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/trading/ITradingModule.sol";
@@ -45,13 +45,11 @@ contract MockNotionalVault is IVaultExchange, IVaultExchangeCallback {
         exchangePartner = _exchangePartner;
     }
 
-    function executeTrade(uint16 dexId, Trade calldata trade)
+    function executeTrade(uint16 dexId, Trade memory trade)
         external
         override
         returns (uint256 amountSold, uint256 amountBought)
-    {
-        return trade.execute(TRADING_MODULE, dexId);
-    }
+    { }
 
     function exchange(VaultExchange calldata request)
         external

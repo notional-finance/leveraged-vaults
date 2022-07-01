@@ -8,10 +8,7 @@ compiler:
       - "@openzeppelin-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.6.0"
 networks:
   default: development
-  hardhat-fork:
-    cmd_settings:
-      fork_block: 14888885
-
+  
 reports:
   exclude_paths:
     - interfaces/**/*.*

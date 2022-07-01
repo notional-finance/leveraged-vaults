@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.11;
-pragma abicoder v2;
+pragma solidity 0.8.15;
+
 
 import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/uniswap/v3/ISwapRouter.sol";
