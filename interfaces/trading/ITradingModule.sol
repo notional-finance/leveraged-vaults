@@ -56,4 +56,12 @@ interface ITradingModule {
         Trade memory trade,
         uint32 dynamicSlippageLimit
     ) external returns (uint256 amountSold, uint256 amountBought);
+
+    function getLimitAmount(
+        TradeType tradeType,
+        address sellToken,
+        address buyToken,
+        uint256 amount,
+        uint32 slippageLimit
+    ) external view returns (uint256 limitAmount);
 }

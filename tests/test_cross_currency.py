@@ -10,8 +10,8 @@ from fixtures import *
 chain = Chain()
 
 @pytest.fixture(scope="module", autouse=True)
-def usdcDaiVault(env, CrossCurrencyfCashVault, nProxy, tradingModule, accounts):
-    impl = CrossCurrencyfCashVault.deploy(env.notional.address, tradingModule.address, {"from": accounts[0]})
+def usdcDaiVault(env, CrossCurrencyfCashVault, nProxy, accounts):
+    impl = CrossCurrencyfCashVault.deploy(env.notional.address, env.tradingModule.address, {"from": accounts[0]})
     initializeCallData = impl.initialize.encode_input(
         "USDC/DAI Cross Currency fCash",
         3, 2, 0.995e18
@@ -59,7 +59,8 @@ def encode_redeem_params(**kwargs):
         )]
     )
 
-def test_enter_vault_success(env, usdcDaiVault, accounts, tradingModule):
+@pytest.mark.only
+def test_enter_vault_success(env, usdcDaiVault, accounts):
     markets = env.notional.getActiveMarkets(3)
     maturity = markets[1][1]
     params = encode_deposit_params(
@@ -165,6 +166,7 @@ def test_enter_vault_fail_collateral_ratio(env, usdcDaiVault, accounts):
             {"from": accounts[0]}
         )
 
+@pytest.mark.only
 def test_exit_vault_success(env, usdcDaiVault, accounts):
     markets = env.notional.getActiveMarkets(3)
     maturity = markets[1][1]
@@ -259,8 +261,10 @@ def test_settle_vault_success(env, usdcDaiVault, accounts):
     env.notional.initializeMarkets(2, False, {"from": accounts[0]})
     env.notional.initializeMarkets(3, False, {"from": accounts[0]})
     
+    vaultState = env.notional.getVaultState(usdcDaiVault.address, maturity)
     txn = usdcDaiVault.settleVault(
         maturity,
+        vaultState['totalStrategyTokens'],
         encode_redeem_params(
             minPurchaseAmount=Wei(129_500e6),
             maxBorrowRate=0,
@@ -310,7 +314,7 @@ def test_settle_vault_success(env, usdcDaiVault, accounts):
     assert vaultAccount['vaultShares'] == 0
     balanceAfter = env.tokens["USDC"].balanceOf(accounts[0])
 
-    assert pytest.approx(balanceAfter - balanceBefore, rel=1e-6) == 19502343854
+    assert pytest.approx(balanceAfter - balanceBefore, rel=1e-6) == 19743280960 
 
 #def test_settle_vault_fail_purchase_limit(env, usdcDaiVault, accounts):
 #def test_settle_vault_insolvent(env, usdcDaiVault, accounts):

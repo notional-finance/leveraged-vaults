@@ -149,15 +149,20 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             secondaryBorrowedDenominatedInPrimary.toInt();
     }
 
+    function _revertInSettlementWindow(uint256 maturity) internal {
+        if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
+            revert();
+        }
+    }
+
     function _depositFromNotional(
         address account,
         uint256 deposit,
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
-        if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
-            revert DepositNotAllowedInSettlementWindow();
-        }
+        // Entering the vault is not allowed within the settlement window
+        _revertInSettlementWindow(maturity);
 
         DepositParams memory params = abi.decode(data, (DepositParams));
 
@@ -213,9 +218,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             // Token transfers are handled in the base strategy
             (finalPrimaryBalance) = abi.decode(data, (uint256));
         } else {
-            if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
-                revert RedeemNotAllowedInSettlementWindow();
-            }
+            // Exiting the vault is not allowed within the settlement window
+            _revertInSettlementWindow(maturity);
 
             RedeemParams memory params = abi.decode(data, (RedeemParams));
             uint256 bptClaim = _convertStrategyTokensToBPTClaim(strategyTokens, maturity);
@@ -333,13 +337,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     function settleVaultEmergency(uint256 maturity, bytes calldata data)
         external
     {
-        if (maturity <= block.timestamp) {
-            revert SettlementHelper.PostMaturitySettlement();
-        }
-        // TODO: is this check necessary?
-        if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
-            revert SettlementHelper.InvalidEmergencySettlement();
-        }
+        // No need for emergency settlement during the settlement window
+        _revertInSettlementWindow(maturity);
 
         // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
         uint256 totalBPTSupply = BALANCER_POOL_TOKEN.totalSupply();

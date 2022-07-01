@@ -8,6 +8,7 @@ import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
+import {nProxy} from "../proxy/nProxy.sol";
 
 abstract contract BaseStrategyVault is Initializable, IStrategyVault {
     using TokenUtils for IERC20;
@@ -96,24 +97,27 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
             assetToken.tokenAddress : underlyingToken.tokenAddress;
     }
 
+    /// @notice Can be used to delegate call to the TradingModule's implementation in order to execute
+    /// a trade.
     function _executeTrade(
         uint16 dexId,
         Trade memory trade
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-        (bool success, bytes memory result) = address(TRADING_MODULE).delegatecall(
-            abi.encodeWithSelector(ITradingModule.executeTrade.selector, dexId, trade)
-        );
+        (bool success, bytes memory result) = nProxy(payable(address(TRADING_MODULE))).getImplementation()
+            .delegatecall(abi.encodeWithSelector(ITradingModule.executeTrade.selector, dexId, trade));
         require(success);
         (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
 
+    /// @notice Can be used to delegate call to the TradingModule's implementation in order to execute
+    /// a trade.
     function _executeTradeWithDynamicSlippage(
         uint16 dexId,
         Trade memory trade,
         uint32 dynamicSlippageLimit
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-        (bool success, bytes memory result) = address(TRADING_MODULE).delegatecall(
-            abi.encodeWithSelector(
+        (bool success, bytes memory result) = nProxy(payable(address(TRADING_MODULE))).getImplementation()
+            .delegatecall(abi.encodeWithSelector(
                 ITradingModule.executeTradeWithDynamicSlippage.selector,
                 dexId, trade, dynamicSlippageLimit
             )
