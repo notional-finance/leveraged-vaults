@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import {PoolContext} from "./BalancerVaultTypes.sol";
+import {PoolContext, BoostContext, OracleContext} from "./BalancerVaultTypes.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
@@ -44,61 +44,67 @@ library BalancerUtils {
         return IPriceOracle(pool).getTimeWeightedAverage(queries)[0];
     }
 
-    /// @notice Gets the current spot price with a given token index, this is used to check against
-    /// the oracle pair price to prevent front running
-    /// @param poolId id of the balancer pool
-    /// @param tokenIndex index of the token to receive the spot price in
-    /// @param primaryIndex primary token index
-    /// @param primaryWeight primary token weight
-    /// @param secondaryWeight secondary token weight
-    /// @param primaryDecimals primary token native decimals
-    /// @param secondaryDecimals secondary token native decimals
-    /// @return spotPrice token spot price
-    function getSpotPrice(
-        bytes32 poolId,
-        uint256 tokenIndex,
-        uint8 primaryIndex,
-        uint256 primaryWeight,
-        uint256 secondaryWeight,
+    /// @notice Normalizes balances to 1e18 (used by Balancer price oracle functions)
+    function _normalizeBalances(
+        uint256 primaryBalance,
         uint8 primaryDecimals,
+        uint256 secondaryBalance,
         uint8 secondaryDecimals
-    ) internal view returns (uint256 spotPrice) {
-        // Prevents overflows, we don't expect tokens to be greater than 18 decimals, don't use
-        // equal sign for minor gas optimization
-        require(primaryDecimals < 19);
-        require(secondaryDecimals < 19);
-        require(tokenIndex < 2);
-
-        // prettier-ignore
-        (/* */, uint256[] memory balances, /* */) = BALANCER_VAULT.getPoolTokens(poolId);
-
-        // Normalize balances to 18 decimal places
+    ) internal pure returns (uint256 normalizedPrimary, uint256 normalizedSecondary) {
         if (primaryDecimals != 18) {
             uint256 decimalAdjust;
             unchecked { 
                 decimalAdjust = 10**(18 - primaryDecimals);
             }
-            balances[primaryIndex] = balances[primaryIndex] * decimalAdjust;
+            normalizedPrimary = primaryBalance * decimalAdjust;
         }
 
         if (secondaryDecimals != 18) {
-            uint8 secondaryIndex;
             uint256 decimalAdjust;
             unchecked { 
-                secondaryIndex = 1 - primaryIndex;
-                decimalAdjust = 10 ** (18 - secondaryDecimals);
+                decimalAdjust = 10**(18 - secondaryDecimals);
             }
-            balances[secondaryIndex] = balances[secondaryIndex] * decimalAdjust;
+            normalizedSecondary = secondaryBalance * decimalAdjust;
         }
+    }
+
+    /// @notice Gets the current spot price with a given token index, this is used to check against
+    /// the oracle pair price to prevent front running
+    /// @param context oracle context fields
+    /// @param tokenIndex index of the token to receive the spot price in
+    /// @return spotPrice token spot price
+    function getSpotPrice(OracleContext memory context, uint256 tokenIndex) 
+        internal view returns (uint256 spotPrice) {
+        // Prevents overflows, we don't expect tokens to be greater than 18 decimals, don't use
+        // equal sign for minor gas optimization
+        require(context.primaryDecimals < 19);
+        require(context.secondaryDecimals < 19);
+        require(tokenIndex < 2);
+
+        // prettier-ignore
+        (/* */, uint256[] memory balances, /* */) = BALANCER_VAULT.getPoolTokens(context.poolId);
+
+        uint8 secondaryIndex;
+        unchecked {
+            secondaryIndex = 1 - context.primaryIndex;
+        }
+
+        // Normalize balances to 18 decimal places
+        (balances[context.primaryIndex], balances[secondaryIndex]) = _normalizeBalances(
+            balances[context.primaryIndex], 
+            context.primaryDecimals, 
+            balances[secondaryIndex], 
+            context.secondaryDecimals
+        );
 
         // Target token balance is the balance of the token we want the spot price in 
         uint256 targetTokenBalance = balances[tokenIndex];
         // Denominator balance is the balance of the other token
         uint256 otherBalance = balances[1 - tokenIndex];
         // Assign the weights based on the token index
-        (uint256 targetTokenWeight, uint256 otherWeight) = tokenIndex == primaryIndex ?
-            (primaryWeight, secondaryWeight) :
-            (secondaryWeight, primaryWeight);
+        (uint256 targetTokenWeight, uint256 otherWeight) = tokenIndex == context.primaryIndex ?
+            (context.primaryWeight, context.secondaryWeight) :
+            (context.secondaryWeight, context.primaryWeight);
 
         // SpotPrice = (otherBalance * targetWeight * 1e18) / (targetBalance * otherWeight)
         spotPrice = (otherBalance * targetTokenWeight * BALANCER_PRECISION) / (targetTokenBalance * otherWeight);
@@ -106,40 +112,28 @@ library BalancerUtils {
 
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
     /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
-    /// @param pool address of the balancer pool
-    /// @param oracleWindowInSeconds window of time for the balancer oracle to scan over
-    /// @param primaryIndex the index of the primary token in the balancer pool
-    /// @param primaryWeight weight of the primary token
-    /// @param secondaryWeight weight of the secondary token
-    /// @param primaryDecimals decimal places of the primary token
+    /// @param context oracle context variables
     /// @param bptAmount amount of balancer pool lp tokens
     /// @return primaryAmount primary token balance
-    function getTimeWeightedPrimaryBalance(
-        address pool,
-        uint256 oracleWindowInSeconds,
-        uint8 primaryIndex,
-        uint256 primaryWeight,
-        uint256 secondaryWeight,
-        uint8 primaryDecimals,
-        uint256 bptAmount
-    ) internal view returns (uint256 primaryAmount) {
+    function getTimeWeightedPrimaryBalance(OracleContext memory context, uint256 bptAmount) 
+        internal view returns (uint256 primaryAmount) {
         // Gets the BPT token price denominated in token index = 0
         uint256 bptPrice = _getTimeWeightedOraclePrice(
-            pool,
+            address(context.pool),
             IPriceOracle.Variable.BPT_PRICE,
-            oracleWindowInSeconds
+            context.oracleWindowInSeconds
         );
 
         // Gets the pair price
         uint256 pairPrice = _getTimeWeightedOraclePrice(
-            pool,
+            address(context.pool),
             IPriceOracle.Variable.PAIR_PRICE,
-            oracleWindowInSeconds
+            context.oracleWindowInSeconds
         );
 
-        uint256 primaryPrecision = 10 ** primaryDecimals;
+        uint256 primaryPrecision = 10 ** context.primaryDecimals;
 
-        if (primaryIndex == 0) {
+        if (context.primaryIndex == 0) {
             // Since bptPrice is always denominated in the first token, we can just multiply by
             // the amount in this case. Both bptPrice and bptAmount are in 1e18 but we need to scale
             // this back to the primary token's native precision.
@@ -158,25 +152,21 @@ library BalancerUtils {
             // And then normalizing to primary token precision we add:
             // PrimaryAmount = (SecondaryAmount * PrimaryWeight * primaryPrecision) /
             //          (SecondaryWeight * PairPrice * BalancerPrecision)
-            primaryAmount = (secondaryAmount * primaryWeight * primaryPrecision) /
-                (secondaryWeight * pairPrice * BALANCER_PRECISION);
+            primaryAmount = (secondaryAmount * context.primaryWeight * primaryPrecision) /
+                (context.secondaryWeight * pairPrice * BALANCER_PRECISION);
         }
     }
 
     /// @notice Gets the oracle price pair price between two tokens using a weighted
     /// average between a chainlink oracle and the balancer TWAP oracle.
-    /// @param pool address of the balancer pool
-    /// @param primaryIndex the index of the primary token in the balancer pool
-    /// @param balancerOracleWindowInSeconds window of time for the balancer oracle to scan over
+    /// @param context oracle context variables
     /// @param balancerOracleWeight share of the weighted average to the balancer oracle
     /// @param baseToken base token for the chainlink oracle
     /// @param quoteToken quote token for the chainlink oracle
     /// @param tradingModule address of the trading module
     /// @return oraclePairPrice oracle price for the pair in 18 decimals
     function getOraclePairPrice(
-        address pool,
-        uint8 primaryIndex,
-        uint256 balancerOracleWindowInSeconds,
+        OracleContext memory context,
         uint256 balancerOracleWeight,
         address baseToken,
         address quoteToken,
@@ -186,12 +176,12 @@ library BalancerUtils {
         uint256 balancerWeightedPrice;
         if (balancerOracleWeight > 0) {
             uint256 balancerPrice = _getTimeWeightedOraclePrice(
-                pool,
+                address(context.pool),
                 IPriceOracle.Variable.PAIR_PRICE,
-                balancerOracleWindowInSeconds
+                context.oracleWindowInSeconds
             );
 
-            if (primaryIndex == 1) {
+            if (context.primaryIndex == 1) {
                 // If the primary index is the second token, we need to invert
                 // the balancer price.
                 balancerPrice = BALANCER_PRECISION_SQUARED / balancerPrice;
@@ -218,50 +208,36 @@ library BalancerUtils {
     }
 
     /// @notice Returns the optimal amount to borrow for the secondary token
-    /// @param pool address of the balancer pool
-    /// @param oracleWindowInSeconds window of time for the balancer oracle to scan over
-    /// @param primaryIndex the index of the primary token in the balancer pool
-    /// @param primaryWeight weight of the primary token
-    /// @param secondaryWeight weight of the secondary token
-    /// @param primaryDecimals decimal places of the primary token (denomination of primaryAmount)
-    /// @param secondaryDecimals decimal places of the secondary token
-    /// @param primaryAmount amount being deposited into the primary token
+    /// @param context oracle context variables
     /// @return secondaryAmount optimal amount of the secondary token to join the pool
-    function getOptimalSecondaryBorrowAmount(
-        address pool,
-        uint256 oracleWindowInSeconds,
-        uint8 primaryIndex,
-        uint256 primaryWeight,
-        uint256 secondaryWeight,
-        uint8 primaryDecimals,
-        uint8 secondaryDecimals,
-        uint256 primaryAmount
-    ) internal view returns (uint256 secondaryAmount) {
+    function getOptimalSecondaryBorrowAmount(OracleContext memory context, uint256 primaryAmount) 
+        internal view returns (uint256 secondaryAmount) {
         // Use the oracle price here rather than the spot price to prevent flash loan
         // manipulation (would force the user to join at a disadvantageous price). If
         // the pool is being manipulated away from the oracle price and this generates
         // excess slippage when joining, the user must specify a minBPT amount that will
         // cause the transaction to revert.
         uint256 pairPrice = _getTimeWeightedOraclePrice(
-            pool,
+            address(context.pool),
             IPriceOracle.Variable.PAIR_PRICE,
-            oracleWindowInSeconds
+            context.oracleWindowInSeconds
         );
 
-        if (primaryIndex == 1) {
+        if (context.primaryIndex == 1) {
             // If the primary index is the second token, invert the pair price
             pairPrice = BALANCER_PRECISION_SQUARED / pairPrice;
         }
 
-        uint256 primaryPrecision = 10 ** primaryDecimals;
-        uint256 secondaryPrecision = 10 ** secondaryDecimals;
+        uint256 primaryPrecision = 10 ** context.primaryDecimals;
+        uint256 secondaryPrecision = 10 ** context.secondaryDecimals;
         // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
         // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice) / PrimaryWeight
         // Also, we want to normalize to secondary token precision
         // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice * SecondaryPrecision) /
         //    (PrimaryWeight * PrimaryPrecision * BalancerPrecision[for PairPrice])
-        secondaryAmount = (primaryAmount * secondaryWeight * pairPrice * secondaryPrecision) / 
-            (primaryWeight * primaryPrecision * BALANCER_PRECISION);
+        secondaryAmount = 
+            (primaryAmount * context.secondaryWeight * pairPrice * secondaryPrecision) / 
+            (context.primaryWeight * primaryPrecision * BALANCER_PRECISION);
     }
 
 
@@ -326,10 +302,7 @@ library BalancerUtils {
 
     /// @notice Exits a balancer pool using exact BPT in
     function exitPoolExactBPTIn(
-        bytes32 poolId,
-        address primaryAddress,
-        address secondaryAddress,
-        uint8 primaryIndex,
+        PoolContext memory context,
         uint256 minPrimaryAmount,
         uint256 minSecondaryAmount,
         uint256 bptExitAmount
@@ -339,15 +312,15 @@ library BalancerUtils {
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
         ) = _getPoolParams(
-            primaryAddress,
+            context.primaryToken,
             minPrimaryAmount,
-            secondaryAddress,
+            context.secondaryToken,
             minSecondaryAmount,
-            primaryIndex
+            context.primaryIndex
         );
 
         BALANCER_VAULT.exitPool(
-            poolId,
+            context.poolId,
             address(this),
             payable(address(this)), // Vault will receive the underlying assets
             IBalancerVault.ExitPoolRequest(
@@ -360,6 +333,31 @@ library BalancerUtils {
                 false // Don't use internal balances
             )
         );
+    }
+
+    function _unstakeAndExitPoolExactBPTIn(
+        PoolContext memory poolContext,
+        BoostContext memory boostContext,
+        uint256 bptClaim,
+        uint256 minPrimary,
+        uint256 minSecondary
+    ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
+        // Withdraw BPT tokens back to the vault for redemption
+        boostContext.boostController.withdrawToken(address(boostContext.liquidityGauge), bptClaim);
+        boostContext.liquidityGauge.withdraw(bptClaim, false);
+
+        uint256 primaryBefore = TokenUtils.tokenBalance(poolContext.primaryToken);
+        uint256 secondaryBefore = TokenUtils.tokenBalance(poolContext.secondaryToken);
+
+        exitPoolExactBPTIn({
+            context: poolContext,
+            minPrimaryAmount: minPrimary,
+            minSecondaryAmount: minSecondary,
+            bptExitAmount: bptClaim
+        });
+
+        primaryBalance = TokenUtils.tokenBalance(poolContext.primaryToken) - primaryBefore;
+        secondaryBalance = TokenUtils.tokenBalance(address(poolContext.secondaryToken)) - secondaryBefore;
     }
 
     function approveBalancerTokens(

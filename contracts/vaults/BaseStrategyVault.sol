@@ -190,14 +190,6 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
             unchecked { transferToAccount = borrowedCurrencyAmount - underlyingToRepayDebt; }
         }
 
-        _repayPrimaryBorrow(receiver, transferToAccount, transferToNotional);
-    }
-
-    function _repayPrimaryBorrow(
-        address receiver, 
-        uint256 transferToAccount, 
-        uint256 transferToNotional
-    ) internal {
         if (_UNDERLYING_IS_ETH) {
             if (transferToAccount > 0) payable(receiver).transfer(transferToAccount);
             if (transferToNotional > 0) payable(address(NOTIONAL)).transfer(transferToNotional);

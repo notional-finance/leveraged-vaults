@@ -53,9 +53,15 @@ struct BoostContext {
     IBoostController boostController;
 }
 
-struct VaultContext {
-    PoolContext poolContext;
-    BoostContext boostContext;
+struct OracleContext {
+    IBalancerPool pool;
+    bytes32 poolId;
+    uint256 oracleWindowInSeconds;
+    uint256 primaryWeight;
+    uint256 secondaryWeight;
+    uint8 primaryIndex;
+    uint8 primaryDecimals;
+    uint8 secondaryDecimals;
 }
 
 /// @notice Balancer pool related fields
@@ -76,8 +82,8 @@ struct NormalSettlementContext {
     uint256 debtSharesToRepay;
     /// @notice Amount of secondary fCash borrowed in external precision
     uint256 borrowedSecondaryfCashAmountExternal;
-    uint16 secondaryBorrowCurrencyId;
     PoolContext poolContext;
+    BoostContext boostContext;
 }
 
 struct RewardTokenTradeParams {
@@ -119,4 +125,10 @@ struct StrategyVaultState {
     uint256 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
     uint32 lastPostMaturitySettlementTimestamp;
+}
+
+struct SettlementState {
+    uint256 primarySettlementBalance;
+    uint256 secondarySettlementBalance;
+    uint256 strategyTokensRedeemed;
 }

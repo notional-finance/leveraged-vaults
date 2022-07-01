@@ -7,6 +7,7 @@ import {
     RedeemParams, 
     SecondaryTradeParams
 } from "./BalancerVaultTypes.sol";
+import {BalancerUtils} from "./BalancerUtils.sol";
 import {VaultHelper} from "./VaultHelper.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
@@ -24,156 +25,69 @@ library SettlementHelper {
         int256 underlyingCashRequiredToSettle
     );
     error SlippageTooHigh(uint32 slippage, uint32 limit);
-    error InSettlementCoolDown(uint32 lastTimestamp, uint32 coolDown);
+    error InSettlementCoolDown(uint32 lastSettlementTimestamp, uint32 coolDownInMinutes);
     /// @notice settleVault called when there is no debt
     error SettlementNotRequired();
 
     event EmergencyVaultSettlement(
         uint256 maturity,
         uint256 bptToSettle,
-        uint256 redeempStrategyTokenAmount
-    );
-    event NormalVaultSettlement(
-        uint256 maturity,
-        uint256 bptToSettle,
-        uint256 redeempStrategyTokenAmount
+        uint256 redeemStrategyTokenAmount
     );
 
-    function _decodeParamsAndValidate(uint32 lastTimestamp, uint32 coolDown, uint32 slippageLimit, bytes memory data)
-        internal
-        view returns (RedeemParams memory params)
-    {
+    /// @notice Validates settlement parameters, including that the settlement is
+    /// past a specified cool down period and that the slippage passed in by the caller
+    /// does not exceed the designated threshold.
+    /// @param lastSettlementTimestamp the last time the vault was settled
+    /// @param coolDownInMinutes configured length of time required between settlements to ensure that
+    /// slippage thresholds are respected (gives the market time to arbitrage back into position)
+    /// @param slippageLimitPercent configured limit on the slippage from the oracle price allowed
+    /// @param data trade parameters passed into settlement
+    /// @return params abi decoded redemption parameters
+    function _decodeParamsAndValidate(
+        uint32 lastSettlementTimestamp,
+        uint32 coolDownInMinutes,
+        uint32 slippageLimitPercent,
+        bytes memory data
+    ) internal view returns (RedeemParams memory params) {
         // Convert coolDown to seconds
-        if (lastTimestamp + coolDown * 60 > block.timestamp)
-            revert InSettlementCoolDown(lastTimestamp, coolDown);
+        if (lastSettlementTimestamp + (coolDownInMinutes * 60) > block.timestamp)
+            revert InSettlementCoolDown(lastSettlementTimestamp, coolDownInMinutes);
+
         params = abi.decode(data, (RedeemParams));
         SecondaryTradeParams memory callbackData = abi.decode(
             params.secondaryTradeParams, (SecondaryTradeParams)
         );
-        if (callbackData.oracleSlippagePercent > slippageLimit) {
-            revert SlippageTooHigh(callbackData.oracleSlippagePercent, slippageLimit);
+
+        if (callbackData.oracleSlippagePercent > slippageLimitPercent) {
+            revert SlippageTooHigh(callbackData.oracleSlippagePercent, slippageLimitPercent);
         }
     }
 
-    function settleVaultNormal(
+    /// @notice Redeems BPTs from the pool and checks if there is sufficient balance to settle on
+    /// either one of the primary or secondary balances
+    function _settleVaultNormal (
         NormalSettlementContext memory context,
         uint256 bptToSettle,
-        uint256 maturity,
-        RedeemParams memory redeemParams
-    )
-        external
-        returns (
-            bool settled,
-            uint256 amountToRepay,
-            uint256 primaryPostSettlement,
-            uint256 secondaryPostSettlement
-        )
-    {
+        RedeemParams memory params
+    ) internal returns (bool canSettle, uint256 primaryBalance, uint256 secondaryBalance) {
         // Redeem BPT (doing this in another function to avoid stack issues)
-        uint256 primaryBalance;
-        uint256 secondaryBalance;
-        // (uint256 primaryBalance, uint256 secondaryBalance) = VaultHelper
-        //     ._exitPool(
-        //         context.poolContext,
-        //         bptToSettle,
-        //         maturity,
-        //         redeemParams.minPrimary,
-        //         redeemParams.minSecondary
-        //     );
+
+        /// @notice minPrimary and minSecondary are validated before this function is called
+        (primaryBalance, secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
+            context.poolContext,
+            context.boostContext,
+            bptToSettle,
+            params.minPrimary,
+            params.minSecondary
+        );
 
         primaryBalance += context.primarySettlementBalance;
         secondaryBalance += context.secondarySettlementBalance;
 
-        // Let the token balances accumulate in this contract if we don't have
-        // enough to pay off either side
-        if (
-            primaryBalance.toInt() < context.underlyingCashRequiredToSettle &&
-            secondaryBalance < context.borrowedSecondaryfCashAmountExternal
-        ) {
-            primaryPostSettlement = primaryBalance;
-            secondaryPostSettlement = secondaryBalance;
-        } else {
-            // If we get to this point, we have enough to pay off either the primary
-            // side or the secondary side
-
-            // We repay the secondary debt first
-            // (trading is handled in repaySecondaryCurrencyFromVault)
-            if (context.debtSharesToRepay > 0) {
-                // Primary balance is updated after secondary currency repayment
-                // primaryBalance = VaultHelper.repaySecondaryBorrow(
-                //     address(this),
-                //     context.secondaryBorrowCurrencyId,
-                //     maturity,
-                //     context.debtSharesToRepay,
-                //     redeemParams.secondarySlippageLimit,
-                //     redeemParams.callbackData,
-                //     primaryBalance,
-                //     secondaryBalance
-                // );
-            }
-
-            // Settle primary debt
-            (
-                settled,
-                amountToRepay,
-                primaryPostSettlement
-            ) = _settlePrimaryCurrency(
-                context,
-                bptToSettle,
-                primaryBalance.toInt(),
-                maturity
-            );
-
-            // secondaryPostSettlement is 0 in this case
-        }
-    }
-
-    function _settlePrimaryCurrency(
-        NormalSettlementContext memory context,
-        uint256 bptToSettle,
-        int256 primaryAmount,
-        uint256 maturity
-    )
-        private
-        returns (
-            bool settled,
-            uint256 amountToRepay,
-            uint256 primaryPostSettlement
-        )
-    {
-        // Secondary debt is paid off, handle potential primary payoff
-        // @audit there's a lot of flipping between uint and int here, maybe just convert primaryAmount to
-        // int up front and then leave it that way?
-        if (primaryAmount < context.underlyingCashRequiredToSettle) {
-            // If primaryAmountAvailable < underlyingCashRequiredToSettle,
-            // we need to redeem more BPT. So, we update primarySettlementBalance[maturity]
-            // and wait for the next settlement call.
-            primaryPostSettlement = primaryAmount.toUint();
-        } else {
-            // Calculate the amount of surplus cash after primary repayment
-            // If underlyingCashRequiredToSettle < 0, that means there is excess
-            // cash in the system. We add it to the surplus with the subtraction.
-            int256 surplus = primaryAmount -
-                context.underlyingCashRequiredToSettle;
-
-            // Make sure we are not settling too much because we want
-            // to preserve as much BPT as possible
-            if (surplus > context.maxUnderlyingSurplus.toInt()) {
-                revert RedeemingTooMuch(
-                    primaryAmount,
-                    context.underlyingCashRequiredToSettle
-                );
-            }
-
-            if (maturity <= block.timestamp) {
-                Constants.NOTIONAL.settleVault(address(this), maturity);
-            }
-
-            // Return the amount to repay back to the caller,
-            // actual repayment happens in the calling contract
-            amountToRepay = primaryAmount.toUint();
-            settled = true;
-        }
+        // We can settle if we have enough to pay off either the primary side or the secondary size
+        canSettle = (context.underlyingCashRequiredToSettle <= primaryBalance.toInt() ||
+            context.borrowedSecondaryfCashAmountExternal <= secondaryBalance);
     }
 
     /// @notice Calculates the amount of BPT available for emergency settlement
@@ -182,7 +96,7 @@ library SettlementHelper {
         uint16 maxBalancerPoolShare,
         uint256 totalBPTHeld,
         uint256 bptHeldInMaturity
-    ) internal returns (uint256 bptToSettle) {
+    ) internal pure returns (uint256 bptToSettle) {
         // desiredPoolShare = maxPoolShare * bufferPercentage
         uint256 desiredPoolShare = (maxBalancerPoolShare *
             Constants.BALANCER_POOL_SHARE_BUFFER) /
