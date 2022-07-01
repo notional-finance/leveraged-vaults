@@ -207,51 +207,50 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
-        // Check if this is called from one of the settlement functions
-        // data = primaryAmountToRepay (uint256) in this case
         if (account == address(this) && data.length == 32) {
+            // Check if this is called from one of the settlement functions
+            // data = primaryAmountToRepay (uint256) in this case
             // Token transfers are handled in the base strategy
             (finalPrimaryBalance) = abi.decode(data, (uint256));
-            return finalPrimaryBalance;
-        }
+        } else {
+            if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
+                revert RedeemNotAllowedInSettlementWindow();
+            }
 
-        if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
-            revert RedeemNotAllowedInSettlementWindow();
-        }
+            RedeemParams memory params = abi.decode(data, (RedeemParams));
+            uint256 bptClaim = _convertStrategyTokensToBPTClaim(strategyTokens, maturity);
 
-        RedeemParams memory params = abi.decode(data, (RedeemParams));
-        uint256 bptClaim = _convertStrategyTokensToBPTClaim(strategyTokens, maturity);
-
-        if (bptClaim == 0) return 0;
-        // Underlying token balances from exiting the pool
-        (uint256 primaryBalance, uint256 secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
-            _poolContext(), _boostContext(), bptClaim, params.minPrimary, params.minSecondary
-        );
-
-        if (SECONDARY_BORROW_CURRENCY_ID != 0) {
-            // Returns the amount of secondary debt shares that need to be repaid
-            (uint256 debtSharesToRepay, /*  */) = getDebtSharesToRepay(
-                account, maturity, strategyTokens
+            if (bptClaim == 0) return 0;
+            // Underlying token balances from exiting the pool
+            (uint256 primaryBalance, uint256 secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
+                _poolContext(), _boostContext(), bptClaim, params.minPrimary, params.minSecondary
             );
 
-            finalPrimaryBalance = repaySecondaryBorrow(
-                account,
-                maturity,
-                debtSharesToRepay,
-                params,
-                secondaryBalance,
-                primaryBalance
-            );
-        } else if (secondaryBalance > 0) {
-            // If there is no secondary debt, we still need to sell the secondary balance
-            // back to the primary token here.
-            (SecondaryTradeParams memory tradeParams) = abi.decode(
-                params.secondaryTradeParams, (SecondaryTradeParams)
-            );
-            address primaryToken = address(_underlyingToken());
-            uint256 primaryPurchased = sellSecondaryBalance(tradeParams, primaryToken, secondaryBalance);
+            if (SECONDARY_BORROW_CURRENCY_ID != 0) {
+                // Returns the amount of secondary debt shares that need to be repaid
+                (uint256 debtSharesToRepay, /*  */) = getDebtSharesToRepay(
+                    account, maturity, strategyTokens
+                );
 
-            finalPrimaryBalance = primaryBalance + primaryPurchased;
+                finalPrimaryBalance = repaySecondaryBorrow(
+                    account,
+                    maturity,
+                    debtSharesToRepay,
+                    params,
+                    secondaryBalance,
+                    primaryBalance
+                );
+            } else if (secondaryBalance > 0) {
+                // If there is no secondary debt, we still need to sell the secondary balance
+                // back to the primary token here.
+                (SecondaryTradeParams memory tradeParams) = abi.decode(
+                    params.secondaryTradeParams, (SecondaryTradeParams)
+                );
+                address primaryToken = address(_underlyingToken());
+                uint256 primaryPurchased = sellSecondaryBalance(tradeParams, primaryToken, secondaryBalance);
+
+                finalPrimaryBalance = primaryBalance + primaryPurchased;
+            }
         }
 
         // Update global strategy token balance
