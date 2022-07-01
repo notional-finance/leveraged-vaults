@@ -130,7 +130,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             address(0), vaultState.totalStrategyTokens, maturity
         ).toUint();
 
-        // Authenticate the minimum purchase amount, all tokens will be sold given this slipage limit.
+        // Authenticate the minimum purchase amount, all tokens will be sold given this slippage limit.
         uint256 minAllowedPurchaseAmount = (underlyingValue * settlementSlippageLimit) / SETTLEMENT_SLIPPAGE_PRECISION;
         require(params.minPurchaseAmount >= minAllowedPurchaseAmount, "Purchase Limit");
 
