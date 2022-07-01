@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.11;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../interfaces/WETH9.sol";
+
+import "../global/Constants.sol";
+import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
+import {WETH9} from "../../interfaces/WETH9.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 
 /// @notice TradeHandler is an internal library to be compiled into StrategyVaults to interact
 /// with the TradeModule and execute trades
 library TradeHandler {
+    using TradeHandler for Trade;
+    using TokenUtils for IERC20;
+
     error ERC20Error();
     error TradeExecution(bytes returnData);
     error PreValidationExactIn(uint256 maxAmountIn, uint256 preTradeSellBalance);
@@ -17,7 +21,6 @@ library TradeHandler {
     error PostValidationExactIn(uint256 minAmountOut, uint256 amountReceived);
     error PostValidationExactOut(uint256 exactAmountOut, uint256 amountReceived);
 
-    address public constant ETH_ADDRESS = address(0);
     WETH9 public constant WETH = WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     event TradeExecuted(
@@ -26,21 +29,6 @@ library TradeHandler {
         uint256 sellAmount,
         uint256 buyAmount
     );
-
-    function _execute(
-        Trade memory trade,
-        ITradingModule tradingModule,
-        uint16 dexId
-    ) internal returns (uint256 amountSold, uint256 amountBought) {
-        (
-            address spender,
-            address target,
-            uint256 msgValue,
-            bytes memory executionData
-        ) = tradingModule.getExecutionData(dexId, address(this), trade);
-
-        return _executeInternal(trade, dexId, spender, target, msgValue, executionData);
-    }
 
     function _executeInternal(
         Trade memory trade,
@@ -57,7 +45,7 @@ library TradeHandler {
         _preValidate(trade, preTradeSellBalance);
 
         // No need to approve ETH trades
-        if (spender != ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
+        if (spender != Constants.ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
             _approve(trade, spender);
         }
 
@@ -69,8 +57,8 @@ library TradeHandler {
         _postValidate(trade, postTradeBuyBalance - preTradeBuyBalance);
 
         // No need to revoke ETH trades
-        if (spender != ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
-            _revoke(trade, spender);
+        if (spender != Constants.ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
+            IERC20(trade.sellToken).checkRevoke(spender);
         }
 
         amountSold = preTradeSellBalance - postTradeSellBalance;
@@ -81,10 +69,10 @@ library TradeHandler {
 
     function _getBalances(Trade memory trade) private view returns (uint256, uint256) {
         return (
-            trade.sellToken == ETH_ADDRESS
+            trade.sellToken == Constants.ETH_ADDRESS
                 ? address(this).balance
                 : IERC20(trade.sellToken).balanceOf(address(this)),
-            trade.buyToken == ETH_ADDRESS
+            trade.buyToken == Constants.ETH_ADDRESS
                 ? address(this).balance
                 : IERC20(trade.buyToken).balanceOf(address(this))
         );
@@ -128,14 +116,7 @@ library TradeHandler {
     /// for EXACT_OUT trades
     function _approve(Trade memory trade, address spender) private {
         uint256 allowance = _isExactIn(trade) ? trade.amount : trade.limit;
-        IERC20(trade.sellToken).approve(spender, allowance);
-        _checkReturnCode();
-    }
-
-    /// @notice Revoke exchange approvals
-    function _revoke(Trade memory trade, address spender) private {
-        IERC20(trade.sellToken).approve(spender, 0);
-        _checkReturnCode();
+        IERC20(trade.sellToken).checkApprove(spender, allowance);
     }
 
     function _executeTrade(
@@ -148,7 +129,7 @@ library TradeHandler {
         uint256 preTradeETHBalance = address(this).balance;
 
         // Curve doesn't support WETH (spender == address(0))
-        if (trade.sellToken == address(WETH) && spender == ETH_ADDRESS) {
+        if (trade.sellToken == address(WETH) && spender == Constants.ETH_ADDRESS) {
             uint256 withdrawAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             WETH.withdraw(withdrawAmount);
         }
@@ -167,27 +148,4 @@ library TradeHandler {
         }
     }
 
-    // Supports checking return codes on non-standard ERC20 contracts
-    function _checkReturnCode() private pure {
-        bool success;
-        uint256[1] memory result;
-        assembly {
-            switch returndatasize()
-                case 0 {
-                    // This is a non-standard ERC-20
-                    success := 1 // set success to true
-                }
-                case 32 {
-                    // This is a compliant ERC-20
-                    returndatacopy(result, 0, 32)
-                    success := mload(result) // Set `success = returndata` of external call
-                }
-                default {
-                    // This is an excessively non-compliant ERC-20, revert.
-                    revert(0, 0)
-                }
-        }
-
-        if (!success) revert ERC20Error();
-    }
 }

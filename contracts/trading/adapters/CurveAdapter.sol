@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.11;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
+
+import "../../global/Constants.sol";
 import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/WETH9.sol";
 import "../../../interfaces/curve/ICurvePool.sol";
@@ -10,8 +11,7 @@ import "../../../interfaces/curve/ICurveRegistry.sol";
 import "../../../interfaces/curve/ICurveRegistryProvider.sol";
 
 library CurveAdapter {
-    int128 public constant MAX_TOKENS = 4;
-    address internal constant ETH_ADDRESS = address(0);
+    int128 internal constant MAX_TOKENS = 4;
     address internal constant CURVE_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     ICurveRegistry public constant REGISTRY = ICurveRegistry(0x0000000022D53366457F9d5E68Ec105046FC4383);
     ICurveRouter public constant ROUTER = ICurveRouter(0xfA9a30350048B2BF66865ee20363067c66f67e58);
@@ -23,7 +23,7 @@ library CurveAdapter {
     }
 
     function _getTokenAddress(address token) internal view returns (address) {
-        return (token == ETH_ADDRESS || token == address(WETH)) ? CURVE_ETH_ADDRESS : token;
+        return (token == Constants.ETH_ADDRESS || token == address(WETH)) ? CURVE_ETH_ADDRESS : token;
     }
 
     function _exactInBatch(Trade memory trade) internal view returns (bytes memory executionCallData) {
