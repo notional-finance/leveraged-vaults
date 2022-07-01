@@ -126,3 +126,9 @@ struct StrategyVaultState {
     uint32 lastSettlementTimestamp;
     uint32 lastPostMaturitySettlementTimestamp;
 }
+
+struct SettlementState {
+    uint256 primarySettlementBalance;
+    uint256 secondarySettlementBalance;
+    uint256 strategyTokensRedeemed;
+}

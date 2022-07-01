@@ -9,7 +9,8 @@ import {
     DeploymentParams,
     InitParams,
     StrategyVaultSettings,
-    StrategyVaultState
+    StrategyVaultState,
+    SettlementState
 } from "./BalancerVaultTypes.sol";
 import {Token} from "../../global/Types.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
@@ -18,6 +19,7 @@ import {IBoostController} from "../../../interfaces/notional/IBoostController.so
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
+import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 
 abstract contract BalancerVaultStorage is BaseStrategyVault {
@@ -39,16 +41,14 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
     uint256 internal immutable SECONDARY_WEIGHT;
     uint8 internal immutable PRIMARY_DECIMALS;
     uint8 internal immutable SECONDARY_DECIMALS;
+    uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;
 
     StrategyVaultSettings internal vaultSettings;
 
     StrategyVaultState internal vaultState;
 
-    /// @notice Keeps track of the primary settlement balance maturity => balance
-    mapping(uint256 => uint256) internal primarySettlementBalance;
-
-    /// @notice Keeps track of the secondary settlement balance maturity => balance
-    mapping(uint256 => uint256) internal secondarySettlementBalance;
+    /// @notice Keeps track of settlement data per maturity
+    mapping(uint256 => SettlementState) internal settlementState;
 
     constructor(NotionalProxy notional_, DeploymentParams memory params) 
         BaseStrategyVault(notional_, params.tradingModule)
@@ -121,6 +121,9 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
                 .getBalancerToken()
         );
         SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
+
+        MAX_ORACLE_QUERY_WINDOW = IPriceOracle(address(BALANCER_POOL_TOKEN)).getLargestSafeQueryWindow();
+        require(MAX_ORACLE_QUERY_WINDOW <= type(uint32).max); /// @dev largestQueryWindow overflow
     }
 
     // Storage gap for future potential upgrades

@@ -90,41 +90,6 @@ library SettlementHelper {
             context.borrowedSecondaryfCashAmountExternal <= secondaryBalance);
     }
 
-    function _settlePrimaryCurrency (
-        int256 underlyingCashRequiredToSettle,
-        uint256 maxUnderlyingSurplus,
-        int256 primaryAmount,
-        uint256 maturity
-    ) internal returns ( bool settled, uint256 primaryAmountToRepay) {
-        // Secondary debt is paid off, handle potential primary payoff
-        if (primaryAmount >= underlyingCashRequiredToSettle) {
-            // Calculate the amount of surplus cash after primary repayment
-            // If underlyingCashRequiredToSettle < 0, that means there is excess
-            // cash in the system. We add it to the surplus with the subtraction.
-            int256 surplus = primaryAmount - underlyingCashRequiredToSettle;
- 
-            // Make sure we are not settling too much because we want
-            // to preserve as much BPT as possible
-            if (surplus > maxUnderlyingSurplus.toInt()) {
-                revert RedeemingTooMuch(
-                    primaryAmount,
-                    underlyingCashRequiredToSettle
-                );
-            }
-
-            // @audit the order of operations is wrong here, you need to call this after repaying the
-            // primary debt
-            if (maturity <= block.timestamp) {
-                Constants.NOTIONAL.settleVault(address(this), maturity);
-            }
-
-            // Return the amount to repay back to the caller,
-            // actual repayment happens in the calling contract
-            primaryAmountToRepay = primaryAmount.toUint();
-            settled = true;
-        }
-    }
-
     /// @notice Calculates the amount of BPT available for emergency settlement
     function _getEmergencySettlementBPTAmount(
         uint256 bptTotalSupply,

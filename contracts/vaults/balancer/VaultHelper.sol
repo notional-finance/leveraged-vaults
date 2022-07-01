@@ -8,7 +8,8 @@ import {
     DepositParams,
     RedeemParams,
     SecondaryTradeParams,
-    NormalSettlementContext
+    NormalSettlementContext,
+    SettlementState
 } from "./BalancerVaultTypes.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
@@ -303,47 +304,66 @@ abstract contract VaultHelper is BalancerVaultStorage {
         }
     }
 
-    // @audit there are two methods with the same name, kind of confusing
-    function _settlePrimaryCurrency(
+    function _repayPrimaryDebt(
         NormalSettlementContext memory context,
         uint256 maturity,
-        uint256 primaryBalance
+        uint256 strategyTokensToRedeem,
+        int256 primaryBalance
     ) private returns (bool settled, uint256 primaryBalancePostSettlement) {
-        uint256 primaryAmountToRepay;
-        (settled, primaryAmountToRepay) = SettlementHelper._settlePrimaryCurrency({
-            underlyingCashRequiredToSettle: context.underlyingCashRequiredToSettle,
-            maxUnderlyingSurplus: vaultSettings.maxUnderlyingSurplus,
-            primaryAmount: primaryBalance.toInt(),
-            maturity: maturity
-        });
+        // Check if we have enough to pay the primary debt off
+        if (primaryBalance < context.underlyingCashRequiredToSettle) {
+            // Not enough to repay, let the balance acumulate in this contract
+            // settled = false
+            primaryBalancePostSettlement = primaryBalance.toUint();
+        } else {
+            if (primaryBalance > 0) {
+                // Calculate the amount of surplus cash after primary repayment
+                // If underlyingCashRequiredToSettle < 0, that means there is excess
+                // cash in the system. We add it to the surplus with the subtraction.
+                int256 surplus = primaryBalance - context.underlyingCashRequiredToSettle;
+    
+                // Make sure we are not settling too much because we want
+                // to preserve as much BPT as possible
+                if (surplus > vaultSettings.maxUnderlyingSurplus.toInt()) {
+                    revert SettlementHelper.RedeemingTooMuch(
+                        primaryBalance,
+                        context.underlyingCashRequiredToSettle
+                    );
+                }
 
-        if (settled) {
-            if (primaryAmountToRepay > 0) {
-                // Transfer everything to Notional including the surplus
-                // @audit You cannot do this because we are not in a callback and Notional will not recognize
-                // the repayment. You need to call redeemStrategyTokensToCash and pass the appropriate values
-                // this means you will need to track the total number of strategy tokens redeemed
-                // that also means that redeem needs a special branch for this case.
-                _repayPrimaryBorrow(address(Constants.NOTIONAL), 0, primaryAmountToRepay);
+                // Call redeemStrategyTokensToCash with a special payload
+                // to handle primary repayment
+                Constants.NOTIONAL.redeemStrategyTokensToCash(
+                    maturity, 
+                    strategyTokensToRedeem,
+                    abi.encode(primaryBalance.toUint())
+                );
             }
-        }
 
-        primaryBalancePostSettlement = primaryBalance - primaryAmountToRepay;
+            // primaryBalancePostSettlement = 0
+            settled = true;
+        }
     }
 
     /// @notice Executes a normal vault settlement where BPT tokens are redeemed and returned tokens
     /// are traded accordingly
     /// @param maturity the maturity to settle
-    /// @param bptToSettle the amount of BPT to settle, we do not authenticate this amount, only the slippage
+    /// @param strategyTokensToRedeem number of strategy tokens to redeem, 
+    /// we do not authenticate this amount, only the slippage
     /// from minPrimary and minSecondary
-    function _settleVaultNormal(
+    function _executeNormalSettlement(
+        SettlementState memory state,
         uint256 maturity,
-        uint256 bptToSettle,
+        uint256 strategyTokensToRedeem,
         RedeemParams memory params
     ) internal returns (bool completedSettlement) {
-        // @audit this calculation should be the inverse
-        uint256 redeemStrategyTokenAmount = _convertBPTClaimToStrategyTokens(bptToSettle, maturity);
-        NormalSettlementContext memory context = _normalSettlementContext(maturity, redeemStrategyTokenAmount);
+        // These min primary and min secondary amounts must be within some configured
+        // delta of the current oracle price
+        _validateMinExitAmounts(params.minPrimary, params.minSecondary);
+
+        uint256 bptToSettle = _convertStrategyTokensToBPTClaim(strategyTokensToRedeem, maturity);
+        NormalSettlementContext memory context = _normalSettlementContext(
+            state, maturity, strategyTokensToRedeem);
 
         // Exits BPT tokens from the pool and returns the most up to date balances
         (
@@ -372,19 +392,27 @@ abstract contract VaultHelper is BalancerVaultStorage {
             }
 
             // Settle primary currency with updated primaryBalance (from secondary currency trading)
-            (completedSettlement, primaryBalance) = _settlePrimaryCurrency(context, maturity, primaryBalance);
+            (completedSettlement, primaryBalance) = _repayPrimaryDebt(
+                context, maturity, strategyTokensToRedeem, primaryBalance.toInt());
         }
-        // @audit You need to call NOTIONAL.settleVault() here if the vault has been completely
-        // settled
-        
-        // Update settlement balances
-        primarySettlementBalance[maturity] = primaryBalance;
-        secondarySettlementBalance[maturity] = secondaryBalance;
 
-        emit VaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount, completedSettlement);
+        // Mark the vault as settled
+        if (maturity <= block.timestamp) {
+            Constants.NOTIONAL.settleVault(address(this), maturity);
+        }
+
+        // Update settlement balances and strategy tokens redeemed
+        settlementState[maturity] = SettlementState(
+            primaryBalance, 
+            secondaryBalance, 
+            state.strategyTokensRedeemed + strategyTokensToRedeem
+        );
+
+        emit VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement);
     }
 
     function _normalSettlementContext(
+        SettlementState memory state,
         uint256 maturity,
         uint256 redeemStrategyTokenAmount
     ) private returns (NormalSettlementContext memory) {
@@ -418,8 +446,8 @@ abstract contract VaultHelper is BalancerVaultStorage {
         return
             NormalSettlementContext({
                 maxUnderlyingSurplus: vaultSettings.maxUnderlyingSurplus,
-                primarySettlementBalance: primarySettlementBalance[maturity],
-                secondarySettlementBalance: secondarySettlementBalance[maturity],
+                primarySettlementBalance: state.primarySettlementBalance,
+                secondarySettlementBalance: state.secondarySettlementBalance,
                 redeemStrategyTokenAmount: redeemStrategyTokenAmount,
                 debtSharesToRepay: debtSharesToRepay,
                 underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
@@ -466,7 +494,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
         return (totalBPTSupply * vaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
     }
 
-    function _totalSupplyInMaturity(uint256 maturity) private view returns (uint256) {
+    function _totalSupplyInMaturity(uint256 maturity) internal view returns (uint256) {
         VaultState memory state = NOTIONAL.getVaultState(address(this), maturity);
         return state.totalStrategyTokens;
     }
@@ -499,5 +527,22 @@ abstract contract VaultHelper is BalancerVaultStorage {
         strategyTokenAmount =
             (totalStrategyTokenSupplyInMaturity * bptClaim) /
             bptHeldInMaturity;
+    }
+
+    /// @notice Converts strategy tokens to BPT
+    function _convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
+        internal view returns (uint256 bptClaim) {
+        if (vaultState.totalStrategyTokenGlobal == 0)
+            return strategyTokenAmount;
+
+        //prettier-ignore
+        (
+            uint256 bptHeldInMaturity,
+            uint256 totalStrategyTokenSupplyInMaturity
+        ) = _getBPTHeldInMaturity(maturity);
+
+        bptClaim =
+            (bptHeldInMaturity * strategyTokenAmount) /
+            totalStrategyTokenSupplyInMaturity;
     }
 }
