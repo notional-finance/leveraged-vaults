@@ -44,6 +44,30 @@ library BalancerUtils {
         return IPriceOracle(pool).getTimeWeightedAverage(queries)[0];
     }
 
+    /// @notice Normalizes balances to 1e18 (used by Balancer price oracle functions)
+    function _normalizeBalances(
+        uint256 primaryBalance,
+        uint8 primaryDecimals,
+        uint256 secondaryBalance,
+        uint8 secondaryDecimals
+    ) internal view returns (uint256 normalizedPrimary, uint256 normalizedSecondary) {
+        if (primaryDecimals != 18) {
+            uint256 decimalAdjust;
+            unchecked { 
+                decimalAdjust = 10**(18 - primaryDecimals);
+            }
+            normalizedPrimary = primaryBalance * decimalAdjust;
+        }
+
+        if (secondaryDecimals != 18) {
+            uint256 decimalAdjust;
+            unchecked { 
+                decimalAdjust = 10**(18 - secondaryDecimals);
+            }
+            normalizedSecondary = secondaryBalance * decimalAdjust;
+        }
+    }
+
     /// @notice Gets the current spot price with a given token index, this is used to check against
     /// the oracle pair price to prevent front running
     /// @param poolId id of the balancer pool
@@ -72,24 +96,15 @@ library BalancerUtils {
         // prettier-ignore
         (/* */, uint256[] memory balances, /* */) = BALANCER_VAULT.getPoolTokens(poolId);
 
-        // Normalize balances to 18 decimal places
-        if (primaryDecimals != 18) {
-            uint256 decimalAdjust;
-            unchecked { 
-                decimalAdjust = 10**(18 - primaryDecimals);
-            }
-            balances[primaryIndex] = balances[primaryIndex] * decimalAdjust;
+        uint8 secondaryIndex;
+        unchecked {
+            secondaryIndex = 1 - primaryIndex;
         }
 
-        if (secondaryDecimals != 18) {
-            uint8 secondaryIndex;
-            uint256 decimalAdjust;
-            unchecked { 
-                secondaryIndex = 1 - primaryIndex;
-                decimalAdjust = 10 ** (18 - secondaryDecimals);
-            }
-            balances[secondaryIndex] = balances[secondaryIndex] * decimalAdjust;
-        }
+        // Normalize balances to 18 decimal places
+        (balances[primaryIndex], balances[secondaryIndex]) = _normalizeBalances(
+            balances[primaryIndex], primaryDecimals, balances[secondaryIndex], secondaryDecimals
+        );
 
         // Target token balance is the balance of the token we want the spot price in 
         uint256 targetTokenBalance = balances[tokenIndex];

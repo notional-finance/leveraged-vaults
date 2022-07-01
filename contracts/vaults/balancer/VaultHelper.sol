@@ -34,6 +34,36 @@ abstract contract VaultHelper is BalancerVaultStorage {
         uint256 secondaryfCashAmount
     );
     error BalancerPoolShareTooHigh(uint256 totalBPTHeld, uint256 bptThreshold);
+    error InvalidMinAmounts(uint256 pairPrice, uint256 minPrimary, uint256 minSecondary);
+
+    function _getOraclePairPrice() internal view returns (uint256) {
+        return BalancerUtils.getOraclePairPrice({
+            pool: address(BALANCER_POOL_TOKEN),
+            primaryIndex: PRIMARY_INDEX,
+            balancerOracleWindowInSeconds: vaultSettings.oracleWindowInSeconds,
+            balancerOracleWeight: vaultSettings.balancerOracleWeight,
+            baseToken: address(_underlyingToken()),
+            quoteToken: address(SECONDARY_TOKEN),
+            tradingModule: TRADING_MODULE
+        });
+    }
+
+    /// @notice Validates the min Balancer exit amounts against the price oracle.
+    /// These values are passed in as parameters. So, we must validate them.
+    function _validateMinExitAmounts(uint256 minPrimary, uint256 minSecondary) internal view {
+        (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
+            minPrimary, PRIMARY_DECIMALS, minSecondary, SECONDARY_DECIMALS
+        );
+        uint256 pairPrice = _getOraclePairPrice();
+        uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
+            normalizedPrimary;
+
+        uint256 lowerLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_UPPER_LIMIT) / 100;
+        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
+            revert InvalidMinAmounts(pairPrice, minPrimary, minSecondary);
+        }
+    }
 
     function _borrowSecondaryCurrency(
         address account,
@@ -78,9 +108,9 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
         // Require the secondary borrow amount to be within some bounds of the optimal amount
         uint256 lowerLimit = (optimalSecondaryAmount *
-            SECONDARY_BORROW_LOWER_LIMIT) / 100;
+            Constants.SECONDARY_BORROW_LOWER_LIMIT) / 100;
         uint256 upperLimit = (optimalSecondaryAmount *
-            SECONDARY_BORROW_UPPER_LIMIT) / 100;
+            Constants.SECONDARY_BORROW_UPPER_LIMIT) / 100;
         if (
             borrowedSecondaryAmount < lowerLimit ||
             upperLimit < borrowedSecondaryAmount
@@ -326,11 +356,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
         return (settled, primaryBalancePostSettlement);
     }
 
-    function _settleVaultNormal(
-        uint256 maturity, 
-        uint256 bptToSettle, 
-        RedeemParams memory params
-    ) internal {
+    function _settleVaultNormal(uint256 maturity, uint256 bptToSettle,  RedeemParams memory params) internal {
         uint256 redeemStrategyTokenAmount = convertBPTClaimToStrategyTokens(
             bptToSettle,
             maturity
@@ -396,7 +422,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
         uint256 maturity,
         uint256 redeemStrategyTokenAmount
     ) private returns (NormalSettlementContext memory) {
-       // Get primary and secondary debt amounts from Notional
+        // Get primary and secondary debt amounts from Notional
         // prettier-ignore
         (
             /* int256 assetCashRequiredToSettle */,
@@ -427,9 +453,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
             NormalSettlementContext({
                 maxUnderlyingSurplus: vaultSettings.maxUnderlyingSurplus,
                 primarySettlementBalance: primarySettlementBalance[maturity],
-                secondarySettlementBalance: secondarySettlementBalance[
-                    maturity
-                ],
+                secondarySettlementBalance: secondarySettlementBalance[maturity],
                 redeemStrategyTokenAmount: redeemStrategyTokenAmount,
                 debtSharesToRepay: debtSharesToRepay,
                 underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
@@ -459,8 +483,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
         return VEBAL_DELEGATOR.getTokenBalance(address(LIQUIDITY_GAUGE), address(this));
     }
 
-    function _bptThreshold(uint256 totalBPTSupply) internal view returns (uint256)
-    {
+    function _bptThreshold(uint256 totalBPTSupply) internal view returns (uint256) {
         return (totalBPTSupply * vaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
     }
 

@@ -52,10 +52,12 @@ library SettlementHelper {
         // Convert coolDown to seconds
         if (lastTimestamp + coolDown * 60 > block.timestamp)
             revert InSettlementCoolDown(lastTimestamp, coolDown);
+
         params = abi.decode(data, (RedeemParams));
         SecondaryTradeParams memory callbackData = abi.decode(
             params.secondaryTradeParams, (SecondaryTradeParams)
         );
+
         if (callbackData.oracleSlippagePercent > slippageLimit) {
             revert SlippageTooHigh(callbackData.oracleSlippagePercent, slippageLimit);
         }

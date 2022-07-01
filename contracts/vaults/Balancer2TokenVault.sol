@@ -80,23 +80,12 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             .getLargestSafeQueryWindow();
         require(largestQueryWindow <= type(uint32).max); /// @dev largestQueryWindow overflow
         require(settings.oracleWindowInSeconds <= uint32(largestQueryWindow));
-        require(
-            settings.settlementCoolDownInMinutes <=
-                MAX_SETTLEMENT_COOLDOWN_IN_MINUTES
-        );
-        require(
-            settings.postMaturitySettlementCoolDownInMinutes <=
-                MAX_SETTLEMENT_COOLDOWN_IN_MINUTES
-        );
-        require(settings.balancerOracleWeight <= VAULT_PERCENTAGE_PRECISION);
-        require(settings.maxBalancerPoolShare <= VAULT_PERCENTAGE_PRECISION);
-        require(
-            settings.settlementSlippageLimitBPS <= VAULT_PERCENTAGE_PRECISION
-        );
-        require(
-            settings.postMaturitySettlementSlippageLimitBPS <=
-                VAULT_PERCENTAGE_PRECISION
-        );
+        require(settings.settlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
+        require(settings.postMaturitySettlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
+        require(settings.balancerOracleWeight <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.maxBalancerPoolShare <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.settlementSlippageLimitBPS <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.postMaturitySettlementSlippageLimitBPS <= Constants.VAULT_PERCENT_BASIS);
 
         vaultSettings.oracleWindowInSeconds = settings.oracleWindowInSeconds;
         vaultSettings.balancerOracleWeight = settings.balancerOracleWeight;
@@ -130,26 +119,18 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             maturity
         );
 
-        uint256 primaryBalance = BalancerUtils.getTimeWeightedPrimaryBalance(
-            address(BALANCER_POOL_TOKEN),
-            vaultSettings.oracleWindowInSeconds,
-            PRIMARY_INDEX,
-            PRIMARY_WEIGHT,
-            SECONDARY_WEIGHT,
-            PRIMARY_DECIMALS,
-            bptClaim
-        );
+        uint256 primaryBalance = BalancerUtils.getTimeWeightedPrimaryBalance({
+            pool: address(BALANCER_POOL_TOKEN),
+            oracleWindowInSeconds: vaultSettings.oracleWindowInSeconds,
+            primaryIndex: PRIMARY_INDEX,
+            primaryWeight: PRIMARY_WEIGHT,
+            secondaryWeight: SECONDARY_WEIGHT,
+            primaryDecimals: PRIMARY_DECIMALS,
+            bptAmount: bptClaim
+        });
 
         // Oracle price for the pair in 18 decimals
-        uint256 oraclePairPrice = BalancerUtils.getOraclePairPrice(
-            address(BALANCER_POOL_TOKEN),
-            PRIMARY_INDEX,
-            vaultSettings.oracleWindowInSeconds,
-            vaultSettings.balancerOracleWeight,
-            address(_underlyingToken()),
-            address(SECONDARY_TOKEN),
-            TRADING_MODULE
-        );
+        uint256 oraclePairPrice = _getOraclePairPrice();
 
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt();
 
@@ -300,6 +281,11 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         vaultState.totalStrategyTokenGlobal -= strategyTokens;
     }
 
+    /// @notice Settles the vault after maturity
+    /// @dev This settlement call is authenticated
+    /// @param maturity maturity timestamp
+    /// @param bptToSettle the amount of BPT to settle
+    /// @param data settlement parameters
     function settleVaultPostMaturity(
         uint256 maturity,
         uint256 bptToSettle,
@@ -316,6 +302,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             data
         );
 
+        _validateMinExitAmounts(params.minPrimary, params.minSecondary);
         _settleVaultNormal(maturity, bptToSettle, params);
     }
 
@@ -338,6 +325,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             data
         );
 
+        _validateMinExitAmounts(params.minPrimary, params.minSecondary);
         _settleVaultNormal(maturity, bptToSettle, params);
     }
 
