@@ -207,10 +207,10 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
-        // Check if this called from one of the settlement functions
+        // Check if this is called from one of the settlement functions
         // data = primaryAmountToRepay (uint256) in this case
         if (account == address(this) && data.length == 32) {
-            // Token transfers handled in the base strategy
+            // Token transfers are handled in the base strategy
             (finalPrimaryBalance) = abi.decode(data, (uint256));
             return finalPrimaryBalance;
         }
@@ -264,8 +264,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     function _validateTokensToRedeem(uint256 maturity, uint256 strategyTokensToRedeem) 
         internal view returns (SettlementState memory) {
         SettlementState memory state = settlementState[maturity];
-        uint256 totalStrategyTokens = _totalSupplyInMaturity(maturity);
-        require(totalStrategyTokens <= state.strategyTokensRedeemed + strategyTokensToRedeem);
+        uint256 totalInMaturity = _totalSupplyInMaturity(maturity);
+        require(state.strategyTokensRedeemed + strategyTokensToRedeem <= totalInMaturity);
         return state;
     }
 
