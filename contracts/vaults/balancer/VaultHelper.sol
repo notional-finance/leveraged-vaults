@@ -8,8 +8,7 @@ import {
     DepositParams,
     RedeemParams,
     SecondaryTradeParams,
-    NormalSettlementContext,
-    SettlementInfo
+    NormalSettlementContext
 } from "./BalancerVaultTypes.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";

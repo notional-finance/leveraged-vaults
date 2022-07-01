@@ -86,15 +86,6 @@ struct NormalSettlementContext {
     BoostContext boostContext;
 }
 
-struct SettlementInfo {
-    bool canSettle;
-    uint256 primaryBalance;
-    uint256 secondaryBalance; 
-    uint256 debtSharesToRepay;
-    uint256 borrowedSecondaryfCashAmount;
-    int256 underlyingCashRequiredToSettle;        
-}
-
 struct RewardTokenTradeParams {
     uint16 primaryTradeDexId;
     Trade primaryTrade;
