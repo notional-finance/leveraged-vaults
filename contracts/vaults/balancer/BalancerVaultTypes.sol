@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.7.6;
+pragma solidity 0.8.15;
 
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../../interfaces/notional/IVaultController.sol";
@@ -110,9 +110,9 @@ struct StrategyVaultSettings {
     uint32 oracleWindowInSeconds;
     uint16 maxBalancerPoolShare;
     /// @notice Slippage limit for normal settlement
-    uint16 settlementSlippageLimitBPS;
+    uint16 settlementSlippageLimitPercent;
     /// @notice Slippage limit for emergency settlement (vault owns too much of the Balancer pool)
-    uint16 postMaturitySettlementSlippageLimitBPS;
+    uint16 postMaturitySettlementSlippageLimitPercent;
     uint16 balancerOracleWeight;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;

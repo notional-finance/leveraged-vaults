@@ -2,11 +2,11 @@
 pragma solidity 0.8.15;
 
 import {PoolContext, BoostContext, OracleContext} from "./BalancerVaultTypes.sol";
-import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
-import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
-import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
+import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
+import {IBalancerVault, IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
+import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
 import {Constants} from "../../global/Constants.sol";
-import {WETH9} from "../../../../interfaces/WETH9.sol";
+import {WETH9} from "../../../interfaces/WETH9.sol";
 import {TokenUtils, IERC20} from "../../utils/TokenUtils.sol";
 
 library BalancerUtils {
@@ -24,7 +24,7 @@ library BalancerUtils {
 
     /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
     /// and Balancer uses WETH
-    function getTokenAddress(address token) internal view returns (address) {
+    function getTokenAddress(address token) internal pure returns (address) {
         return token == Constants.ETH_ADDRESS ? address(WETH) : address(token);
     }
 
@@ -151,9 +151,9 @@ library BalancerUtils {
 
             // And then normalizing to primary token precision we add:
             // PrimaryAmount = (SecondaryAmount * PrimaryWeight * primaryPrecision) /
-            //          (SecondaryWeight * PairPrice * BalancerPrecision)
+            //          (SecondaryWeight * PairPrice)
             primaryAmount = (secondaryAmount * context.primaryWeight * primaryPrecision) /
-                (context.secondaryWeight * pairPrice * BALANCER_PRECISION);
+                (context.secondaryWeight * pairPrice);
         }
     }
 
@@ -192,7 +192,10 @@ library BalancerUtils {
 
         uint256 chainlinkWeightedPrice;
         if (balancerOracleWeight < BALANCER_ORACLE_WEIGHT_PRECISION) {
-            (int256 rate, int256 decimals) = tradingModule.getOraclePrice(baseToken, quoteToken);
+            (int256 rate, int256 decimals) = tradingModule.getOraclePrice(
+                getTokenAddress(baseToken), 
+                getTokenAddress(quoteToken)
+            );
             require(rate > 0);
             require(decimals >= 0);
 
@@ -223,13 +226,14 @@ library BalancerUtils {
             context.oracleWindowInSeconds
         );
 
-        if (context.primaryIndex == 1) {
-            // If the primary index is the second token, invert the pair price
+        if (context.primaryIndex == 0) {
+            // If the primary index is the first token, invert the pair price
             pairPrice = BALANCER_PRECISION_SQUARED / pairPrice;
         }
 
         uint256 primaryPrecision = 10 ** context.primaryDecimals;
         uint256 secondaryPrecision = 10 ** context.secondaryDecimals;
+
         // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
         // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice) / PrimaryWeight
         // Also, we want to normalize to secondary token precision
@@ -248,7 +252,7 @@ library BalancerUtils {
         address secondaryAddress,
         uint256 secondaryAmount,
         uint8 primaryIndex
-    ) private view returns (IAsset[] memory assets, uint256[] memory amounts) {
+    ) private pure returns (IAsset[] memory assets, uint256[] memory amounts) {
         assets = new IAsset[](2);
         assets[primaryIndex] = IAsset(primaryAddress);
         uint8 secondaryIndex;

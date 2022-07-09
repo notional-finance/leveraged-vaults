@@ -82,17 +82,17 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         require(settings.postMaturitySettlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
         require(settings.balancerOracleWeight <= Constants.VAULT_PERCENT_BASIS);
         require(settings.maxBalancerPoolShare <= Constants.VAULT_PERCENT_BASIS);
-        require(settings.settlementSlippageLimitBPS <= Constants.VAULT_PERCENT_BASIS);
-        require(settings.postMaturitySettlementSlippageLimitBPS <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.settlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.postMaturitySettlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
 
         vaultSettings.oracleWindowInSeconds = settings.oracleWindowInSeconds;
         vaultSettings.balancerOracleWeight = settings.balancerOracleWeight;
         vaultSettings.maxBalancerPoolShare = settings.maxBalancerPoolShare;
         vaultSettings.maxUnderlyingSurplus = settings.maxUnderlyingSurplus;
-        vaultSettings.settlementSlippageLimitBPS = settings
-            .settlementSlippageLimitBPS;
-        vaultSettings.postMaturitySettlementSlippageLimitBPS = settings
-            .postMaturitySettlementSlippageLimitBPS;
+        vaultSettings.settlementSlippageLimitPercent = settings
+            .settlementSlippageLimitPercent;
+        vaultSettings.postMaturitySettlementSlippageLimitPercent = settings
+            .postMaturitySettlementSlippageLimitPercent;
         vaultSettings.settlementCoolDownInMinutes = settings
             .settlementCoolDownInMinutes;
         vaultSettings.postMaturitySettlementCoolDownInMinutes = settings
@@ -149,7 +149,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             secondaryBorrowedDenominatedInPrimary.toInt();
     }
 
-    function _revertInSettlementWindow(uint256 maturity) internal {
+    function _revertInSettlementWindow(uint256 maturity) internal view {
         if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
             revert();
         }
@@ -291,7 +291,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
             vaultState.lastPostMaturitySettlementTimestamp,
             vaultSettings.postMaturitySettlementCoolDownInMinutes,
-            vaultSettings.postMaturitySettlementSlippageLimitBPS,
+            vaultSettings.postMaturitySettlementSlippageLimitPercent,
             data
         );
 
@@ -323,7 +323,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
             vaultState.lastSettlementTimestamp,
             vaultSettings.settlementCoolDownInMinutes,
-            vaultSettings.settlementSlippageLimitBPS,
+            vaultSettings.settlementSlippageLimitPercent,
             data
         );
 
@@ -377,7 +377,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     }
 
     /// @notice Claim other liquidity gauge reward tokens (i.e. LIDO)
-    function claimRewardTokens() external
+    /*function claimRewardTokens() external
     {
         // @audit perhaps it would be more efficient to then call executeRewardTrades right after
         // this claim is done inside the same method?
@@ -388,7 +388,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         // @audit perhaps it would be more efficient to then call executeRewardTrades right after
         // this claim is done inside the same method?
         BOOST_CONTROLLER.claimGaugeTokens(LIQUIDITY_GAUGE);
-    }
+    }*/
 
     /// @notice Sell reward tokens for BPT and reinvest the proceeds
     /// @param params reward reinvestment params

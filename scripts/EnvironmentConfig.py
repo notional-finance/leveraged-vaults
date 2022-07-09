@@ -5,19 +5,17 @@ from brownie import (
     accounts, 
     network, 
     interface,
-    BalancerV2Adapter,
     TradingModule,
     nProxy,
     BalancerBoostController,
     Balancer2TokenVault,
     EmptyProxy,
-    nUpgradeableBeacon,
-    nBeaconProxy,
-    BalancerUtils,
-    TradeHandler
+    SettlementHelper,
+    RewardHelper
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
+from brownie.convert import to_bytes
 from scripts.common import deployArtifact, get_vault_config, set_flags
 from eth_utils import keccak
 
@@ -53,27 +51,26 @@ StrategyConfig = {
                 flags=set_flags(0, ENABLED=True),
                 minAccountBorrowSize=1,
                 maxBorrowMarketIndex=3,
-                secondaryBorrowCurrencies=[3,0] # USDC
+                secondaryBorrowCurrencies=[3,2] # USDC
             ),
             "secondaryBorrowCurrency": {
                 "currencyId": 3, # USDC
                 "maxCapacity": 100_000_000e8
             },
             "maxPrimaryBorrowCapacity": 100_000_000e8,
-            "name": "Strat50ETH50USDC",
+            "name": "Balancer 50ETH-50USDC Strategy",
             "primaryCurrency": 1, # ETH
             "poolId": "0x96646936b91d6b9d7d0c47c496afbf3d6ec7b6f8000200000000000000000019",
             "liquidityGauge": "0x9ab7b0c7b154f626451c9e8a68dc04f58fb6e5ce",
-            "maxUnderlyingSurplus": 0,
+            "maxUnderlyingSurplus": 10e18, # 10 ETH
             "oracleWindowInSeconds": 3600,
-            "maxBalancerPoolShare": 0,
-            "settlementSlippageLimit": 0,
-            "postMaturitySettlementSlippageLimit": 0,
-            "balancerOracleWeight": 0.6e4,
+            "maxBalancerPoolShare": 1e3, # 10%
+            "settlementSlippageLimit": 5e3, # 5%
+            "postMaturitySettlementSlippageLimit": 10e3, # 10%
+            "balancerOracleWeight": 0.6e4, # 60%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-            "settlementPercentage": 0.2e4, # 20% settlement percentage
         }
     }
 }
@@ -110,11 +107,11 @@ class Environment:
         self.balancerVault = interface.IBalancerVault(addresses["balancer"]["vault"])
 
         self.deployTradingModule()
-        # self.deployVeBalDelegator()
-        # self.deployBoostController()
+        self.deployVeBalDelegator()
+        self.deployBoostController()
 
-        # self.balancer2TokenStrats = {}
-        # self.deployBalancer2TokenVault(StrategyConfig["balancer2TokenStrats"]["Strat50ETH50USDC"])
+        self.balancer2TokenStrats = {}
+        self.deployBalancer2TokenVault("Strat50ETH50USDC")
 
     def upgradeNotional(self):
         tradingAction = deployArtifact(
@@ -213,8 +210,8 @@ class Environment:
 
     def deployBoostController(self):
         self.boostController = BalancerBoostController.deploy(
-            self.veBalDelegator.address,
             self.addresses["notional"],
+            self.veBalDelegator.address,
             {"from": self.deployer}
         )
         self.veBalDelegator.setManagerContract(
@@ -222,15 +219,15 @@ class Environment:
             {"from": self.veBalDelegator.owner()}
         )
 
-    def deployBalancer2TokenVault(self, stratConfig):
+    def deployBalancer2TokenVault(self, strat):
+        stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
         # Deploy external libs
-        BalancerUtils.deploy({"from": self.deployer})
-        self.tradeHandler = TradeHandler.deploy({"from": self.deployer})
+        SettlementHelper.deploy({"from": self.deployer})
+        RewardHelper.deploy({"from": self.deployer})
 
         secondaryCurrencyId = stratConfig["secondaryBorrowCurrency"]["currencyId"]
         impl = Balancer2TokenVault.deploy(
             self.addresses["notional"],
-            stratConfig["primaryCurrency"],
             [
                 secondaryCurrencyId,
                 stratConfig["poolId"],
@@ -241,14 +238,14 @@ class Environment:
             ],
             {"from": self.deployer}
         )
-        beacon = nUpgradeableBeacon.deploy(impl, {"from": self.deployer})
-        proxy = nBeaconProxy.deploy(beacon.address, bytes(), {"from": self.deployer})
+
+        proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, Balancer2TokenVault.abi)
 
         vaultProxy.initialize(
             [
                 stratConfig["name"],
-                stratConfig["vaultConfig"][1],
+                stratConfig["primaryCurrency"],
                 [
                     stratConfig["maxUnderlyingSurplus"],
                     stratConfig["oracleWindowInSeconds"],
@@ -263,7 +260,7 @@ class Environment:
             {"from": self.notional.owner()}
         )
 
-        self.balancer2TokenStrats[stratConfig["name"]] = vaultProxy
+        self.balancer2TokenStrats[strat] = vaultProxy
 
         self.notional.updateVault(
             proxy.address,
@@ -280,6 +277,11 @@ class Environment:
                 {"from": self.notional.owner()}
             )
 
+        self.boostController.setWhitelistForToken(
+            stratConfig["liquidityGauge"], 
+            vaultProxy.address,
+            {"from": self.notional.owner() }
+        )
 
 def getEnvironment(network = "mainnet"):
     return Environment(network)
@@ -293,21 +295,21 @@ def main():
 
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    #env.notional.enterVault(
-    #    env.whales["ETH"],
-    #    vault.address,
-    #    10e18,
-    #    maturity,
-    #    True,
-    #    5e8,
-    #    0,
-    #    eth_abi.encode_abi(
-    #        ['(uint256,uint256,uint32)'],
-    #        [[
-    #            0,
-    #            Wei(16768e8),
-    #            0
-    #        ]]
-    #    ),
-    #    {"from": env.whales["ETH"], "value": 10e18},
-    #)
+    env.notional.enterVault(
+        env.whales["ETH"],
+        vault.address,
+        10e18,
+        maturity,
+        5e8,
+        0,
+        eth_abi.encode_abi(
+            ['(uint256,uint256,uint32,uint32)'],
+            [[
+                0,
+                Wei(16970e8),
+                0,
+                0
+            ]]
+        ),
+        {"from": env.whales["ETH"], "value": 10e18}
+    )

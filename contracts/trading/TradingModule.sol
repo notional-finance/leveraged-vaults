@@ -13,7 +13,7 @@ import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
 import {TradeHandler} from "./TradeHandler.sol";
 
 import {IERC20} from "../utils/TokenUtils.sol";
-import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";

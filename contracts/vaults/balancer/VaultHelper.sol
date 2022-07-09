@@ -71,6 +71,11 @@ abstract contract VaultHelper is BalancerVaultStorage {
         }
     }
 
+    function getOptimalSecondaryBorrowAmount(uint256 primaryAmount) external view returns (uint256) {
+        return BalancerUtils
+            .getOptimalSecondaryBorrowAmount(_oracleContext(), primaryAmount);   
+    }
+
     function _borrowSecondaryCurrency(
         address account,
         uint256 maturity,
@@ -503,6 +508,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
         uint256 bptHeldInMaturity,
         uint256 totalStrategyTokenSupplyInMaturity
     ) {
+        if (vaultState.totalStrategyTokenGlobal == 0) return (0, 0);
         uint256 totalBPTHeld = _bptHeld();
         totalStrategyTokenSupplyInMaturity = _totalSupplyInMaturity(maturity);
         bptHeldInMaturity =

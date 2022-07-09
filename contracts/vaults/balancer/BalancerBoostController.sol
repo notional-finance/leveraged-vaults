@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
@@ -9,7 +9,6 @@ import {IVaultController, VaultConfig} from "../../../interfaces/notional/IVault
 
 contract BalancerBoostController is IBoostController {
     IVeBalDelegator public immutable VEBAL_DELEGATOR;
-    IVaultController public immutable VAULT_CONTROLLER;
     NotionalProxy public immutable NOTIONAL;
 
     /// @notice Emitted when a vault is whitelisted for a particular balancer liquidity token
@@ -22,11 +21,9 @@ contract BalancerBoostController is IBoostController {
 
     constructor(
         NotionalProxy notional_,
-        IVeBalDelegator vebalDelegator_,
-        IVaultController vaultController_
+        IVeBalDelegator vebalDelegator_
     ) {
         VEBAL_DELEGATOR = vebalDelegator_;
-        VAULT_CONTROLLER = vaultController_;
         NOTIONAL = notional_;
     }
 
