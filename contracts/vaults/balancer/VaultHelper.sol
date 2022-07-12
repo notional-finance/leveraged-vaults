@@ -185,10 +185,12 @@ abstract contract VaultHelper is BalancerVaultStorage {
         require(SECONDARY_BORROW_CURRENCY_ID != 0); /// @dev invalid secondary currency
 
         (
-            SecondaryTradeParams memory params,
+            bytes memory tradeParams,
             // secondaryBalance = secondary token amount from BPT redemption
             uint256 secondaryBalance
-        ) = abi.decode(data, (SecondaryTradeParams, uint256));
+        ) = abi.decode(data, (bytes, uint256));
+
+        SecondaryTradeParams memory params = abi.decode(tradeParams, (SecondaryTradeParams));
 
         address primaryToken = address(_underlyingToken());
         int256 primaryBalanceBefore = TokenUtils.tokenBalance(primaryToken).toInt();

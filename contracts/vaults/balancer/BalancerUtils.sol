@@ -193,8 +193,7 @@ library BalancerUtils {
         uint256 chainlinkWeightedPrice;
         if (balancerOracleWeight < BALANCER_ORACLE_WEIGHT_PRECISION) {
             (int256 rate, int256 decimals) = tradingModule.getOraclePrice(
-                getTokenAddress(baseToken), 
-                getTokenAddress(quoteToken)
+                baseToken, quoteToken
             );
             require(rate > 0);
             require(decimals >= 0);

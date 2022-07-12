@@ -127,24 +127,36 @@ library TradeHandler {
         Trade memory trade
     ) private {
         uint256 preTradeETHBalance = address(this).balance;
+        uint256 preTradeWETHBalance = IERC20(address(WETH)).balanceOf(address(this));
 
-        // Curve doesn't support WETH (spender == address(0))
         if (trade.sellToken == address(WETH) && spender == Constants.ETH_ADDRESS) {
+            // Curve doesn't support WETH (spender == address(0))
             uint256 withdrawAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             WETH.withdraw(withdrawAmount);
+        } else if (trade.sellToken == Constants.ETH_ADDRESS && spender != Constants.ETH_ADDRESS) {
+            // UniswapV3 doesn't support ETH (spender != address(0))
+            uint256 depositAmount = _isExactIn(trade) ? trade.amount : trade.limit;
+            WETH.deposit{value: depositAmount }();
         }
 
         (bool success, bytes memory returnData) = target.call{value: msgValue}(params);
         if (!success) revert TradeExecution(returnData);
 
         uint256 postTradeETHBalance = address(this).balance;
+        uint256 postTradeWETHBalance = IERC20(address(WETH)).balanceOf(address(this));
 
-        // If the caller specifies that they want to receive WETH but we have received ETH,
-        // wrap the ETH to WETH.
         if (trade.buyToken == address(WETH) && postTradeETHBalance > preTradeETHBalance) {
+            // If the caller specifies that they want to receive WETH but we have received ETH,
+            // wrap the ETH to WETH.
             uint256 depositAmount;
             unchecked { depositAmount = postTradeETHBalance - preTradeETHBalance; }
             WETH.deposit{value: depositAmount}();
+        } else if (trade.buyToken == Constants.ETH_ADDRESS && postTradeWETHBalance > preTradeWETHBalance) {
+            // If the caller specifies that they want to receive ETH but we have received WETH,
+            // unwrap the WETH to ETH.
+            uint256 withdrawAmount;
+            unchecked { withdrawAmount = postTradeWETHBalance - preTradeWETHBalance; }
+            WETH.withdraw(withdrawAmount);
         }
     }
 

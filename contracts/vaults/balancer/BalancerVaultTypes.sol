@@ -44,7 +44,7 @@ struct RedeemParams {
 
 struct SecondaryTradeParams {
     uint16 dexId;
-    uint32 oracleSlippagePercent;
+    uint16 oracleSlippagePercent;
     bytes exchangeData;
 }
 
