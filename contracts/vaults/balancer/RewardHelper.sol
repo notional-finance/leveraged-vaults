@@ -5,7 +5,8 @@ import {
     VeBalDelegatorInfo,
     RewardTokenTradeParams,
     ReinvestRewardParams,
-    PoolContext
+    PoolContext,
+    BoostContext
 } from "./BalancerVaultTypes.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
@@ -102,6 +103,18 @@ library RewardHelper {
         secondaryAmount =
             TokenUtils.tokenBalance(secondaryToken) -
             secondaryAmountBefore;
+    }
+
+    function claimRewardTokens(BoostContext memory context) external {
+        // @audit perhaps it would be more efficient to then call executeRewardTrades right after
+        // this claim is done inside the same method?
+        // @audit part of this BAL that is claimed needs to be donated to the Notional protocol,
+        // we should set an percentage and then transfer to the TreasuryManager contract.
+        context.boostController.claimBAL(context.liquidityGauge);
+
+        // @audit perhaps it would be more efficient to then call executeRewardTrades right after
+        // this claim is done inside the same method?
+        context.boostController.claimGaugeTokens(context.liquidityGauge);
     }
 
     function reinvestReward(

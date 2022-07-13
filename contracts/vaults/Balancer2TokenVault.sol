@@ -236,9 +236,10 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
                     account, maturity, strategyTokens
                 );
 
-                finalPrimaryBalance = repaySecondaryBorrow(
+                finalPrimaryBalance = SettlementHelper._repaySecondaryBorrow(
                     account,
                     maturity,
+                    SECONDARY_BORROW_CURRENCY_ID,
                     debtSharesToRepay,
                     params,
                     secondaryBalance,
@@ -377,18 +378,9 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     }
 
     /// @notice Claim other liquidity gauge reward tokens (i.e. LIDO)
-    /*function claimRewardTokens() external
-    {
-        // @audit perhaps it would be more efficient to then call executeRewardTrades right after
-        // this claim is done inside the same method?
-        // @audit part of this BAL that is claimed needs to be donated to the Notional protocol,
-        // we should set an percentage and then transfer to the TreasuryManager contract.
-        BOOST_CONTROLLER.claimBAL(LIQUIDITY_GAUGE);
-
-        // @audit perhaps it would be more efficient to then call executeRewardTrades right after
-        // this claim is done inside the same method?
-        BOOST_CONTROLLER.claimGaugeTokens(LIQUIDITY_GAUGE);
-    }*/
+    function claimRewardTokens() external {
+        RewardHelper.claimRewardTokens(_boostContext());
+    }
 
     /// @notice Sell reward tokens for BPT and reinvest the proceeds
     /// @param params reward reinvestment params

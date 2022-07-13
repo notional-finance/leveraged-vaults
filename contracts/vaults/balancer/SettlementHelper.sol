@@ -64,13 +64,83 @@ library SettlementHelper {
         }
     }
 
+    function _repaySecondaryBorrow(
+        address account,
+        uint256 maturity,
+        uint16 secondaryBorrowCurrencyId,
+        uint256 debtSharesToRepay,
+        RedeemParams memory params,
+        uint256 secondaryBalance,
+        uint256 primaryBalance
+    ) internal returns (uint256 finalPrimaryBalance) {
+        bytes memory returnData = Constants.NOTIONAL.repaySecondaryCurrencyFromVault(
+            account,
+            secondaryBorrowCurrencyId,
+            maturity,
+            debtSharesToRepay,
+            params.minSecondaryLendRate,
+            abi.encode(params.secondaryTradeParams, secondaryBalance)
+        );
+
+        // positive = primaryAmount increased (residual secondary => primary)
+        // negative = primaryAmount decreased (primary => secondary shortfall)
+        int256 netPrimaryBalance = abi.decode(returnData, (int256));
+
+        // If primaryBalance + netPrimaryBalance < 0 it means that the repayment somehow over
+        // sold the amount of primaryBalance that the user has redeemed, in that case we must
+        // revert.
+        finalPrimaryBalance = (primaryBalance.toInt() + netPrimaryBalance).toUint();
+    }
+
+    function _repayPrimaryDebt(
+        NormalSettlementContext memory context,
+        uint256 maturity,
+        uint256 strategyTokensToRedeem,
+        int256 primaryBalance
+    ) private returns (bool settled, uint256 primaryBalancePostSettlement) {
+        // Check if we have enough to pay the primary debt off
+        if (primaryBalance < context.underlyingCashRequiredToSettle) {
+            // Not enough to repay, let the balance acumulate in this contract
+            // settled = false
+            primaryBalancePostSettlement = primaryBalance.toUint();
+        } else {
+            if (primaryBalance > 0) {
+                // Calculate the amount of surplus cash after primary repayment
+                // If underlyingCashRequiredToSettle < 0, that means there is excess
+                // cash in the system. We add it to the surplus with the subtraction.
+                int256 surplus = primaryBalance - context.underlyingCashRequiredToSettle;
+    
+                // Make sure we are not settling too much because we want
+                // to preserve as much BPT as possible
+                if (surplus > context.maxUnderlyingSurplus.toInt()) {
+                    revert SettlementHelper.RedeemingTooMuch(
+                        primaryBalance,
+                        context.underlyingCashRequiredToSettle
+                    );
+                }
+
+                // Call redeemStrategyTokensToCash with a special payload
+                // to handle primary repayment
+                Constants.NOTIONAL.redeemStrategyTokensToCash(
+                    maturity, 
+                    strategyTokensToRedeem,
+                    abi.encode(primaryBalance.toUint())
+                );
+            }
+
+            // primaryBalancePostSettlement = 0
+            settled = true;
+        }
+    }
+
     /// @notice Redeems BPTs from the pool and checks if there is sufficient balance to settle on
     /// either one of the primary or secondary balances
-    function _settleVaultNormal (
+    function settleVaultNormal (
         NormalSettlementContext memory context,
         uint256 bptToSettle,
+        uint256 maturity,
         RedeemParams memory params
-    ) internal returns (bool canSettle, uint256 primaryBalance, uint256 secondaryBalance) {
+    ) external returns (bool completedSettlement, uint256 primaryBalance, uint256 secondaryBalance) {
         // Redeem BPT (doing this in another function to avoid stack issues)
 
         /// @notice minPrimary and minSecondary are validated before this function is called
@@ -86,8 +156,33 @@ library SettlementHelper {
         secondaryBalance += context.secondarySettlementBalance;
 
         // We can settle if we have enough to pay off either the primary side or the secondary size
-        canSettle = (context.underlyingCashRequiredToSettle <= primaryBalance.toInt() ||
+        bool hasSufficientBalanceToSettle = (context.underlyingCashRequiredToSettle <= primaryBalance.toInt() ||
             context.borrowedSecondaryfCashAmountExternal <= secondaryBalance);
+
+        if (hasSufficientBalanceToSettle) {
+            // Settle secondary currency first
+            if (context.borrowedSecondaryfCashAmountExternal > 0) {
+                // This method call will trade any primary balance into secondary to repay or it will
+                // trade any excess secondary back into the primary currency
+                primaryBalance = _repaySecondaryBorrow(
+                    address(this),
+                    maturity,
+                    context.secondaryBorrowCurrencyId,
+                    context.debtSharesToRepay,
+                    params,
+                    secondaryBalance,
+                    primaryBalance
+                );
+
+                // Secondary balance should be 0 after repayment
+                // Any residual balance should've been sold for primary currency
+                secondaryBalance = 0;
+            }
+
+            // Settle primary currency with updated primaryBalance (from secondary currency trading)
+            (completedSettlement, primaryBalance) = _repayPrimaryDebt(
+                context, maturity, context.redeemStrategyTokenAmount, primaryBalance.toInt());
+        }
     }
 
     /// @notice Calculates the amount of BPT available for emergency settlement

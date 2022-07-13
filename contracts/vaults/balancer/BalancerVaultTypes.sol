@@ -74,6 +74,7 @@ struct PoolContext {
 }
 
 struct NormalSettlementContext {
+    uint16 secondaryBorrowCurrencyId;
     uint256 maxUnderlyingSurplus;
     uint256 primarySettlementBalance;
     uint256 secondarySettlementBalance;
