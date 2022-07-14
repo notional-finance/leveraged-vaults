@@ -51,7 +51,9 @@ library BalancerUtils {
         uint256 secondaryBalance,
         uint8 secondaryDecimals
     ) internal pure returns (uint256 normalizedPrimary, uint256 normalizedSecondary) {
-        if (primaryDecimals != 18) {
+        if (primaryDecimals == 18) {
+            normalizedPrimary = primaryBalance;
+        } else {
             uint256 decimalAdjust;
             unchecked { 
                 decimalAdjust = 10**(18 - primaryDecimals);
@@ -59,7 +61,9 @@ library BalancerUtils {
             normalizedPrimary = primaryBalance * decimalAdjust;
         }
 
-        if (secondaryDecimals != 18) {
+        if (secondaryDecimals == 18) {
+            normalizedSecondary = secondaryBalance;
+        } else {
             uint256 decimalAdjust;
             unchecked { 
                 decimalAdjust = 10**(18 - secondaryDecimals);
