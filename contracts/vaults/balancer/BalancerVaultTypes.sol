@@ -11,7 +11,7 @@ import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol"
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
-import {ITradingModule, Trade} from "../../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 
 struct DeploymentParams {
     uint16 secondaryBorrowCurrencyId;
@@ -44,6 +44,7 @@ struct RedeemParams {
 
 struct SecondaryTradeParams {
     uint16 dexId;
+    TradeType tradeType;
     uint16 oracleSlippagePercent;
     bytes exchangeData;
 }

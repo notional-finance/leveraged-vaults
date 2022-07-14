@@ -113,7 +113,7 @@ library SettlementHelper {
                 // Make sure we are not settling too much because we want
                 // to preserve as much BPT as possible
                 if (surplus > context.maxUnderlyingSurplus.toInt()) {
-                    revert SettlementHelper.RedeemingTooMuch(
+                    revert RedeemingTooMuch(
                         primaryBalance,
                         context.underlyingCashRequiredToSettle
                     );

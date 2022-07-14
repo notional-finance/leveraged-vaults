@@ -335,9 +335,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     /// @notice In the case where the total BPT held by the vault is greater than some threshold
     /// of the total vault supply, we may need to redeem strategy tokens to cash to ensure that
     /// the vault will not run into liquidity issues during settlement.
-    function settleVaultEmergency(uint256 maturity, bytes calldata data)
-        external
-    {
+    function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
 

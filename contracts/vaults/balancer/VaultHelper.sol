@@ -182,8 +182,12 @@ abstract contract VaultHelper is BalancerVaultStorage {
                 secondaryShortfall = underlyingRequired - secondaryBalance;
             }
 
+            require(
+                params.tradeType == TradeType.EXACT_OUT_SINGLE || params.tradeType == TradeType.EXACT_OUT_BATCH
+            );
+
             Trade memory trade = Trade(
-                TradeType.EXACT_OUT_SINGLE,
+                params.tradeType,
                 primaryToken,
                 address(SECONDARY_TOKEN),
                 secondaryShortfall,
@@ -227,9 +231,13 @@ abstract contract VaultHelper is BalancerVaultStorage {
         address primaryToken,
         uint256 secondaryBalance
     ) internal returns (uint256 primaryPurchased) {
+        require(
+            params.tradeType == TradeType.EXACT_IN_SINGLE || params.tradeType == TradeType.EXACT_IN_BATCH
+        );
+
         // Sell residual secondary balance
         Trade memory trade = Trade(
-            TradeType.EXACT_IN_SINGLE,
+            params.tradeType,
             address(SECONDARY_TOKEN),
             primaryToken,
             secondaryBalance,
@@ -260,9 +268,12 @@ abstract contract VaultHelper is BalancerVaultStorage {
         (uint256 totalfCashBorrowed, uint256 totalAccountDebtShares) = NOTIONAL.getSecondaryBorrow(
             address(this), SECONDARY_BORROW_CURRENCY_ID, maturity
         );
-        uint256 _totalSupply = _totalSupplyInMaturity(maturity);
 
         if (account == address(this)) {
+            uint256 _totalSupply = _totalSupplyInMaturity(maturity);
+
+            if (_totalSupply == 0) return (0, 0);
+
             // If the vault is repaying the debt, then look across the total secondary
             // fCash borrowed
             debtSharesToRepay =
@@ -277,9 +288,9 @@ abstract contract VaultHelper is BalancerVaultStorage {
                 uint256 accountStrategyTokens
             ) = NOTIONAL.getVaultAccountDebtShares(account, address(this));
 
-            debtSharesToRepay =
+            debtSharesToRepay = accountStrategyTokens == 0 ? 0 :
                 (accountDebtShares[0] * strategyTokenAmount) / accountStrategyTokens;
-            borrowedSecondaryfCashAmount =
+            borrowedSecondaryfCashAmount = totalAccountDebtShares == 0 ? 0 :
                 (debtSharesToRepay * totalfCashBorrowed) / totalAccountDebtShares;
         }
     }
