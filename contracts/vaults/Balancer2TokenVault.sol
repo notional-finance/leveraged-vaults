@@ -222,6 +222,10 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             _revertInSettlementWindow(maturity);
 
             RedeemParams memory params = abi.decode(data, (RedeemParams));
+            // These min primary and min secondary amounts must be within some configured
+            // delta of the current oracle price
+            _validateMinExitAmounts(params.minPrimary, params.minSecondary);
+
             uint256 bptClaim = _convertStrategyTokensToBPTClaim(strategyTokens, maturity);
 
             if (bptClaim == 0) return 0;
@@ -391,7 +395,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
                 address(BAL_TOKEN)
             ),
             TRADING_MODULE,
-            _poolContext()
+            _poolContext(),
+            _oracleContext()
         );
     }
 

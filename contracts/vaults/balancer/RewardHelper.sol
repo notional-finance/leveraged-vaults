@@ -6,8 +6,11 @@ import {
     RewardTokenTradeParams,
     ReinvestRewardParams,
     PoolContext,
-    BoostContext
+    BoostContext,
+    OracleContext
 } from "./BalancerVaultTypes.sol";
+import {Constants} from "../../global/Constants.sol";
+import {SafeInt256} from "../../global/SafeInt256.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../trading/TradeHandler.sol";
@@ -17,8 +20,11 @@ import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol"
 
 library RewardHelper {
     using TradeHandler for Trade;
+    using SafeInt256 for uint256;
+    using SafeInt256 for int256;
 
     error InvalidRewardToken(address token);
+    error InvalidMaxAmounts(uint256 pairPrice, uint256 maxPrimary, uint256 maxSecondary);
 
     function _isValidRewardToken(
         VeBalDelegatorInfo memory info,
@@ -39,6 +45,7 @@ library RewardHelper {
 
     function _validateTrades(
         VeBalDelegatorInfo memory info,
+        ITradingModule tradingModule,
         Trade memory primaryTrade,
         Trade memory secondaryTrade,
         address primaryToken,
@@ -66,8 +73,8 @@ library RewardHelper {
             revert InvalidRewardToken(secondaryTrade.buyToken);
         }
 
-        // TODO: validate prices
-        // TODO: make sure spot is close to pairPrice
+        primaryTrade._validateSlippage(tradingModule, Constants.REWARD_TRADE_SLIPPAGE_PERCENT);
+        secondaryTrade._validateSlippage(tradingModule, Constants.REWARD_TRADE_SLIPPAGE_PERCENT);
     }
 
     function _executeRewardTrades(
@@ -84,6 +91,7 @@ library RewardHelper {
 
         _validateTrades(
             info,
+            tradingModule,
             params.primaryTrade,
             params.secondaryTrade,
             primaryToken,
@@ -117,22 +125,53 @@ library RewardHelper {
         context.boostController.claimGaugeTokens(context.liquidityGauge);
     }
 
+    function _validateJoinAmounts(
+        PoolContext memory poolContext,
+        OracleContext memory oracleContext, 
+        ITradingModule tradingModule,
+        uint256 primaryAmount, 
+        uint256 secondaryAmount
+    ) private view {
+        (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
+            primaryAmount, oracleContext.primaryDecimals, secondaryAmount, oracleContext.secondaryDecimals
+        );
+        (
+            int256 answer, int256 decimals
+        ) = tradingModule.getOraclePrice(poolContext.primaryToken, poolContext.secondaryToken);
+
+        require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
+
+        uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
+            normalizedPrimary;
+
+        uint256 pairPrice = answer.toUint();
+        uint256 lowerLimit = (pairPrice * Constants.MAX_JOIN_AMOUNTS_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (pairPrice * Constants.MAX_JOIN_AMOUNTS_UPPER_LIMIT) / 100;
+        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
+            revert InvalidMaxAmounts(pairPrice, primaryAmount, secondaryAmount);
+        }
+    }
+
     function reinvestReward(
         ReinvestRewardParams memory params,
         VeBalDelegatorInfo memory info,
         ITradingModule tradingModule,
-        PoolContext memory context
+        PoolContext memory poolContext,
+        OracleContext memory oracleContext
     ) external {
         (uint256 primaryAmount, uint256 secondaryAmount) = _executeRewardTrades(
             info,
             tradingModule,
-            context.primaryToken,
-            context.secondaryToken,
+            poolContext.primaryToken,
+            poolContext.secondaryToken,
             params.tradeData
         );
 
+        // Make sure we are joining with the right proportion to minimize slippage
+        _validateJoinAmounts(poolContext, oracleContext, tradingModule, primaryAmount, secondaryAmount);
+
         BalancerUtils.joinPoolExactTokensIn(
-            context,
+            poolContext,
             primaryAmount,
             secondaryAmount,
             params.minBPT

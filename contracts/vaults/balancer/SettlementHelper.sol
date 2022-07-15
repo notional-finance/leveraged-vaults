@@ -245,10 +245,7 @@ library SettlementHelper {
         }
 
         // prettier-ignore
-        (
-            int256 assetCashPostRedemption,
-            /* int256 underlyingCashPostRedemption */
-        ) = Constants.NOTIONAL.redeemStrategyTokensToCash(maturity, redeemStrategyTokenAmount, data);
+        Constants.NOTIONAL.redeemStrategyTokensToCash(maturity, redeemStrategyTokenAmount, data);
 
         emit EmergencyVaultSettlement(
             maturity,

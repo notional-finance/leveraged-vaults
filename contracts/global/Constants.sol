@@ -134,4 +134,10 @@ library Constants {
     uint256 internal constant MIN_EXIT_AMOUNTS_UPPER_LIMIT = 105;
     /// @notice Upper limit used to validate Balancer min exit amounts
     uint256 internal constant MIN_EXIT_AMOUNTS_LOWER_LIMIT = 95;
+    /// @notice Lower limit used to validate Balancer max join amounts
+    uint256 internal constant MAX_JOIN_AMOUNTS_UPPER_LIMIT = 105;
+    /// @notice Upper limit used to validate Balancer max join amounts
+    uint256 internal constant MAX_JOIN_AMOUNTS_LOWER_LIMIT = 95;
+    /// @notice Slippage limit for reward trades (5e2 = 5%)
+    uint32 internal constant REWARD_TRADE_SLIPPAGE_PERCENT = 5e2;
 }

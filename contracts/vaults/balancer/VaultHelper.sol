@@ -343,7 +343,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
         SettlementState memory state,
         uint256 maturity,
         uint256 redeemStrategyTokenAmount
-    ) private returns (NormalSettlementContext memory) {
+    ) private view returns (NormalSettlementContext memory) {
         // Get primary and secondary debt amounts from Notional
         // prettier-ignore
         (
