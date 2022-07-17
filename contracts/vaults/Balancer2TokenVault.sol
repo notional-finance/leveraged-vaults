@@ -18,8 +18,7 @@ import {
     DeploymentParams, 
     InitParams, 
     StrategyVaultSettings, 
-    StrategyVaultState, 
-    VeBalDelegatorInfo,
+    StrategyVaultState,
     ReinvestRewardParams,
     DepositParams,
     RedeemParams,
@@ -64,19 +63,12 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        _setVaultSettings(params.settings);
+        _setStrategyVaultSettings(params.settings);
 
-        BalancerUtils.approveBalancerTokens(
-            address(BalancerUtils.BALANCER_VAULT),
-            _underlyingToken(),
-            SECONDARY_TOKEN,
-            IERC20(address(BALANCER_POOL_TOKEN)),
-            IERC20(address(LIQUIDITY_GAUGE)),
-            address(VEBAL_DELEGATOR)
-        );
+        BalancerUtils.approveBalancerTokens(_poolContext());
     }
 
-    function _setVaultSettings(StrategyVaultSettings memory settings) private {
+    function _setStrategyVaultSettings(StrategyVaultSettings memory settings) private {
         require(settings.oracleWindowInSeconds <= uint32(MAX_ORACLE_QUERY_WINDOW));
         require(settings.settlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
         require(settings.postMaturitySettlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
@@ -85,17 +77,17 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         require(settings.settlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
         require(settings.postMaturitySettlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
 
-        vaultSettings.oracleWindowInSeconds = settings.oracleWindowInSeconds;
-        vaultSettings.balancerOracleWeight = settings.balancerOracleWeight;
-        vaultSettings.maxBalancerPoolShare = settings.maxBalancerPoolShare;
-        vaultSettings.maxUnderlyingSurplus = settings.maxUnderlyingSurplus;
-        vaultSettings.settlementSlippageLimitPercent = settings
+        strategyVaultSettings.oracleWindowInSeconds = settings.oracleWindowInSeconds;
+        strategyVaultSettings.balancerOracleWeight = settings.balancerOracleWeight;
+        strategyVaultSettings.maxBalancerPoolShare = settings.maxBalancerPoolShare;
+        strategyVaultSettings.maxUnderlyingSurplus = settings.maxUnderlyingSurplus;
+        strategyVaultSettings.settlementSlippageLimitPercent = settings
             .settlementSlippageLimitPercent;
-        vaultSettings.postMaturitySettlementSlippageLimitPercent = settings
+        strategyVaultSettings.postMaturitySettlementSlippageLimitPercent = settings
             .postMaturitySettlementSlippageLimitPercent;
-        vaultSettings.settlementCoolDownInMinutes = settings
+        strategyVaultSettings.settlementCoolDownInMinutes = settings
             .settlementCoolDownInMinutes;
-        vaultSettings.postMaturitySettlementCoolDownInMinutes = settings
+        strategyVaultSettings.postMaturitySettlementCoolDownInMinutes = settings
             .postMaturitySettlementCoolDownInMinutes;
 
         emit StrategyVaultSettingsUpdated(settings);
@@ -188,7 +180,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         );
 
         // Calculate strategy token share for this account
-        if (vaultState.totalStrategyTokenGlobal == 0) {
+        if (strategyVaultState.totalStrategyTokenGlobal == 0) {
             // Strategy tokens are in 8 decimal precision, BPT is in 18. Scale the minted amount down.
             strategyTokensMinted =
                 (bptMinted * uint256(Constants.INTERNAL_TOKEN_PRECISION)) /
@@ -203,7 +195,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         }
 
         // Update global supply count
-        vaultState.totalStrategyTokenGlobal += strategyTokensMinted;
+        strategyVaultState.totalStrategyTokenGlobal += strategyTokensMinted;
     }
 
     function _redeemFromNotional(
@@ -231,7 +223,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             if (bptClaim == 0) return 0;
             // Underlying token balances from exiting the pool
             (uint256 primaryBalance, uint256 secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
-                _poolContext(), _boostContext(), bptClaim, params.minPrimary, params.minSecondary
+                _poolContext(), bptClaim, params.minPrimary, params.minSecondary
             );
 
             if (SECONDARY_BORROW_CURRENCY_ID != 0) {
@@ -263,7 +255,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         }
 
         // Update global strategy token balance
-        vaultState.totalStrategyTokenGlobal -= strategyTokens;
+        strategyVaultState.totalStrategyTokenGlobal -= strategyTokens;
     }
 
     /// @notice Validates the number of strategy tokens to redeem against
@@ -294,14 +286,14 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         }
         SettlementState memory state = _validateTokensToRedeem(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
-            vaultState.lastPostMaturitySettlementTimestamp,
-            vaultSettings.postMaturitySettlementCoolDownInMinutes,
-            vaultSettings.postMaturitySettlementSlippageLimitPercent,
+            strategyVaultState.lastPostMaturitySettlementTimestamp,
+            strategyVaultSettings.postMaturitySettlementCoolDownInMinutes,
+            strategyVaultSettings.postMaturitySettlementSlippageLimitPercent,
             data
         );
 
         _executeNormalSettlement(state, maturity, strategyTokensToRedeem, params);
-        vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);
+        strategyVaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);
     }
 
     /// @notice Once the settlement window begins, the vault may begin to be settled by anyone
@@ -326,14 +318,14 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         }
         SettlementState memory state = _validateTokensToRedeem(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
-            vaultState.lastSettlementTimestamp,
-            vaultSettings.settlementCoolDownInMinutes,
-            vaultSettings.settlementSlippageLimitPercent,
+            strategyVaultState.lastSettlementTimestamp,
+            strategyVaultSettings.settlementCoolDownInMinutes,
+            strategyVaultSettings.settlementSlippageLimitPercent,
             data
         );
 
         _executeNormalSettlement(state, maturity, strategyTokensToRedeem, params);
-        vaultState.lastSettlementTimestamp = uint32(block.timestamp);
+        strategyVaultState.lastSettlementTimestamp = uint32(block.timestamp);
     }
 
     /// @notice In the case where the total BPT held by the vault is greater than some threshold
@@ -356,7 +348,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
         uint256 bptToSettle = SettlementHelper._getEmergencySettlementBPTAmount({
             bptTotalSupply: totalBPTSupply,
-            maxBalancerPoolShare: vaultSettings.maxBalancerPoolShare,
+            maxBalancerPoolShare: strategyVaultSettings.maxBalancerPoolShare,
             totalBPTHeld: totalBPTHeld,
             bptHeldInMaturity: bptHeldInMaturity
         });
@@ -373,7 +365,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             maturity: maturity,
             bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: vaultSettings.maxUnderlyingSurplus,
+            maxUnderlyingSurplus: strategyVaultSettings.maxUnderlyingSurplus,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             data: data
         });
@@ -381,7 +373,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
     /// @notice Claim other liquidity gauge reward tokens (i.e. LIDO)
     function claimRewardTokens() external {
-        RewardHelper.claimRewardTokens(_boostContext());
+        RewardHelper.claimRewardTokens(_poolContext());
     }
 
     /// @notice Sell reward tokens for BPT and reinvest the proceeds
@@ -389,11 +381,6 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     function reinvestReward(ReinvestRewardParams calldata params) external {
         RewardHelper.reinvestReward(
             params,
-            VeBalDelegatorInfo(
-                LIQUIDITY_GAUGE,
-                VEBAL_DELEGATOR,
-                address(BAL_TOKEN)
-            ),
             TRADING_MODULE,
             _poolContext(),
             _oracleContext()
@@ -404,11 +391,11 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
     /// @notice Updates the vault settings
     /// @param settings vault settings
-    function setVaultSettings(StrategyVaultSettings calldata settings)
+    function setStrategyVaultSettings(StrategyVaultSettings calldata settings)
         external
         onlyNotionalOwner
     {
-        _setVaultSettings(settings);
+        _setStrategyVaultSettings(settings);
     }
 
     /** Public view functions */
@@ -423,13 +410,12 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         return _convertStrategyTokensToBPTClaim(strategyTokenAmount, maturity);
     }
 
-    // @audit this name clashes with the vault state name in the main Notional contract
-    function getVaultState() external view returns (StrategyVaultState memory) {
-        return vaultState;
+    function getStrategyVaultState() external view returns (StrategyVaultState memory) {
+        return strategyVaultState;
     }
 
-    function getVaultSettings() external view returns (StrategyVaultSettings memory) {
-        return vaultSettings;
+    function getStrategyVaultSettings() external view returns (StrategyVaultSettings memory) {
+        return strategyVaultSettings;
     }
 
     function _authorizeUpgrade(

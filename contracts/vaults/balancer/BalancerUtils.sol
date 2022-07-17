@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import {PoolContext, BoostContext, OracleContext} from "./BalancerVaultTypes.sol";
+import {PoolContext, OracleContext} from "./BalancerVaultTypes.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {IBalancerVault, IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
@@ -273,7 +273,7 @@ library BalancerUtils {
         uint256 maxPrimaryAmount,
         uint256 maxSecondaryAmount,
         uint256 minBPT
-    ) internal {
+    ) internal returns (uint256 bptAmount) {
         // prettier-ignore
         (
             IAsset[] memory assets,
@@ -290,6 +290,7 @@ library BalancerUtils {
         if (assets[context.primaryIndex] == IAsset(Constants.ETH_ADDRESS)) msgValue = maxAmountsIn[context.primaryIndex];
 
         // Join pool
+        bptAmount = IERC20(address(context.pool)).balanceOf(address(this));
         BALANCER_VAULT.joinPool{value: msgValue}(
             context.poolId,
             address(this),
@@ -305,6 +306,7 @@ library BalancerUtils {
                 false // Don't use internal balances
             )
         );
+        bptAmount = IERC20(address(context.pool)).balanceOf(address(this)) - bptAmount;
     }
 
     /// @notice Exits a balancer pool using exact BPT in
@@ -343,43 +345,35 @@ library BalancerUtils {
     }
 
     function _unstakeAndExitPoolExactBPTIn(
-        PoolContext memory poolContext,
-        BoostContext memory boostContext,
+        PoolContext memory context,
         uint256 bptClaim,
         uint256 minPrimary,
         uint256 minSecondary
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
         // Withdraw BPT tokens back to the vault for redemption
-        boostContext.boostController.withdrawToken(address(boostContext.liquidityGauge), bptClaim);
-        boostContext.liquidityGauge.withdraw(bptClaim, false);
+        context.boostController.withdrawToken(address(context.liquidityGauge), bptClaim);
+        context.liquidityGauge.withdraw(bptClaim, false);
 
-        uint256 primaryBefore = TokenUtils.tokenBalance(poolContext.primaryToken);
-        uint256 secondaryBefore = TokenUtils.tokenBalance(poolContext.secondaryToken);
+        uint256 primaryBefore = TokenUtils.tokenBalance(context.primaryToken);
+        uint256 secondaryBefore = TokenUtils.tokenBalance(context.secondaryToken);
 
         exitPoolExactBPTIn({
-            context: poolContext,
+            context: context,
             minPrimaryAmount: minPrimary,
             minSecondaryAmount: minSecondary,
             bptExitAmount: bptClaim
         });
 
-        primaryBalance = TokenUtils.tokenBalance(poolContext.primaryToken) - primaryBefore;
-        secondaryBalance = TokenUtils.tokenBalance(address(poolContext.secondaryToken)) - secondaryBefore;
+        primaryBalance = TokenUtils.tokenBalance(context.primaryToken) - primaryBefore;
+        secondaryBalance = TokenUtils.tokenBalance(address(context.secondaryToken)) - secondaryBefore;
     }
 
-    function approveBalancerTokens(
-        address balancerVault,
-        IERC20 underlyingToken,
-        IERC20 secondaryToken,
-        IERC20 balancerPool,
-        IERC20 liquidityGauge,
-        address vebalDelegator
-    ) internal {
-        underlyingToken.checkApprove(balancerVault, type(uint256).max);
-        secondaryToken.checkApprove(balancerVault, type(uint256).max);
+    function approveBalancerTokens(PoolContext memory context) internal {
+        IERC20(context.primaryToken).checkApprove(address(BALANCER_VAULT), type(uint256).max);
+        IERC20(context.secondaryToken).checkApprove(address(BALANCER_VAULT), type(uint256).max);
         // Allow LIQUIDITY_GAUGE to pull BALANCER_POOL_TOKEN
-        balancerPool.checkApprove(address(liquidityGauge), type(uint256).max);
+        IERC20(address(context.pool)).checkApprove(address(context.liquidityGauge), type(uint256).max);
         // Allow VEBAL_DELEGATOR to pull LIQUIDITY_GAUGE tokens
-        liquidityGauge.checkApprove(vebalDelegator, type(uint256).max);
+        IERC20(address(context.liquidityGauge)).checkApprove(address(context.veBalDelegator), type(uint256).max);
     }
 }

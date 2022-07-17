@@ -49,11 +49,6 @@ struct SecondaryTradeParams {
     bytes exchangeData;
 }
 
-struct BoostContext {
-    ILiquidityGauge liquidityGauge;
-    IBoostController boostController;
-}
-
 struct OracleContext {
     IBalancerPool pool;
     bytes32 poolId;
@@ -72,6 +67,10 @@ struct PoolContext {
     address primaryToken;
     address secondaryToken;
     uint8 primaryIndex;
+    ILiquidityGauge liquidityGauge;
+    IBoostController boostController;
+    IVeBalDelegator veBalDelegator;
+    address balToken;
 }
 
 struct NormalSettlementContext {
@@ -85,7 +84,6 @@ struct NormalSettlementContext {
     /// @notice Amount of secondary fCash borrowed in external precision
     uint256 borrowedSecondaryfCashAmountExternal;
     PoolContext poolContext;
-    BoostContext boostContext;
 }
 
 struct RewardTokenTradeParams {
@@ -98,12 +96,6 @@ struct RewardTokenTradeParams {
 struct ReinvestRewardParams {
     bytes tradeData;
     uint256 minBPT;
-}
-
-struct VeBalDelegatorInfo {
-    ILiquidityGauge liquidityGauge;
-    IVeBalDelegator veBalDelegator;
-    address balToken;
 }
 
 struct StrategyVaultSettings {

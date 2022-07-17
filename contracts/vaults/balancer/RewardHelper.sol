@@ -2,11 +2,9 @@
 pragma solidity 0.8.15;
 
 import {
-    VeBalDelegatorInfo,
     RewardTokenTradeParams,
     ReinvestRewardParams,
     PoolContext,
-    BoostContext,
     OracleContext
 } from "./BalancerVaultTypes.sol";
 import {Constants} from "../../global/Constants.sol";
@@ -26,15 +24,17 @@ library RewardHelper {
     error InvalidRewardToken(address token);
     error InvalidMaxAmounts(uint256 pairPrice, uint256 maxPrimary, uint256 maxSecondary);
 
+    event RewardReinvested(address token, uint256 primaryAmount, uint256 secondaryAmount, uint256 bptAmount);
+
     function _isValidRewardToken(
-        VeBalDelegatorInfo memory info,
+        PoolContext memory context,
         address token
     ) private view returns (bool) {
-        if (token == info.balToken) return true;
+        if (token == context.balToken) return true;
         else {
-            if (address(info.liquidityGauge) != address(0)) {
-                address[] memory rewardTokens = info.veBalDelegator
-                    .getGaugeRewardTokens(address(info.liquidityGauge));
+            if (address(context.liquidityGauge) != address(0)) {
+                address[] memory rewardTokens = context.veBalDelegator
+                    .getGaugeRewardTokens(address(context.liquidityGauge));
                 for (uint256 i; i < rewardTokens.length; i++) {
                     if (rewardTokens[i] == token) return true;
                 }
@@ -44,7 +44,7 @@ library RewardHelper {
     }
 
     function _validateTrades(
-        VeBalDelegatorInfo memory info,
+        PoolContext memory context,
         ITradingModule tradingModule,
         Trade memory primaryTrade,
         Trade memory secondaryTrade,
@@ -54,7 +54,7 @@ library RewardHelper {
         // Validate trades
         if (
             !_isValidRewardToken(
-                info,
+                context,
                 primaryTrade.sellToken
             )
         ) {
@@ -78,19 +78,19 @@ library RewardHelper {
     }
 
     function _executeRewardTrades(
-        VeBalDelegatorInfo memory info,
+        PoolContext memory context,
         ITradingModule tradingModule,
         address primaryToken,
         address secondaryToken,
         bytes memory data
-    ) private returns (uint256 primaryAmount, uint256 secondaryAmount) {
+    ) private returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
         RewardTokenTradeParams memory params = abi.decode(
             data,
             (RewardTokenTradeParams)
         );
 
         _validateTrades(
-            info,
+            context,
             tradingModule,
             params.primaryTrade,
             params.secondaryTrade,
@@ -111,9 +111,11 @@ library RewardHelper {
         secondaryAmount =
             TokenUtils.tokenBalance(secondaryToken) -
             secondaryAmountBefore;
+
+        rewardToken = params.primaryTrade.sellToken;
     }
 
-    function claimRewardTokens(BoostContext memory context) external {
+    function claimRewardTokens(PoolContext memory context) external {
         // @audit perhaps it would be more efficient to then call executeRewardTrades right after
         // this claim is done inside the same method?
         // @audit part of this BAL that is claimed needs to be donated to the Notional protocol,
@@ -154,13 +156,12 @@ library RewardHelper {
 
     function reinvestReward(
         ReinvestRewardParams memory params,
-        VeBalDelegatorInfo memory info,
         ITradingModule tradingModule,
         PoolContext memory poolContext,
         OracleContext memory oracleContext
     ) external {
-        (uint256 primaryAmount, uint256 secondaryAmount) = _executeRewardTrades(
-            info,
+        (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) = _executeRewardTrades(
+            poolContext,
             tradingModule,
             poolContext.primaryToken,
             poolContext.secondaryToken,
@@ -169,14 +170,18 @@ library RewardHelper {
 
         // Make sure we are joining with the right proportion to minimize slippage
         _validateJoinAmounts(poolContext, oracleContext, tradingModule, primaryAmount, secondaryAmount);
-
-        BalancerUtils.joinPoolExactTokensIn(
+        
+        uint256 bptAmount = BalancerUtils.joinPoolExactTokensIn(
             poolContext,
             primaryAmount,
             secondaryAmount,
             params.minBPT
         );
 
-        // TODO: emit event here
+        poolContext.liquidityGauge.deposit(bptAmount);
+        // Transfer gauge token to VeBALDelegator
+        poolContext.boostController.depositToken(address(poolContext.liquidityGauge), bptAmount);
+
+        emit RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount);
     }
 }

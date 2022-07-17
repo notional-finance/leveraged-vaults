@@ -2,8 +2,7 @@
 pragma solidity 0.8.15;
 
 import {
-    PoolContext, 
-    BoostContext,
+    PoolContext,
     OracleContext,
     DepositParams,
     RedeemParams,
@@ -47,7 +46,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
     function _getOraclePairPrice() internal view returns (uint256) {
         return BalancerUtils.getOraclePairPrice({
             context: _oracleContext(),
-            balancerOracleWeight: vaultSettings.balancerOracleWeight,
+            balancerOracleWeight: strategyVaultSettings.balancerOracleWeight,
             baseToken: address(_underlyingToken()),
             quoteToken: address(SECONDARY_TOKEN),
             tradingModule: TRADING_MODULE
@@ -125,16 +124,12 @@ abstract contract VaultHelper is BalancerVaultStorage {
         uint256 borrowedSecondaryAmount,
         uint256 minBPT
     ) internal returns (uint256 bptAmount) {
-        uint256 balanceBefore = BALANCER_POOL_TOKEN.balanceOf(address(this));
-        BalancerUtils.joinPoolExactTokensIn({
+        bptAmount = BalancerUtils.joinPoolExactTokensIn({
             context: _poolContext(),
             maxPrimaryAmount: primaryAmount,
             maxSecondaryAmount: borrowedSecondaryAmount,
             minBPT: minBPT
         });
-        uint256 balanceAfter = BALANCER_POOL_TOKEN.balanceOf(address(this));
-
-        bptAmount = balanceAfter - balanceBefore;
 
         // Check BPT threshold to make sure our share of the pool is
         // below maxBalancerPoolShare
@@ -374,38 +369,36 @@ abstract contract VaultHelper is BalancerVaultStorage {
         return
             NormalSettlementContext({
                 secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
-                maxUnderlyingSurplus: vaultSettings.maxUnderlyingSurplus,
+                maxUnderlyingSurplus: strategyVaultSettings.maxUnderlyingSurplus,
                 primarySettlementBalance: state.primarySettlementBalance,
                 secondarySettlementBalance: state.secondarySettlementBalance,
                 redeemStrategyTokenAmount: redeemStrategyTokenAmount,
                 debtSharesToRepay: debtSharesToRepay,
                 underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
                 borrowedSecondaryfCashAmountExternal: borrowedSecondaryfCashAmount,
-                poolContext: _poolContext(),
-                boostContext: _boostContext()
+                poolContext: _poolContext()
             });
     }
 
     function _poolContext() internal view returns (PoolContext memory) {
-        return
-            PoolContext({
-                pool: BALANCER_POOL_TOKEN,
-                poolId: BALANCER_POOL_ID,
-                primaryToken: address(_underlyingToken()),
-                secondaryToken: address(SECONDARY_TOKEN),
-                primaryIndex: PRIMARY_INDEX
-            });
-    }
-
-    function _boostContext() internal view returns (BoostContext memory) {
-        return BoostContext(LIQUIDITY_GAUGE, BOOST_CONTROLLER);
+        return PoolContext({
+            pool: BALANCER_POOL_TOKEN,
+            poolId: BALANCER_POOL_ID,
+            primaryToken: address(_underlyingToken()),
+            secondaryToken: address(SECONDARY_TOKEN),
+            primaryIndex: PRIMARY_INDEX,
+            liquidityGauge: LIQUIDITY_GAUGE, 
+            boostController: BOOST_CONTROLLER, 
+            veBalDelegator: VEBAL_DELEGATOR, 
+            balToken: address(BAL_TOKEN)
+        });
     }
 
     function _oracleContext() internal view returns (OracleContext memory) {
         return OracleContext({
             pool: BALANCER_POOL_TOKEN,
             poolId: BALANCER_POOL_ID,
-            oracleWindowInSeconds: vaultSettings.oracleWindowInSeconds,
+            oracleWindowInSeconds: strategyVaultSettings.oracleWindowInSeconds,
             primaryWeight: PRIMARY_WEIGHT,
             secondaryWeight: SECONDARY_WEIGHT,
             primaryIndex: PRIMARY_INDEX,
@@ -420,30 +413,30 @@ abstract contract VaultHelper is BalancerVaultStorage {
     }
 
     function _bptThreshold(uint256 totalBPTSupply) internal view returns (uint256) {
-        return (totalBPTSupply * vaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
+        return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
     }
 
     function _totalSupplyInMaturity(uint256 maturity) internal view returns (uint256) {
-        VaultState memory state = NOTIONAL.getVaultState(address(this), maturity);
-        return state.totalStrategyTokens;
+        VaultState memory vaultState = NOTIONAL.getVaultState(address(this), maturity);
+        return vaultState.totalStrategyTokens;
     }
 
     function _getBPTHeldInMaturity(uint256 maturity) internal view returns (
         uint256 bptHeldInMaturity,
         uint256 totalStrategyTokenSupplyInMaturity
     ) {
-        if (vaultState.totalStrategyTokenGlobal == 0) return (0, 0);
+        if (strategyVaultState.totalStrategyTokenGlobal == 0) return (0, 0);
         uint256 totalBPTHeld = _bptHeld();
         totalStrategyTokenSupplyInMaturity = _totalSupplyInMaturity(maturity);
         bptHeldInMaturity =
             (totalBPTHeld * totalStrategyTokenSupplyInMaturity) /
-            vaultState.totalStrategyTokenGlobal;
+            strategyVaultState.totalStrategyTokenGlobal;
     }
 
     /// @notice Converts BPT to strategy tokens
     function _convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
         internal view returns (uint256 strategyTokenAmount) {
-        if (vaultState.totalStrategyTokenGlobal == 0) {
+        if (strategyVaultState.totalStrategyTokenGlobal == 0) {
             return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
                 BalancerUtils.BALANCER_PRECISION;
         }
@@ -462,7 +455,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
     /// @notice Converts strategy tokens to BPT
     function _convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
         internal view returns (uint256 bptClaim) {
-        if (vaultState.totalStrategyTokenGlobal == 0)
+        if (strategyVaultState.totalStrategyTokenGlobal == 0)
             return strategyTokenAmount;
 
         //prettier-ignore

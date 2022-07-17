@@ -43,9 +43,9 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
     uint8 internal immutable SECONDARY_DECIMALS;
     uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;
 
-    StrategyVaultSettings internal vaultSettings;
+    StrategyVaultSettings internal strategyVaultSettings;
 
-    StrategyVaultState internal vaultState;
+    StrategyVaultState internal strategyVaultState;
 
     /// @notice Keeps track of settlement data per maturity
     mapping(uint256 => SettlementState) internal settlementState;
