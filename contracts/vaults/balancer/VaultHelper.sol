@@ -396,14 +396,12 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
     function _oracleContext() internal view returns (OracleContext memory) {
         return OracleContext({
-            pool: BALANCER_POOL_TOKEN,
-            poolId: BALANCER_POOL_ID,
             oracleWindowInSeconds: strategyVaultSettings.oracleWindowInSeconds,
             primaryWeight: PRIMARY_WEIGHT,
             secondaryWeight: SECONDARY_WEIGHT,
-            primaryIndex: PRIMARY_INDEX,
             primaryDecimals: PRIMARY_DECIMALS,
-            secondaryDecimals: SECONDARY_DECIMALS
+            secondaryDecimals: SECONDARY_DECIMALS,
+            poolContext: _poolContext()
         });
     }
 

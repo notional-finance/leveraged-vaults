@@ -80,8 +80,6 @@ library RewardHelper {
     function _executeRewardTrades(
         PoolContext memory context,
         ITradingModule tradingModule,
-        address primaryToken,
-        address secondaryToken,
         bytes memory data
     ) private returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
         RewardTokenTradeParams memory params = abi.decode(
@@ -94,22 +92,22 @@ library RewardHelper {
             tradingModule,
             params.primaryTrade,
             params.secondaryTrade,
-            primaryToken,
-            secondaryToken
+            context.primaryToken,
+            context.secondaryToken
         );
 
-        uint256 primaryAmountBefore = TokenUtils.tokenBalance(primaryToken);
+        uint256 primaryAmountBefore = TokenUtils.tokenBalance(context.primaryToken);
         // @audit this needs to be a delegate call
         tradingModule.executeTrade(params.primaryTradeDexId, params.primaryTrade);
         primaryAmount =
-            TokenUtils.tokenBalance(primaryToken) -
+            TokenUtils.tokenBalance(context.primaryToken) -
             primaryAmountBefore;
 
-        uint256 secondaryAmountBefore = TokenUtils.tokenBalance(secondaryToken);
+        uint256 secondaryAmountBefore = TokenUtils.tokenBalance(context.secondaryToken);
         // @audit this needs to be a delegate call
         tradingModule.executeTrade(params.secondaryTradeDexId, params.secondaryTrade);
         secondaryAmount =
-            TokenUtils.tokenBalance(secondaryToken) -
+            TokenUtils.tokenBalance(context.secondaryToken) -
             secondaryAmountBefore;
 
         rewardToken = params.primaryTrade.sellToken;
@@ -128,18 +126,17 @@ library RewardHelper {
     }
 
     function _validateJoinAmounts(
-        PoolContext memory poolContext,
-        OracleContext memory oracleContext, 
+        OracleContext memory context, 
         ITradingModule tradingModule,
         uint256 primaryAmount, 
         uint256 secondaryAmount
     ) private view {
         (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
-            primaryAmount, oracleContext.primaryDecimals, secondaryAmount, oracleContext.secondaryDecimals
+            primaryAmount, context.primaryDecimals, secondaryAmount, context.secondaryDecimals
         );
         (
             int256 answer, int256 decimals
-        ) = tradingModule.getOraclePrice(poolContext.primaryToken, poolContext.secondaryToken);
+        ) = tradingModule.getOraclePrice(context.poolContext.primaryToken, context.poolContext.secondaryToken);
 
         require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
 
@@ -157,30 +154,27 @@ library RewardHelper {
     function reinvestReward(
         ReinvestRewardParams memory params,
         ITradingModule tradingModule,
-        PoolContext memory poolContext,
-        OracleContext memory oracleContext
+        OracleContext memory context
     ) external {
         (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) = _executeRewardTrades(
-            poolContext,
+            context.poolContext,
             tradingModule,
-            poolContext.primaryToken,
-            poolContext.secondaryToken,
             params.tradeData
         );
 
         // Make sure we are joining with the right proportion to minimize slippage
-        _validateJoinAmounts(poolContext, oracleContext, tradingModule, primaryAmount, secondaryAmount);
+        _validateJoinAmounts(context, tradingModule, primaryAmount, secondaryAmount);
         
         uint256 bptAmount = BalancerUtils.joinPoolExactTokensIn(
-            poolContext,
+            context.poolContext,
             primaryAmount,
             secondaryAmount,
             params.minBPT
         );
 
-        poolContext.liquidityGauge.deposit(bptAmount);
+        context.poolContext.liquidityGauge.deposit(bptAmount);
         // Transfer gauge token to VeBALDelegator
-        poolContext.boostController.depositToken(address(poolContext.liquidityGauge), bptAmount);
+        context.poolContext.boostController.depositToken(address(context.poolContext.liquidityGauge), bptAmount);
 
         emit RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount);
     }

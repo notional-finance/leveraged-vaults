@@ -50,14 +50,12 @@ struct SecondaryTradeParams {
 }
 
 struct OracleContext {
-    IBalancerPool pool;
-    bytes32 poolId;
     uint256 oracleWindowInSeconds;
     uint256 primaryWeight;
     uint256 secondaryWeight;
-    uint8 primaryIndex;
     uint8 primaryDecimals;
     uint8 secondaryDecimals;
+    PoolContext poolContext;
 }
 
 /// @notice Balancer pool related fields

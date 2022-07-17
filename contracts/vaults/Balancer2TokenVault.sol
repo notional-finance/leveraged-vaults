@@ -379,12 +379,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     /// @notice Sell reward tokens for BPT and reinvest the proceeds
     /// @param params reward reinvestment params
     function reinvestReward(ReinvestRewardParams calldata params) external {
-        RewardHelper.reinvestReward(
-            params,
-            TRADING_MODULE,
-            _poolContext(),
-            _oracleContext()
-        );
+        RewardHelper.reinvestReward(params, TRADING_MODULE, _oracleContext());
     }
 
     /** Setters */
