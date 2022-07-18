@@ -1,5 +1,6 @@
 import json
 import re
+import eth_abi
 from brownie import network, Contract
 
 def getDependencies(bytecode):

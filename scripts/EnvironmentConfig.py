@@ -177,26 +177,32 @@ class Environment:
 
         # WETH/USD oracle
         self.tradingModule.setPriceOracle(
-            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", 
+            self.tokens["WETH"].address, 
             "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419", 
             {"from": self.notional.owner()}
         )
         # DAI/USD oracle
         self.tradingModule.setPriceOracle(
-            "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+            self.tokens["DAI"].address,
             "0xaed0c38402a5d19df6e4c03f4e2dced6e29c1ee9",
             {"from": self.notional.owner()}
         )
         # USDC/USD oracle
         self.tradingModule.setPriceOracle(
-            "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            self.tokens["USDC"].address,
             "0x8fffffd4afb6115b954bd326cbe7b4ba576818f6",
             {"from": self.notional.owner()}
         )
         # WBTC/USD oracle
         self.tradingModule.setPriceOracle(
-            "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+            self.tokens["WBTC"].address,
             "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
+            {"from": self.notional.owner()}
+        )
+        # BAL/USD oracle
+        self.tradingModule.setPriceOracle(
+            self.tokens["BAL"].address,
+            "0xdf2917806e30300537aeb49a7663062f4d1f2b5f",
             {"from": self.notional.owner()}
         )
 
@@ -488,80 +494,135 @@ def main():
         )
     ))
 
+    packedEncoder = eth_abi.codec.ABIEncoder(eth_abi.registry.registry_packed)
+
+    print(vault.reinvestReward.encode_input([eth_abi.encode_abi(
+        ['(uint16,(uint8,address,address,uint256,uint256,uint256,bytes),uint16,(uint8,address,address,uint256,uint256,uint256,bytes))'],
+        [[
+            1,
+            [
+                0,
+                env.tokens["BAL"].address,
+                ETH_ADDRESS,
+                Wei(10e18),
+                0,
+                chain.time() + 10000,
+                eth_abi.encode_abi(
+                    ['(uint24)'],
+                    [[3000]]
+                )                   
+            ],
+            1,
+            [
+                2,
+                env.tokens["BAL"].address,
+                env.tokens["USDC"].address,
+                Wei(10e18),
+                0,
+                chain.time() + 10000,
+                eth_abi.encode_abi(
+                    ['(bytes)'],
+                    [[
+                        packedEncoder.encode_abi(
+                            ["address", "uint24", "address", "uint24", "address"], 
+                            [
+                                env.tokens["BAL"].address, 
+                                3000, 
+                                env.tokens["WETH"].address,
+                                3000, 
+                                env.tokens["USDC"].address
+                            ]
+                        )                 
+                    ]]
+                )          
+            ]
+        ]]
+    ), 0]))
+
     env.tokens["BAL"].transfer(vault.address, 2000e18, {"from": env.whales["BAL"]})
 
     vault.reinvestReward([eth_abi.encode_abi(
-        ['(uint16,bytes,uint16,bytes)'],
+        ['(uint16,(uint8,address,address,uint256,uint256,uint256,bytes),uint16,(uint8,address,address,uint256,uint256,uint256,bytes))'],
         [[
             1,
-            eth_abi.encode_abi(
-                ['(uint8,address,address,uint256,uint256,uint256,bytes)'],
-                [[
-                    0,
-                    env.tokens["BAL"].address,
-                    ETH_ADDRESS,
-                    Wei(10e18),
-                    0,
-                    0,
-                    eth_abi.encode_abi(
-                        ['(uint24)'],
-                        [[3000]]
-                    )                    
-                ]]
-            ),
+            [
+                0,
+                env.tokens["BAL"].address,
+                ETH_ADDRESS,
+                Wei(10e18),
+                0,
+                chain.time() + 10000,
+                eth_abi.encode_abi(
+                    ['(uint24)'],
+                    [[3000]]
+                )                   
+            ],
             1,
-            eth_abi.encode_abi(
-                ['(uint8,address,address,uint256,uint256,uint256,bytes)'],
-                [[
-                    0,
-                    env.tokens["BAL"].address,
-                    env.tokens["USDC"].address,
-                    Wei(10e18),
-                    0,
-                    0,
-                    eth_abi.encode_abi(
-                        ['(uint24)'],
-                        [[3000]]
-                    )                    
-                ]]
-            ),
+            [
+                2,
+                env.tokens["BAL"].address,
+                env.tokens["USDC"].address,
+                Wei(10e18),
+                0,
+                chain.time() + 10000,
+                eth_abi.encode_abi(
+                    ['(bytes)'],
+                    [[
+                        packedEncoder.encode_abi(
+                            ["address", "uint24", "address", "uint24", "address"], 
+                            [
+                                env.tokens["BAL"].address, 
+                                3000, 
+                                env.tokens["WETH"].address,
+                                3000, 
+                                env.tokens["USDC"].address
+                            ]
+                        )                 
+                    ]]
+                )
+            ]
         ]]
     ), 0], {"from": env.notional.owner()})
 
-    print(vault.reinvestReward.encode_input([eth_abi.encode_abi(
-        ['(uint16,bytes,uint16,bytes)'],
+    vault.reinvestReward([eth_abi.encode_abi(
+        ['(uint16,(uint8,address,address,uint256,uint256,uint256,bytes),uint16,(uint8,address,address,uint256,uint256,uint256,bytes))'],
         [[
             1,
-            eth_abi.encode_abi(
-                ['(uint8,address,address,uint256,uint256,uint256,bytes)'],
-                [[
-                    0,
-                    env.tokens["BAL"].address,
-                    ETH_ADDRESS,
-                    Wei(10e18),
-                    0,
-                    0,
-                    eth_abi.encode_abi(
-                        ['(uint24)'],
-                        [[3000]]
-                    )                    
-                ]]
-            ),
+            [
+                0,
+                env.tokens["BAL"].address,
+                ETH_ADDRESS,
+                Wei(10e18),
+                0,
+                chain.time() + 10000,
+                eth_abi.encode_abi(
+                    ['(uint24)'],
+                    [[3000]]
+                )                   
+            ],
             1,
-            eth_abi.encode_abi(
-                ['(uint8,address,address,uint256,uint256,uint256,bytes)'],
-                [[
-                    0,
-                    env.tokens["BAL"].address,
-                    env.tokens["USDC"].address,
-                    Wei(10e18),
-                    0,
-                    0,
-                    eth_abi.encode_abi(
-                        ['(uint24)'],
-                        [[3000]]
-                    )                    
-                ]]
-            ),
+            [
+                2,
+                env.tokens["BAL"].address,
+                env.tokens["USDC"].address,
+                Wei(10e18),
+                0,
+                chain.time() + 10000,
+                eth_abi.encode_abi(
+                    ['(bytes)'],
+                    [[
+                        packedEncoder.encode_abi(
+                            ["address", "uint24", "address", "uint24", "address"], 
+                            [
+                                env.tokens["BAL"].address, 
+                                3000, 
+                                env.tokens["WETH"].address,
+                                3000, 
+                                env.tokens["USDC"].address
+                            ]
+                        )                 
+                    ]]
+                )
+            ]
         ]]
-    ), 0]))
+    ), 0], {"from": env.notional.owner()})

@@ -15,6 +15,7 @@ import {TradeHandler} from "../../trading/TradeHandler.sol";
 import {ITradingModule, Trade} from "../../../interfaces/trading/ITradingModule.sol";
 import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
+import {nProxy} from "../../proxy/nProxy.sol";
 
 library RewardHelper {
     using TradeHandler for Trade;
@@ -46,36 +47,24 @@ library RewardHelper {
 
     function _validateTrades(
         PoolContext memory context,
-        ITradingModule tradingModule,
         Trade memory primaryTrade,
         Trade memory secondaryTrade,
         address primaryToken,
         address secondaryToken
     ) private view {
         // Validate trades
-        if (
-            !_isValidRewardToken(
-                context,
-                primaryTrade.sellToken
-            )
-        ) {
+        if (!_isValidRewardToken(context, primaryTrade.sellToken)) {
             revert InvalidRewardToken(primaryTrade.sellToken);
         }
         if (primaryTrade.sellToken != secondaryTrade.sellToken) {
             revert InvalidRewardToken(secondaryTrade.sellToken);
         }
-        if (primaryTrade.buyToken != BalancerUtils.getTokenAddress(primaryToken)) {
+        if (primaryTrade.buyToken != primaryToken) {
             revert InvalidRewardToken(primaryTrade.buyToken);
         }
-        if (
-            secondaryTrade.buyToken !=
-            BalancerUtils.getTokenAddress(secondaryToken)
-        ) {
+        if (secondaryTrade.buyToken != secondaryToken) {
             revert InvalidRewardToken(secondaryTrade.buyToken);
         }
-
-        primaryTrade._validateSlippage(tradingModule, Constants.REWARD_TRADE_SLIPPAGE_PERCENT);
-        secondaryTrade._validateSlippage(tradingModule, Constants.REWARD_TRADE_SLIPPAGE_PERCENT);
     }
 
     function _executeRewardTrades(
@@ -90,28 +79,44 @@ library RewardHelper {
 
         _validateTrades(
             context,
-            tradingModule,
             params.primaryTrade,
             params.secondaryTrade,
             context.primaryToken,
             context.secondaryToken
         );
 
-        uint256 primaryAmountBefore = TokenUtils.tokenBalance(context.primaryToken);
-        // @audit this needs to be a delegate call
-        tradingModule.executeTrade(params.primaryTradeDexId, params.primaryTrade);
-        primaryAmount =
-            TokenUtils.tokenBalance(context.primaryToken) -
-            primaryAmountBefore;
+        (/*uint256 amountSold*/, primaryAmount) = _executeTradeWithDynamicSlippage(
+            params.primaryTradeDexId,
+            params.primaryTrade,
+            tradingModule,
+            Constants.REWARD_TRADE_SLIPPAGE_PERCENT
+        );
 
-        uint256 secondaryAmountBefore = TokenUtils.tokenBalance(context.secondaryToken);
-        // @audit this needs to be a delegate call
-        tradingModule.executeTrade(params.secondaryTradeDexId, params.secondaryTrade);
-        secondaryAmount =
-            TokenUtils.tokenBalance(context.secondaryToken) -
-            secondaryAmountBefore;
+        (
+            /*uint256 amountSold*/, secondaryAmount) = _executeTradeWithDynamicSlippage(
+            params.secondaryTradeDexId,
+            params.secondaryTrade,
+            tradingModule,
+            Constants.REWARD_TRADE_SLIPPAGE_PERCENT
+        );
 
         rewardToken = params.primaryTrade.sellToken;
+    }
+
+    function _executeTradeWithDynamicSlippage(
+        uint16 dexId,
+        Trade memory trade,
+        ITradingModule tradingModule,
+        uint32 dynamicSlippageLimit
+    ) internal returns (uint256 amountSold, uint256 amountBought) {
+        (bool success, bytes memory result) = nProxy(payable(address(tradingModule))).getImplementation()
+            .delegatecall(abi.encodeWithSelector(
+                ITradingModule.executeTradeWithDynamicSlippage.selector,
+                dexId, trade, dynamicSlippageLimit
+            )
+        );
+        require(success);
+        (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
 
     function claimRewardTokens(PoolContext memory context) external {
@@ -137,7 +142,7 @@ library RewardHelper {
         );
         (
             int256 answer, int256 decimals
-        ) = tradingModule.getOraclePrice(context.poolContext.primaryToken, context.poolContext.secondaryToken);
+        ) = tradingModule.getOraclePrice(context.poolContext.secondaryToken, context.poolContext.primaryToken);
 
         require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
 
@@ -152,8 +157,8 @@ library RewardHelper {
         }
 
         // Check join amounts against oracle price to minimize BPT slippage
-        uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
-            normalizedPrimary;
+        uint256 calculatedPairPrice = normalizedPrimary * BalancerUtils.BALANCER_PRECISION / 
+            normalizedSecondary;
         if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
             revert InvalidMaxAmounts(oraclePrice, primaryAmount, secondaryAmount);
         }
@@ -184,6 +189,6 @@ library RewardHelper {
         // Transfer gauge token to VeBALDelegator
         context.poolContext.boostController.depositToken(address(context.poolContext.liquidityGauge), bptAmount);
 
-        emit RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount);
+        emit RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
     }
 }
