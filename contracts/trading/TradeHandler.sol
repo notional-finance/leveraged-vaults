@@ -20,7 +20,6 @@ library TradeHandler {
     error PreValidationExactOut(uint256 maxAmountIn, uint256 preTradeSellBalance);
     error PostValidationExactIn(uint256 minAmountOut, uint256 amountReceived);
     error PostValidationExactOut(uint256 exactAmountOut, uint256 amountReceived);
-    error InvalidSlippageLimitAmount(uint256 expectedLimit, uint256 actualLimit);
 
     WETH9 public constant WETH = WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
@@ -30,26 +29,6 @@ library TradeHandler {
         uint256 sellAmount,
         uint256 buyAmount
     );
-
-    function _validateSlippage(
-        Trade memory trade, 
-        ITradingModule tradingModule, 
-        uint32 slippageLimit
-    ) internal view {
-        uint256 expectedLimit = tradingModule.getLimitAmount(
-            trade.tradeType,
-            trade.sellToken,
-            trade.buyToken,
-            trade.amount,
-            slippageLimit
-        );
-
-        if (_isExactIn(trade) && trade.limit < expectedLimit) {
-            revert InvalidSlippageLimitAmount(expectedLimit, trade.limit);
-        } else if (_isExactOut(trade) && trade.limit > expectedLimit) {
-            revert InvalidSlippageLimitAmount(expectedLimit, trade.limit);
-        }
-    }
 
     function _executeInternal(
         Trade memory trade,
