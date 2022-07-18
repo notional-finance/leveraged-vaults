@@ -17,6 +17,7 @@ def deployArtifact(path, constructorArgs, deployer, name, libs=None):
 
     # Resolve dependencies
     deps = getDependencies(code)
+
     for dep in deps:
         library = dep.strip("_")
         code = code.replace(dep, libs[library][-40:])

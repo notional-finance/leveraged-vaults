@@ -11,13 +11,17 @@ from brownie import (
     Balancer2TokenVault,
     EmptyProxy,
     SettlementHelper,
-    RewardHelper
+    RewardHelper,
+    MockBalancerUtils
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
 from brownie.convert import to_bytes
+from brownie.network.state import Chain
 from scripts.common import deployArtifact, get_vault_config, set_flags
 from eth_utils import keccak
+
+chain = Chain()
 
 with open("abi/nComptroller.json", "r") as a:
     Comptroller = json.load(a)
@@ -166,6 +170,13 @@ class Environment:
 
         # ETH/USD oracle
         self.tradingModule.setPriceOracle(
+            ZERO_ADDRESS, 
+            "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419", 
+            {"from": self.notional.owner()}
+        )
+
+        # WETH/USD oracle
+        self.tradingModule.setPriceOracle(
             "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", 
             "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419", 
             {"from": self.notional.owner()}
@@ -225,6 +236,9 @@ class Environment:
         SettlementHelper.deploy({"from": self.deployer})
         RewardHelper.deploy({"from": self.deployer})
 
+        # Deploy mocks to access internal library functions
+        self.mockBalancerUtils = MockBalancerUtils.deploy({"from": self.deployer});
+
         secondaryCurrencyId = stratConfig["secondaryBorrowCurrency"]["currencyId"]
         impl = Balancer2TokenVault.deploy(
             self.addresses["notional"],
@@ -238,6 +252,18 @@ class Environment:
             ],
             {"from": self.deployer}
         )
+
+        print(eth_abi.encode_abi(
+            ["address","(uint16,bytes32,address,address,address,uint32)"],
+            [self.addresses["notional"], [
+                secondaryCurrencyId,
+                to_bytes(stratConfig["poolId"], "bytes32"),
+                "0x35bc5aaa9964699d5e5698a0e817d60bc11154f8",
+                stratConfig["liquidityGauge"],
+                "0xe56b95122909474ddd46c091e1d40af0fe52af79",
+                stratConfig["settlementWindow"],
+            ]]
+        ).hex())
 
         proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, Balancer2TokenVault.abi)
@@ -313,3 +339,229 @@ def main():
         ),
         {"from": env.whales["ETH"], "value": 10e18}
     )
+
+    vaultAccount = env.notional.getVaultAccount(env.whales["ETH"], vault.address)
+
+    print(env.notional.exitVault.encode_input(
+        env.whales["ETH"],
+        "0xc45d28d78f0d60f48230ce044b0370b47078b21e",
+        env.whales["ETH"],
+        90257630518,
+        5e8,
+        0,
+        eth_abi.encode_abi(
+            ['(uint32,uint256,uint256,bytes)'],
+            [[
+                0,
+                Wei(14916784772283813990 * 0.98),
+                Wei(16888857974 * 0.98),
+                eth_abi.encode_abi(
+                    ['(uint16,uint8,uint16,bytes)'],
+                    [[
+                        1,
+                        0,
+                        500,
+                        eth_abi.encode_abi(
+                            ['(uint24)'],
+                            [[3000]]
+                        )
+                    ]]
+                )
+            ]]
+        )
+    ))
+
+    env.notional.exitVault(
+        env.whales["ETH"],
+        vault.address,
+        env.whales["ETH"],
+        vaultAccount["vaultShares"],
+        5e8,
+        0,
+        eth_abi.encode_abi(
+            ['(uint32,uint256,uint256,bytes)'],
+            [[
+                0,
+                Wei(14916784772283813990 * 0.98),
+                Wei(16888857974 * 0.98),
+                eth_abi.encode_abi(
+                    ['(uint16,uint8,uint16,bytes)'],
+                    [[
+                        1,
+                        0,
+                        500,
+                        eth_abi.encode_abi(
+                            ['(uint24)'],
+                            [[3000]]
+                        )
+                    ]]
+                )
+            ]]
+        ),
+        {"from": env.whales["ETH"]}
+    )
+
+    chain.undo()
+
+    settings = vault.getStrategyVaultSettings()
+    vault.setStrategyVaultSettings(
+        [settings[0], settings[1], 0, settings[3], settings[4], settings[5], settings[6], settings[7]], 
+        {"from": env.notional.owner()}
+    )
+
+    vault.settleVaultEmergency(
+        maturity,
+        eth_abi.encode_abi(
+            ['(uint32,uint256,uint256,bytes)'],
+            [[
+                0,
+                Wei(14916784772283813990 * 0.98),
+                Wei(16888857974 * 0.98),
+                eth_abi.encode_abi(
+                    ['(uint16,uint8,uint16,bytes)'],
+                    [[
+                        1,
+                        0,
+                        500,
+                        eth_abi.encode_abi(
+                            ['(uint24)'],
+                            [[3000]]
+                        )
+                    ]]
+                )
+            ]]
+        ),
+        {"from": env.notional.owner()}
+    )
+
+    chain.undo()
+    chain.sleep(maturity - 3600 * 24 * 6 - chain.time())
+    chain.mine()
+
+    print(vault.settleVaultNormal.encode_input(
+        maturity,
+        vaultAccount["vaultShares"] / 2,
+        eth_abi.encode_abi(
+            ['(uint32,uint256,uint256,bytes)'],
+            [[
+                0,
+                Wei(14916784772283813990 / 2 * 0.98),
+                Wei(16888857974 / 2 * 0.98),
+                eth_abi.encode_abi(
+                    ['(uint16,uint8,uint16,bytes)'],
+                    [[
+                        1,
+                        0,
+                        500,
+                        eth_abi.encode_abi(
+                            ['(uint24)'],
+                            [[3000]]
+                        )
+                    ]]
+                )
+            ]]
+        )
+    ))
+
+    print(vault.settleVaultPostMaturity.encode_input(
+        maturity,
+        Wei(90316937079),
+        eth_abi.encode_abi(
+            ['(uint32,uint256,uint256,bytes)'],
+            [[
+                0,
+                Wei(14916784772283813990 * 0.98),
+                Wei(16888857974 * 0.98),
+                eth_abi.encode_abi(
+                    ['(uint16,uint8,uint16,bytes)'],
+                    [[
+                        1,
+                        0,
+                        500,
+                        eth_abi.encode_abi(
+                            ['(uint24)'],
+                            [[3000]]
+                        )
+                    ]]
+                )
+            ]]
+        )
+    ))
+
+    env.tokens["BAL"].transfer(vault.address, 2000e18, {"from": env.whales["BAL"]})
+
+    vault.reinvestReward([eth_abi.encode_abi(
+        ['(uint16,bytes,uint16,bytes)'],
+        [[
+            1,
+            eth_abi.encode_abi(
+                ['(uint8,address,address,uint256,uint256,uint256,bytes)'],
+                [[
+                    0,
+                    env.tokens["BAL"].address,
+                    ETH_ADDRESS,
+                    Wei(10e18),
+                    0,
+                    0,
+                    eth_abi.encode_abi(
+                        ['(uint24)'],
+                        [[3000]]
+                    )                    
+                ]]
+            ),
+            1,
+            eth_abi.encode_abi(
+                ['(uint8,address,address,uint256,uint256,uint256,bytes)'],
+                [[
+                    0,
+                    env.tokens["BAL"].address,
+                    env.tokens["USDC"].address,
+                    Wei(10e18),
+                    0,
+                    0,
+                    eth_abi.encode_abi(
+                        ['(uint24)'],
+                        [[3000]]
+                    )                    
+                ]]
+            ),
+        ]]
+    ), 0], {"from": env.notional.owner()})
+
+    print(vault.reinvestReward.encode_input([eth_abi.encode_abi(
+        ['(uint16,bytes,uint16,bytes)'],
+        [[
+            1,
+            eth_abi.encode_abi(
+                ['(uint8,address,address,uint256,uint256,uint256,bytes)'],
+                [[
+                    0,
+                    env.tokens["BAL"].address,
+                    ETH_ADDRESS,
+                    Wei(10e18),
+                    0,
+                    0,
+                    eth_abi.encode_abi(
+                        ['(uint24)'],
+                        [[3000]]
+                    )                    
+                ]]
+            ),
+            1,
+            eth_abi.encode_abi(
+                ['(uint8,address,address,uint256,uint256,uint256,bytes)'],
+                [[
+                    0,
+                    env.tokens["BAL"].address,
+                    env.tokens["USDC"].address,
+                    Wei(10e18),
+                    0,
+                    0,
+                    eth_abi.encode_abi(
+                        ['(uint24)'],
+                        [[3000]]
+                    )                    
+                ]]
+            ),
+        ]]
+    ), 0]))

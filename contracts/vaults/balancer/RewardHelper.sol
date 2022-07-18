@@ -22,7 +22,8 @@ library RewardHelper {
     using SafeInt256 for int256;
 
     error InvalidRewardToken(address token);
-    error InvalidMaxAmounts(uint256 pairPrice, uint256 maxPrimary, uint256 maxSecondary);
+    error InvalidMaxAmounts(uint256 oraclePrice, uint256 maxPrimary, uint256 maxSecondary);
+    error InvalidSpotPrice(uint256 oraclePrice, uint256 spotPrice);
 
     event RewardReinvested(address token, uint256 primaryAmount, uint256 secondaryAmount, uint256 bptAmount);
 
@@ -140,14 +141,21 @@ library RewardHelper {
 
         require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
 
+        uint256 oraclePrice = answer.toUint();
+        uint256 lowerLimit = (oraclePrice * Constants.MAX_JOIN_AMOUNTS_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePrice * Constants.MAX_JOIN_AMOUNTS_UPPER_LIMIT) / 100;
+
+        // Check spot price against oracle price to make sure it hasn't been manipulated
+        uint256 spotPrice = BalancerUtils.getSpotPrice(context, 0);
+        if (spotPrice < lowerLimit || upperLimit < spotPrice) {
+            revert InvalidSpotPrice(oraclePrice, spotPrice);
+        }
+
+        // Check join amounts against oracle price to minimize BPT slippage
         uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
             normalizedPrimary;
-
-        uint256 pairPrice = answer.toUint();
-        uint256 lowerLimit = (pairPrice * Constants.MAX_JOIN_AMOUNTS_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (pairPrice * Constants.MAX_JOIN_AMOUNTS_UPPER_LIMIT) / 100;
         if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
-            revert InvalidMaxAmounts(pairPrice, primaryAmount, secondaryAmount);
+            revert InvalidMaxAmounts(oraclePrice, primaryAmount, secondaryAmount);
         }
     }
 
