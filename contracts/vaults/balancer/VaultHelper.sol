@@ -43,23 +43,13 @@ abstract contract VaultHelper is BalancerVaultStorage {
         bool completedSettlement
     );
 
-    function _getOraclePairPrice() internal view returns (uint256) {
-        return BalancerUtils.getOraclePairPrice({
-            context: _oracleContext(),
-            balancerOracleWeight: strategyVaultSettings.balancerOracleWeight,
-            baseToken: address(_underlyingToken()),
-            quoteToken: address(SECONDARY_TOKEN),
-            tradingModule: TRADING_MODULE
-        });
-    }
-
     /// @notice Validates the min Balancer exit amounts against the price oracle.
     /// These values are passed in as parameters. So, we must validate them.
     function _validateMinExitAmounts(uint256 minPrimary, uint256 minSecondary) internal view {
         (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
             minPrimary, PRIMARY_DECIMALS, minSecondary, SECONDARY_DECIMALS
         );
-        uint256 pairPrice = _getOraclePairPrice();
+        uint256 pairPrice = BalancerUtils.getOraclePairPrice(_oracleContext(), TRADING_MODULE);
         uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
             normalizedPrimary;
 
@@ -68,11 +58,6 @@ abstract contract VaultHelper is BalancerVaultStorage {
         if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
             revert InvalidMinAmounts(pairPrice, minPrimary, minSecondary);
         }
-    }
-
-    function getOptimalSecondaryBorrowAmount(uint256 primaryAmount) external view returns (uint256) {
-        return BalancerUtils
-            .getOptimalSecondaryBorrowAmount(_oracleContext(), primaryAmount);   
     }
 
     function _borrowSecondaryCurrency(
@@ -133,9 +118,11 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
         // Check BPT threshold to make sure our share of the pool is
         // below maxBalancerPoolShare
-        uint256 totalBPTSupply = BALANCER_POOL_TOKEN.totalSupply();
-        uint256 totalBPTHeld = _bptHeld() + bptAmount;
-        uint256 bptThreshold = _bptThreshold(totalBPTSupply);
+        (
+            /* uint256 totalBPTSupply */, 
+            uint256 totalBPTHeld, 
+            uint256 bptThreshold
+        ) = _bptHeldAndThreshold(bptAmount);
 
         if (totalBPTHeld > bptThreshold)
             revert BalancerPoolShareTooHigh(totalBPTHeld, bptThreshold);
@@ -397,6 +384,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
     function _oracleContext() internal view returns (OracleContext memory) {
         return OracleContext({
             oracleWindowInSeconds: strategyVaultSettings.oracleWindowInSeconds,
+            balancerOracleWeight: strategyVaultSettings.balancerOracleWeight,
             primaryWeight: PRIMARY_WEIGHT,
             secondaryWeight: SECONDARY_WEIGHT,
             primaryDecimals: PRIMARY_DECIMALS,
@@ -412,6 +400,13 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
     function _bptThreshold(uint256 totalBPTSupply) internal view returns (uint256) {
         return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
+    }
+
+    function _bptHeldAndThreshold(uint256 adjustment) 
+        internal view returns (uint256 total, uint256 held, uint256 threshold) {
+        total = BALANCER_POOL_TOKEN.totalSupply();
+        held = _bptHeld() + adjustment;
+        threshold = _bptThreshold(total);
     }
 
     function _totalSupplyInMaturity(uint256 maturity) internal view returns (uint256) {

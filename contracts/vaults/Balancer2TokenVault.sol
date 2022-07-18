@@ -23,7 +23,8 @@ import {
     DepositParams,
     RedeemParams,
     SecondaryTradeParams,
-    SettlementState
+    SettlementState,
+    OracleContext
 } from "./balancer/BalancerVaultTypes.sol";
 
 import {IERC20} from "../../interfaces/IERC20.sol";
@@ -114,7 +115,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         );
 
         // Oracle price for the pair in 18 decimals
-        uint256 oraclePairPrice = _getOraclePairPrice();
+        uint256 oraclePairPrice = BalancerUtils.getOraclePairPrice(_oracleContext(), TRADING_MODULE);
 
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt();
 
@@ -336,9 +337,11 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         _revertInSettlementWindow(maturity);
 
         // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
-        uint256 totalBPTSupply = BALANCER_POOL_TOKEN.totalSupply();
-        uint256 totalBPTHeld = _bptHeld();
-        uint256 emergencyBPTWithdrawThreshold = _bptThreshold(totalBPTSupply);
+        (
+            uint256 totalBPTSupply,
+            uint256 totalBPTHeld, 
+            uint256 emergencyBPTWithdrawThreshold
+        ) = _bptHeldAndThreshold(0);
 
         if (totalBPTHeld <= emergencyBPTWithdrawThreshold)
             revert SettlementHelper.InvalidEmergencySettlement();
@@ -411,6 +414,10 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
     function getStrategyVaultSettings() external view returns (StrategyVaultSettings memory) {
         return strategyVaultSettings;
+    }
+
+    function getOracleContext() external view returns (OracleContext memory) {
+        return _oracleContext();
     }
 
     function _authorizeUpgrade(

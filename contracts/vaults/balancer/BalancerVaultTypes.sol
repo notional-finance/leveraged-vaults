@@ -51,6 +51,7 @@ struct SecondaryTradeParams {
 
 struct OracleContext {
     uint256 oracleWindowInSeconds;
+    uint256 balancerOracleWeight;
     uint256 primaryWeight;
     uint256 secondaryWeight;
     uint8 primaryDecimals;

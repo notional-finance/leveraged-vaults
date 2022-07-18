@@ -164,21 +164,13 @@ library BalancerUtils {
     /// @notice Gets the oracle price pair price between two tokens using a weighted
     /// average between a chainlink oracle and the balancer TWAP oracle.
     /// @param context oracle context variables
-    /// @param balancerOracleWeight share of the weighted average to the balancer oracle
-    /// @param baseToken base token for the chainlink oracle
-    /// @param quoteToken quote token for the chainlink oracle
     /// @param tradingModule address of the trading module
     /// @return oraclePairPrice oracle price for the pair in 18 decimals
-    function getOraclePairPrice(
-        OracleContext memory context,
-        uint256 balancerOracleWeight,
-        address baseToken,
-        address quoteToken,
-        ITradingModule tradingModule
-    ) internal view returns (uint256 oraclePairPrice) {
+    function getOraclePairPrice(OracleContext memory context, ITradingModule tradingModule)
+        internal view returns (uint256 oraclePairPrice) {
         // NOTE: this balancer price is denominated in 18 decimal places
         uint256 balancerWeightedPrice;
-        if (balancerOracleWeight > 0) {
+        if (context.balancerOracleWeight > 0) {
             uint256 balancerPrice = _getTimeWeightedOraclePrice(
                 address(context.poolContext.pool),
                 IPriceOracle.Variable.PAIR_PRICE,
@@ -191,13 +183,13 @@ library BalancerUtils {
                 balancerPrice = BALANCER_PRECISION_SQUARED / balancerPrice;
             }
 
-            balancerWeightedPrice = balancerPrice * balancerOracleWeight;
+            balancerWeightedPrice = balancerPrice * context.balancerOracleWeight;
         }
 
         uint256 chainlinkWeightedPrice;
-        if (balancerOracleWeight < BALANCER_ORACLE_WEIGHT_PRECISION) {
+        if (context.balancerOracleWeight < BALANCER_ORACLE_WEIGHT_PRECISION) {
             (int256 rate, int256 decimals) = tradingModule.getOraclePrice(
-                baseToken, quoteToken
+                context.poolContext.primaryToken, context.poolContext.secondaryToken
             );
             require(rate > 0);
             require(decimals >= 0);
@@ -207,7 +199,7 @@ library BalancerUtils {
             }
 
             // No overflow in rate conversion, checked above
-            chainlinkWeightedPrice = uint256(rate) * (BALANCER_ORACLE_WEIGHT_PRECISION - balancerOracleWeight);
+            chainlinkWeightedPrice = uint256(rate) * (BALANCER_ORACLE_WEIGHT_PRECISION - context.balancerOracleWeight);
         }
 
         oraclePairPrice = (balancerWeightedPrice + chainlinkWeightedPrice) / BALANCER_ORACLE_WEIGHT_PRECISION;
@@ -250,20 +242,18 @@ library BalancerUtils {
 
     /// @notice Returns parameters for joining and exiting pool
     function _getPoolParams(
-        address primaryAddress,
+        PoolContext memory context,
         uint256 primaryAmount,
-        address secondaryAddress,
-        uint256 secondaryAmount,
-        uint8 primaryIndex
+        uint256 secondaryAmount
     ) private pure returns (IAsset[] memory assets, uint256[] memory amounts) {
         assets = new IAsset[](2);
-        assets[primaryIndex] = IAsset(primaryAddress);
+        assets[context.primaryIndex] = IAsset(context.primaryToken);
         uint8 secondaryIndex;
-        unchecked { secondaryIndex = 1 - primaryIndex; }
-        assets[secondaryIndex] = IAsset(secondaryAddress);
+        unchecked { secondaryIndex = 1 - context.primaryIndex; }
+        assets[secondaryIndex] = IAsset(context.secondaryToken);
 
         amounts = new uint256[](2);
-        amounts[primaryIndex] = primaryAmount;
+        amounts[context.primaryIndex] = primaryAmount;
         amounts[secondaryIndex] = secondaryAmount;
     }
 
@@ -278,13 +268,7 @@ library BalancerUtils {
         (
             IAsset[] memory assets,
             uint256[] memory maxAmountsIn
-        ) = _getPoolParams(
-            context.primaryToken,
-            maxPrimaryAmount,
-            context.secondaryToken,
-            maxSecondaryAmount,
-            context.primaryIndex
-        );
+        ) = _getPoolParams(context, maxPrimaryAmount, maxSecondaryAmount);
 
         uint256 msgValue;
         if (assets[context.primaryIndex] == IAsset(Constants.ETH_ADDRESS)) msgValue = maxAmountsIn[context.primaryIndex];
@@ -320,13 +304,7 @@ library BalancerUtils {
         (
             IAsset[] memory assets,
             uint256[] memory minAmountsOut
-        ) = _getPoolParams(
-            context.primaryToken,
-            minPrimaryAmount,
-            context.secondaryToken,
-            minSecondaryAmount,
-            context.primaryIndex
-        );
+        ) = _getPoolParams(context, minPrimaryAmount, minSecondaryAmount);
 
         BALANCER_VAULT.exitPool(
             context.poolId,
