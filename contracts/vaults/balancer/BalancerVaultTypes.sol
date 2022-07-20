@@ -6,15 +6,18 @@ import {VaultConfig} from "../../../interfaces/notional/IVaultController.sol";
 import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
 import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
+import {IERC20} from "../../../interfaces/IERC20.sol";
 
 struct DeploymentParams {
     uint16 secondaryBorrowCurrencyId;
     bytes32 balancerPoolId;
+    ILiquidityGauge liquidityGauge;
     IAuraBooster auraBooster;
     IAuraRewardPool auraRewardPool;
     uint256 auraPoolId;
@@ -22,6 +25,7 @@ struct DeploymentParams {
     address auraToken;
     ITradingModule tradingModule;
     uint32 settlementPeriodInSeconds;
+    address feeReceiver;
 }
 
 struct InitParams {
@@ -68,11 +72,12 @@ struct PoolContext {
     address primaryToken;
     address secondaryToken;
     uint8 primaryIndex;
+    ILiquidityGauge liquidityGauge;
     IAuraBooster auraBooster;
     IAuraRewardPool auraRewardPool;
     uint256 auraPoolId;
-    address balToken;
-    address auraToken;
+    IERC20 balToken;
+    IERC20 auraToken;
 }
 
 struct NormalSettlementContext {
@@ -114,6 +119,8 @@ struct StrategyVaultSettings {
     uint16 settlementCoolDownInMinutes;
     /// @notice Cool down in minutes for post maturity settlement
     uint16 postMaturitySettlementCoolDownInMinutes;
+    /// @notice Determines the amount of BAL transferred to FEE_RECEIVER
+    uint16 feePercentage;
 }
 
 struct StrategyVaultState {

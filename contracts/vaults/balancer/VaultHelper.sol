@@ -373,11 +373,12 @@ abstract contract VaultHelper is BalancerVaultStorage {
             primaryToken: address(_underlyingToken()),
             secondaryToken: address(SECONDARY_TOKEN),
             primaryIndex: PRIMARY_INDEX,
+            liquidityGauge: LIQUIDITY_GAUGE,
             auraBooster: AURA_BOOSTER,
             auraRewardPool: AURA_REWARD_POOL,
             auraPoolId: AURA_POOL_ID,
-            balToken: address(BAL_TOKEN),
-            auraToken: address(AURA_TOKEN)
+            balToken: BAL_TOKEN,
+            auraToken: AURA_TOKEN
         });
     }
 
@@ -395,7 +396,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
     /// @dev Gets the total BPT held across the LIQUIDITY GAUGE, VeBal Delegator and the contract itself
     function _bptHeld() internal view returns (uint256) {
-        return STAKED_BALANCER_POOL_TOKEN.balanceOf(address(this));
+        return AURA_REWARD_POOL.balanceOf(address(this));
     }
 
     function _bptThreshold(uint256 totalBPTSupply) internal view returns (uint256) {

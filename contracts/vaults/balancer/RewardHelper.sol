@@ -13,11 +13,12 @@ import {BalancerUtils} from "./BalancerUtils.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../trading/TradeHandler.sol";
 import {ITradingModule, Trade} from "../../../interfaces/trading/ITradingModule.sol";
-import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {nProxy} from "../../proxy/nProxy.sol";
+import {IERC20} from "../../../interfaces/IERC20.sol";
 
 library RewardHelper {
+    using TokenUtils for IERC20;
     using TradeHandler for Trade;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -30,7 +31,16 @@ library RewardHelper {
 
     function _isValidRewardToken(PoolContext memory context, address token)
         private view returns (bool) {
-        return token == context.balToken || token == context.auraToken;
+        if (token == address(context.balToken) || token == address(context.auraToken)) return true;
+        else {
+            if (address(context.liquidityGauge) != address(0)) {
+                uint256 rewardTokenCount = context.liquidityGauge.reward_count();
+                for (uint256 i; i < rewardTokenCount; i++) {
+                    if (context.liquidityGauge.reward_tokens(i) == token) return true;
+                }
+            }
+            return false;
+        }
     }
 
     function _validateTrades(
@@ -107,8 +117,15 @@ library RewardHelper {
         (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
 
-    function claimRewardTokens(PoolContext memory context) external {
+    function claimRewardTokens(PoolContext memory context, uint16 feePercentage, address feeReceiver) external {
+        uint256 balBefore = context.balToken.balanceOf(address(this));
         context.auraRewardPool.getReward(address(this), true);
+        uint256 balClaimed = context.balToken.balanceOf(address(this)) - balBefore;
+
+        if (balClaimed > 0 && feePercentage != 0 && feeReceiver != address(0)) {
+            uint256 feeAmount = balClaimed * feePercentage / Constants.VAULT_PERCENT_BASIS;
+            context.balToken.checkTransfer(feeReceiver, feeAmount);
+        }
     }
 
     function _validateJoinAmounts(

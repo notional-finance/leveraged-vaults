@@ -31,10 +31,10 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
     bytes32 internal immutable BALANCER_POOL_ID;
     IBalancerPool internal immutable BALANCER_POOL_TOKEN;
     IERC20 internal immutable SECONDARY_TOKEN;
+    ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
     IAuraBooster internal immutable AURA_BOOSTER;
     IAuraRewardPool internal immutable AURA_REWARD_POOL;
     uint256 internal immutable AURA_POOL_ID;
-    IERC20 internal immutable STAKED_BALANCER_POOL_TOKEN;
     IERC20 internal immutable BAL_TOKEN;
     IERC20 internal immutable AURA_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
@@ -44,6 +44,7 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
     uint8 internal immutable PRIMARY_DECIMALS;
     uint8 internal immutable SECONDARY_DECIMALS;
     uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;
+    address internal immutable FEE_RECEIVER;
 
     StrategyVaultSettings internal strategyVaultSettings;
 
@@ -115,13 +116,14 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
         PRIMARY_WEIGHT = weights[PRIMARY_INDEX];
         SECONDARY_WEIGHT = weights[secondaryIndex];
 
+        LIQUIDITY_GAUGE = params.liquidityGauge;
         AURA_BOOSTER = params.auraBooster;
         AURA_REWARD_POOL = params.auraRewardPool;
         AURA_POOL_ID = params.auraPoolId;
         AURA_TOKEN = IERC20(params.auraToken);
-        STAKED_BALANCER_POOL_TOKEN = IERC20(params.stakedBalancerPoolToken);
         BAL_TOKEN = IERC20(AURA_BOOSTER.crv());
         SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
+        FEE_RECEIVER = params.feeReceiver;
 
         MAX_ORACLE_QUERY_WINDOW = IPriceOracle(address(BALANCER_POOL_TOKEN)).getLargestSafeQueryWindow();
         require(MAX_ORACLE_QUERY_WINDOW <= type(uint32).max); /// @dev largestQueryWindow overflow

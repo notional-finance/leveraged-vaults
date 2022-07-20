@@ -77,6 +77,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         require(settings.maxBalancerPoolShare <= Constants.VAULT_PERCENT_BASIS);
         require(settings.settlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
         require(settings.postMaturitySettlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.feePercentage <= Constants.VAULT_PERCENT_BASIS);
 
         strategyVaultSettings.oracleWindowInSeconds = settings.oracleWindowInSeconds;
         strategyVaultSettings.balancerOracleWeight = settings.balancerOracleWeight;
@@ -90,6 +91,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
             .settlementCoolDownInMinutes;
         strategyVaultSettings.postMaturitySettlementCoolDownInMinutes = settings
             .postMaturitySettlementCoolDownInMinutes;
+        strategyVaultSettings.feePercentage = settings.feePercentage;
 
         emit StrategyVaultSettingsUpdated(settings);
     }
@@ -376,7 +378,11 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
     /// @notice Claim other liquidity gauge reward tokens (i.e. LIDO)
     function claimRewardTokens() external {
-        RewardHelper.claimRewardTokens(_poolContext());
+        RewardHelper.claimRewardTokens(
+            _poolContext(), 
+            strategyVaultSettings.feePercentage,
+            FEE_RECEIVER
+        );
     }
 
     /// @notice Sell reward tokens for BPT and reinvest the proceeds
