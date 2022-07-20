@@ -18,7 +18,6 @@ struct DeploymentParams {
     uint16 secondaryBorrowCurrencyId;
     bytes32 balancerPoolId;
     ILiquidityGauge liquidityGauge;
-    IAuraBooster auraBooster;
     IAuraRewardPool auraRewardPool;
     ITradingModule tradingModule;
     uint32 settlementPeriodInSeconds;

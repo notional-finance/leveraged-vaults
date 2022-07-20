@@ -36,7 +36,6 @@ StrategyConfig = {
             "primaryCurrency": 1, # ETH
             "poolId": "0x96646936b91d6b9d7d0c47c496afbf3d6ec7b6f8000200000000000000000019",
             "liquidityGauge": "0x9ab7b0c7b154f626451c9e8a68dc04f58fb6e5ce",
-            "auraBooster": "0x7818a1da7bd1e64c199029e86ba244a9798eee10",
             "auraRewardPool": "0x71c8ea7395999aa2007ca860ce66dafa8d5c44fb",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 10e18, # 10 ETH
@@ -84,7 +83,6 @@ class BalancerEnvironment(Environment):
                 secondaryCurrencyId,
                 stratConfig["poolId"],
                 stratConfig["liquidityGauge"],
-                stratConfig["auraBooster"],
                 stratConfig["auraRewardPool"],
                 self.tradingModule.address,
                 stratConfig["settlementWindow"],

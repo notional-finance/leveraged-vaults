@@ -118,8 +118,8 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
         SECONDARY_WEIGHT = weights[secondaryIndex];
 
         LIQUIDITY_GAUGE = params.liquidityGauge;
-        AURA_BOOSTER = params.auraBooster;
         AURA_REWARD_POOL = params.auraRewardPool;
+        AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
         AURA_POOL_ID = AURA_REWARD_POOL.pid();
 
         IAuraStakingProxy stakingProxy = IAuraStakingProxy(AURA_BOOSTER.stakerRewards());
