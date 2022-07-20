@@ -36,6 +36,9 @@ StrategyConfig = {
             "primaryCurrency": 1, # ETH
             "poolId": "0x96646936b91d6b9d7d0c47c496afbf3d6ec7b6f8000200000000000000000019",
             "liquidityGauge": "0x9ab7b0c7b154f626451c9e8a68dc04f58fb6e5ce",
+            "auraBooster": "0x7818a1da7bd1e64c199029e86ba244a9798eee10",
+            "auraRewardPool": "0x71c8ea7395999aa2007ca860ce66dafa8d5c44fb",
+            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 10e18, # 10 ETH
             "oracleWindowInSeconds": 3600,
             "maxBalancerPoolShare": 1e3, # 10%
@@ -44,7 +47,18 @@ StrategyConfig = {
             "balancerOracleWeight": 0.6e4, # 60%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
+            "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
+        },
+        "Strat50ETH50wstETH": {
+            "vaultConfig": get_vault_config(
+                flags=set_flags(0, ENABLED=True),
+                minAccountBorrowSize=1,
+                maxBorrowMarketIndex=3,
+                secondaryBorrowCurrencies=[0,0] # USDC
+            ),
+            "secondaryBorrowCurrency": None,
+            "name": "Balancer 50ETH-50wstETH Strategy",
         }
     }
 }
@@ -52,38 +66,7 @@ StrategyConfig = {
 class BalancerEnvironment(Environment):
     def __init__(self, network, strategyName) -> None:
         Environment.__init__(self, network)
-        self.deployVeBalDelegator()
-        self.deployBoostController()
         self.strategyVault = self.deployBalancer2TokenVault(strategyName)
-
-    def deployVeBalDelegator(self):
-        self.veBalDelegator = deployArtifact(
-            "scripts/artifacts/VeBalDelegator.json",
-            [
-                self.addresses["balancer"]["BALETHPool"]["address"],
-                self.addresses["balancer"]["veToken"],
-                self.addresses["balancer"]["feeDistributor"],
-                self.addresses["balancer"]["minter"],
-                self.addresses["balancer"]["gaugeController"],
-                self.addresses["staking"]["sNOTE"],
-                self.addresses["balancer"]["delegateRegistry"],
-                keccak(text="balancer.eth"),
-                self.deployer.address
-            ],
-            self.deployer,
-            "VeBalDelegator"
-        )
-
-    def deployBoostController(self):
-        self.boostController = BalancerBoostController.deploy(
-            self.addresses["notional"],
-            self.veBalDelegator.address,
-            {"from": self.deployer}
-        )
-        self.veBalDelegator.setManagerContract(
-            self.boostController.address, 
-            {"from": self.veBalDelegator.owner()}
-        )
 
     def deployBalancer2TokenVault(self, strat):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
@@ -100,10 +83,12 @@ class BalancerEnvironment(Environment):
             [
                 secondaryCurrencyId,
                 stratConfig["poolId"],
-                self.boostController.address,
                 stratConfig["liquidityGauge"],
+                stratConfig["auraBooster"],
+                stratConfig["auraRewardPool"],
                 self.tradingModule.address,
                 stratConfig["settlementWindow"],
+                stratConfig["feeReceiver"]
             ],
             {"from": self.deployer}
         )
@@ -123,7 +108,8 @@ class BalancerEnvironment(Environment):
                     stratConfig["postMaturitySettlementSlippageLimit"], 
                     stratConfig["balancerOracleWeight"],
                     stratConfig["settlementCoolDownInMinutes"],
-                    stratConfig["postMaturitySettlementCoolDownInMinutes"], 
+                    stratConfig["postMaturitySettlementCoolDownInMinutes"],
+                    stratConfig["feePercentage"]
                 ]
             ],
             {"from": self.notional.owner()}
@@ -143,12 +129,6 @@ class BalancerEnvironment(Environment):
                 stratConfig["secondaryBorrowCurrency"]["maxCapacity"],
                 {"from": self.notional.owner()}
             )
-
-        self.boostController.setWhitelistForToken(
-            stratConfig["liquidityGauge"], 
-            vaultProxy.address,
-            {"from": self.notional.owner() }
-        )
 
         return vaultProxy
 
@@ -251,7 +231,7 @@ def main():
 
     settings = vault.getStrategyVaultSettings()
     vault.setStrategyVaultSettings(
-        [settings[0], settings[1], 0, settings[3], settings[4], settings[5], settings[6], settings[7]], 
+        [settings[0], settings[1], 0, settings[3], settings[4], settings[5], settings[6], settings[7], settings[8]], 
         {"from": env.notional.owner()}
     )
 

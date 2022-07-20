@@ -17,6 +17,7 @@ import {IERC20} from "../../../interfaces/IERC20.sol";
 import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
+import {IAuraStakingProxy} from "../../../interfaces/aura/IAuraStakingProxy.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
@@ -119,9 +120,12 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
         LIQUIDITY_GAUGE = params.liquidityGauge;
         AURA_BOOSTER = params.auraBooster;
         AURA_REWARD_POOL = params.auraRewardPool;
-        AURA_POOL_ID = params.auraPoolId;
-        AURA_TOKEN = IERC20(params.auraToken);
-        BAL_TOKEN = IERC20(AURA_BOOSTER.crv());
+        AURA_POOL_ID = AURA_REWARD_POOL.pid();
+
+        IAuraStakingProxy stakingProxy = IAuraStakingProxy(AURA_BOOSTER.stakerRewards());
+        BAL_TOKEN = IERC20(stakingProxy.crv());
+        AURA_TOKEN = IERC20(stakingProxy.cvx());
+
         SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
         FEE_RECEIVER = params.feeReceiver;
 

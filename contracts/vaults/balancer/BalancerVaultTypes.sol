@@ -20,9 +20,6 @@ struct DeploymentParams {
     ILiquidityGauge liquidityGauge;
     IAuraBooster auraBooster;
     IAuraRewardPool auraRewardPool;
-    uint256 auraPoolId;
-    address stakedBalancerPoolToken;
-    address auraToken;
     ITradingModule tradingModule;
     uint32 settlementPeriodInSeconds;
     address feeReceiver;
