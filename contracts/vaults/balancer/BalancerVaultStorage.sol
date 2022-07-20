@@ -15,9 +15,9 @@ import {
 import {Token} from "../../global/Types.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
-import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
+import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
+import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
-import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
@@ -31,10 +31,12 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
     bytes32 internal immutable BALANCER_POOL_ID;
     IBalancerPool internal immutable BALANCER_POOL_TOKEN;
     IERC20 internal immutable SECONDARY_TOKEN;
-    IBoostController internal immutable BOOST_CONTROLLER;
-    ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
-    IVeBalDelegator internal immutable VEBAL_DELEGATOR;
+    IAuraBooster internal immutable AURA_BOOSTER;
+    IAuraRewardPool internal immutable AURA_REWARD_POOL;
+    uint256 internal immutable AURA_POOL_ID;
+    IERC20 internal immutable STAKED_BALANCER_POOL_TOKEN;
     IERC20 internal immutable BAL_TOKEN;
+    IERC20 internal immutable AURA_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
     uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
     uint256 internal immutable PRIMARY_WEIGHT;
@@ -113,13 +115,12 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
         PRIMARY_WEIGHT = weights[PRIMARY_INDEX];
         SECONDARY_WEIGHT = weights[secondaryIndex];
 
-        BOOST_CONTROLLER = params.boostController;
-        LIQUIDITY_GAUGE = params.liquidityGauge;
-        VEBAL_DELEGATOR = IVeBalDelegator(BOOST_CONTROLLER.VEBAL_DELEGATOR());
-        BAL_TOKEN = IERC20(
-            IBalancerMinter(VEBAL_DELEGATOR.BALANCER_MINTER())
-                .getBalancerToken()
-        );
+        AURA_BOOSTER = params.auraBooster;
+        AURA_REWARD_POOL = params.auraRewardPool;
+        AURA_POOL_ID = params.auraPoolId;
+        AURA_TOKEN = IERC20(params.auraToken);
+        STAKED_BALANCER_POOL_TOKEN = IERC20(params.stakedBalancerPoolToken);
+        BAL_TOKEN = IERC20(AURA_BOOSTER.crv());
         SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
 
         MAX_ORACLE_QUERY_WINDOW = IPriceOracle(address(BALANCER_POOL_TOKEN)).getLargestSafeQueryWindow();

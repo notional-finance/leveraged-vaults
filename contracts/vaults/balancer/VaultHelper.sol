@@ -127,9 +127,8 @@ abstract contract VaultHelper is BalancerVaultStorage {
         if (totalBPTHeld > bptThreshold)
             revert BalancerPoolShareTooHigh(totalBPTHeld, bptThreshold);
 
-        LIQUIDITY_GAUGE.deposit(bptAmount);
-        // Transfer gauge token to VeBALDelegator
-        BOOST_CONTROLLER.depositToken(address(LIQUIDITY_GAUGE), bptAmount);
+        // Transfer token to Aura protocol for boosted staking
+        AURA_BOOSTER.deposit(AURA_POOL_ID, bptAmount, true); // stake = true
     }
 
     function _repaySecondaryBorrowCallback(
@@ -374,10 +373,11 @@ abstract contract VaultHelper is BalancerVaultStorage {
             primaryToken: address(_underlyingToken()),
             secondaryToken: address(SECONDARY_TOKEN),
             primaryIndex: PRIMARY_INDEX,
-            liquidityGauge: LIQUIDITY_GAUGE, 
-            boostController: BOOST_CONTROLLER, 
-            veBalDelegator: VEBAL_DELEGATOR, 
-            balToken: address(BAL_TOKEN)
+            auraBooster: AURA_BOOSTER,
+            auraRewardPool: AURA_REWARD_POOL,
+            auraPoolId: AURA_POOL_ID,
+            balToken: address(BAL_TOKEN),
+            auraToken: address(AURA_TOKEN)
         });
     }
 
@@ -395,7 +395,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
 
     /// @dev Gets the total BPT held across the LIQUIDITY GAUGE, VeBal Delegator and the contract itself
     function _bptHeld() internal view returns (uint256) {
-        return VEBAL_DELEGATOR.getTokenBalance(address(LIQUIDITY_GAUGE), address(this));
+        return STAKED_BALANCER_POOL_TOKEN.balanceOf(address(this));
     }
 
     function _bptThreshold(uint256 totalBPTSupply) internal view returns (uint256) {

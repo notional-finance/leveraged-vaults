@@ -329,8 +329,7 @@ library BalancerUtils {
         uint256 minSecondary
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
         // Withdraw BPT tokens back to the vault for redemption
-        context.boostController.withdrawToken(address(context.liquidityGauge), bptClaim);
-        context.liquidityGauge.withdraw(bptClaim, false);
+        context.auraRewardPool.withdrawAndUnwrap(bptClaim, false);
 
         uint256 primaryBefore = TokenUtils.tokenBalance(context.primaryToken);
         uint256 secondaryBefore = TokenUtils.tokenBalance(context.secondaryToken);
@@ -349,9 +348,7 @@ library BalancerUtils {
     function approveBalancerTokens(PoolContext memory context) internal {
         IERC20(context.primaryToken).checkApprove(address(BALANCER_VAULT), type(uint256).max);
         IERC20(context.secondaryToken).checkApprove(address(BALANCER_VAULT), type(uint256).max);
-        // Allow LIQUIDITY_GAUGE to pull BALANCER_POOL_TOKEN
-        IERC20(address(context.pool)).checkApprove(address(context.liquidityGauge), type(uint256).max);
-        // Allow VEBAL_DELEGATOR to pull LIQUIDITY_GAUGE tokens
-        IERC20(address(context.liquidityGauge)).checkApprove(address(context.veBalDelegator), type(uint256).max);
+        // Allow AURA_BOOSTER to pull BALANCER_POOL_TOKEN
+        IERC20(address(context.pool)).checkApprove(address(context.auraBooster), type(uint256).max);
     }
 }

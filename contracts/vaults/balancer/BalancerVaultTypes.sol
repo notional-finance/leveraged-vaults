@@ -3,12 +3,11 @@ pragma solidity 0.8.15;
 
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../../interfaces/notional/IVaultController.sol";
-import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
-import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
+import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
+import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
-import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
@@ -16,8 +15,11 @@ import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITra
 struct DeploymentParams {
     uint16 secondaryBorrowCurrencyId;
     bytes32 balancerPoolId;
-    IBoostController boostController;
-    ILiquidityGauge liquidityGauge;
+    IAuraBooster auraBooster;
+    IAuraRewardPool auraRewardPool;
+    uint256 auraPoolId;
+    address stakedBalancerPoolToken;
+    address auraToken;
     ITradingModule tradingModule;
     uint32 settlementPeriodInSeconds;
 }
@@ -66,10 +68,11 @@ struct PoolContext {
     address primaryToken;
     address secondaryToken;
     uint8 primaryIndex;
-    ILiquidityGauge liquidityGauge;
-    IBoostController boostController;
-    IVeBalDelegator veBalDelegator;
+    IAuraBooster auraBooster;
+    IAuraRewardPool auraRewardPool;
+    uint256 auraPoolId;
     address balToken;
+    address auraToken;
 }
 
 struct NormalSettlementContext {

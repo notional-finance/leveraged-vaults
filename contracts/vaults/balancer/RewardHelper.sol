@@ -28,21 +28,9 @@ library RewardHelper {
 
     event RewardReinvested(address token, uint256 primaryAmount, uint256 secondaryAmount, uint256 bptAmount);
 
-    function _isValidRewardToken(
-        PoolContext memory context,
-        address token
-    ) private view returns (bool) {
-        if (token == context.balToken) return true;
-        else {
-            if (address(context.liquidityGauge) != address(0)) {
-                address[] memory rewardTokens = context.veBalDelegator
-                    .getGaugeRewardTokens(address(context.liquidityGauge));
-                for (uint256 i; i < rewardTokens.length; i++) {
-                    if (rewardTokens[i] == token) return true;
-                }
-            }
-            return false;
-        }
+    function _isValidRewardToken(PoolContext memory context, address token)
+        private view returns (bool) {
+        return token == context.balToken || token == context.auraToken;
     }
 
     function _validateTrades(
@@ -120,15 +108,7 @@ library RewardHelper {
     }
 
     function claimRewardTokens(PoolContext memory context) external {
-        // @audit perhaps it would be more efficient to then call executeRewardTrades right after
-        // this claim is done inside the same method?
-        // @audit part of this BAL that is claimed needs to be donated to the Notional protocol,
-        // we should set an percentage and then transfer to the TreasuryManager contract.
-        context.boostController.claimBAL(context.liquidityGauge);
-
-        // @audit perhaps it would be more efficient to then call executeRewardTrades right after
-        // this claim is done inside the same method?
-        context.boostController.claimGaugeTokens(context.liquidityGauge);
+        context.auraRewardPool.getReward(address(this), true);
     }
 
     function _validateJoinAmounts(
@@ -185,9 +165,7 @@ library RewardHelper {
             params.minBPT
         );
 
-        context.poolContext.liquidityGauge.deposit(bptAmount);
-        // Transfer gauge token to VeBALDelegator
-        context.poolContext.boostController.depositToken(address(context.poolContext.liquidityGauge), bptAmount);
+        context.poolContext.auraBooster.deposit(context.poolContext.auraPoolId, bptAmount, true);
 
         emit RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
     }
