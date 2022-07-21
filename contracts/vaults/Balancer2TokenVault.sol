@@ -37,7 +37,7 @@ import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../interfaces/balancer/IBalancerMinter.sol";
 import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
-import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
+import {IWeightedPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 

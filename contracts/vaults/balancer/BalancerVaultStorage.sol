@@ -13,7 +13,6 @@ import {
 } from "./BalancerVaultTypes.sol";
 import {Token} from "../../global/Types.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
-import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
 import {IAuraStakingProxy} from "../../../interfaces/aura/IAuraStakingProxy.sol";
@@ -29,7 +28,7 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
     /** Immutables */
     uint16 internal immutable SECONDARY_BORROW_CURRENCY_ID;
     bytes32 internal immutable BALANCER_POOL_ID;
-    IBalancerPool internal immutable BALANCER_POOL_TOKEN;
+    IERC20 internal immutable BALANCER_POOL_TOKEN;
     IERC20 internal immutable SECONDARY_TOKEN;
     ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
     IAuraBooster internal immutable AURA_BOOSTER;
@@ -39,11 +38,8 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
     IERC20 internal immutable AURA_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
     uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
-    uint256 internal immutable PRIMARY_WEIGHT;
-    uint256 internal immutable SECONDARY_WEIGHT;
     uint8 internal immutable PRIMARY_DECIMALS;
     uint8 internal immutable SECONDARY_DECIMALS;
-    uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;
     address internal immutable FEE_RECEIVER;
 
     StrategyVaultSettings internal strategyVaultSettings;
@@ -62,12 +58,7 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
         BALANCER_POOL_ID = params.balancerPoolId;
         {
             (address pool, /* */) = BalancerUtils.BALANCER_VAULT.getPool(params.balancerPoolId);
-            BALANCER_POOL_TOKEN = IBalancerPool(pool);
-
-            // The oracle is required for the vault to behave properly, make sure it's enabled
-            uint256 pairPrice = IPriceOracle(address(BALANCER_POOL_TOKEN))
-                .getLatest(IPriceOracle.Variable.PAIR_PRICE);
-            require(pairPrice >= 0);
+            BALANCER_POOL_TOKEN = IERC20(pool);
         }
 
         // prettier-ignore
@@ -112,11 +103,6 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
         require(primaryDecimals <= 18);
         SECONDARY_DECIMALS = uint8(secondaryDecimals);
 
-        uint256[] memory weights = BALANCER_POOL_TOKEN.getNormalizedWeights();
-
-        PRIMARY_WEIGHT = weights[PRIMARY_INDEX];
-        SECONDARY_WEIGHT = weights[secondaryIndex];
-
         LIQUIDITY_GAUGE = params.liquidityGauge;
         AURA_REWARD_POOL = params.auraRewardPool;
         AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
@@ -128,9 +114,6 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
 
         SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
         FEE_RECEIVER = params.feeReceiver;
-
-        MAX_ORACLE_QUERY_WINDOW = IPriceOracle(address(BALANCER_POOL_TOKEN)).getLargestSafeQueryWindow();
-        require(MAX_ORACLE_QUERY_WINDOW <= type(uint32).max); /// @dev largestQueryWindow overflow
     }
 
     // Storage gap for future potential upgrades

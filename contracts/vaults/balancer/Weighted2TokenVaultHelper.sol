@@ -20,7 +20,6 @@ import {SafeInt256} from "../../global/SafeInt256.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
-import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
 
 abstract contract Weighted2TokenVaultHelper is Weighted2TokenVaultStorage {

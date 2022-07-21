@@ -9,7 +9,6 @@ import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
-import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
@@ -35,6 +34,7 @@ struct DepositParams {
     uint256 secondaryfCashAmount;
     uint32 secondaryBorrowLimit;
     uint32 secondaryRollLendLimit;
+    bytes tradeData;
 }
 
 struct RedeemParams {
@@ -63,7 +63,7 @@ struct OracleContext {
 
 /// @notice Balancer pool related fields
 struct PoolContext {
-    IBalancerPool pool;
+    IERC20 pool;
     bytes32 poolId;
     address primaryToken;
     address secondaryToken;
