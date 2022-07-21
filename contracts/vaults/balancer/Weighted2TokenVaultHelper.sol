@@ -13,7 +13,7 @@ import {
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {SettlementHelper} from "./SettlementHelper.sol";
-import {BalancerVaultStorage} from "./BalancerVaultStorage.sol";
+import {Weighted2TokenVaultStorage} from "./Weighted2TokenVaultStorage.sol";
 import {Constants} from "../../global/Constants.sol";
 import {VaultState} from "../../global/Types.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
@@ -23,7 +23,7 @@ import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol"
 import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
 
-abstract contract VaultHelper is BalancerVaultStorage {
+abstract contract Weighted2TokenVaultHelper is Weighted2TokenVaultStorage {
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -288,6 +288,8 @@ abstract contract VaultHelper is BalancerVaultStorage {
         uint256 strategyTokensToRedeem,
         RedeemParams memory params
     ) internal returns (bool completedSettlement) {
+        require(strategyTokensToRedeem <= type(uint80).max); /// @dev strategyTokensToRedeem overflow
+
         // These min primary and min secondary amounts must be within some configured
         // delta of the current oracle price
         _validateMinExitAmounts(params.minPrimary, params.minSecondary);
@@ -295,6 +297,8 @@ abstract contract VaultHelper is BalancerVaultStorage {
         uint256 bptToSettle = _convertStrategyTokensToBPTClaim(strategyTokensToRedeem, maturity);
         NormalSettlementContext memory context = _normalSettlementContext(
             state, maturity, strategyTokensToRedeem);
+
+        strategyVaultState.totalStrategyTokenGlobal -= uint80(strategyTokensToRedeem);
 
         // Exits BPT tokens from the pool and returns the most up to date balances
         uint256 primaryBalance;
@@ -305,16 +309,24 @@ abstract contract VaultHelper is BalancerVaultStorage {
             secondaryBalance
         ) = SettlementHelper.settleVaultNormal(context, bptToSettle, maturity, params);
 
+        if (!completedSettlement) {
+            strategyVaultState.totalStrategyTokenGlobal += uint80(strategyTokensToRedeem);
+        }
+
         // Mark the vault as settled
         if (maturity <= block.timestamp) {
             Constants.NOTIONAL.settleVault(address(this), maturity);
         }
 
+        require(primaryBalance <= type(uint88).max); /// @dev primaryBalance overflow
+        require(secondaryBalance <= type(uint88).max); /// @dev secondaryBalance overflow
+
         // Update settlement balances and strategy tokens redeemed
         settlementState[maturity] = SettlementState(
-            primaryBalance, 
-            secondaryBalance, 
-            state.strategyTokensRedeemed + strategyTokensToRedeem
+            uint88(primaryBalance), 
+            uint88(secondaryBalance), 
+            completedSettlement ? 
+                state.strategyTokensRedeemed + uint80(strategyTokensToRedeem) : state.strategyTokensRedeemed
         );
 
         emit VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement);

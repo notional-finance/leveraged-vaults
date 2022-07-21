@@ -10,10 +10,10 @@ import {Constants} from "../global/Constants.sol";
 
 import {TokenUtils} from "../utils/TokenUtils.sol";
 import {BalancerUtils} from "./balancer/BalancerUtils.sol";
-import {BalancerVaultStorage} from "./balancer/BalancerVaultStorage.sol";
+import {Weighted2TokenVaultStorage} from "./balancer/Weighted2TokenVaultStorage.sol";
 import {RewardHelper} from "./balancer/RewardHelper.sol";
 import {SettlementHelper} from "./balancer/SettlementHelper.sol";
-import {VaultHelper} from "./balancer/VaultHelper.sol";
+import {Weighted2TokenVaultHelper} from "./balancer/Weighted2TokenVaultHelper.sol";
 import {
     DeploymentParams, 
     InitParams, 
@@ -41,7 +41,7 @@ import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 
-contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
+contract Balancer2TokenVault is UUPSUpgradeable, Initializable, Weighted2TokenVaultHelper {
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -55,7 +55,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
     constructor(NotionalProxy notional_, DeploymentParams memory params)
-        BalancerVaultStorage(notional_, params)
+        Weighted2TokenVaultStorage(notional_, params)
     {}
 
     function initialize(InitParams calldata params)
@@ -197,8 +197,10 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
                 bptHeldInMaturity;
         }
 
+        require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
+
         // Update global supply count
-        strategyVaultState.totalStrategyTokenGlobal += strategyTokensMinted;
+        strategyVaultState.totalStrategyTokenGlobal += uint80(strategyTokensMinted);
     }
 
     function _redeemFromNotional(
@@ -207,6 +209,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
+        require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
+
         if (account == address(this) && data.length == 32) {
             // Check if this is called from one of the settlement functions
             // data = primaryAmountToRepay (uint256) in this case
@@ -255,10 +259,14 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
 
                 finalPrimaryBalance = primaryBalance + primaryPurchased;
             }
-        }
 
-        // Update global strategy token balance
-        strategyVaultState.totalStrategyTokenGlobal -= strategyTokens;
+            // Update global strategy token balance
+            // This only needs to be updated for normal redemption
+            // and emergency settlement. For normal and post-maturity settlement
+            // scenarios (account == address(this) && data.length == 32), we
+            // update totalStrategyTokenGlobal before this function is called.
+            strategyVaultState.totalStrategyTokenGlobal -= uint80(strategyTokens);
+        }
     }
 
     /// @notice Validates the number of strategy tokens to redeem against

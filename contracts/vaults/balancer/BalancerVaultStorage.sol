@@ -2,9 +2,8 @@
 pragma solidity 0.8.15;
 
 import {Constants} from "../../global/Constants.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
 import {BaseStrategyVault} from "../BaseStrategyVault.sol";
-
+import {BalancerUtils} from "./BalancerUtils.sol";
 import {
     DeploymentParams,
     InitParams,
@@ -65,9 +64,10 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
             (address pool, /* */) = BalancerUtils.BALANCER_VAULT.getPool(params.balancerPoolId);
             BALANCER_POOL_TOKEN = IBalancerPool(pool);
 
-            // The oracle is required for the vault to behave properly
-            (/* */, /* */, /* */, /* */, bool oracleEnabled, /* */) = BALANCER_POOL_TOKEN.getMiscData();
-            require(oracleEnabled);
+            // The oracle is required for the vault to behave properly, make sure it's enabled
+            uint256 pairPrice = IPriceOracle(address(BALANCER_POOL_TOKEN))
+                .getLatest(IPriceOracle.Variable.PAIR_PRICE);
+            require(pairPrice >= 0);
         }
 
         // prettier-ignore

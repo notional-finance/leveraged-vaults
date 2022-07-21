@@ -263,7 +263,7 @@ library BalancerUtils {
         uint256 maxPrimaryAmount,
         uint256 maxSecondaryAmount,
         uint256 minBPT
-    ) internal returns (uint256 bptAmount) {
+    ) external returns (uint256 bptAmount) {
         // prettier-ignore
         (
             IAsset[] memory assets,
@@ -294,12 +294,12 @@ library BalancerUtils {
     }
 
     /// @notice Exits a balancer pool using exact BPT in
-    function exitPoolExactBPTIn(
+    function _exitPoolExactBPTIn(
         PoolContext memory context,
         uint256 minPrimaryAmount,
         uint256 minSecondaryAmount,
         uint256 bptExitAmount
-    ) internal {
+    ) private {
         // prettier-ignore
         (
             IAsset[] memory assets,
@@ -327,14 +327,14 @@ library BalancerUtils {
         uint256 bptClaim,
         uint256 minPrimary,
         uint256 minSecondary
-    ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
+    ) external returns (uint256 primaryBalance, uint256 secondaryBalance) {
         // Withdraw BPT tokens back to the vault for redemption
-        context.auraRewardPool.withdrawAndUnwrap(bptClaim, false);
+        context.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
 
         uint256 primaryBefore = TokenUtils.tokenBalance(context.primaryToken);
         uint256 secondaryBefore = TokenUtils.tokenBalance(context.secondaryToken);
 
-        exitPoolExactBPTIn({
+        _exitPoolExactBPTIn({
             context: context,
             minPrimaryAmount: minPrimary,
             minSecondaryAmount: minSecondary,

@@ -8,7 +8,6 @@ import {
     SecondaryTradeParams
 } from "./BalancerVaultTypes.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
-import {VaultHelper} from "./VaultHelper.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
 
@@ -141,8 +140,6 @@ library SettlementHelper {
         uint256 maturity,
         RedeemParams memory params
     ) external returns (bool completedSettlement, uint256 primaryBalance, uint256 secondaryBalance) {
-        // Redeem BPT (doing this in another function to avoid stack issues)
-
         /// @notice minPrimary and minSecondary are validated before this function is called
         (primaryBalance, secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
             context.poolContext,

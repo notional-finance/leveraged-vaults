@@ -121,13 +121,13 @@ struct StrategyVaultSettings {
 
 struct StrategyVaultState {
     /// @notice Total number of strategy tokens across all maturities
-    uint256 totalStrategyTokenGlobal;
+    uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
     uint32 lastPostMaturitySettlementTimestamp;
 }
 
 struct SettlementState {
-    uint256 primarySettlementBalance;
-    uint256 secondarySettlementBalance;
-    uint256 strategyTokensRedeemed;
+    uint88 primarySettlementBalance;
+    uint88 secondarySettlementBalance;
+    uint80 strategyTokensRedeemed;
 }

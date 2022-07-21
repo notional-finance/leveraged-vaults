@@ -182,7 +182,9 @@ library RewardHelper {
             params.minBPT
         );
 
-        context.poolContext.auraBooster.deposit(context.poolContext.auraPoolId, bptAmount, true);
+        context.poolContext.auraBooster.deposit(
+            context.poolContext.auraPoolId, bptAmount, true // stake = true
+        );
 
         emit RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
     }
