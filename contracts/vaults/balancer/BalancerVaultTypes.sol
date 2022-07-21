@@ -54,11 +54,19 @@ struct SecondaryTradeParams {
 struct OracleContext {
     uint256 oracleWindowInSeconds;
     uint256 balancerOracleWeight;
+    PoolContext poolContext;
+}
+
+struct WeightedOracleContext {
     uint256 primaryWeight;
     uint256 secondaryWeight;
-    uint8 primaryDecimals;
-    uint8 secondaryDecimals;
-    PoolContext poolContext;
+    OracleContext oracleContext;
+}
+
+struct StableOracleContext {
+    /// @notice Amplification parameter
+    uint256 ampParam;
+    uint256 ampParamPrecision;
 }
 
 /// @notice Balancer pool related fields
@@ -68,6 +76,8 @@ struct PoolContext {
     address primaryToken;
     address secondaryToken;
     uint8 primaryIndex;
+    uint8 primaryDecimals;
+    uint8 secondaryDecimals;
     ILiquidityGauge liquidityGauge;
     IAuraBooster auraBooster;
     IAuraRewardPool auraRewardPool;

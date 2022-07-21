@@ -8,12 +8,15 @@ import {
     RedeemParams,
     SecondaryTradeParams,
     NormalSettlementContext,
-    SettlementState
+    SettlementState,
+    WeightedOracleContext
 } from "./BalancerVaultTypes.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {SettlementHelper} from "./SettlementHelper.sol";
-import {Weighted2TokenVaultStorage} from "./Weighted2TokenVaultStorage.sol";
+import {BaseVaultStorage} from "./BaseVaultStorage.sol";
+import {Weighted2TokenVaultMixin} from "./mixins/Weighted2TokenVaultMixin.sol";
+import {AuraStakingMixin} from "./mixins/AuraStakingMixin.sol";
 import {Constants} from "../../global/Constants.sol";
 import {VaultState} from "../../global/Types.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
@@ -22,7 +25,11 @@ import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITra
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
 
-abstract contract Weighted2TokenVaultHelper is Weighted2TokenVaultStorage {
+abstract contract Weighted2TokenVaultHelper is 
+    BaseVaultStorage, 
+    Weighted2TokenVaultMixin,
+    AuraStakingMixin
+{
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -69,7 +76,7 @@ abstract contract Weighted2TokenVaultHelper is Weighted2TokenVaultStorage {
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return 0;
 
         uint256 optimalSecondaryAmount = BalancerUtils
-            .getOptimalSecondaryBorrowAmount(_oracleContext(), primaryAmount);
+            .getOptimalSecondaryBorrowAmount(_weightedOracleContext(), primaryAmount);
 
         // Borrow secondary currency from Notional (tokens will be transferred to this contract)
         {
@@ -308,10 +315,6 @@ abstract contract Weighted2TokenVaultHelper is Weighted2TokenVaultStorage {
             secondaryBalance
         ) = SettlementHelper.settleVaultNormal(context, bptToSettle, maturity, params);
 
-        if (!completedSettlement) {
-            strategyVaultState.totalStrategyTokenGlobal += uint80(strategyTokensToRedeem);
-        }
-
         // Mark the vault as settled
         if (maturity <= block.timestamp) {
             Constants.NOTIONAL.settleVault(address(this), maturity);
@@ -324,8 +327,7 @@ abstract contract Weighted2TokenVaultHelper is Weighted2TokenVaultStorage {
         settlementState[maturity] = SettlementState(
             uint88(primaryBalance), 
             uint88(secondaryBalance), 
-            completedSettlement ? 
-                state.strategyTokensRedeemed + uint80(strategyTokensToRedeem) : state.strategyTokensRedeemed
+            state.strategyTokensRedeemed + uint80(strategyTokensToRedeem)
         );
 
         emit VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement);
@@ -384,6 +386,8 @@ abstract contract Weighted2TokenVaultHelper is Weighted2TokenVaultStorage {
             primaryToken: address(_underlyingToken()),
             secondaryToken: address(SECONDARY_TOKEN),
             primaryIndex: PRIMARY_INDEX,
+            primaryDecimals: PRIMARY_DECIMALS,
+            secondaryDecimals: SECONDARY_DECIMALS,
             liquidityGauge: LIQUIDITY_GAUGE,
             auraBooster: AURA_BOOSTER,
             auraRewardPool: AURA_REWARD_POOL,
@@ -397,11 +401,15 @@ abstract contract Weighted2TokenVaultHelper is Weighted2TokenVaultStorage {
         return OracleContext({
             oracleWindowInSeconds: strategyVaultSettings.oracleWindowInSeconds,
             balancerOracleWeight: strategyVaultSettings.balancerOracleWeight,
+            poolContext: _poolContext()
+        });
+    }
+
+    function _weightedOracleContext() internal view returns (WeightedOracleContext memory) {
+        return WeightedOracleContext({
             primaryWeight: PRIMARY_WEIGHT,
             secondaryWeight: SECONDARY_WEIGHT,
-            primaryDecimals: PRIMARY_DECIMALS,
-            secondaryDecimals: SECONDARY_DECIMALS,
-            poolContext: _poolContext()
+            oracleContext: _oracleContext()
         });
     }
 

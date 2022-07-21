@@ -10,7 +10,9 @@ import {Constants} from "../global/Constants.sol";
 
 import {TokenUtils} from "../utils/TokenUtils.sol";
 import {BalancerUtils} from "./balancer/BalancerUtils.sol";
-import {Weighted2TokenVaultStorage} from "./balancer/Weighted2TokenVaultStorage.sol";
+import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
+import {Weighted2TokenVaultMixin} from "./balancer/mixins/Weighted2TokenVaultMixin.sol";
+import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {RewardHelper} from "./balancer/RewardHelper.sol";
 import {SettlementHelper} from "./balancer/SettlementHelper.sol";
 import {Weighted2TokenVaultHelper} from "./balancer/Weighted2TokenVaultHelper.sol";
@@ -24,7 +26,7 @@ import {
     RedeemParams,
     SecondaryTradeParams,
     SettlementState,
-    OracleContext
+    WeightedOracleContext
 } from "./balancer/BalancerVaultTypes.sol";
 
 import {IERC20} from "../../interfaces/IERC20.sol";
@@ -41,7 +43,7 @@ import {IWeightedPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 
-contract Balancer2TokenVault is UUPSUpgradeable, Initializable, Weighted2TokenVaultHelper {
+contract Weighted2TokenVault is UUPSUpgradeable, Initializable, Weighted2TokenVaultHelper {
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -55,7 +57,9 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, Weighted2TokenVa
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
     constructor(NotionalProxy notional_, DeploymentParams memory params)
-        Weighted2TokenVaultStorage(notional_, params)
+        BaseVaultStorage(notional_, params) 
+        Weighted2TokenVaultMixin(address(BALANCER_POOL_TOKEN), PRIMARY_INDEX)
+        AuraStakingMixin(params.liquidityGauge, params.auraRewardPool)
     {}
 
     function initialize(InitParams calldata params)
@@ -79,20 +83,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, Weighted2TokenVa
         require(settings.postMaturitySettlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
         require(settings.feePercentage <= Constants.VAULT_PERCENT_BASIS);
 
-        strategyVaultSettings.oracleWindowInSeconds = settings.oracleWindowInSeconds;
-        strategyVaultSettings.balancerOracleWeight = settings.balancerOracleWeight;
-        strategyVaultSettings.maxBalancerPoolShare = settings.maxBalancerPoolShare;
-        strategyVaultSettings.maxUnderlyingSurplus = settings.maxUnderlyingSurplus;
-        strategyVaultSettings.settlementSlippageLimitPercent = settings
-            .settlementSlippageLimitPercent;
-        strategyVaultSettings.postMaturitySettlementSlippageLimitPercent = settings
-            .postMaturitySettlementSlippageLimitPercent;
-        strategyVaultSettings.settlementCoolDownInMinutes = settings
-            .settlementCoolDownInMinutes;
-        strategyVaultSettings.postMaturitySettlementCoolDownInMinutes = settings
-            .postMaturitySettlementCoolDownInMinutes;
-        strategyVaultSettings.feePercentage = settings.feePercentage;
-
+        strategyVaultSettings = settings;
+        
         emit StrategyVaultSettingsUpdated(settings);
     }
 
@@ -113,7 +105,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, Weighted2TokenVa
         );
 
         uint256 primaryBalance = BalancerUtils.getTimeWeightedPrimaryBalance(
-            _oracleContext(), bptClaim
+            _weightedOracleContext(), bptClaim
         );
 
         // Oracle price for the pair in 18 decimals
@@ -396,7 +388,7 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, Weighted2TokenVa
     /// @notice Sell reward tokens for BPT and reinvest the proceeds
     /// @param params reward reinvestment params
     function reinvestReward(ReinvestRewardParams calldata params) external {
-        RewardHelper.reinvestReward(params, TRADING_MODULE, _oracleContext());
+        RewardHelper.reinvestRewardWeighted(params, TRADING_MODULE, _weightedOracleContext());
     }
 
     /** Setters */
@@ -430,8 +422,8 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, Weighted2TokenVa
         return strategyVaultSettings;
     }
 
-    function getOracleContext() external view returns (OracleContext memory) {
-        return _oracleContext();
+    function getWeightedOracleContext() external view returns (WeightedOracleContext memory) {
+        return _weightedOracleContext();
     }
 
     function _authorizeUpgrade(

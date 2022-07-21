@@ -5,7 +5,7 @@ import {
     RewardTokenTradeParams,
     ReinvestRewardParams,
     PoolContext,
-    OracleContext
+    WeightedOracleContext
 } from "./BalancerVaultTypes.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
@@ -129,7 +129,8 @@ library RewardHelper {
     }
 
     function _validateJoinAmounts(
-        OracleContext memory context, 
+        PoolContext memory context,
+        uint256 spotPrice,
         ITradingModule tradingModule,
         uint256 primaryAmount, 
         uint256 secondaryAmount
@@ -139,7 +140,7 @@ library RewardHelper {
         );
         (
             int256 answer, int256 decimals
-        ) = tradingModule.getOraclePrice(context.poolContext.secondaryToken, context.poolContext.primaryToken);
+        ) = tradingModule.getOraclePrice(context.secondaryToken, context.primaryToken);
 
         require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
 
@@ -148,7 +149,6 @@ library RewardHelper {
         uint256 upperLimit = (oraclePrice * Constants.MAX_JOIN_AMOUNTS_UPPER_LIMIT) / 100;
 
         // Check spot price against oracle price to make sure it hasn't been manipulated
-        uint256 spotPrice = BalancerUtils.getSpotPrice(context, 0);
         if (spotPrice < lowerLimit || upperLimit < spotPrice) {
             revert InvalidSpotPrice(oraclePrice, spotPrice);
         }
@@ -161,29 +161,43 @@ library RewardHelper {
         }
     }
 
+    function reinvestRewardWeighted(
+        ReinvestRewardParams memory params,
+        ITradingModule tradingModule,
+        WeightedOracleContext memory context
+    ) external {
+        reinvestReward(
+            params, 
+            tradingModule, 
+            context.oracleContext.poolContext, 
+            BalancerUtils.getSpotPrice(context, 0)
+        );
+    }
+
     function reinvestReward(
         ReinvestRewardParams memory params,
         ITradingModule tradingModule,
-        OracleContext memory context
-    ) external {
+        PoolContext memory context,
+        uint256 spotPrice
+    ) private {
         (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) = _executeRewardTrades(
-            context.poolContext,
+            context,
             tradingModule,
             params.tradeData
         );
 
         // Make sure we are joining with the right proportion to minimize slippage
-        _validateJoinAmounts(context, tradingModule, primaryAmount, secondaryAmount);
+        _validateJoinAmounts(context, spotPrice, tradingModule, primaryAmount, secondaryAmount);
         
         uint256 bptAmount = BalancerUtils.joinPoolExactTokensIn(
-            context.poolContext,
+            context,
             primaryAmount,
             secondaryAmount,
             params.minBPT
         );
 
-        context.poolContext.auraBooster.deposit(
-            context.poolContext.auraPoolId, bptAmount, true // stake = true
+        context.auraBooster.deposit(
+            context.auraPoolId, bptAmount, true // stake = true
         );
 
         emit RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 

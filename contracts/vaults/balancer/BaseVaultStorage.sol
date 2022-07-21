@@ -9,19 +9,16 @@ import {
     InitParams,
     StrategyVaultSettings,
     StrategyVaultState,
-    SettlementState
+    SettlementState,
+    PoolContext,
+    OracleContext
 } from "./BalancerVaultTypes.sol";
 import {Token} from "../../global/Types.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
-import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
-import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
-import {IAuraStakingProxy} from "../../../interfaces/aura/IAuraStakingProxy.sol";
-import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
-import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 
-abstract contract BalancerVaultStorage is BaseStrategyVault {
+abstract contract BaseVaultStorage is BaseStrategyVault {
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
 
@@ -30,12 +27,6 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
     bytes32 internal immutable BALANCER_POOL_ID;
     IERC20 internal immutable BALANCER_POOL_TOKEN;
     IERC20 internal immutable SECONDARY_TOKEN;
-    ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
-    IAuraBooster internal immutable AURA_BOOSTER;
-    IAuraRewardPool internal immutable AURA_REWARD_POOL;
-    uint256 internal immutable AURA_POOL_ID;
-    IERC20 internal immutable BAL_TOKEN;
-    IERC20 internal immutable AURA_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
     uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
     uint8 internal immutable PRIMARY_DECIMALS;
@@ -102,15 +93,6 @@ abstract contract BalancerVaultStorage is BaseStrategyVault {
             : SECONDARY_TOKEN.decimals();
         require(primaryDecimals <= 18);
         SECONDARY_DECIMALS = uint8(secondaryDecimals);
-
-        LIQUIDITY_GAUGE = params.liquidityGauge;
-        AURA_REWARD_POOL = params.auraRewardPool;
-        AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
-        AURA_POOL_ID = AURA_REWARD_POOL.pid();
-
-        IAuraStakingProxy stakingProxy = IAuraStakingProxy(AURA_BOOSTER.stakerRewards());
-        BAL_TOKEN = IERC20(stakingProxy.crv());
-        AURA_TOKEN = IERC20(stakingProxy.cvx());
 
         SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
         FEE_RECEIVER = params.feeReceiver;
