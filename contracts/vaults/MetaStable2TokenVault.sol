@@ -7,29 +7,35 @@ import {Constants} from "../global/Constants.sol";
 import {
     DeploymentParams, 
     InitParams, 
-    StrategyVaultSettings, 
-    PoolContext
+    StrategyVaultSettings,
+    StrategyVaultState,
+    PoolContext,
+    MetaStable2TokenAuraStrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
-import {MetaStableVaultMixin} from "./balancer/mixins/MetaStableVaultMixin.sol";
+import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerUtils} from "./balancer/BalancerUtils.sol";
+import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 
 contract MetaStable2TokenVault is
     UUPSUpgradeable, 
     Initializable,
     BaseVaultStorage,
-    MetaStableVaultMixin,
+    MetaStable2TokenVaultMixin,
     AuraStakingMixin
 {
-    /** Events */
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
     constructor(NotionalProxy notional_, DeploymentParams memory params)
         BaseVaultStorage(notional_, params) 
-        MetaStableVaultMixin(address(BALANCER_POOL_TOKEN))
+        MetaStable2TokenVaultMixin(
+            address(_underlyingToken()), 
+            params.balancerPoolId,
+            params.secondaryBorrowCurrencyId
+        )
         AuraStakingMixin(params.liquidityGauge, params.auraRewardPool)
     {}
 
@@ -41,42 +47,20 @@ contract MetaStable2TokenVault is
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         _setStrategyVaultSettings(params.settings);
 
-        BalancerUtils.approveBalancerTokens(_poolContext());
+        BalancerUtils.approveBalancerTokens(_twoTokenPoolContext(), _auraStakingContext());
     }
 
     function _setStrategyVaultSettings(StrategyVaultSettings memory settings) private {
-
-        require(settings.oracleWindowInSeconds <= uint32(MAX_ORACLE_QUERY_WINDOW));
-        require(settings.settlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
-        require(settings.postMaturitySettlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
-        require(settings.balancerOracleWeight <= Constants.VAULT_PERCENT_BASIS);
-        require(settings.maxBalancerPoolShare <= Constants.VAULT_PERCENT_BASIS);
-        require(settings.settlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
-        require(settings.postMaturitySettlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
-        require(settings.feePercentage <= Constants.VAULT_PERCENT_BASIS);
-
-        mapping(uint256 => StrategyVaultSettings) storage vaultSettings 
-            = LibBalancerStorage.getStrategyVaultSettings();
-        vaultSettings[0] = settings;
-
+        VaultUtils._validateStrategyVaultSettings(settings, uint32(MAX_ORACLE_QUERY_WINDOW));
+        VaultUtils._setStrategyVaultSettings(settings);
         emit StrategyVaultSettingsUpdated(settings);
     }
 
-    function _poolContext() internal view returns (PoolContext memory) {
-        return PoolContext({
-            pool: BALANCER_POOL_TOKEN,
-            poolId: BALANCER_POOL_ID,
-            primaryToken: address(_underlyingToken()),
-            secondaryToken: address(SECONDARY_TOKEN),
-            primaryIndex: PRIMARY_INDEX,
-            primaryDecimals: PRIMARY_DECIMALS,
-            secondaryDecimals: SECONDARY_DECIMALS,
-            liquidityGauge: LIQUIDITY_GAUGE,
-            auraBooster: AURA_BOOSTER,
-            auraRewardPool: AURA_REWARD_POOL,
-            auraPoolId: AURA_POOL_ID,
-            balToken: BAL_TOKEN,
-            auraToken: AURA_TOKEN
+    function _strategyContext() internal view returns (MetaStable2TokenAuraStrategyContext memory) {
+        return MetaStable2TokenAuraStrategyContext({
+            poolContext: _twoTokenPoolContext(),
+            oracleContext: _stableOracleContext(),
+            stakingContext: _auraStakingContext()
         });
     }
 
@@ -102,7 +86,28 @@ contract MetaStable2TokenVault is
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
     }
-    
+
+    function getStrategyVaultState() external view returns (StrategyVaultState memory) {
+        return VaultUtils._getStrategyVaultState();
+    }
+
+    function getStrategyVaultSettings() external view returns (StrategyVaultSettings memory) {
+        return VaultUtils._getStrategyVaultSettings();
+    }
+
+    /// @notice Updates the vault settings
+    /// @param settings vault settings
+    function setStrategyVaultSettings(StrategyVaultSettings calldata settings)
+        external
+        onlyNotionalOwner
+    {
+        _setStrategyVaultSettings(settings);
+    }
+
+    function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory) {
+        return _strategyContext();
+    }
+
     function _authorizeUpgrade(
         address /* newImplementation */
     ) internal override onlyNotionalOwner {}

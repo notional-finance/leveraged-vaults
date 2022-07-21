@@ -10,6 +10,12 @@ interface IMetaStablePool is IERC20 {
         int256 oracleIndex, 
         bool oracleEnabled
     );
+
+    function getAmplificationParameter() external view returns (
+        uint256 value,
+        bool isUpdating,
+        uint256 precision
+    );
 }
 
 interface IWeightedPool is IERC20 {

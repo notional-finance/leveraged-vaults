@@ -19,81 +19,16 @@ import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 
 abstract contract BaseVaultStorage is BaseStrategyVault {
-    error InvalidPrimaryToken(address token);
-    error InvalidSecondaryToken(address token);
 
     /** Immutables */
     uint16 internal immutable SECONDARY_BORROW_CURRENCY_ID;
-    bytes32 internal immutable BALANCER_POOL_ID;
-    IERC20 internal immutable BALANCER_POOL_TOKEN;
-    IERC20 internal immutable SECONDARY_TOKEN;
-    uint8 internal immutable PRIMARY_INDEX;
     uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
-    uint8 internal immutable PRIMARY_DECIMALS;
-    uint8 internal immutable SECONDARY_DECIMALS;
     address internal immutable FEE_RECEIVER;
-
-    StrategyVaultSettings internal strategyVaultSettings;
-
-    StrategyVaultState internal strategyVaultState;
-
-    /// @notice Keeps track of settlement data per maturity
-    mapping(uint256 => SettlementState) internal settlementState;
 
     constructor(NotionalProxy notional_, DeploymentParams memory params) 
         BaseStrategyVault(notional_, params.tradingModule)
     {
-        address primaryBorrowToken = BalancerUtils.getTokenAddress(address(_underlyingToken()));
-
         SECONDARY_BORROW_CURRENCY_ID = params.secondaryBorrowCurrencyId;
-        BALANCER_POOL_ID = params.balancerPoolId;
-        {
-            (address pool, /* */) = BalancerUtils.BALANCER_VAULT.getPool(params.balancerPoolId);
-            BALANCER_POOL_TOKEN = IERC20(pool);
-        }
-
-        // prettier-ignore
-        (
-            address[] memory tokens,
-            /* uint256[] memory balances */,
-            /* uint256 lastChangeBlock */
-        ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
-
-        // Balancer tokens are sorted by address, so we need to figure out
-        // the correct index for the primary token
-        PRIMARY_INDEX = tokens[0] == primaryBorrowToken ? 0 : 1;
-        uint8 secondaryIndex;
-        unchecked {
-            secondaryIndex = 1 - PRIMARY_INDEX;
-        }
-
-        // Since this is always a 2-token vault, SECONDARY_INDEX = 1-PRIMARY_INDEX
-        SECONDARY_TOKEN = SECONDARY_BORROW_CURRENCY_ID > 0
-            ? IERC20(_getNotionalUnderlyingToken(SECONDARY_BORROW_CURRENCY_ID))
-            : IERC20(tokens[secondaryIndex]);
-
-        // Make sure the deployment parameters are correct
-        if (tokens[PRIMARY_INDEX] != primaryBorrowToken) {
-            revert InvalidPrimaryToken(tokens[PRIMARY_INDEX]);
-        }
-
-        if (tokens[secondaryIndex] !=
-            BalancerUtils.getTokenAddress(address(SECONDARY_TOKEN))
-        ) revert InvalidSecondaryToken(tokens[secondaryIndex]);
-
-        // If the underlying is ETH, primaryBorrowToken will be rewritten as WETH
-        uint256 primaryDecimals = IERC20(primaryBorrowToken).decimals();
-        // Do not allow decimal places greater than 18
-        require(primaryDecimals <= 18);
-        PRIMARY_DECIMALS = uint8(primaryDecimals);
-
-        uint256 secondaryDecimals = address(SECONDARY_TOKEN) ==
-            Constants.ETH_ADDRESS
-            ? 18
-            : SECONDARY_TOKEN.decimals();
-        require(primaryDecimals <= 18);
-        SECONDARY_DECIMALS = uint8(secondaryDecimals);
-
         SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
         FEE_RECEIVER = params.feeReceiver;
     }

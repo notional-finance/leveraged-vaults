@@ -5,7 +5,9 @@ import {
     RewardTokenTradeParams,
     ReinvestRewardParams,
     PoolContext,
-    WeightedOracleContext
+    WeightedOracleContext,
+    AuraStakingContext,
+    TwoTokenPoolContext
 } from "./BalancerVaultTypes.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
@@ -29,7 +31,7 @@ library RewardHelper {
 
     event RewardReinvested(address token, uint256 primaryAmount, uint256 secondaryAmount, uint256 bptAmount);
 
-    function _isValidRewardToken(PoolContext memory context, address token)
+    function _isValidRewardToken(AuraStakingContext memory context, address token)
         private view returns (bool) {
         if (token == address(context.balToken) || token == address(context.auraToken)) return true;
         else {
@@ -44,7 +46,7 @@ library RewardHelper {
     }
 
     function _validateTrades(
-        PoolContext memory context,
+        AuraStakingContext memory context,
         Trade memory primaryTrade,
         Trade memory secondaryTrade,
         address primaryToken,
@@ -66,7 +68,8 @@ library RewardHelper {
     }
 
     function _executeRewardTrades(
-        PoolContext memory context,
+        TwoTokenPoolContext memory poolContext,
+        AuraStakingContext memory stakingContext,
         ITradingModule tradingModule,
         bytes memory data
     ) private returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
@@ -76,11 +79,11 @@ library RewardHelper {
         );
 
         _validateTrades(
-            context,
+            stakingContext,
             params.primaryTrade,
             params.secondaryTrade,
-            context.primaryToken,
-            context.secondaryToken
+            poolContext.primaryToken,
+            poolContext.secondaryToken
         );
 
         (/*uint256 amountSold*/, primaryAmount) = _executeTradeWithDynamicSlippage(
@@ -117,7 +120,7 @@ library RewardHelper {
         (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
 
-    function claimRewardTokens(PoolContext memory context, uint16 feePercentage, address feeReceiver) external {
+    function claimRewardTokens(AuraStakingContext memory context, uint16 feePercentage, address feeReceiver) external {
         uint256 balBefore = context.balToken.balanceOf(address(this));
         context.auraRewardPool.getReward(address(this), true);
         uint256 balClaimed = context.balToken.balanceOf(address(this)) - balBefore;
@@ -129,7 +132,7 @@ library RewardHelper {
     }
 
     function _validateJoinAmounts(
-        PoolContext memory context,
+        TwoTokenPoolContext memory context,
         uint256 spotPrice,
         ITradingModule tradingModule,
         uint256 primaryAmount, 
@@ -161,43 +164,32 @@ library RewardHelper {
         }
     }
 
-    function reinvestRewardWeighted(
-        ReinvestRewardParams memory params,
-        ITradingModule tradingModule,
-        WeightedOracleContext memory context
-    ) external {
-        reinvestReward(
-            params, 
-            tradingModule, 
-            context.oracleContext.poolContext, 
-            BalancerUtils.getSpotPrice(context, 0)
-        );
-    }
-
     function reinvestReward(
         ReinvestRewardParams memory params,
         ITradingModule tradingModule,
-        PoolContext memory context,
+        TwoTokenPoolContext memory poolContext,
+        AuraStakingContext memory stakingContext,
         uint256 spotPrice
-    ) private {
+    ) internal {
         (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) = _executeRewardTrades(
-            context,
+            poolContext,
+            stakingContext,
             tradingModule,
             params.tradeData
         );
 
         // Make sure we are joining with the right proportion to minimize slippage
-        _validateJoinAmounts(context, spotPrice, tradingModule, primaryAmount, secondaryAmount);
+        _validateJoinAmounts(poolContext, spotPrice, tradingModule, primaryAmount, secondaryAmount);
         
         uint256 bptAmount = BalancerUtils.joinPoolExactTokensIn(
-            context,
+            poolContext,
             primaryAmount,
             secondaryAmount,
             params.minBPT
         );
 
-        context.auraBooster.deposit(
-            context.auraPoolId, bptAmount, true // stake = true
+        stakingContext.auraBooster.deposit(
+            stakingContext.auraPoolId, bptAmount, true // stake = true
         );
 
         emit RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 

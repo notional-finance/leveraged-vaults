@@ -54,36 +54,55 @@ struct SecondaryTradeParams {
 struct OracleContext {
     uint256 oracleWindowInSeconds;
     uint256 balancerOracleWeight;
-    PoolContext poolContext;
 }
 
 struct WeightedOracleContext {
     uint256 primaryWeight;
     uint256 secondaryWeight;
-    OracleContext oracleContext;
+    OracleContext baseContext;
 }
 
 struct StableOracleContext {
     /// @notice Amplification parameter
     uint256 ampParam;
     uint256 ampParamPrecision;
+    OracleContext baseContext;
 }
 
 /// @notice Balancer pool related fields
 struct PoolContext {
     IERC20 pool;
     bytes32 poolId;
-    address primaryToken;
-    address secondaryToken;
-    uint8 primaryIndex;
-    uint8 primaryDecimals;
-    uint8 secondaryDecimals;
+}
+
+struct AuraStakingContext {
     ILiquidityGauge liquidityGauge;
     IAuraBooster auraBooster;
     IAuraRewardPool auraRewardPool;
     uint256 auraPoolId;
     IERC20 balToken;
     IERC20 auraToken;
+}
+
+struct TwoTokenPoolContext {
+    address primaryToken;
+    address secondaryToken;
+    uint8 primaryIndex;
+    uint8 primaryDecimals;
+    uint8 secondaryDecimals;
+    PoolContext baseContext;
+}
+
+struct Weighted2TokenAuraStrategyContext {
+    TwoTokenPoolContext poolContext;
+    WeightedOracleContext oracleContext;
+    AuraStakingContext stakingContext;
+}
+
+struct MetaStable2TokenAuraStrategyContext {
+    TwoTokenPoolContext poolContext;
+    StableOracleContext oracleContext;
+    AuraStakingContext stakingContext;
 }
 
 struct NormalSettlementContext {
@@ -96,7 +115,8 @@ struct NormalSettlementContext {
     uint256 debtSharesToRepay;
     /// @notice Amount of secondary fCash borrowed in external precision
     uint256 borrowedSecondaryfCashAmountExternal;
-    PoolContext poolContext;
+    TwoTokenPoolContext poolContext;
+    AuraStakingContext stakingContext;
 }
 
 struct RewardTokenTradeParams {

@@ -143,6 +143,7 @@ library SettlementHelper {
         /// @notice minPrimary and minSecondary are validated before this function is called
         (primaryBalance, secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
             context.poolContext,
+            context.stakingContext,
             bptToSettle,
             params.minPrimary,
             params.minSecondary

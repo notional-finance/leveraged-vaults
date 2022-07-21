@@ -9,7 +9,11 @@ import {
     SecondaryTradeParams,
     NormalSettlementContext,
     SettlementState,
-    WeightedOracleContext
+    WeightedOracleContext,
+    TwoTokenPoolContext,
+    Weighted2TokenAuraStrategyContext,
+    StrategyVaultState,
+    StrategyVaultSettings
 } from "./BalancerVaultTypes.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
@@ -24,6 +28,7 @@ import {IERC20} from "../../../interfaces/IERC20.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
+import {VaultUtils} from "./internal/VaultUtils.sol";
 
 abstract contract Weighted2TokenVaultHelper is 
     BaseVaultStorage, 
@@ -55,7 +60,9 @@ abstract contract Weighted2TokenVaultHelper is
         (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
             minPrimary, PRIMARY_DECIMALS, minSecondary, SECONDARY_DECIMALS
         );
-        uint256 pairPrice = BalancerUtils.getOraclePairPrice(_oracleContext(), TRADING_MODULE);
+        uint256 pairPrice = BalancerUtils.getOraclePairPrice(
+            _oracleContext(), _twoTokenPoolContext(), TRADING_MODULE
+        );
         uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
             normalizedPrimary;
 
@@ -76,7 +83,9 @@ abstract contract Weighted2TokenVaultHelper is
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return 0;
 
         uint256 optimalSecondaryAmount = BalancerUtils
-            .getOptimalSecondaryBorrowAmount(_weightedOracleContext(), primaryAmount);
+            .getOptimalSecondaryBorrowAmount(
+                _weightedOracleContext(), _twoTokenPoolContext(), primaryAmount
+            );
 
         // Borrow secondary currency from Notional (tokens will be transferred to this contract)
         {
@@ -116,7 +125,7 @@ abstract contract Weighted2TokenVaultHelper is
         uint256 minBPT
     ) internal returns (uint256 bptAmount) {
         bptAmount = BalancerUtils.joinPoolExactTokensIn({
-            context: _poolContext(),
+            context: _twoTokenPoolContext(),
             maxPrimaryAmount: primaryAmount,
             maxSecondaryAmount: borrowedSecondaryAmount,
             minBPT: minBPT
@@ -304,7 +313,9 @@ abstract contract Weighted2TokenVaultHelper is
         NormalSettlementContext memory context = _normalSettlementContext(
             state, maturity, strategyTokensToRedeem);
 
+        StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
         strategyVaultState.totalStrategyTokenGlobal -= uint80(strategyTokensToRedeem);
+        VaultUtils._setStrategyVaultState(strategyVaultState);
 
         // Exits BPT tokens from the pool and returns the most up to date balances
         uint256 primaryBalance;
@@ -324,11 +335,11 @@ abstract contract Weighted2TokenVaultHelper is
         require(secondaryBalance <= type(uint88).max); /// @dev secondaryBalance overflow
 
         // Update settlement balances and strategy tokens redeemed
-        settlementState[maturity] = SettlementState(
+        VaultUtils._setSettlementState(maturity, SettlementState(
             uint88(primaryBalance), 
             uint88(secondaryBalance), 
             state.strategyTokensRedeemed + uint80(strategyTokensToRedeem)
-        );
+        ));
 
         emit VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement);
     }
@@ -365,6 +376,7 @@ abstract contract Weighted2TokenVaultHelper is
             (borrowedSecondaryfCashAmount * (10**SECONDARY_DECIMALS)) /
             uint256(Constants.INTERNAL_TOKEN_PRECISION);
 
+        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
         return
             NormalSettlementContext({
                 secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
@@ -375,41 +387,16 @@ abstract contract Weighted2TokenVaultHelper is
                 debtSharesToRepay: debtSharesToRepay,
                 underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
                 borrowedSecondaryfCashAmountExternal: borrowedSecondaryfCashAmount,
-                poolContext: _poolContext()
+                poolContext: _twoTokenPoolContext(),
+                stakingContext: _auraStakingContext()
             });
     }
 
-    function _poolContext() internal view returns (PoolContext memory) {
-        return PoolContext({
-            pool: BALANCER_POOL_TOKEN,
-            poolId: BALANCER_POOL_ID,
-            primaryToken: address(_underlyingToken()),
-            secondaryToken: address(SECONDARY_TOKEN),
-            primaryIndex: PRIMARY_INDEX,
-            primaryDecimals: PRIMARY_DECIMALS,
-            secondaryDecimals: SECONDARY_DECIMALS,
-            liquidityGauge: LIQUIDITY_GAUGE,
-            auraBooster: AURA_BOOSTER,
-            auraRewardPool: AURA_REWARD_POOL,
-            auraPoolId: AURA_POOL_ID,
-            balToken: BAL_TOKEN,
-            auraToken: AURA_TOKEN
-        });
-    }
-
-    function _oracleContext() internal view returns (OracleContext memory) {
-        return OracleContext({
-            oracleWindowInSeconds: strategyVaultSettings.oracleWindowInSeconds,
-            balancerOracleWeight: strategyVaultSettings.balancerOracleWeight,
-            poolContext: _poolContext()
-        });
-    }
-
-    function _weightedOracleContext() internal view returns (WeightedOracleContext memory) {
-        return WeightedOracleContext({
-            primaryWeight: PRIMARY_WEIGHT,
-            secondaryWeight: SECONDARY_WEIGHT,
-            oracleContext: _oracleContext()
+    function _strategyContext() internal view returns (Weighted2TokenAuraStrategyContext memory) {
+        return Weighted2TokenAuraStrategyContext({
+            poolContext: _twoTokenPoolContext(),
+            oracleContext: _weightedOracleContext(),
+            stakingContext: _auraStakingContext()
         });
     }
 
@@ -419,6 +406,7 @@ abstract contract Weighted2TokenVaultHelper is
     }
 
     function _bptThreshold(uint256 totalBPTSupply) internal view returns (uint256) {
+        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
         return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
     }
 
@@ -438,6 +426,7 @@ abstract contract Weighted2TokenVaultHelper is
         uint256 bptHeldInMaturity,
         uint256 totalStrategyTokenSupplyInMaturity
     ) {
+        StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
         if (strategyVaultState.totalStrategyTokenGlobal == 0) return (0, 0);
         uint256 totalBPTHeld = _bptHeld();
         totalStrategyTokenSupplyInMaturity = _totalSupplyInMaturity(maturity);
@@ -449,6 +438,7 @@ abstract contract Weighted2TokenVaultHelper is
     /// @notice Converts BPT to strategy tokens
     function _convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
         internal view returns (uint256 strategyTokenAmount) {
+        StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
         if (strategyVaultState.totalStrategyTokenGlobal == 0) {
             return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
                 BalancerUtils.BALANCER_PRECISION;
@@ -468,6 +458,7 @@ abstract contract Weighted2TokenVaultHelper is
     /// @notice Converts strategy tokens to BPT
     function _convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
         internal view returns (uint256 bptClaim) {
+        StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
         if (strategyVaultState.totalStrategyTokenGlobal == 0)
             return strategyTokenAmount;
 

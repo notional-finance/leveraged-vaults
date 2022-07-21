@@ -1,24 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import {WeightedOracleContext} from "../vaults/balancer/BalancerVaultTypes.sol";
+import {WeightedOracleContext, TwoTokenPoolContext} from "../vaults/balancer/BalancerVaultTypes.sol";
 import {BalancerUtils} from "../vaults/balancer/BalancerUtils.sol";
 
 contract MockBalancerUtils {
     function getOptimalSecondaryBorrowAmount(
-        WeightedOracleContext memory context,
+        WeightedOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
         uint256 primaryAmount
     ) external view returns (uint256) {
-        return BalancerUtils.getOptimalSecondaryBorrowAmount(context, primaryAmount);
+        return BalancerUtils.getOptimalSecondaryBorrowAmount(oracleContext, poolContext, primaryAmount);
     }
 
-    function getSpotPrice(WeightedOracleContext memory context, uint256 tokenIndex) 
+    function getSpotPrice(
+        WeightedOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        uint256 tokenIndex
+    ) 
         external view returns (uint256 spotPrice) {
-        return BalancerUtils.getSpotPrice(context, tokenIndex);
+        return BalancerUtils.getSpotPrice(oracleContext, poolContext, tokenIndex);
     }
 
-    function getTimeWeightedPrimaryBalance(WeightedOracleContext memory context, uint256 bptAmount) 
+    function getTimeWeightedPrimaryBalance(
+        WeightedOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        uint256 bptAmount
+    ) 
         internal view returns (uint256 primaryAmount) {
-        return BalancerUtils.getTimeWeightedPrimaryBalance(context, bptAmount);
+        return BalancerUtils.getTimeWeightedPrimaryBalance(oracleContext, poolContext, bptAmount);
     }
 }

@@ -29,14 +29,14 @@ library LibBalancerStorage {
     }
 
     function getStrategyVaultState() internal pure returns (
-        mapping(uint256 => StrategyVaultSettings) storage store
+        mapping(uint256 => StrategyVaultState) storage store
     ) {
         uint256 slot = _getStorageSlot(StorageId.StrategyVaultState);
         assembly { store.slot := slot }
     }
 
     function getSettlementState() internal pure returns (
-        mapping(uint256 => mapping(uint256 => SettlementState)) storage store
+        mapping(uint256 => SettlementState) storage store
     ) {
         uint256 slot = _getStorageSlot(StorageId.SettlementState);
         assembly { store.slot := slot }

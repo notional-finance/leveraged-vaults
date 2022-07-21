@@ -8,6 +8,7 @@ import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
+import {NotionalUtils} from "../utils/NotionalUtils.sol";
 import {nProxy} from "../proxy/nProxy.sol";
 
 abstract contract BaseStrategyVault is Initializable, IStrategyVault {
@@ -85,16 +86,9 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         _NAME = name_;
         _BORROW_CURRENCY_ID = borrowCurrencyId_;
 
-        address underlyingAddress = _getNotionalUnderlyingToken(borrowCurrencyId_);
+        address underlyingAddress = NotionalUtils._getNotionalUnderlyingToken(borrowCurrencyId_);
         _UNDERLYING_TOKEN = IERC20(underlyingAddress);
         _UNDERLYING_IS_ETH = underlyingAddress == address(0);
-    }
-
-    function _getNotionalUnderlyingToken(uint16 currencyId) internal view returns (address) {
-        (Token memory assetToken, Token memory underlyingToken) = NOTIONAL.getCurrency(currencyId);
-
-        return assetToken.tokenType == TokenType.NonMintable ?
-            assetToken.tokenAddress : underlyingToken.tokenAddress;
     }
 
     /// @notice Can be used to delegate call to the TradingModule's implementation in order to execute
