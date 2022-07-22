@@ -5,13 +5,14 @@ import {StableOracleContext, TwoTokenPoolContext} from "../vaults/balancer/Balan
 import {Stable2TokenOracleMath} from "../vaults/balancer/internal/Stable2TokenOracleMath.sol";
 
 contract MockStable2TokenOracleMath {
+    using Stable2TokenOracleMath for StableOracleContext;
+
     function getSpotPrice(
         StableOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         uint256 tokenIndex
-    ) 
-        external view returns (uint256 spotPrice) {
-        return Stable2TokenOracleMath.getSpotPrice(oracleContext, poolContext, tokenIndex);
+    ) external view returns (uint256 spotPrice) {
+        return oracleContext._getSpotPrice(poolContext, tokenIndex);
     }
 
     function getOptimalSecondaryBorrowAmount(
@@ -19,6 +20,14 @@ contract MockStable2TokenOracleMath {
         TwoTokenPoolContext memory poolContext,
         uint256 primaryAmount
     ) external view returns (uint256) {
-        return Stable2TokenOracleMath.getOptimalSecondaryBorrowAmount(oracleContext, poolContext, primaryAmount);
-    }   
+        return oracleContext._getOptimalSecondaryBorrowAmount(poolContext, primaryAmount);
+    }  
+
+    function getTimeWeightedPrimaryBalance(
+        StableOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        uint256 bptAmount
+    ) internal view returns (uint256) {
+        return oracleContext._getTimeWeightedPrimaryBalance(poolContext, bptAmount);
+    } 
 }

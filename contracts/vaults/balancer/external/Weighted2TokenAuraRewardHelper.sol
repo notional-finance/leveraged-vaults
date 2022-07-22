@@ -3,14 +3,17 @@ pragma solidity 0.8.15;
 
 import {
     ReinvestRewardParams, 
-    Weighted2TokenAuraStrategyContext
+    Weighted2TokenAuraStrategyContext,
+    WeightedOracleContext
 } from "../BalancerVaultTypes.sol";
 import {RewardHelper} from "../internal/RewardHelper.sol";
-import {BalancerUtils} from "../BalancerUtils.sol";
+import {BalancerUtils} from "../internal/BalancerUtils.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
 import {Weighted2TokenOracleMath} from "../internal/Weighted2TokenOracleMath.sol";
 
 library Weighted2TokenAuraRewardHelper {
+    using Weighted2TokenOracleMath for WeightedOracleContext;
+
     function reinvestReward(
         Weighted2TokenAuraStrategyContext memory context,
         ITradingModule tradingModule,
@@ -21,7 +24,7 @@ library Weighted2TokenAuraRewardHelper {
             tradingModule, 
             context.poolContext,
             context.stakingContext,
-            Weighted2TokenOracleMath.getSpotPrice(context.oracleContext, context.poolContext, 0)
+            context.oracleContext._getSpotPrice(context.poolContext, 0)
         );
     }
 }

@@ -12,9 +12,7 @@ from brownie import (
     Weighted2TokenAuraRewardHelper,
     Weighted2TokenAuraVaultHelper,
     MockWeighted2TokenOracleMath,
-    MockStable2TokenOracleMath,
-    MockBalancerUtils,
-    BalancerUtils
+    MockStable2TokenOracleMath
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -102,7 +100,6 @@ class BalancerEnvironment(Environment):
         SettlementHelper.deploy({"from": self.deployer})
 
         # Deploy mocks to access internal library functions
-        self.mockBalancerUtils = MockBalancerUtils.deploy({"from": self.deployer});
         self.mockWeighted2TokenOracleMath = MockWeighted2TokenOracleMath.deploy({"from": self.deployer})
         self.mockStable2TokenOracleMath = MockStable2TokenOracleMath.deploy({"from": self.deployer})
 

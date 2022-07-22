@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 import {AuraStakingContext, PoolContext, PoolParams} from "../BalancerVaultTypes.sol";
 import {IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
-import {BalancerUtils} from "../BalancerUtils.sol";
+import {BalancerUtils} from "./BalancerUtils.sol";
 import {TokenUtils} from "../../../utils/TokenUtils.sol";
 
 library AuraStakingUtils {

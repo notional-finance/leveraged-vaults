@@ -7,7 +7,7 @@ import {
     RedeemParams, 
     SecondaryTradeParams
 } from "./BalancerVaultTypes.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
+import {BalancerUtils} from "./internal/BalancerUtils.sol";
 import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
 

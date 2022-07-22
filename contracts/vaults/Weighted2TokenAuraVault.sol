@@ -9,7 +9,8 @@ import {SafeInt256} from "../global/SafeInt256.sol";
 import {Constants} from "../global/Constants.sol";
 
 import {TokenUtils} from "../utils/TokenUtils.sol";
-import {BalancerUtils} from "./balancer/BalancerUtils.sol";
+import {NotionalUtils} from "../utils/NotionalUtils.sol";
+import {BalancerUtils} from "./balancer/internal/BalancerUtils.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {Weighted2TokenVaultMixin} from "./balancer/mixins/Weighted2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
@@ -29,28 +30,28 @@ import {
     SecondaryTradeParams,
     SettlementState,
     WeightedOracleContext,
-    Weighted2TokenAuraStrategyContext
+    TwoTokenPoolContext,
+    Weighted2TokenAuraStrategyContext,
+    StrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
 
 import {IERC20} from "../../interfaces/IERC20.sol";
-import {WETH9} from "../../interfaces/WETH9.sol";
-import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
-import {VaultConfig} from "../../interfaces/notional/IVaultController.sol";
-import {IBoostController} from "../../interfaces/notional/IBoostController.sol";
-import {IVeBalDelegator} from "../../interfaces/notional/IVeBalDelegator.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
-import {IBalancerMinter} from "../../interfaces/balancer/IBalancerMinter.sol";
-import {ILiquidityGauge} from "../../interfaces/balancer/ILiquidityGauge.sol";
-import {IWeightedPool} from "../../interfaces/balancer/IBalancerPool.sol";
-import {IPriceOracle} from "../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
+import {TwoTokenAuraStrategyUtils} from "./balancer/internal/TwoTokenAuraStrategyUtils.sol";
+import {TwoTokenPoolUtils} from "./balancer/internal/TwoTokenPoolUtils.sol";
+import {Weighted2TokenOracleMath} from "./balancer/internal/Weighted2TokenOracleMath.sol";
 
 contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2TokenVaultHelper {
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
+    using VaultUtils for StrategyVaultSettings;
+    using VaultUtils for StrategyVaultState;
+    using TwoTokenAuraStrategyUtils for StrategyContext;
+    using Weighted2TokenOracleMath for WeightedOracleContext;
+    using TwoTokenPoolUtils for TwoTokenPoolContext;
 
     /** Errors */
     error NotionalOwnerRequired(address sender);
@@ -82,8 +83,8 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     }
 
     function _setStrategyVaultSettings(StrategyVaultSettings memory settings) private {
-        VaultUtils._validateStrategyVaultSettings(settings, uint32(MAX_ORACLE_QUERY_WINDOW));
-        VaultUtils._setStrategyVaultSettings(settings);
+        settings._validateStrategyVaultSettings(uint32(MAX_ORACLE_QUERY_WINDOW));
+        settings._setStrategyVaultSettings();
         emit StrategyVaultSettingsUpdated(settings);
     }
 
@@ -98,20 +99,22 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
-        uint256 bptClaim = _convertStrategyTokensToBPTClaim(
-            strategyTokenAmount,
-            maturity
+        Weighted2TokenAuraStrategyContext memory context = _strategyContext();
+        StrategyContext memory strategyContext = context.baseContext;
+        WeightedOracleContext memory oracleContext = context.oracleContext;
+        TwoTokenPoolContext memory poolContext = context.poolContext;
+
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
+            strategyTokenAmount, maturity
         );
 
-        uint256 primaryBalance = BalancerUtils.getTimeWeightedPrimaryBalance(
-            _weightedOracleContext(), _twoTokenPoolContext(), bptClaim
+        uint256 primaryBalance = oracleContext._getTimeWeightedPrimaryBalance(
+            poolContext, bptClaim
         );
 
         // Oracle price for the pair in 18 decimals
-        uint256 oraclePairPrice = BalancerUtils.getOraclePairPrice(
-            _oracleContext(), 
-            _twoTokenPoolContext(),
-            TRADING_MODULE
+        uint256 oraclePairPrice = poolContext._getOraclePairPrice(
+            oracleContext.baseContext, TRADING_MODULE
         );
 
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt();
@@ -148,11 +151,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         // Entering the vault is not allowed within the settlement window
         _revertInSettlementWindow(maturity);
         Weighted2TokenAuraVaultHelper._depositFromNotional(
-            _strategyContext(), 
-            account, 
-            deposit, 
-            maturity, 
-            data
+            _strategyContext(), account, deposit, maturity, data
         );
     }
 
@@ -164,7 +163,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     ) internal override returns (uint256 finalPrimaryBalance) {
         require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
 
-        if (account == address(this) && data.length == 32) {
+     /*   if (account == address(this) && data.length == 32) {
             // Check if this is called from one of the settlement functions
             // data = primaryAmountToRepay (uint256) in this case
             // Token transfers are handled in the base strategy
@@ -186,7 +185,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
             // TODO: fix this
             uint256 primaryBalance;
             uint256 secondaryBalance;
-         /*   uint256[] memory exitBalances = AuraStakingUtils._unstakeAndExitPoolExactBPTIn({
+            uint256[] memory exitBalances = AuraStakingUtils._unstakeAndExitPoolExactBPTIn({
                 stakingContext: _auraStakingContext(), 
                 poolContext: _twoTokenPoolContext(),
                 poolParams: poolContext._getPoolParams(
@@ -197,11 +196,11 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
             });
 
             (uint256 primaryBalance, uint256 secondaryBalance) 
-                = (exitBalances[PRIMARY_INDEX], exitBalances[SECONDARY_INDEX]); */
+                = (exitBalances[PRIMARY_INDEX], exitBalances[SECONDARY_INDEX]);
 
             if (SECONDARY_BORROW_CURRENCY_ID != 0) {
                 // Returns the amount of secondary debt shares that need to be repaid
-                (uint256 debtSharesToRepay, /*  */) = getDebtSharesToRepay(
+                (uint256 debtSharesToRepay,*/ /*  */ /*) = getDebtSharesToRepay(
                     account, maturity, strategyTokens
                 );
 
@@ -233,8 +232,8 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
             // update totalStrategyTokenGlobal before this function is called.
             StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
             strategyVaultState.totalStrategyTokenGlobal -= uint80(strategyTokens);
-            VaultUtils._setStrategyVaultState(strategyVaultState);
-        }
+            VaultUtils._setStrategyVaultState(strategyVaultState); 
+        } */
     }
 
     /// @notice Validates the number of strategy tokens to redeem against
@@ -243,7 +242,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     function _validateTokensToRedeem(uint256 maturity, uint256 strategyTokensToRedeem) 
         internal view returns (SettlementState memory) {
         SettlementState memory state = VaultUtils._getSettlementState(maturity);
-        uint256 totalInMaturity = VaultUtils._totalSupplyInMaturity(maturity);
+        uint256 totalInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
         require(state.strategyTokensRedeemed + strategyTokensToRedeem <= totalInMaturity);
         return state;
     }
@@ -320,14 +319,13 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
         uint256 totalBPTSupply = BALANCER_POOL_TOKEN.totalSupply();
         uint256 totalBPTHeld = _bptHeld();
-        uint256 emergencyBPTWithdrawThreshold = VaultUtils._bptThreshold(settings, totalBPTSupply);
+        uint256 emergencyBPTWithdrawThreshold = settings._bptThreshold(totalBPTSupply);
 
         if (totalBPTHeld <= emergencyBPTWithdrawThreshold)
             revert SettlementHelper.InvalidEmergencySettlement();
 
-        uint256 bptHeldInMaturity = VaultUtils._getBPTHeldInMaturity(
-            state, 
-            VaultUtils._totalSupplyInMaturity(maturity),
+        uint256 bptHeldInMaturity = state._getBPTHeldInMaturity(
+            NotionalUtils._totalSupplyInMaturity(maturity),
             totalBPTHeld
         );
 
@@ -347,7 +345,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
 
-        (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = _getEmergencySettlementParams(
+ /*       (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = _getEmergencySettlementParams(
             VaultUtils._getStrategyVaultSettings(),
             VaultUtils._getStrategyVaultState(),
             maturity
@@ -367,7 +365,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
             maxUnderlyingSurplus: maxUnderlyingSurplus,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             data: data
-        });
+        }); */
     }
 
     /// @notice Claim other liquidity gauge reward tokens (i.e. LIDO)
@@ -400,13 +398,13 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     /** Public view functions */
     function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
         external view returns (uint256 strategyTokenAmount) {
-        return _convertBPTClaimToStrategyTokens(bptClaim, maturity);
+        return _strategyContext().baseContext._convertBPTClaimToStrategyTokens(bptClaim, maturity);
     }
 
    /// @notice Converts strategy tokens to BPT
     function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
         external view returns (uint256 bptClaim) {
-        return _convertStrategyTokensToBPTClaim(strategyTokenAmount, maturity);
+        return _strategyContext().baseContext._convertStrategyTokensToBPTClaim(strategyTokenAmount, maturity);
     }
 
     function getStrategyContext() external view returns (Weighted2TokenAuraStrategyContext memory) {

@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import {WeightedOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
-import {BalancerUtils} from "../BalancerUtils.sol";
+import {BalancerUtils} from "./BalancerUtils.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 
 library Weighted2TokenOracleMath {
@@ -12,7 +12,7 @@ library Weighted2TokenOracleMath {
     /// @param poolContext pool context fields
     /// @param tokenIndex index of the token to receive the spot price in
     /// @return spotPrice token spot price
-    function getSpotPrice(
+    function _getSpotPrice(
         WeightedOracleContext memory oracleContext, 
         TwoTokenPoolContext memory poolContext, 
         uint256 tokenIndex
@@ -60,7 +60,7 @@ library Weighted2TokenOracleMath {
     /// @param oracleContext oracle context variables
     /// @param poolContext oracle context variables
     /// @return secondaryAmount optimal amount of the secondary token to join the pool
-    function getOptimalSecondaryBorrowAmount(
+    function _getOptimalSecondaryBorrowAmount(
         WeightedOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         uint256 primaryAmount
@@ -92,5 +92,57 @@ library Weighted2TokenOracleMath {
         secondaryAmount = 
             (primaryAmount * oracleContext.secondaryWeight * pairPrice * secondaryPrecision) / 
             (oracleContext.primaryWeight * primaryPrecision * BalancerUtils.BALANCER_PRECISION);
+    }
+
+    /// @notice Gets the time-weighted primary token balance for a given bptAmount
+    /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
+    /// @param oracleContext oracle context variables
+    /// @param poolContext pool context variables
+    /// @param bptAmount amount of balancer pool lp tokens
+    /// @return primaryAmount primary token balance
+    function _getTimeWeightedPrimaryBalance(
+        WeightedOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        uint256 bptAmount
+    ) internal view returns (uint256 primaryAmount) {
+        // Gets the BPT token price denominated in token index = 0
+        uint256 bptPrice = BalancerUtils._getTimeWeightedOraclePrice(
+            address(poolContext.baseContext.pool),
+            IPriceOracle.Variable.BPT_PRICE,
+            oracleContext.baseContext.oracleWindowInSeconds
+        );
+
+        // Gets the pair price
+        uint256 pairPrice = BalancerUtils._getTimeWeightedOraclePrice(
+            address(poolContext.baseContext.pool),
+            IPriceOracle.Variable.PAIR_PRICE,
+            oracleContext.baseContext.oracleWindowInSeconds
+        );
+
+        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
+
+        if (poolContext.primaryIndex == 0) {
+            // Since bptPrice is always denominated in the first token, we can just multiply by
+            // the amount in this case. Both bptPrice and bptAmount are in 1e18 but we need to scale
+            // this back to the primary token's native precision.
+            // underlyingValue = (bptPrice * bptAmount * primaryPrecision) / (1e18 * 1e18)
+            primaryAmount = (bptPrice * bptAmount * primaryPrecision) / 
+                BalancerUtils.BALANCER_PRECISION_SQUARED;
+        } else {
+            // The second token in the BPT pool is the price that we want to get. In this case, we need to
+            // convert secondaryTokenValue to underlyingValue using the pairPrice.
+            // Both bptPrice and bptAmount are in 1e18
+            uint256 secondaryAmount = (bptPrice * bptAmount) / BalancerUtils.BALANCER_PRECISION;
+
+            // PairPrice = (SecondaryAmount / SecondaryWeight) / (PrimaryAmount / PrimaryWeight)
+            // PairPrice = (SecondaryAmount * PrimaryWeight) / (PrimaryAmount * SecondaryWeight)
+            // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
+
+            // And then normalizing to primary token precision we add:
+            // PrimaryAmount = (SecondaryAmount * PrimaryWeight * primaryPrecision) /
+            //          (SecondaryWeight * PairPrice)
+            primaryAmount = (secondaryAmount * oracleContext.primaryWeight * primaryPrecision) /
+                (oracleContext.secondaryWeight * pairPrice);
+        }
     }
 }

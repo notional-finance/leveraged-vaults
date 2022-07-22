@@ -18,8 +18,9 @@ import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {BalancerUtils} from "./balancer/BalancerUtils.sol";
+import {BalancerUtils} from "./balancer/internal/BalancerUtils.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
+import {TwoTokenAuraStrategyUtils} from "./balancer/internal/TwoTokenAuraStrategyUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
 import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
@@ -33,6 +34,9 @@ contract MetaStable2TokenAuraVault is
     MetaStable2TokenVaultMixin,
     AuraStakingMixin
 {
+    using VaultUtils for StrategyVaultSettings;
+    using TwoTokenAuraStrategyUtils for StrategyContext;
+
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
     constructor(NotionalProxy notional_, TwoTokenAuraDeploymentParams memory params)
@@ -57,8 +61,8 @@ contract MetaStable2TokenAuraVault is
     }
 
     function _setStrategyVaultSettings(StrategyVaultSettings memory settings) private {
-        VaultUtils._validateStrategyVaultSettings(settings, uint32(MAX_ORACLE_QUERY_WINDOW));
-        VaultUtils._setStrategyVaultSettings(settings);
+        settings._validateStrategyVaultSettings(uint32(MAX_ORACLE_QUERY_WINDOW));
+        settings._setStrategyVaultSettings();
         emit StrategyVaultSettingsUpdated(settings);
     }
 
@@ -72,11 +76,7 @@ contract MetaStable2TokenAuraVault is
         _revertInSettlementWindow(maturity);
 
         return MetaStable2TokenAuraVaultHelper._depositFromNotional(
-            _strategyContext(), 
-            account, 
-            deposit, 
-            maturity, 
-            data
+            _strategyContext(), account, deposit, maturity, data
         );
     }
 
@@ -175,6 +175,17 @@ contract MetaStable2TokenAuraVault is
     
     function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory) {
         return _strategyContext();
+    }
+
+    function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
+        external view returns (uint256 strategyTokenAmount) {
+        return _strategyContext().baseContext._convertBPTClaimToStrategyTokens(bptClaim, maturity);
+    }
+
+   /// @notice Converts strategy tokens to BPT
+    function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
+        external view returns (uint256 bptClaim) {
+        return _strategyContext().baseContext._convertStrategyTokensToBPTClaim(strategyTokenAmount, maturity);
     }
 
     /// @dev Gets the total BPT held by the aura reward pool

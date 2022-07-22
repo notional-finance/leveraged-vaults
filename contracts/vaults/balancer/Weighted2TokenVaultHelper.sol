@@ -17,7 +17,8 @@ import {
     StrategyVaultSettings
 } from "./BalancerVaultTypes.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
+import {NotionalUtils} from "../../utils/NotionalUtils.sol";
+import {BalancerUtils} from "./internal/BalancerUtils.sol";
 import {SettlementHelper} from "./SettlementHelper.sol";
 import {BaseVaultStorage} from "./BaseVaultStorage.sol";
 import {Weighted2TokenVaultMixin} from "./mixins/Weighted2TokenVaultMixin.sol";
@@ -40,33 +41,12 @@ abstract contract Weighted2TokenVaultHelper is
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
 
-    error InvalidMinAmounts(uint256 pairPrice, uint256 minPrimary, uint256 minSecondary);
-
     event VaultSettlement(
         uint256 maturity,
         uint256 bptSettled,
         uint256 strategyTokensRedeemed,
         bool completedSettlement
     );
-
-    /// @notice Validates the min Balancer exit amounts against the price oracle.
-    /// These values are passed in as parameters. So, we must validate them.
-    function _validateMinExitAmounts(uint256 minPrimary, uint256 minSecondary) internal view {
-        (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
-            minPrimary, PRIMARY_DECIMALS, minSecondary, SECONDARY_DECIMALS
-        );
-        uint256 pairPrice = BalancerUtils.getOraclePairPrice(
-            _oracleContext(), _twoTokenPoolContext(), TRADING_MODULE
-        );
-        uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
-            normalizedPrimary;
-
-        uint256 lowerLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_UPPER_LIMIT) / 100;
-        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
-            revert InvalidMinAmounts(pairPrice, minPrimary, minSecondary);
-        }
-    }
 
     function _repaySecondaryBorrowCallback(
         address, /* secondaryToken */
@@ -188,7 +168,7 @@ abstract contract Weighted2TokenVaultHelper is
         );
 
         if (account == address(this)) {
-            uint256 _totalSupply = VaultUtils._totalSupplyInMaturity(maturity);
+            uint256 _totalSupply = NotionalUtils._totalSupplyInMaturity(maturity);
 
             if (_totalSupply == 0) return (0, 0);
 
@@ -225,7 +205,7 @@ abstract contract Weighted2TokenVaultHelper is
         uint256 strategyTokensToRedeem,
         RedeemParams memory params
     ) internal returns (bool completedSettlement) {
-        require(strategyTokensToRedeem <= type(uint80).max); /// @dev strategyTokensToRedeem overflow
+  /*      require(strategyTokensToRedeem <= type(uint80).max); /// @dev strategyTokensToRedeem overflow
 
         // These min primary and min secondary amounts must be within some configured
         // delta of the current oracle price
@@ -263,7 +243,7 @@ abstract contract Weighted2TokenVaultHelper is
             state.strategyTokensRedeemed + uint80(strategyTokensToRedeem)
         ));
 
-        emit VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement);
+        emit VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement); */
     }
 
     function _normalSettlementContext(
@@ -331,41 +311,5 @@ abstract contract Weighted2TokenVaultHelper is
     /// @dev Gets the total BPT held by the aura reward pool
     function _bptHeld() internal view returns (uint256) {
         return AURA_REWARD_POOL.balanceOf(address(this));
-    }
-
-    /// @notice Converts BPT to strategy tokens
-    function _convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
-        internal view returns (uint256 strategyTokenAmount) {
-        StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
-        if (strategyVaultState.totalStrategyTokenGlobal == 0) {
-            return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
-                BalancerUtils.BALANCER_PRECISION;
-        }
-
-        uint256 totalSupplyInMaturity = VaultUtils._totalSupplyInMaturity(maturity);
-        uint256 bptHeldInMaturity = VaultUtils._getBPTHeldInMaturity(
-            strategyVaultState, 
-            totalSupplyInMaturity, 
-            _bptHeld()
-        );
-
-        strategyTokenAmount = (totalSupplyInMaturity * bptClaim) / bptHeldInMaturity;
-    }
-
-    /// @notice Converts strategy tokens to BPT
-    function _convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
-        internal view returns (uint256 bptClaim) {
-        StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
-        if (strategyVaultState.totalStrategyTokenGlobal == 0)
-            return strategyTokenAmount;
-
-        uint256 totalSupplyInMaturity = VaultUtils._totalSupplyInMaturity(maturity);
-        uint256 bptHeldInMaturity = VaultUtils._getBPTHeldInMaturity(
-            strategyVaultState, 
-            totalSupplyInMaturity,
-            _bptHeld()
-        );
-
-        bptClaim = (bptHeldInMaturity * strategyTokenAmount) / totalSupplyInMaturity;
     }
 }

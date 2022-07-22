@@ -11,7 +11,7 @@ import {
 } from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {SafeInt256} from "../../../global/SafeInt256.sol";
-import {BalancerUtils} from "../BalancerUtils.sol";
+import {BalancerUtils} from "./BalancerUtils.sol";
 import {TokenUtils} from "../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../trading/TradeHandler.sol";
 import {ITradingModule, Trade} from "../../../../interfaces/trading/ITradingModule.sol";
