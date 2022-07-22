@@ -14,7 +14,7 @@ abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, OracleMixin {
         uint16 secondaryBorrowCurrencyId
     )
         TwoTokenPoolMixin(underlyingToken, balancerPoolId, secondaryBorrowCurrencyId)
-        OracleMixin(address(BALANCER_POOL_TOKEN)) 
+        OracleMixin(balancerPoolId) 
     {
         // The oracle is required for the vault to behave properly
         (/* */, /* */, /* */, /* */, bool oracleEnabled) = 

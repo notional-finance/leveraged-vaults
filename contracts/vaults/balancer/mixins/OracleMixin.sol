@@ -4,12 +4,15 @@ pragma solidity 0.8.15;
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {StrategyVaultSettings, OracleContext} from "../BalancerVaultTypes.sol";
 import {LibBalancerStorage} from "../internal/LibBalancerStorage.sol";
+import {BalancerUtils} from "../Balancerutils.sol";
 
 abstract contract OracleMixin {
     uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;
 
-    constructor(address balancerPool) {
-        MAX_ORACLE_QUERY_WINDOW = IPriceOracle(balancerPool).getLargestSafeQueryWindow();
+    constructor(bytes32 balancerPoolId) {
+        (address pool, /* */) = BalancerUtils.BALANCER_VAULT.getPool(balancerPoolId);
+
+        MAX_ORACLE_QUERY_WINDOW = IPriceOracle(pool).getLargestSafeQueryWindow();
         require(MAX_ORACLE_QUERY_WINDOW <= type(uint32).max); /// @dev largestQueryWindow overflow
     }
 

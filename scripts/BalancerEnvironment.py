@@ -2,11 +2,12 @@ import eth_abi
 from brownie import (
     network, 
     nProxy,
-    BalancerBoostController,
-    Balancer2TokenVault,
+    Weighted2TokenVault,
+    MetaStable2TokenVault,
     SettlementHelper,
-    RewardHelper,
-    MockBalancerUtils
+    Weighted2TokenAuraRewardHelper,
+    MockBalancerUtils,
+    BalancerUtils
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -49,7 +50,7 @@ StrategyConfig = {
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
         },
-        "Strat50ETH50wstETH": {
+        "Strat50ETH50stETH": {
             "vaultConfig": get_vault_config(
                 flags=set_flags(0, ENABLED=True),
                 minAccountBorrowSize=1,
@@ -57,27 +58,45 @@ StrategyConfig = {
                 secondaryBorrowCurrencies=[0,0] # USDC
             ),
             "secondaryBorrowCurrency": None,
-            "name": "Balancer 50ETH-50wstETH Strategy",
+            "maxPrimaryBorrowCapacity": 100_000_000e8,
+            "name": "Balancer 50ETH-50stETH Strategy",
+            "primaryCurrency": 1, # ETH
+            "poolId": "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080",
+            "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
+            "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
+            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
+            "maxUnderlyingSurplus": 10e18, # 10 ETH
+            "oracleWindowInSeconds": 3600,
+            "maxBalancerPoolShare": 1e3, # 10%
+            "settlementSlippageLimit": 5e3, # 5%
+            "postMaturitySettlementSlippageLimit": 10e3, # 10%
+            "balancerOracleWeight": 0.6e4, # 60%
+            "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
+            "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
+            "feePercentage": 1e2, # 1%
+            "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
         }
     }
 }
 
 class BalancerEnvironment(Environment):
-    def __init__(self, network, strategyName) -> None:
+    def __init__(self, network) -> None:
         Environment.__init__(self, network)
-        self.strategyVault = self.deployBalancer2TokenVault(strategyName)
 
-    def deployBalancer2TokenVault(self, strat):
+    def deployBalancerVault(self, strat, vaultContract):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
         # Deploy external libs
+        BalancerUtils.deploy({"from": self.deployer})
+        Weighted2TokenAuraRewardHelper.deploy({"from": self.deployer})
         SettlementHelper.deploy({"from": self.deployer})
-        RewardHelper.deploy({"from": self.deployer})
 
         # Deploy mocks to access internal library functions
         self.mockBalancerUtils = MockBalancerUtils.deploy({"from": self.deployer});
 
-        secondaryCurrencyId = stratConfig["secondaryBorrowCurrency"]["currencyId"]
-        impl = Balancer2TokenVault.deploy(
+        secondaryCurrencyId = 0
+        if stratConfig["secondaryBorrowCurrency"] != None:
+            secondaryCurrencyId = stratConfig["secondaryBorrowCurrency"]["currencyId"]
+        impl = vaultContract.deploy(
             self.addresses["notional"],
             [
                 secondaryCurrencyId,
@@ -92,7 +111,7 @@ class BalancerEnvironment(Environment):
         )
 
         proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
-        vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, Balancer2TokenVault.abi)
+        vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, Weighted2TokenVault.abi)
 
         vaultProxy.initialize(
             [
@@ -139,11 +158,13 @@ def main():
     networkName = network.show_active()
     if networkName == "hardhat-fork":
         networkName = "mainnet"
-    strategyName = "Strat50ETH50USDC"
-    env = BalancerEnvironment(networkName, strategyName)
-    vault = env.strategyVault
+    env = BalancerEnvironment(networkName)
+    weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenVault)
+    stableVault = env.deployBalancerVault("Strat50ETH50stETH", MetaStable2TokenVault)
 
     maturity = env.notional.getActiveMarkets(1)[0][1]
+
+    return
 
     env.notional.enterVault(
         env.whales["ETH"],

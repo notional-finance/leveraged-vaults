@@ -17,12 +17,13 @@ abstract contract Weighted2TokenVaultMixin is TwoTokenPoolMixin, OracleMixin {
         uint16 secondaryBorrowCurrencyId
     ) 
         TwoTokenPoolMixin(underlyingToken, balancerPoolId, secondaryBorrowCurrencyId) 
-        OracleMixin(address(BALANCER_POOL_TOKEN)) 
+        OracleMixin(balancerPoolId) 
     {
         // The oracle is required for the vault to behave properly
         (/* */, /* */, /* */, /* */, bool oracleEnabled, /* */) 
             = IWeightedPool(address(BALANCER_POOL_TOKEN)).getMiscData();
         require(oracleEnabled);
+
 
         uint8 secondaryIndex;
         unchecked {

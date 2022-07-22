@@ -11,10 +11,8 @@ abstract contract PoolMixin {
 
     constructor(bytes32 balancerPoolId) {
         BALANCER_POOL_ID = balancerPoolId;
-        {
-            (address pool, /* */) = BalancerUtils.BALANCER_VAULT.getPool(BALANCER_POOL_ID);
-            BALANCER_POOL_TOKEN = IERC20(pool);
-        }
+        (address pool, /* */) = BalancerUtils.BALANCER_VAULT.getPool(balancerPoolId);
+        BALANCER_POOL_TOKEN = IERC20(pool);
     }
 
     function _poolContext() internal view returns (PoolContext memory) {
