@@ -17,12 +17,12 @@ interface IVaultAction {
     /// @notice Emitted when a secondary currency borrow capacity is updated
     event VaultUpdateSecondaryBorrowCapacity(address indexed vault, uint16 indexed currencyId, uint80 maxSecondaryBorrowCapacity);
     /// @notice Emitted when a vault has a shortfall upon settlement
-    event VaultShortfall(address indexed vault, uint16 indexed currencyId, int256 shortfall);
+    event VaultShortfall(address indexed vault, uint16 indexed currencyId, uint256 indexed maturity, int256 shortfall);
     /// @notice Emitted when a vault has an insolvency that cannot be covered by the
     /// cash reserve
-    event ProtocolInsolvency(address indexed vault, uint16 indexed currencyId, int256 shortfall);
+    event ProtocolInsolvency(address indexed vault, uint16 indexed currencyId, uint256 indexed maturity, int256 shortfall);
     /// @notice Emitted when a vault fee is accrued via borrowing (denominated in asset cash)
-    event VaultFeeAccrued(address indexed vault, uint16 indexed currencyId, int256 reserveFee, int256 nTokenFee);
+    event VaultFeeAccrued(address indexed vault, uint16 indexed currencyId, uint256 indexed maturity, int256 reserveFee, int256 nTokenFee);
     /// @notice Emitted when the borrow capacity on a vault changes
     event VaultBorrowCapacityChange(address indexed vault, uint16 indexed currencyId, uint256 totalUsedBorrowCapacity);
 
@@ -31,6 +31,7 @@ interface IVaultAction {
         address indexed vault,
         address indexed account,
         uint16 indexed currencyId,
+        uint256 maturity,
         uint256 debtSharesMinted,
         uint256 fCashBorrowed
     );
@@ -40,8 +41,18 @@ interface IVaultAction {
         address indexed vault,
         address indexed account,
         uint16 indexed currencyId,
+        uint256 maturity,
         uint256 debtSharesRepaid,
         uint256 fCashLent
+    );
+
+    /// @notice Emitted when secondary borrows are snapshot prior to settlement
+    event VaultSecondaryBorrowSnapshot(
+        address indexed vault,
+        uint16 indexed currencyId,
+        uint256 indexed maturity,
+        int256 totalfCashBorrowedInPrimarySnapshot,
+        int256 exchangeRate
     );
 
     /// @notice Emitted when a vault settles assets
@@ -150,6 +161,9 @@ interface IVaultAction {
         bytes calldata callbackData
     ) external returns (bytes memory returnData);
 
+    function initiateSecondaryBorrowSettlement(uint256 maturity)
+        external returns (uint256[2] memory secondaryBorrowSnapshot);
+
     /// @notice Non-authenticated method that will set settlement values for a vault so that
     /// account holders can withdraw matured assets.
     function settleVault(address vault, uint256 maturity) external;
@@ -161,7 +175,11 @@ interface IVaultAction {
         external view returns (uint256 totalUsedBorrowCapacity, uint256 maxBorrowCapacity);
 
     function getSecondaryBorrow(address vault, uint16 currencyId, uint256 maturity) 
-        external view returns (uint256 totalfCashBorrowed, uint256 totalAccountDebtShares);
+        external view returns (
+            uint256 totalfCashBorrowed,
+            uint256 totalAccountDebtShares,
+            uint256 totalfCashBorrowedInPrimarySnapshot
+        );
 
     /// @notice View method to get vault state
     function getVaultState(address vault, uint256 maturity) external view returns (VaultState memory vaultState);
@@ -195,7 +213,7 @@ interface IVaultAccountAction {
     event VaultExitPostMaturity(
         address indexed vault,
         address indexed account,
-        uint256 indexed newMaturity
+        uint256 indexed maturity
     );
 
     event VaultExitPreMaturity(
@@ -251,7 +269,7 @@ interface IVaultAccountAction {
         uint256 fCash,
         uint32 maxBorrowRate,
         bytes calldata vaultData
-    ) external payable;
+    ) external payable returns (uint256 strategyTokensAdded);
 
     /**
      * @notice Re-enters the vault at a longer dated maturity. The account's existing borrow
@@ -271,7 +289,7 @@ interface IVaultAccountAction {
         uint32 minLendRate,
         uint32 maxBorrowRate,
         bytes calldata enterVaultData
-    ) external;
+    ) external returns (uint256 strategyTokensAdded);
 
     /**
      * @notice Prior to maturity, allows an account to withdraw their position from the vault. Will
@@ -288,6 +306,7 @@ interface IVaultAccountAction {
      * @param fCashToLend amount of fCash to lend
      * @param minLendRate the minimum rate to lend at
      * @param exitVaultData passed to the vault during exit
+     * @return underlyingToReceiver amount of underlying tokens returned to the receiver on exit
      */
     function exitVault(
         address account,
@@ -297,7 +316,7 @@ interface IVaultAccountAction {
         uint256 fCashToLend,
         uint32 minLendRate,
         bytes calldata exitVaultData
-    ) external payable;
+    ) external payable returns (uint256 underlyingToReceiver);
 
     /**
      * @notice If an account is below the minimum collateral ratio, this method wil deleverage (liquidate)
@@ -330,8 +349,7 @@ interface IVaultAccountAction {
     function getVaultAccountCollateralRatio(address account, address vault) external view returns (
         int256 collateralRatio,
         int256 minCollateralRatio,
-        int256 maxLiquidatorDepositAssetCash,
-        bool mustLiquidateFull
+        int256 maxLiquidatorDepositAssetCash
     );
 }
 
