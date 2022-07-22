@@ -166,6 +166,7 @@ contract MetaStable2TokenAuraVault is
             stakingContext: _auraStakingContext(),
             baseContext: StrategyContext({
                 totalBPTHeld: _bptHeld(),
+                secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
                 vaultState: VaultUtils._getStrategyVaultState()
             })

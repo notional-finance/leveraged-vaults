@@ -10,7 +10,7 @@ import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol"
 import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
-import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
+import {IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 
@@ -104,6 +104,7 @@ struct TwoTokenPoolContext {
 
 struct StrategyContext {
     uint256 totalBPTHeld;
+    uint16 secondaryBorrowCurrencyId;
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
 }

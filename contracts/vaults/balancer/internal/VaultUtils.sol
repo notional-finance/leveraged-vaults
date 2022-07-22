@@ -2,7 +2,13 @@
 pragma solidity 0.8.15;
 
 import {LibBalancerStorage} from "./LibBalancerStorage.sol";
-import {StrategyVaultSettings, StrategyVaultState, SettlementState} from "../BalancerVaultTypes.sol";
+import {
+    StrategyVaultSettings, 
+    StrategyVaultState, 
+    SettlementState,
+    StrategyContext
+} from "../BalancerVaultTypes.sol";
+import {BalancerUtils} from "../BalancerUtils.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {VaultState} from "../../../global/Types.sol";
 
@@ -70,5 +76,31 @@ library VaultUtils {
     function _totalSupplyInMaturity(uint256 maturity) internal view returns (uint256) {
         VaultState memory vaultState = Constants.NOTIONAL.getVaultState(address(this), maturity);
         return vaultState.totalStrategyTokens;
+    }
+
+    function _calculateStrategyTokensMinted(
+        StrategyContext memory context, 
+        uint256 maturity,
+        uint256 bptMinted
+    ) internal view returns (uint256 strategyTokensMinted) {
+        uint256 totalSupplyInMaturity = _totalSupplyInMaturity(maturity);
+        uint256 bptHeldInMaturity = _getBPTHeldInMaturity(
+            context.vaultState,
+            totalSupplyInMaturity,
+            context.totalBPTHeld
+        );
+
+        // Calculate strategy token share for this account
+        if (context.vaultState.totalStrategyTokenGlobal == 0) {
+            // Strategy tokens are in 8 decimal precision, BPT is in 18. Scale the minted amount down.
+            strategyTokensMinted =
+                (bptMinted * uint256(Constants.INTERNAL_TOKEN_PRECISION)) /
+                BalancerUtils.BALANCER_PRECISION;
+        } else {
+            // BPT held in maturity is calculated before the new BPT tokens are minted, so this calculation
+            // is the tokens minted that will give the account a corresponding share of the new bpt balance held.
+            // The precision here will be the same as strategy token supply.
+            strategyTokensMinted = (bptMinted * totalSupplyInMaturity) / bptHeldInMaturity;
+        }
     }
 }

@@ -2,10 +2,17 @@ import eth_abi
 from brownie import (
     network, 
     nProxy,
-    Weighted2TokenVault,
-    MetaStable2TokenVault,
+    Weighted2TokenAuraVault,
+    MetaStable2TokenAuraVault,
     SettlementHelper,
+    AuraRewardHelperExternal,
+    MetaStable2TokenAuraRewardHelper,
+    MetaStable2TokenAuraSettlementHelper,
+    MetaStable2TokenAuraVaultHelper,
     Weighted2TokenAuraRewardHelper,
+    Weighted2TokenAuraVaultHelper,
+    MockWeighted2TokenOracleMath,
+    MockStable2TokenOracleMath,
     MockBalancerUtils,
     BalancerUtils
 )
@@ -86,12 +93,18 @@ class BalancerEnvironment(Environment):
     def deployBalancerVault(self, strat, vaultContract):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
         # Deploy external libs
-        BalancerUtils.deploy({"from": self.deployer})
+        AuraRewardHelperExternal.deploy({"from": self.deployer})
+        MetaStable2TokenAuraRewardHelper.deploy({"from": self.deployer})
+        MetaStable2TokenAuraSettlementHelper.deploy({"from": self.deployer})
+        MetaStable2TokenAuraVaultHelper.deploy({"from": self.deployer})
         Weighted2TokenAuraRewardHelper.deploy({"from": self.deployer})
+        Weighted2TokenAuraVaultHelper.deploy({"from": self.deployer})
         SettlementHelper.deploy({"from": self.deployer})
 
         # Deploy mocks to access internal library functions
         self.mockBalancerUtils = MockBalancerUtils.deploy({"from": self.deployer});
+        self.mockWeighted2TokenOracleMath = MockWeighted2TokenOracleMath.deploy({"from": self.deployer})
+        self.mockStable2TokenOracleMath = MockStable2TokenOracleMath.deploy({"from": self.deployer})
 
         secondaryCurrencyId = 0
         if stratConfig["secondaryBorrowCurrency"] != None:
@@ -111,7 +124,7 @@ class BalancerEnvironment(Environment):
         )
 
         proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
-        vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, Weighted2TokenVault.abi)
+        vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, vaultContract.abi)
 
         vaultProxy.initialize(
             [
@@ -159,8 +172,8 @@ def main():
     if networkName == "hardhat-fork":
         networkName = "mainnet"
     env = BalancerEnvironment(networkName)
-    weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenVault)
-    stableVault = env.deployBalancerVault("Strat50ETH50stETH", MetaStable2TokenVault)
+    weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
+    stableVault = env.deployBalancerVault("Strat50ETH50stETH", MetaStable2TokenAuraVault)
 
     maturity = env.notional.getActiveMarkets(1)[0][1]
 

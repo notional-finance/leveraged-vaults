@@ -12,5 +12,13 @@ contract MockStable2TokenOracleMath {
     ) 
         external view returns (uint256 spotPrice) {
         return Stable2TokenOracleMath.getSpotPrice(oracleContext, poolContext, tokenIndex);
-    }    
+    }
+
+    function getOptimalSecondaryBorrowAmount(
+        StableOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        uint256 primaryAmount
+    ) external view returns (uint256) {
+        return Stable2TokenOracleMath.getOptimalSecondaryBorrowAmount(oracleContext, poolContext, primaryAmount);
+    }   
 }
