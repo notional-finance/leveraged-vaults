@@ -15,6 +15,10 @@ abstract contract PoolMixin {
         BALANCER_POOL_TOKEN = IERC20(pool);
     }
 
+    function _poolToken() internal view returns (IERC20) {
+        return BALANCER_POOL_TOKEN;
+    }
+
     function _poolContext() internal view returns (PoolContext memory) {
         return PoolContext({
             pool: BALANCER_POOL_TOKEN,

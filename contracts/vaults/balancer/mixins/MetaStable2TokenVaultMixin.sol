@@ -9,11 +9,11 @@ import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
 
 abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, OracleMixin {
     constructor(
-        address underlyingToken, 
+        uint16 primaryBorrowCurrencyId, 
         bytes32 balancerPoolId,
         uint16 secondaryBorrowCurrencyId
     )
-        TwoTokenPoolMixin(underlyingToken, balancerPoolId, secondaryBorrowCurrencyId)
+        TwoTokenPoolMixin(primaryBorrowCurrencyId, balancerPoolId, secondaryBorrowCurrencyId)
         OracleMixin(balancerPoolId) 
     {
         // The oracle is required for the vault to behave properly

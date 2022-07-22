@@ -19,7 +19,7 @@ import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExte
 import {SettlementHelper} from "./balancer/SettlementHelper.sol";
 import {Weighted2TokenVaultHelper} from "./balancer/Weighted2TokenVaultHelper.sol";
 import {
-    DeploymentParams, 
+    TwoTokenAuraDeploymentParams, 
     InitParams, 
     StrategyVaultSettings, 
     StrategyVaultState,
@@ -60,14 +60,14 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     /** Events */
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
-    constructor(NotionalProxy notional_, DeploymentParams memory params)
-        BaseVaultStorage(notional_, params) 
+    constructor(NotionalProxy notional_, TwoTokenAuraDeploymentParams memory params)
+        BaseVaultStorage(notional_, params.baseParams) 
         Weighted2TokenVaultMixin(
-            address(_underlyingToken()), 
-            params.balancerPoolId,
+            params.primaryBorrowCurrencyId,
+            params.baseParams.balancerPoolId,
             params.secondaryBorrowCurrencyId
         )
-        AuraStakingMixin(params.liquidityGauge, params.auraRewardPool)
+        AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool)
     {}
 
     function initialize(InitParams calldata params)

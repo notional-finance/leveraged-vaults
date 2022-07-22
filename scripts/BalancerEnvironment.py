@@ -112,13 +112,16 @@ class BalancerEnvironment(Environment):
         impl = vaultContract.deploy(
             self.addresses["notional"],
             [
+                stratConfig["primaryCurrency"],
                 secondaryCurrencyId,
-                stratConfig["poolId"],
-                stratConfig["liquidityGauge"],
                 stratConfig["auraRewardPool"],
-                self.tradingModule.address,
-                stratConfig["settlementWindow"],
-                stratConfig["feeReceiver"]
+                [
+                    stratConfig["poolId"],
+                    stratConfig["liquidityGauge"],
+                    self.tradingModule.address,
+                    stratConfig["settlementWindow"],
+                    stratConfig["feeReceiver"]
+                ]
             ],
             {"from": self.deployer}
         )

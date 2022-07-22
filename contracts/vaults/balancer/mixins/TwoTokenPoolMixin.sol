@@ -12,6 +12,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
 
+    uint16 internal immutable SECONDARY_BORROW_CURRENCY_ID;
     IERC20 internal immutable PRIMARY_TOKEN;
     IERC20 internal immutable SECONDARY_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
@@ -19,11 +20,13 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
     uint8 internal immutable SECONDARY_DECIMALS;
 
     constructor(
-        address underlyingToken, 
+        uint16 primaryBorrowCurrencyId, 
         bytes32 balancerPoolId, 
         uint16 secondaryBorrowCurrencyId
     ) PoolMixin(balancerPoolId) {
-        PRIMARY_TOKEN = IERC20(BalancerUtils.getTokenAddress(underlyingToken));
+        SECONDARY_BORROW_CURRENCY_ID = secondaryBorrowCurrencyId;
+        PRIMARY_TOKEN = IERC20(NotionalUtils._getNotionalUnderlyingToken(primaryBorrowCurrencyId));
+        address primaryAddress = BalancerUtils.getTokenAddress(address(PRIMARY_TOKEN));
 
         // prettier-ignore
         (
@@ -34,7 +37,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
 
         // Balancer tokens are sorted by address, so we need to figure out
         // the correct index for the primary token
-        PRIMARY_INDEX = tokens[0] == address(PRIMARY_TOKEN) ? 0 : 1;
+        PRIMARY_INDEX = tokens[0] == primaryAddress ? 0 : 1;
         uint8 secondaryIndex;
         unchecked {
             secondaryIndex = 1 - PRIMARY_INDEX;
@@ -46,7 +49,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             : IERC20(tokens[secondaryIndex]);
 
         // Make sure the deployment parameters are correct
-        if (tokens[PRIMARY_INDEX] != address(PRIMARY_TOKEN)) {
+        if (tokens[PRIMARY_INDEX] != primaryAddress) {
             revert InvalidPrimaryToken(tokens[PRIMARY_INDEX]);
         }
 
@@ -55,7 +58,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
         ) revert InvalidSecondaryToken(tokens[secondaryIndex]);
 
         // If the underlying is ETH, primaryBorrowToken will be rewritten as WETH
-        uint256 primaryDecimals = IERC20(PRIMARY_TOKEN).decimals();
+        uint256 primaryDecimals = IERC20(primaryAddress).decimals();
         // Do not allow decimal places greater than 18
         require(primaryDecimals <= 18);
         PRIMARY_DECIMALS = uint8(primaryDecimals);

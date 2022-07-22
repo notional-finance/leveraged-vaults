@@ -5,7 +5,7 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Constants} from "../global/Constants.sol";
 import {
-    DeploymentParams, 
+    TwoTokenAuraDeploymentParams,
     InitParams,
     ReinvestRewardParams,
     StrategyVaultSettings,
@@ -35,14 +35,14 @@ contract MetaStable2TokenAuraVault is
 {
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
-    constructor(NotionalProxy notional_, DeploymentParams memory params)
-        BaseVaultStorage(notional_, params) 
+    constructor(NotionalProxy notional_, TwoTokenAuraDeploymentParams memory params)
+        BaseVaultStorage(notional_, params.baseParams) 
         MetaStable2TokenVaultMixin(
-            address(_underlyingToken()), 
-            params.balancerPoolId,
+            params.primaryBorrowCurrencyId,
+            params.baseParams.balancerPoolId,
             params.secondaryBorrowCurrencyId
         )
-        AuraStakingMixin(params.liquidityGauge, params.auraRewardPool)
+        AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool)
     {}
 
     function initialize(InitParams calldata params)
