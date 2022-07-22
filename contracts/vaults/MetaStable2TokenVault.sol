@@ -6,7 +6,8 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 import {Constants} from "../global/Constants.sol";
 import {
     DeploymentParams, 
-    InitParams, 
+    InitParams,
+    ReinvestRewardParams,
     StrategyVaultSettings,
     StrategyVaultState,
     PoolContext,
@@ -19,6 +20,10 @@ import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerUtils} from "./balancer/BalancerUtils.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
+import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
+import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
+import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
+import {RewardHelperExternal} from "./balancer/external/RewardHelperExternal.sol";
 
 contract MetaStable2TokenVault is
     UUPSUpgradeable, 
@@ -70,6 +75,13 @@ contract MetaStable2TokenVault is
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
+        return MetaStable2TokenAuraVaultHelper._depositFromNotional(
+            _strategyContext(), 
+            account, 
+            deposit, 
+            maturity, 
+            data
+        );
     }
 
     function _redeemFromNotional(
@@ -78,6 +90,13 @@ contract MetaStable2TokenVault is
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
+        return MetaStable2TokenAuraVaultHelper._redeemFromNotional(
+            _strategyContext(), 
+            account, 
+            strategyTokens, 
+            maturity, 
+            data
+        );
     }
 
     function convertStrategyToUnderlying(
@@ -85,6 +104,54 @@ contract MetaStable2TokenVault is
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
+
+    }
+
+    function settleVaultNormal(
+        uint256 maturity,
+        uint256 strategyTokensToRedeem,
+        bytes calldata data
+    ) external {
+        MetaStable2TokenAuraSettlementHelper.settleVaultNormal(
+            _strategyContext(),
+            maturity, 
+            strategyTokensToRedeem, 
+            data
+        );
+    }
+
+    function settleVaultPostMaturity(
+        uint256 maturity,
+        uint256 strategyTokensToRedeem,
+        bytes calldata data
+    ) external onlyNotionalOwner {
+        MetaStable2TokenAuraSettlementHelper.settleVaultPostMaturity(
+            _strategyContext(), 
+            maturity, 
+            strategyTokensToRedeem, 
+            data
+        );
+    }
+
+    function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
+        MetaStable2TokenAuraSettlementHelper.settleVaultEmergency(
+            _strategyContext(), 
+            maturity, 
+            data
+        );
+    }
+
+    function claimRewardTokens() external {
+        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
+        RewardHelperExternal.claimRewardTokens(
+            _auraStakingContext(), 
+            strategyVaultSettings.feePercentage,
+            FEE_RECEIVER
+        );
+    }
+
+    function reinvestReward(ReinvestRewardParams calldata params) external {
+    
     }
 
     function getStrategyVaultState() external view returns (StrategyVaultState memory) {

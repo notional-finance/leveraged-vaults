@@ -13,15 +13,6 @@ contract MockBalancerUtils {
         return BalancerUtils.getOptimalSecondaryBorrowAmount(oracleContext, poolContext, primaryAmount);
     }
 
-    function getSpotPrice(
-        WeightedOracleContext memory oracleContext,
-        TwoTokenPoolContext memory poolContext,
-        uint256 tokenIndex
-    ) 
-        external view returns (uint256 spotPrice) {
-        return BalancerUtils.getSpotPrice(oracleContext, poolContext, tokenIndex);
-    }
-
     function getTimeWeightedPrimaryBalance(
         WeightedOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,

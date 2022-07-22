@@ -153,7 +153,7 @@ library RewardHelper {
         }
     }
 
-    function reinvestReward(
+    function _reinvestReward(
         ReinvestRewardParams memory params,
         ITradingModule tradingModule,
         TwoTokenPoolContext memory poolContext,

@@ -14,6 +14,7 @@ import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {Weighted2TokenVaultMixin} from "./balancer/mixins/Weighted2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {Weighted2TokenAuraRewardHelper} from "./balancer/external/Weighted2TokenAuraRewardHelper.sol";
+import {RewardHelperExternal} from "./balancer/external/RewardHelperExternal.sol";
 import {SettlementHelper} from "./balancer/SettlementHelper.sol";
 import {Weighted2TokenVaultHelper} from "./balancer/Weighted2TokenVaultHelper.sol";
 import {
@@ -396,7 +397,7 @@ contract Weighted2TokenVault is UUPSUpgradeable, Initializable, Weighted2TokenVa
     /// @notice Claim other liquidity gauge reward tokens (i.e. LIDO)
     function claimRewardTokens() external {
         StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        Weighted2TokenAuraRewardHelper.claimRewardTokens(
+        RewardHelperExternal.claimRewardTokens(
             _auraStakingContext(), 
             strategyVaultSettings.feePercentage,
             FEE_RECEIVER

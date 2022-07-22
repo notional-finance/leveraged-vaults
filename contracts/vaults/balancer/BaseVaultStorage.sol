@@ -1,21 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {Constants} from "../../global/Constants.sol";
 import {BaseStrategyVault} from "../BaseStrategyVault.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {
-    DeploymentParams,
-    InitParams,
-    StrategyVaultSettings,
-    StrategyVaultState,
-    SettlementState,
-    PoolContext,
-    OracleContext
-} from "./BalancerVaultTypes.sol";
-import {Token} from "../../global/Types.sol";
-import {IERC20} from "../../../interfaces/IERC20.sol";
-import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
+import {DeploymentParams} from "./BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 
 abstract contract BaseVaultStorage is BaseStrategyVault {
