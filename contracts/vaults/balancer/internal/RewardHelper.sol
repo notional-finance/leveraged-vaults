@@ -18,12 +18,14 @@ import {ITradingModule, Trade} from "../../../../interfaces/trading/ITradingModu
 import {ILiquidityGauge} from "../../../../interfaces/balancer/ILiquidityGauge.sol";
 import {nProxy} from "../../../proxy/nProxy.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
+import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
 
 library RewardHelper {
     using TokenUtils for IERC20;
     using TradeHandler for Trade;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
+    using TwoTokenPoolUtils for TwoTokenPoolContext;
 
     error InvalidRewardToken(address token);
     error InvalidMaxAmounts(uint256 oraclePrice, uint256 maxPrimary, uint256 maxSecondary);
@@ -170,12 +172,15 @@ library RewardHelper {
         // Make sure we are joining with the right proportion to minimize slippage
         _validateJoinAmounts(poolContext, spotPrice, tradingModule, primaryAmount, secondaryAmount);
         
-        uint256 bptAmount = BalancerUtils.joinPoolExactTokensIn(
-            poolContext,
-            primaryAmount,
-            secondaryAmount,
-            params.minBPT
-        );
+        uint256 bptAmount = BalancerUtils.joinPoolExactTokensIn({
+            context: poolContext.baseContext,
+            params: poolContext._getPoolParams(
+                primaryAmount, 
+                secondaryAmount, 
+                true // isJoin
+            ),
+            minBPT: params.minBPT
+        });
 
         stakingContext.auraBooster.deposit(
             stakingContext.auraPoolId, bptAmount, true // stake = true

@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 import {LibBalancerStorage} from "./LibBalancerStorage.sol";
 import {StrategyVaultSettings, StrategyVaultState, SettlementState} from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
+import {VaultState} from "../../../global/Types.sol";
 
 library VaultUtils {
     function _getStrategyVaultSettings() internal view returns (StrategyVaultSettings memory) {
@@ -48,5 +49,26 @@ library VaultUtils {
     function _setSettlementState(uint256 maturity, SettlementState memory state) internal {
         mapping(uint256 => SettlementState) storage store = LibBalancerStorage.getSettlementState();
         store[maturity] = state;
+    }
+
+    function _getBPTHeldInMaturity(
+        StrategyVaultState memory strategyVaultState, 
+        uint256 totalSupplyInMaturity,
+        uint256 totalBPTHeld
+    ) internal pure returns (uint256 bptHeldInMaturity) {
+        if (strategyVaultState.totalStrategyTokenGlobal == 0) return 0;
+        bptHeldInMaturity =
+            (totalBPTHeld * totalSupplyInMaturity) /
+            strategyVaultState.totalStrategyTokenGlobal;
+    }
+
+    function _bptThreshold(StrategyVaultSettings memory strategyVaultSettings, uint256 totalBPTSupply) 
+        internal pure returns (uint256) {
+        return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
+    }
+
+    function _totalSupplyInMaturity(uint256 maturity) internal view returns (uint256) {
+        VaultState memory vaultState = Constants.NOTIONAL.getVaultState(address(this), maturity);
+        return vaultState.totalStrategyTokens;
     }
 }

@@ -12,9 +12,9 @@ import {Weighted2TokenOracleMath} from "../internal/Weighted2TokenOracleMath.sol
 
 library Weighted2TokenAuraRewardHelper {
     function reinvestReward(
-        ReinvestRewardParams memory params,
+        Weighted2TokenAuraStrategyContext memory context,
         ITradingModule tradingModule,
-        Weighted2TokenAuraStrategyContext memory context
+        ReinvestRewardParams memory params
     ) external {
         RewardHelper._reinvestReward(
             params, 

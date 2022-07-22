@@ -141,13 +141,14 @@ library SettlementHelper {
         RedeemParams memory params
     ) external returns (bool completedSettlement, uint256 primaryBalance, uint256 secondaryBalance) {
         /// @notice minPrimary and minSecondary are validated before this function is called
-        (primaryBalance, secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
+        // TODO: fix this
+        /*(primaryBalance, secondaryBalance) = BalancerUtils._unstakeAndExitPoolExactBPTIn(
             context.poolContext,
             context.stakingContext,
             bptToSettle,
             params.minPrimary,
             params.minSecondary
-        );
+        );*/
 
         primaryBalance += context.primarySettlementBalance;
         secondaryBalance += context.secondarySettlementBalance;

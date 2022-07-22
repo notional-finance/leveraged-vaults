@@ -10,6 +10,7 @@ import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol"
 import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
+import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 
@@ -51,6 +52,13 @@ struct SecondaryTradeParams {
     bytes exchangeData;
 }
 
+/// @notice Parameters for joining/exiting Balancer pools
+struct PoolParams {
+    IAsset[] assets;
+    uint256[] amounts;
+    uint256 msgValue;
+}
+
 struct OracleContext {
     uint256 oracleWindowInSeconds;
     uint256 balancerOracleWeight;
@@ -82,6 +90,7 @@ struct AuraStakingContext {
     uint256 auraPoolId;
     IERC20 balToken;
     IERC20 auraToken;
+    // TODO: change to IERC20[] rewardTokens;
 }
 
 struct TwoTokenPoolContext {
@@ -93,16 +102,24 @@ struct TwoTokenPoolContext {
     PoolContext baseContext;
 }
 
+struct StrategyContext {
+    uint256 totalBPTHeld;
+    StrategyVaultSettings vaultSettings;
+    StrategyVaultState vaultState;
+}
+
 struct Weighted2TokenAuraStrategyContext {
     TwoTokenPoolContext poolContext;
     WeightedOracleContext oracleContext;
     AuraStakingContext stakingContext;
+    StrategyContext baseContext;
 }
 
 struct MetaStable2TokenAuraStrategyContext {
     TwoTokenPoolContext poolContext;
     StableOracleContext oracleContext;
     AuraStakingContext stakingContext;
+    StrategyContext baseContext;
 }
 
 struct NormalSettlementContext {

@@ -12,9 +12,9 @@ import {Stable2TokenOracleMath} from "../internal/Stable2TokenOracleMath.sol";
 
 library MetaStable2TokenAuraRewardHelper {
     function reinvestReward(
-        ReinvestRewardParams memory params,
+        MetaStable2TokenAuraStrategyContext memory context,
         ITradingModule tradingModule,
-        MetaStable2TokenAuraStrategyContext memory context
+        ReinvestRewardParams memory params
     ) external {
         RewardHelper._reinvestReward(
             params, 

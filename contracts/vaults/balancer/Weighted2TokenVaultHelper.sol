@@ -12,6 +12,7 @@ import {
     WeightedOracleContext,
     TwoTokenPoolContext,
     Weighted2TokenAuraStrategyContext,
+    StrategyContext,
     StrategyVaultState,
     StrategyVaultSettings
 } from "./BalancerVaultTypes.sol";
@@ -22,7 +23,6 @@ import {BaseVaultStorage} from "./BaseVaultStorage.sol";
 import {Weighted2TokenVaultMixin} from "./mixins/Weighted2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./mixins/AuraStakingMixin.sol";
 import {Constants} from "../../global/Constants.sol";
-import {VaultState} from "../../global/Types.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
@@ -44,7 +44,6 @@ abstract contract Weighted2TokenVaultHelper is
         uint256 optimalSecondaryAmount,
         uint256 secondaryfCashAmount
     );
-    error BalancerPoolShareTooHigh(uint256 totalBPTHeld, uint256 bptThreshold);
     error InvalidMinAmounts(uint256 pairPrice, uint256 minPrimary, uint256 minSecondary);
 
     event VaultSettlement(
@@ -117,33 +116,6 @@ abstract contract Weighted2TokenVaultHelper is
                 params.secondaryfCashAmount
             );
         }
-    }
-
-    function _joinPoolAndStake(
-        uint256 primaryAmount,
-        uint256 borrowedSecondaryAmount,
-        uint256 minBPT
-    ) internal returns (uint256 bptAmount) {
-        bptAmount = BalancerUtils.joinPoolExactTokensIn({
-            context: _twoTokenPoolContext(),
-            maxPrimaryAmount: primaryAmount,
-            maxSecondaryAmount: borrowedSecondaryAmount,
-            minBPT: minBPT
-        });
-
-        // Check BPT threshold to make sure our share of the pool is
-        // below maxBalancerPoolShare
-        (
-            /* uint256 totalBPTSupply */, 
-            uint256 totalBPTHeld, 
-            uint256 bptThreshold
-        ) = _bptHeldAndThreshold(bptAmount);
-
-        if (totalBPTHeld > bptThreshold)
-            revert BalancerPoolShareTooHigh(totalBPTHeld, bptThreshold);
-
-        // Transfer token to Aura protocol for boosted staking
-        AURA_BOOSTER.deposit(AURA_POOL_ID, bptAmount, true); // stake = true
     }
 
     function _repaySecondaryBorrowCallback(
@@ -266,7 +238,7 @@ abstract contract Weighted2TokenVaultHelper is
         );
 
         if (account == address(this)) {
-            uint256 _totalSupply = _totalSupplyInMaturity(maturity);
+            uint256 _totalSupply = VaultUtils._totalSupplyInMaturity(maturity);
 
             if (_totalSupply == 0) return (0, 0);
 
@@ -396,43 +368,18 @@ abstract contract Weighted2TokenVaultHelper is
         return Weighted2TokenAuraStrategyContext({
             poolContext: _twoTokenPoolContext(),
             oracleContext: _weightedOracleContext(),
-            stakingContext: _auraStakingContext()
+            stakingContext: _auraStakingContext(),
+            baseContext: StrategyContext({
+                totalBPTHeld: _bptHeld(),
+                vaultSettings: VaultUtils._getStrategyVaultSettings(),
+                vaultState: VaultUtils._getStrategyVaultState()
+            })
         });
     }
 
-    /// @dev Gets the total BPT held across the LIQUIDITY GAUGE, VeBal Delegator and the contract itself
+    /// @dev Gets the total BPT held by the aura reward pool
     function _bptHeld() internal view returns (uint256) {
         return AURA_REWARD_POOL.balanceOf(address(this));
-    }
-
-    function _bptThreshold(uint256 totalBPTSupply) internal view returns (uint256) {
-        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
-    }
-
-    function _bptHeldAndThreshold(uint256 adjustment) 
-        internal view returns (uint256 total, uint256 held, uint256 threshold) {
-        total = BALANCER_POOL_TOKEN.totalSupply();
-        held = _bptHeld() + adjustment;
-        threshold = _bptThreshold(total);
-    }
-
-    function _totalSupplyInMaturity(uint256 maturity) internal view returns (uint256) {
-        VaultState memory vaultState = NOTIONAL.getVaultState(address(this), maturity);
-        return vaultState.totalStrategyTokens;
-    }
-
-    function _getBPTHeldInMaturity(uint256 maturity) internal view returns (
-        uint256 bptHeldInMaturity,
-        uint256 totalStrategyTokenSupplyInMaturity
-    ) {
-        StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
-        if (strategyVaultState.totalStrategyTokenGlobal == 0) return (0, 0);
-        uint256 totalBPTHeld = _bptHeld();
-        totalStrategyTokenSupplyInMaturity = _totalSupplyInMaturity(maturity);
-        bptHeldInMaturity =
-            (totalBPTHeld * totalStrategyTokenSupplyInMaturity) /
-            strategyVaultState.totalStrategyTokenGlobal;
     }
 
     /// @notice Converts BPT to strategy tokens
@@ -444,15 +391,14 @@ abstract contract Weighted2TokenVaultHelper is
                 BalancerUtils.BALANCER_PRECISION;
         }
 
-        //prettier-ignore
-        (
-            uint256 bptHeldInMaturity,
-            uint256 totalStrategyTokenSupplyInMaturity
-        ) = _getBPTHeldInMaturity(maturity);
+        uint256 totalSupplyInMaturity = VaultUtils._totalSupplyInMaturity(maturity);
+        uint256 bptHeldInMaturity = VaultUtils._getBPTHeldInMaturity(
+            strategyVaultState, 
+            totalSupplyInMaturity, 
+            _bptHeld()
+        );
 
-        strategyTokenAmount =
-            (totalStrategyTokenSupplyInMaturity * bptClaim) /
-            bptHeldInMaturity;
+        strategyTokenAmount = (totalSupplyInMaturity * bptClaim) / bptHeldInMaturity;
     }
 
     /// @notice Converts strategy tokens to BPT
@@ -462,14 +408,13 @@ abstract contract Weighted2TokenVaultHelper is
         if (strategyVaultState.totalStrategyTokenGlobal == 0)
             return strategyTokenAmount;
 
-        //prettier-ignore
-        (
-            uint256 bptHeldInMaturity,
-            uint256 totalStrategyTokenSupplyInMaturity
-        ) = _getBPTHeldInMaturity(maturity);
+        uint256 totalSupplyInMaturity = VaultUtils._totalSupplyInMaturity(maturity);
+        uint256 bptHeldInMaturity = VaultUtils._getBPTHeldInMaturity(
+            strategyVaultState, 
+            totalSupplyInMaturity,
+            _bptHeld()
+        );
 
-        bptClaim =
-            (bptHeldInMaturity * strategyTokenAmount) /
-            totalStrategyTokenSupplyInMaturity;
+        bptClaim = (bptHeldInMaturity * strategyTokenAmount) / totalSupplyInMaturity;
     }
 }

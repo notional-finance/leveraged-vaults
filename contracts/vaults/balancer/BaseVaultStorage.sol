@@ -20,6 +20,12 @@ abstract contract BaseVaultStorage is BaseStrategyVault {
         FEE_RECEIVER = params.feeReceiver;
     }
 
+    function _revertInSettlementWindow(uint256 maturity) internal view {
+        if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
+            revert();
+        }
+    }
+    
     // Storage gap for future potential upgrades
     uint256[100] private __gap;
 }

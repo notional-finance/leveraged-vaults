@@ -11,7 +11,8 @@ import {
     StrategyVaultSettings,
     StrategyVaultState,
     PoolContext,
-    MetaStable2TokenAuraStrategyContext
+    MetaStable2TokenAuraStrategyContext,
+    StrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
@@ -23,9 +24,9 @@ import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
 import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
 import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
-import {RewardHelperExternal} from "./balancer/external/RewardHelperExternal.sol";
+import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
-contract MetaStable2TokenVault is
+contract MetaStable2TokenAuraVault is
     UUPSUpgradeable, 
     Initializable,
     BaseVaultStorage,
@@ -61,20 +62,15 @@ contract MetaStable2TokenVault is
         emit StrategyVaultSettingsUpdated(settings);
     }
 
-    function _strategyContext() internal view returns (MetaStable2TokenAuraStrategyContext memory) {
-        return MetaStable2TokenAuraStrategyContext({
-            poolContext: _twoTokenPoolContext(),
-            oracleContext: _stableOracleContext(),
-            stakingContext: _auraStakingContext()
-        });
-    }
-
     function _depositFromNotional(
         address account,
         uint256 deposit,
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
+        // Entering the vault is not allowed within the settlement window
+        _revertInSettlementWindow(maturity);
+
         return MetaStable2TokenAuraVaultHelper._depositFromNotional(
             _strategyContext(), 
             account, 
@@ -143,7 +139,7 @@ contract MetaStable2TokenVault is
 
     function claimRewardTokens() external {
         StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        RewardHelperExternal.claimRewardTokens(
+        AuraRewardHelperExternal.claimRewardTokens(
             _auraStakingContext(), 
             strategyVaultSettings.feePercentage,
             FEE_RECEIVER
@@ -151,15 +147,7 @@ contract MetaStable2TokenVault is
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) external {
-    
-    }
-
-    function getStrategyVaultState() external view returns (StrategyVaultState memory) {
-        return VaultUtils._getStrategyVaultState();
-    }
-
-    function getStrategyVaultSettings() external view returns (StrategyVaultSettings memory) {
-        return VaultUtils._getStrategyVaultSettings();
+        MetaStable2TokenAuraRewardHelper.reinvestReward(_strategyContext(), TRADING_MODULE, params);
     }
 
     /// @notice Updates the vault settings
@@ -171,8 +159,26 @@ contract MetaStable2TokenVault is
         _setStrategyVaultSettings(settings);
     }
 
+    function _strategyContext() internal view returns (MetaStable2TokenAuraStrategyContext memory) {
+        return MetaStable2TokenAuraStrategyContext({
+            poolContext: _twoTokenPoolContext(),
+            oracleContext: _stableOracleContext(),
+            stakingContext: _auraStakingContext(),
+            baseContext: StrategyContext({
+                totalBPTHeld: _bptHeld(),
+                vaultSettings: VaultUtils._getStrategyVaultSettings(),
+                vaultState: VaultUtils._getStrategyVaultState()
+            })
+        });
+    }
+    
     function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory) {
         return _strategyContext();
+    }
+
+    /// @dev Gets the total BPT held by the aura reward pool
+    function _bptHeld() internal view returns (uint256) {
+        return AURA_REWARD_POOL.balanceOf(address(this));
     }
 
     function _authorizeUpgrade(

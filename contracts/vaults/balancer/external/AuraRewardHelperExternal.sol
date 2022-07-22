@@ -7,7 +7,7 @@ import {RewardHelper} from "../internal/RewardHelper.sol";
 import {TokenUtils} from "../../../utils/TokenUtils.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
-library RewardHelperExternal {
+library AuraRewardHelperExternal {
     using TokenUtils for IERC20;
 
     function claimRewardTokens(

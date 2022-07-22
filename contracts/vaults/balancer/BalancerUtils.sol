@@ -6,7 +6,8 @@ import {
     OracleContext, 
     WeightedOracleContext, 
     TwoTokenPoolContext,
-    AuraStakingContext
+    AuraStakingContext,
+    PoolParams
 } from "./BalancerVaultTypes.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {IBalancerVault, IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
@@ -220,79 +221,51 @@ library BalancerUtils {
     }
 
 
-    /// @notice Returns parameters for joining and exiting pool
-    function _getPoolParams(
-        TwoTokenPoolContext memory context,
-        uint256 primaryAmount,
-        uint256 secondaryAmount
-    ) private pure returns (IAsset[] memory assets, uint256[] memory amounts) {
-        assets = new IAsset[](2);
-        assets[context.primaryIndex] = IAsset(context.primaryToken);
-        uint8 secondaryIndex;
-        unchecked { secondaryIndex = 1 - context.primaryIndex; }
-        assets[secondaryIndex] = IAsset(context.secondaryToken);
-
-        amounts = new uint256[](2);
-        amounts[context.primaryIndex] = primaryAmount;
-        amounts[secondaryIndex] = secondaryAmount;
-    }
-
     /// @notice Joins a balancer pool using exact tokens in
     function joinPoolExactTokensIn(
-        TwoTokenPoolContext memory context,
-        uint256 maxPrimaryAmount,
-        uint256 maxSecondaryAmount,
+        PoolContext memory context,
+        PoolParams memory params,
         uint256 minBPT
-    ) external returns (uint256 bptAmount) {
-        // prettier-ignore
-        (
-            IAsset[] memory assets,
-            uint256[] memory maxAmountsIn
-        ) = _getPoolParams(context, maxPrimaryAmount, maxSecondaryAmount);
-
-        uint256 msgValue;
-        if (assets[context.primaryIndex] == IAsset(Constants.ETH_ADDRESS)) msgValue = maxAmountsIn[context.primaryIndex];
-
+    ) internal returns (uint256 bptAmount) {
         // Join pool
-        bptAmount = IERC20(address(context.baseContext.pool)).balanceOf(address(this));
-        BALANCER_VAULT.joinPool{value: msgValue}(
-            context.baseContext.poolId,
+        bptAmount = IERC20(address(context.pool)).balanceOf(address(this));
+        BALANCER_VAULT.joinPool{value: params.msgValue}(
+            context.poolId,
             address(this),
             address(this),
             IBalancerVault.JoinPoolRequest(
-                assets,
-                maxAmountsIn,
+                params.assets,
+                params.amounts,
                 abi.encode(
                     IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-                    maxAmountsIn,
+                    params.amounts,
                     minBPT // Apply minBPT to prevent front running
                 ),
                 false // Don't use internal balances
             )
         );
-        bptAmount = IERC20(address(context.baseContext.pool)).balanceOf(address(this)) - bptAmount;
+        bptAmount = IERC20(address(context.pool)).balanceOf(address(this)) - bptAmount;
     }
 
     /// @notice Exits a balancer pool using exact BPT in
     function _exitPoolExactBPTIn(
-        TwoTokenPoolContext memory context,
-        uint256 minPrimaryAmount,
-        uint256 minSecondaryAmount,
+        PoolContext memory context,
+        PoolParams memory params,
         uint256 bptExitAmount
-    ) private {
-        // prettier-ignore
-        (
-            IAsset[] memory assets,
-            uint256[] memory minAmountsOut
-        ) = _getPoolParams(context, minPrimaryAmount, minSecondaryAmount);
+    ) internal returns (uint256[] memory exitBalances) {
+        exitBalances = new uint256[](params.assets.length);
+
+        for (uint256 i; i < params.assets.length; i++) {
+            exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i]));
+        }
 
         BALANCER_VAULT.exitPool(
-            context.baseContext.poolId,
+            context.poolId,
             address(this),
             payable(address(this)), // Vault will receive the underlying assets
             IBalancerVault.ExitPoolRequest(
-                assets,
-                minAmountsOut,
+                params.assets,
+                params.amounts,
                 abi.encode(
                     IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
                     bptExitAmount
@@ -300,30 +273,10 @@ library BalancerUtils {
                 false // Don't use internal balances
             )
         );
-    }
 
-    function _unstakeAndExitPoolExactBPTIn(
-        TwoTokenPoolContext memory poolContext,
-        AuraStakingContext memory stakingContext,
-        uint256 bptClaim,
-        uint256 minPrimary,
-        uint256 minSecondary
-    ) external returns (uint256 primaryBalance, uint256 secondaryBalance) {
-        // Withdraw BPT tokens back to the vault for redemption
-        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
-
-        uint256 primaryBefore = TokenUtils.tokenBalance(poolContext.primaryToken);
-        uint256 secondaryBefore = TokenUtils.tokenBalance(poolContext.secondaryToken);
-
-        _exitPoolExactBPTIn({
-            context: poolContext,
-            minPrimaryAmount: minPrimary,
-            minSecondaryAmount: minSecondary,
-            bptExitAmount: bptClaim
-        });
-
-        primaryBalance = TokenUtils.tokenBalance(poolContext.primaryToken) - primaryBefore;
-        secondaryBalance = TokenUtils.tokenBalance(address(poolContext.secondaryToken)) - secondaryBefore;
+        for (uint256 i; i < params.assets.length; i++) {
+            exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i])) - exitBalances[i];
+        }
     }
 
     function approveBalancerTokens(
