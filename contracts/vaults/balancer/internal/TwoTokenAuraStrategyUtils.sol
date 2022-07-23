@@ -3,6 +3,8 @@ pragma solidity 0.8.15;
 
 import {
     PoolParams,
+    RedeemParams,
+    SecondaryTradeParams,
     TwoTokenPoolContext,
     AuraStakingContext,
     StrategyContext,
@@ -26,6 +28,102 @@ library TwoTokenAuraStrategyUtils {
     using AuraStakingUtils for AuraStakingContext;
     using VaultUtils for StrategyVaultSettings;
     using VaultUtils for StrategyVaultState;
+
+    function _deposit(
+        StrategyContext memory strategyContext,
+        AuraStakingContext memory stakingContext,
+        TwoTokenPoolContext memory poolContext,
+        uint256 deposit,
+        uint256 maturity,
+        uint256 borrowedSecondaryAmount,
+        uint256 minBPT
+    ) internal returns (uint256 strategyTokensMinted) {
+        uint256 bptMinted = strategyContext._joinPoolAndStake({
+            stakingContext: stakingContext,
+            poolContext: poolContext,
+            primaryAmount: deposit,
+            secondaryAmount: borrowedSecondaryAmount,
+            minBPT: minBPT
+        });
+
+        // Update _bptHeld() in memory
+        strategyContext.totalBPTHeld += bptMinted;
+
+        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted, maturity);
+        require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
+
+        // Update global supply count
+        strategyContext.vaultState.totalStrategyTokenGlobal += uint80(strategyTokensMinted);
+        strategyContext.vaultState._setStrategyVaultState(); 
+    }
+
+    function _redeem(
+        StrategyContext memory strategyContext,
+        OracleContext memory oracleContext,
+        AuraStakingContext memory stakingContext,
+        TwoTokenPoolContext memory poolContext,
+        address account,
+        uint256 strategyTokens,
+        uint256 maturity,
+        RedeemParams memory params
+    ) internal returns (uint256 finalPrimaryBalance) {
+        // These min primary and min secondary amounts must be within some configured
+        // delta of the current oracle price
+        poolContext._validateMinExitAmounts({
+            oracleContext: oracleContext,
+            tradingModule: strategyContext.tradingModule,
+            minPrimary: params.minPrimary,
+            minSecondary: params.minSecondary
+        });
+
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens, maturity);
+
+        if (bptClaim == 0) return 0;
+
+        // Underlying token balances from exiting the pool
+        (uint256 primaryBalance, uint256 secondaryBalance)
+            = TwoTokenAuraStrategyUtils._unstakeAndExitPoolExactBPTIn(
+                stakingContext, poolContext, bptClaim, params.minPrimary, params.minSecondary
+            );
+
+        // Update _bptHeld() in memory
+        strategyContext.totalBPTHeld -= bptClaim;
+
+        if (strategyContext.secondaryBorrowCurrencyId != 0) {
+            finalPrimaryBalance = SecondaryBorrowUtils._repaySecondaryBorrow({
+                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
+                account: account,
+                maturity: maturity,
+                strategyTokens: strategyTokens,
+                params: params,
+                secondaryBalance: secondaryBalance,
+                primaryBalance: primaryBalance
+            });
+        } else if (secondaryBalance > 0) {
+            // If there is no secondary debt, we still need to sell the secondary balance
+            // back to the primary token here.
+            (SecondaryTradeParams memory tradeParams) = abi.decode(
+                params.secondaryTradeParams, (SecondaryTradeParams)
+            );
+            uint256 primaryPurchased = SecondaryBorrowUtils._sellSecondaryBalance(
+                tradeParams, 
+                strategyContext.tradingModule, 
+                poolContext.primaryToken, 
+                poolContext.primaryToken, 
+                secondaryBalance
+            );
+
+            finalPrimaryBalance = primaryBalance + primaryPurchased;
+        }
+
+        // Update global strategy token balance
+        // This only needs to be updated for normal redemption
+        // and emergency settlement. For normal and post-maturity settlement
+        // scenarios (account == address(this) && data.length == 32), we
+        // update totalStrategyTokenGlobal before this function is called.
+        strategyContext.vaultState.totalStrategyTokenGlobal -= uint80(strategyTokens);
+        strategyContext.vaultState._setStrategyVaultState(); 
+    }
 
     function _joinPoolAndStake(
         StrategyContext memory strategyContext,
