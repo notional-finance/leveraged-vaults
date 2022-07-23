@@ -88,19 +88,12 @@ library RewardHelper {
             poolContext.secondaryToken
         );
 
-        (/*uint256 amountSold*/, primaryAmount) = _executeTradeWithDynamicSlippage(
-            params.primaryTradeDexId,
-            params.primaryTrade,
-            tradingModule,
-            Constants.REWARD_TRADE_SLIPPAGE_PERCENT
+        (/*uint256 amountSold*/, primaryAmount) = params.primaryTrade._executeTradeWithDynamicSlippage(
+            params.primaryTradeDexId, tradingModule, Constants.REWARD_TRADE_SLIPPAGE_PERCENT
         );
 
-        (
-            /*uint256 amountSold*/, secondaryAmount) = _executeTradeWithDynamicSlippage(
-            params.secondaryTradeDexId,
-            params.secondaryTrade,
-            tradingModule,
-            Constants.REWARD_TRADE_SLIPPAGE_PERCENT
+        (/*uint256 amountSold*/, secondaryAmount) = params.secondaryTrade._executeTradeWithDynamicSlippage(
+            params.secondaryTradeDexId, tradingModule, Constants.REWARD_TRADE_SLIPPAGE_PERCENT
         );
 
         rewardToken = params.primaryTrade.sellToken;

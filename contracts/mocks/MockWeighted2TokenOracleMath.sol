@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import {WeightedOracleContext, TwoTokenPoolContext} from "../vaults/balancer/BalancerVaultTypes.sol";
+import {
+    WeightedOracleContext, 
+    OracleContext, 
+    TwoTokenPoolContext
+} from "../vaults/balancer/BalancerVaultTypes.sol";
 import {Weighted2TokenOracleMath} from "../vaults/balancer/internal/Weighted2TokenOracleMath.sol";
 
 contract MockWeighted2TokenOracleMath {
@@ -21,13 +25,5 @@ contract MockWeighted2TokenOracleMath {
         uint256 primaryAmount
     ) external view returns (uint256) {
         return oracleContext._getOptimalSecondaryBorrowAmount(poolContext, primaryAmount);
-    }
-
-    function getTimeWeightedPrimaryBalance(
-        WeightedOracleContext memory oracleContext,
-        TwoTokenPoolContext memory poolContext,
-        uint256 bptAmount
-    ) internal view returns (uint256) {
-        return oracleContext._getTimeWeightedPrimaryBalance(poolContext, bptAmount);
     }
 }

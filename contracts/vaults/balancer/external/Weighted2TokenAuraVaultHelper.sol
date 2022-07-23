@@ -4,16 +4,23 @@ pragma solidity 0.8.15;
 import {
     Weighted2TokenAuraStrategyContext,
     DepositParams,
+    RedeemParams,
     StrategyContext,
-    WeightedOracleContext
+    WeightedOracleContext,
+    TwoTokenPoolContext,
+    StrategyVaultState,
+    SecondaryTradeParams
 } from "../BalancerVaultTypes.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/TwoTokenAuraStrategyUtils.sol";
+import {TwoTokenPoolUtils} from "../internal/TwoTokenPoolUtils.sol";
 import {Weighted2TokenOracleMath} from "../internal/Weighted2TokenOracleMath.sol";
 import {SecondaryBorrowUtils} from "../internal/SecondaryBorrowUtils.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
 
 library Weighted2TokenAuraVaultHelper {
+    using VaultUtils for StrategyVaultState;
     using TwoTokenAuraStrategyUtils for StrategyContext;
+    using TwoTokenPoolUtils for TwoTokenPoolContext;
     using Weighted2TokenOracleMath for WeightedOracleContext;
 
     function _depositFromNotional(
@@ -72,7 +79,62 @@ library Weighted2TokenAuraVaultHelper {
         uint256 strategyTokens,
         uint256 maturity,
         bytes calldata data
-    ) external returns (uint256 finalPrimaryBalance) {
-    
+    ) external returns (uint256 finalPrimaryBalance) {      
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+        StrategyContext memory strategyContext = context.baseContext;
+        TwoTokenPoolContext memory poolContext = context.poolContext;
+        // These min primary and min secondary amounts must be within some configured
+        // delta of the current oracle price
+        poolContext._validateMinExitAmounts({
+            oracleContext: context.oracleContext.baseContext,
+            tradingModule: context.baseContext.tradingModule,
+            minPrimary: params.minPrimary,
+            minSecondary: params.minSecondary
+        });
+
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens, maturity);
+
+        if (bptClaim == 0) return 0;
+
+        // Underlying token balances from exiting the pool
+        (uint256 primaryBalance, uint256 secondaryBalance)
+            = TwoTokenAuraStrategyUtils._unstakeAndExitPoolExactBPTIn(
+                context.stakingContext, poolContext, bptClaim, params.minPrimary, params.minSecondary
+            );
+
+        if (strategyContext.secondaryBorrowCurrencyId != 0) {
+            finalPrimaryBalance = SecondaryBorrowUtils._repaySecondaryBorrow({
+                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
+                account: account,
+                maturity: maturity,
+                strategyTokens: strategyTokens,
+                params: params,
+                secondaryBalance: secondaryBalance,
+                primaryBalance: primaryBalance
+            });
+        } else if (secondaryBalance > 0) {
+            // If there is no secondary debt, we still need to sell the secondary balance
+            // back to the primary token here.
+            (SecondaryTradeParams memory tradeParams) = abi.decode(
+                params.secondaryTradeParams, (SecondaryTradeParams)
+            );
+            uint256 primaryPurchased = SecondaryBorrowUtils._sellSecondaryBalance(
+                tradeParams, 
+                strategyContext.tradingModule, 
+                poolContext.primaryToken, 
+                poolContext.primaryToken, 
+                secondaryBalance
+            );
+
+            finalPrimaryBalance = primaryBalance + primaryPurchased;
+        }
+
+        // Update global strategy token balance
+        // This only needs to be updated for normal redemption
+        // and emergency settlement. For normal and post-maturity settlement
+        // scenarios (account == address(this) && data.length == 32), we
+        // update totalStrategyTokenGlobal before this function is called.
+        strategyContext.vaultState.totalStrategyTokenGlobal -= uint80(strategyTokens);
+        strategyContext.vaultState._setStrategyVaultState(); 
     }
 }

@@ -102,6 +102,7 @@ struct TwoTokenPoolContext {
     address primaryToken;
     address secondaryToken;
     uint8 primaryIndex;
+    uint8 secondaryIndex;
     uint8 primaryDecimals;
     uint8 secondaryDecimals;
     PoolContext baseContext;
@@ -110,6 +111,7 @@ struct TwoTokenPoolContext {
 struct StrategyContext {
     uint256 totalBPTHeld;
     uint16 secondaryBorrowCurrencyId;
+    ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
 }

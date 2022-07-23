@@ -136,15 +136,4 @@ library BalancerUtils {
             exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i])) - exitBalances[i];
         }
     }
-
-    function approveBalancerTokens(
-        TwoTokenPoolContext memory poolContext,
-        AuraStakingContext memory stakingContext
-    ) internal {
-        IERC20(poolContext.primaryToken).checkApprove(address(BALANCER_VAULT), type(uint256).max);
-        IERC20(poolContext.secondaryToken).checkApprove(address(BALANCER_VAULT), type(uint256).max);
-        // Allow AURA_BOOSTER to pull BALANCER_POOL_TOKEN
-        IERC20(address(poolContext.baseContext.pool))
-            .checkApprove(address(stakingContext.auraBooster), type(uint256).max);
-    }
 }

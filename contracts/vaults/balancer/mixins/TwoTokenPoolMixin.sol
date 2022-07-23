@@ -72,10 +72,16 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
     }
 
     function _twoTokenPoolContext() internal view returns (TwoTokenPoolContext memory) {
+        uint8 secondaryIndex;
+        unchecked {
+            secondaryIndex = 1 - PRIMARY_INDEX;
+        }
+
         return TwoTokenPoolContext({
             primaryToken: address(PRIMARY_TOKEN),
             secondaryToken: address(SECONDARY_TOKEN),
             primaryIndex: PRIMARY_INDEX,
+            secondaryIndex: secondaryIndex,
             primaryDecimals: PRIMARY_DECIMALS,
             secondaryDecimals: SECONDARY_DECIMALS,
             baseContext: _poolContext()

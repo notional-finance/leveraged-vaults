@@ -7,8 +7,10 @@ import {IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
+import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
 
 library TwoTokenPoolUtils {
+    using TokenUtils for IERC20;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
 
     error InvalidMinAmounts(uint256 pairPrice, uint256 minPrimary, uint256 minSecondary);
@@ -22,13 +24,11 @@ library TwoTokenPoolUtils {
     ) internal pure returns (PoolParams memory) {
         IAsset[] memory assets = new IAsset[](2);
         assets[context.primaryIndex] = IAsset(context.primaryToken);
-        uint8 secondaryIndex;
-        unchecked { secondaryIndex = 1 - context.primaryIndex; }
-        assets[secondaryIndex] = IAsset(context.secondaryToken);
+        assets[context.secondaryIndex] = IAsset(context.secondaryToken);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[context.primaryIndex] = primaryAmount;
-        amounts[secondaryIndex] = secondaryAmount;
+        amounts[context.secondaryIndex] = secondaryAmount;
 
         uint256 msgValue;
         if (isJoin && assets[context.primaryIndex] == IAsset(Constants.ETH_ADDRESS)) {
@@ -88,6 +88,52 @@ library TwoTokenPoolUtils {
             BalancerUtils.BALANCER_ORACLE_WEIGHT_PRECISION;
     }
 
+    /// @notice Gets the time-weighted primary token balance for a given bptAmount
+    /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
+    /// @param poolContext pool context variables
+    /// @param oracleContext oracle context variables
+    /// @param bptAmount amount of balancer pool lp tokens
+    /// @return primaryAmount primary token balance
+    function _getTimeWeightedPrimaryBalance(
+        TwoTokenPoolContext memory poolContext,
+        OracleContext memory oracleContext,
+        uint256 bptAmount
+    ) internal view returns (uint256 primaryAmount) {
+        // Gets the BPT token price denominated in token index = 0
+        uint256 bptPrice = BalancerUtils._getTimeWeightedOraclePrice(
+            address(poolContext.baseContext.pool),
+            IPriceOracle.Variable.BPT_PRICE,
+            oracleContext.oracleWindowInSeconds
+        );
+
+        // Gets the pair price
+        uint256 pairPrice = BalancerUtils._getTimeWeightedOraclePrice(
+            address(poolContext.baseContext.pool),
+            IPriceOracle.Variable.PAIR_PRICE,
+            oracleContext.oracleWindowInSeconds
+        );
+
+        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
+
+        if (poolContext.primaryIndex == 0) {
+            // Since bptPrice is always denominated in the first token, we can just multiply by
+            // the amount in this case. Both bptPrice and bptAmount are in 1e18 but we need to scale
+            // this back to the primary token's native precision.
+            // underlyingValue = (bptPrice * bptAmount * primaryPrecision) / (1e18 * 1e18)
+            primaryAmount = (bptPrice * bptAmount * primaryPrecision) / 
+                BalancerUtils.BALANCER_PRECISION_SQUARED;
+        } else {
+            // The second token in the BPT pool is the price that we want to get. In this case, we need to
+            // convert secondaryTokenValue to underlyingValue using the pairPrice.
+            // Both bptPrice and bptAmount are in 1e18
+            uint256 secondaryAmount = (bptPrice * bptAmount) / BalancerUtils.BALANCER_PRECISION;
+
+            // And then normalizing to primary token precision we add:
+            // PrimaryAmount = (SecondaryAmount * primaryPrecision) / PairPrice
+            primaryAmount = (secondaryAmount * primaryPrecision) / pairPrice;
+        }
+    }
+
     /// @notice Validates the min Balancer exit amounts against the price oracle.
     /// These values are passed in as parameters. So, we must validate them.
     function _validateMinExitAmounts(
@@ -109,5 +155,12 @@ library TwoTokenPoolUtils {
         if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
             revert InvalidMinAmounts(pairPrice, minPrimary, minSecondary);
         }
+    }
+
+    function _approveBalancerTokens(TwoTokenPoolContext memory poolContext, address bptSpender) internal {
+        IERC20(poolContext.primaryToken).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
+        IERC20(poolContext.secondaryToken).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
+        // Allow BPT spender to pull BALANCER_POOL_TOKEN
+        IERC20(address(poolContext.baseContext.pool)).checkApprove(bptSpender, type(uint256).max);
     }
 }

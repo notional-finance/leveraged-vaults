@@ -18,7 +18,11 @@ import {
 } from "./BalancerVaultTypes.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {NotionalUtils} from "../../utils/NotionalUtils.sol";
+import {TradeHandler} from "../../trading/TradeHandler.sol";
 import {BalancerUtils} from "./internal/BalancerUtils.sol";
+import {SecondaryBorrowUtils} from "./internal/SecondaryBorrowUtils.sol";
+import {VaultUtils} from "./internal/VaultUtils.sol";
+import {Weighted2TokenOracleMath} from "./internal/Weighted2TokenOracleMath.sol";
 import {SettlementHelper} from "./SettlementHelper.sol";
 import {BaseVaultStorage} from "./BaseVaultStorage.sol";
 import {Weighted2TokenVaultMixin} from "./mixins/Weighted2TokenVaultMixin.sol";
@@ -27,10 +31,6 @@ import {Constants} from "../../global/Constants.sol";
 import {SafeInt256} from "../../global/SafeInt256.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
-import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
-import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
-import {VaultUtils} from "./internal/VaultUtils.sol";
-import {Weighted2TokenOracleMath} from "./internal/Weighted2TokenOracleMath.sol";
 
 abstract contract Weighted2TokenVaultHelper is 
     BaseVaultStorage, 
@@ -40,6 +40,7 @@ abstract contract Weighted2TokenVaultHelper is
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
+    using TradeHandler for Trade;
 
     event VaultSettlement(
         uint256 maturity,
@@ -47,151 +48,6 @@ abstract contract Weighted2TokenVaultHelper is
         uint256 strategyTokensRedeemed,
         bool completedSettlement
     );
-
-    function _repaySecondaryBorrowCallback(
-        address, /* secondaryToken */
-        uint256 underlyingRequired,
-        bytes calldata data
-    ) internal override returns (bytes memory returnData) {
-        require(SECONDARY_BORROW_CURRENCY_ID != 0); /// @dev invalid secondary currency
-
-        (
-            bytes memory tradeParams,
-            // secondaryBalance = secondary token amount from BPT redemption
-            uint256 secondaryBalance
-        ) = abi.decode(data, (bytes, uint256));
-
-        SecondaryTradeParams memory params = abi.decode(tradeParams, (SecondaryTradeParams));
-
-        address primaryToken = address(_underlyingToken());
-        int256 primaryBalanceBefore = TokenUtils.tokenBalance(primaryToken).toInt();
-
-        if (secondaryBalance >= underlyingRequired) {
-            // We already have enough to repay secondary debt
-            // Update secondary balance before token transfer
-            unchecked {
-                secondaryBalance -= underlyingRequired;
-            }
-        } else {
-            uint256 secondaryShortfall;
-            // Not enough secondary balance to repay secondary debt,
-            // sell some primary currency to cover the shortfall
-            unchecked {
-                secondaryShortfall = underlyingRequired - secondaryBalance;
-            }
-
-            require(
-                params.tradeType == TradeType.EXACT_OUT_SINGLE || params.tradeType == TradeType.EXACT_OUT_BATCH
-            );
-
-            Trade memory trade = Trade(
-                params.tradeType,
-                primaryToken,
-                address(SECONDARY_TOKEN),
-                secondaryShortfall,
-                0,
-                block.timestamp, // deadline
-                params.exchangeData
-            );
-
-            _executeTradeWithDynamicSlippage(params.dexId, trade, params.oracleSlippagePercent);
-
-            // @audit this should be validated by the returned parameters from the
-            // trade execution
-            // Setting secondaryBalance to 0 here because it should be
-            // equal to underlyingRequired after the trade (validated by the TradingModule)
-            // and 0 after the repayment token transfer.
-            secondaryBalance = 0;
-        }
-
-        // Transfer required secondary balance to Notional
-        if (SECONDARY_BORROW_CURRENCY_ID == Constants.ETH_CURRENCY_ID) {
-            payable(address(Constants.NOTIONAL)).transfer(underlyingRequired);
-        } else {
-            SECONDARY_TOKEN.checkTransfer(address(Constants.NOTIONAL), underlyingRequired);
-        }
-
-        if (secondaryBalance > 0) {
-            sellSecondaryBalance(params, primaryToken, secondaryBalance);
-        }
-
-        int256 primaryBalanceAfter = TokenUtils.tokenBalance(primaryToken).toInt();
-        // Return primaryBalanceDiff
-        // If primaryBalanceAfter > primaryBalanceBefore, residual secondary currency was
-        // sold for primary currency
-        // If primaryBalanceBefore > primaryBalanceAfter, primary currency was sold
-        // for secondary currency to cover the shortfall
-        return abi.encode(primaryBalanceAfter - primaryBalanceBefore);
-    }
-
-    function sellSecondaryBalance(
-        SecondaryTradeParams memory params,
-        address primaryToken,
-        uint256 secondaryBalance
-    ) internal returns (uint256 primaryPurchased) {
-        require(
-            params.tradeType == TradeType.EXACT_IN_SINGLE || params.tradeType == TradeType.EXACT_IN_BATCH
-        );
-
-        // Sell residual secondary balance
-        Trade memory trade = Trade(
-            params.tradeType,
-            address(SECONDARY_TOKEN),
-            primaryToken,
-            secondaryBalance,
-            0,
-            block.timestamp, // deadline
-            params.exchangeData
-        );
-
-        (/* */, primaryPurchased) = _executeTradeWithDynamicSlippage(
-            params.dexId, trade, params.oracleSlippagePercent
-        );
-    }
-
-    /// @notice Gets the amount of debt shares needed to pay off the secondary debt
-    /// @param account account address
-    /// @param maturity maturity timestamp
-    /// @param strategyTokenAmount amount of strategy tokens
-    /// @return debtSharesToRepay amount of secondary debt shares
-    /// @return borrowedSecondaryfCashAmount amount of secondary fCash borrowed
-    function getDebtSharesToRepay(address account, uint256 maturity, uint256 strategyTokenAmount)
-        internal view returns (
-            uint256 debtSharesToRepay,
-            uint256 borrowedSecondaryfCashAmount
-    ) {
-        if (SECONDARY_BORROW_CURRENCY_ID == 0) return (0, 0);
-
-        // prettier-ignore
-        (uint256 totalfCashBorrowed, uint256 totalAccountDebtShares) = NOTIONAL.getSecondaryBorrow(
-            address(this), SECONDARY_BORROW_CURRENCY_ID, maturity
-        );
-
-        if (account == address(this)) {
-            uint256 _totalSupply = NotionalUtils._totalSupplyInMaturity(maturity);
-
-            if (_totalSupply == 0) return (0, 0);
-
-            // If the vault is repaying the debt, then look across the total secondary
-            // fCash borrowed
-            debtSharesToRepay =
-                (totalAccountDebtShares * strategyTokenAmount) / _totalSupply;
-            borrowedSecondaryfCashAmount =
-                (totalfCashBorrowed * strategyTokenAmount) / _totalSupply;
-        } else {
-            // prettier-ignore
-            (
-                /* uint256 debtSharesMaturity */,
-                uint256[2] memory accountDebtShares,
-                uint256 accountStrategyTokens
-            ) = NOTIONAL.getVaultAccountDebtShares(account, address(this));
-
-            debtSharesToRepay = accountStrategyTokens == 0 ? 0 :
-                (accountDebtShares[0] * strategyTokenAmount) / accountStrategyTokens;
-            borrowedSecondaryfCashAmount = totalAccountDebtShares == 0 ? 0 :
-                (debtSharesToRepay * totalfCashBorrowed) / totalAccountDebtShares;
-        }
-    }
 
     /// @notice Executes a normal vault settlement where BPT tokens are redeemed and returned tokens
     /// are traded accordingly
@@ -258,11 +114,13 @@ abstract contract Weighted2TokenVaultHelper is
             int256 underlyingCashRequiredToSettle
         ) = NOTIONAL.getCashRequiredToSettle(address(this), maturity);
 
-        // prettier-ignore
-        (
-            uint256 debtSharesToRepay,
-            uint256 borrowedSecondaryfCashAmount
-        ) = getDebtSharesToRepay(address(this), maturity, redeemStrategyTokenAmount);
+        uint256 debtSharesToRepay;
+        uint256 borrowedSecondaryfCashAmount;
+        if (SECONDARY_BORROW_CURRENCY_ID > 0) {
+            (debtSharesToRepay, borrowedSecondaryfCashAmount) = SecondaryBorrowUtils._getDebtSharesToRepay(
+                SECONDARY_BORROW_CURRENCY_ID, address(this), maturity, redeemStrategyTokenAmount
+            );
+        }
 
         // If underlyingCashRequiredToSettle is 0 (no debt) or negative (surplus cash)
         // and borrowedSecondaryfCashAmount is also 0, no settlement is required
@@ -302,6 +160,7 @@ abstract contract Weighted2TokenVaultHelper is
             baseContext: StrategyContext({
                 totalBPTHeld: _bptHeld(),
                 secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
+                tradingModule: TRADING_MODULE,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
                 vaultState: VaultUtils._getStrategyVaultState()
             })

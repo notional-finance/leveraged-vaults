@@ -63,34 +63,6 @@ library SettlementHelper {
         }
     }
 
-    function _repaySecondaryBorrow(
-        address account,
-        uint256 maturity,
-        uint16 secondaryBorrowCurrencyId,
-        uint256 debtSharesToRepay,
-        RedeemParams memory params,
-        uint256 secondaryBalance,
-        uint256 primaryBalance
-    ) internal returns (uint256 finalPrimaryBalance) {
-        bytes memory returnData = Constants.NOTIONAL.repaySecondaryCurrencyFromVault(
-            account,
-            secondaryBorrowCurrencyId,
-            maturity,
-            debtSharesToRepay,
-            params.minSecondaryLendRate,
-            abi.encode(params.secondaryTradeParams, secondaryBalance)
-        );
-
-        // positive = primaryAmount increased (residual secondary => primary)
-        // negative = primaryAmount decreased (primary => secondary shortfall)
-        int256 netPrimaryBalance = abi.decode(returnData, (int256));
-
-        // If primaryBalance + netPrimaryBalance < 0 it means that the repayment somehow over
-        // sold the amount of primaryBalance that the user has redeemed, in that case we must
-        // revert.
-        finalPrimaryBalance = (primaryBalance.toInt() + netPrimaryBalance).toUint();
-    }
-
     function _repayPrimaryDebt(
         NormalSettlementContext memory context,
         uint256 maturity,
@@ -162,7 +134,7 @@ library SettlementHelper {
             if (context.borrowedSecondaryfCashAmountExternal > 0) {
                 // This method call will trade any primary balance into secondary to repay or it will
                 // trade any excess secondary back into the primary currency
-                primaryBalance = _repaySecondaryBorrow(
+                /*primaryBalance = _repaySecondaryBorrow(
                     address(this),
                     maturity,
                     context.secondaryBorrowCurrencyId,
@@ -170,7 +142,7 @@ library SettlementHelper {
                     params,
                     secondaryBalance,
                     primaryBalance
-                );
+                );*/
 
                 // Secondary balance should be 0 after repayment
                 // Any residual balance should've been sold for primary currency

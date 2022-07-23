@@ -16,12 +16,11 @@ library Weighted2TokenAuraRewardHelper {
 
     function reinvestReward(
         Weighted2TokenAuraStrategyContext memory context,
-        ITradingModule tradingModule,
         ReinvestRewardParams memory params
     ) external {
         RewardHelper._reinvestReward(
             params, 
-            tradingModule, 
+            context.baseContext.tradingModule, 
             context.poolContext,
             context.stakingContext,
             context.oracleContext._getSpotPrice(context.poolContext, 0)

@@ -30,6 +30,7 @@ import {
     SecondaryTradeParams,
     SettlementState,
     WeightedOracleContext,
+    OracleContext,
     TwoTokenPoolContext,
     Weighted2TokenAuraStrategyContext,
     StrategyContext
@@ -40,6 +41,7 @@ import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "./balancer/internal/TwoTokenAuraStrategyUtils.sol";
+import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/TwoTokenPoolUtils.sol";
 import {Weighted2TokenOracleMath} from "./balancer/internal/Weighted2TokenOracleMath.sol";
 
@@ -78,8 +80,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         _setStrategyVaultSettings(params.settings);
-
-        BalancerUtils.approveBalancerTokens(_twoTokenPoolContext(), _auraStakingContext());
+        _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
     function _setStrategyVaultSettings(StrategyVaultSettings memory settings) private {
@@ -100,46 +101,13 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         Weighted2TokenAuraStrategyContext memory context = _strategyContext();
-        StrategyContext memory strategyContext = context.baseContext;
-        WeightedOracleContext memory oracleContext = context.oracleContext;
-        TwoTokenPoolContext memory poolContext = context.poolContext;
-
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokenAmount, maturity
-        );
-
-        uint256 primaryBalance = oracleContext._getTimeWeightedPrimaryBalance(
-            poolContext, bptClaim
-        );
-
-        // Oracle price for the pair in 18 decimals
-        uint256 oraclePairPrice = poolContext._getOraclePairPrice(
-            oracleContext.baseContext, TRADING_MODULE
-        );
-
-        if (SECONDARY_BORROW_CURRENCY_ID == 0) return primaryBalance.toInt();
-
-        // prettier-ignore
-        (
-            /* uint256 debtShares */,
-            uint256 borrowedSecondaryfCashAmount
-        ) = getDebtSharesToRepay(account, maturity, strategyTokenAmount);
-
-        // Do not discount secondary fCash amount to present value so that we do not introduce
-        // interest rate risk in this calculation. fCash is always in 8 decimal precision, the
-        // oraclePairPrice is always in 18 decimal precision and we want our result denominated
-        // in the primary token precision.
-        // primaryTokenValue = (fCash * rateDecimals * primaryDecimals) / (rate * 1e8)
-        uint256 primaryPrecision = 10**PRIMARY_DECIMALS;
-
-        uint256 secondaryBorrowedDenominatedInPrimary = (borrowedSecondaryfCashAmount *
-                BalancerUtils.BALANCER_PRECISION *
-                primaryPrecision) /
-                (oraclePairPrice * uint256(Constants.INTERNAL_TOKEN_PRECISION));
-
-        return
-            primaryBalance.toInt() -
-            secondaryBorrowedDenominatedInPrimary.toInt();
+        underlyingValue = context.baseContext._convertStrategyToUnderlying({
+            oracleContext: context.oracleContext.baseContext,
+            poolContext: context.poolContext,
+            account: account,
+            strategyTokenAmount: strategyTokenAmount,
+            maturity: maturity
+        });
     }
 
     function _depositFromNotional(
@@ -163,7 +131,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     ) internal override returns (uint256 finalPrimaryBalance) {
         require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
 
-     /*   if (account == address(this) && data.length == 32) {
+        if (account == address(this) && data.length == 32) {
             // Check if this is called from one of the settlement functions
             // data = primaryAmountToRepay (uint256) in this case
             // Token transfers are handled in the base strategy
@@ -171,69 +139,27 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         } else {
             // Exiting the vault is not allowed within the settlement window
             _revertInSettlementWindow(maturity);
+            finalPrimaryBalance = Weighted2TokenAuraVaultHelper._redeemFromNotional(
+                _strategyContext(), account, strategyTokens, maturity, data
+            );
+        } 
+    }
 
-            RedeemParams memory params = abi.decode(data, (RedeemParams));
-            // These min primary and min secondary amounts must be within some configured
-            // delta of the current oracle price
-            _validateMinExitAmounts(params.minPrimary, params.minSecondary);
+    function _repaySecondaryBorrowCallback(
+        address, /* secondaryToken */
+        uint256 underlyingRequired,
+        bytes calldata data
+    ) internal override returns (bytes memory returnData) {
+        require(SECONDARY_BORROW_CURRENCY_ID != 0); /// @dev invalid secondary currency
 
-            uint256 bptClaim = _convertStrategyTokensToBPTClaim(strategyTokens, maturity);
-
-            if (bptClaim == 0) return 0;
-
-            // Underlying token balances from exiting the pool
-            // TODO: fix this
-            uint256 primaryBalance;
-            uint256 secondaryBalance;
-            uint256[] memory exitBalances = AuraStakingUtils._unstakeAndExitPoolExactBPTIn({
-                stakingContext: _auraStakingContext(), 
-                poolContext: _twoTokenPoolContext(),
-                poolParams: poolContext._getPoolParams(
-                    params.minPrimary, 
-                    params.minSecondary
-                ),
-                bptExitAmount: bptClaim
-            });
-
-            (uint256 primaryBalance, uint256 secondaryBalance) 
-                = (exitBalances[PRIMARY_INDEX], exitBalances[SECONDARY_INDEX]);
-
-            if (SECONDARY_BORROW_CURRENCY_ID != 0) {
-                // Returns the amount of secondary debt shares that need to be repaid
-                (uint256 debtSharesToRepay,*/ /*  */ /*) = getDebtSharesToRepay(
-                    account, maturity, strategyTokens
-                );
-
-                finalPrimaryBalance = SettlementHelper._repaySecondaryBorrow(
-                    account,
-                    maturity,
-                    SECONDARY_BORROW_CURRENCY_ID,
-                    debtSharesToRepay,
-                    params,
-                    secondaryBalance,
-                    primaryBalance
-                );
-            } else if (secondaryBalance > 0) {
-                // If there is no secondary debt, we still need to sell the secondary balance
-                // back to the primary token here.
-                (SecondaryTradeParams memory tradeParams) = abi.decode(
-                    params.secondaryTradeParams, (SecondaryTradeParams)
-                );
-                address primaryToken = address(_underlyingToken());
-                uint256 primaryPurchased = sellSecondaryBalance(tradeParams, primaryToken, secondaryBalance);
-
-                finalPrimaryBalance = primaryBalance + primaryPurchased;
-            }
-
-            // Update global strategy token balance
-            // This only needs to be updated for normal redemption
-            // and emergency settlement. For normal and post-maturity settlement
-            // scenarios (account == address(this) && data.length == 32), we
-            // update totalStrategyTokenGlobal before this function is called.
-            StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
-            strategyVaultState.totalStrategyTokenGlobal -= uint80(strategyTokens);
-            VaultUtils._setStrategyVaultState(strategyVaultState); 
-        } */
+        returnData = SecondaryBorrowUtils._handleSecondaryBorrowCallback({
+            secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID, 
+            tradingModule: TRADING_MODULE,
+            primaryToken: address(_underlyingToken()),
+            secondaryToken: address(SECONDARY_TOKEN),
+            underlyingRequired: underlyingRequired, 
+            data: data
+        });
     }
 
     /// @notice Validates the number of strategy tokens to redeem against
@@ -381,7 +307,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     /// @notice Sell reward tokens for BPT and reinvest the proceeds
     /// @param params reward reinvestment params
     function reinvestReward(ReinvestRewardParams calldata params) external {
-        Weighted2TokenAuraRewardHelper.reinvestReward(_strategyContext(), TRADING_MODULE, params);
+        Weighted2TokenAuraRewardHelper.reinvestReward(_strategyContext(), params);
     }
 
     /** Setters */
@@ -396,6 +322,21 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     }
 
     /** Public view functions */
+
+    function getDebtSharesToRepay(
+        address account, 
+        uint256 maturity, 
+        uint256 strategyTokenAmount
+    ) external view returns (uint256 debtSharesToRepay, uint256 borrowedSecondaryfCashAmount) {
+        if (SECONDARY_BORROW_CURRENCY_ID == 0) return (0, 0);
+        return SecondaryBorrowUtils._getDebtSharesToRepay(
+            SECONDARY_BORROW_CURRENCY_ID, 
+            account, 
+            maturity, 
+            strategyTokenAmount
+        );
+    }
+
     function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
         external view returns (uint256 strategyTokenAmount) {
         return _strategyContext().baseContext._convertBPTClaimToStrategyTokens(bptClaim, maturity);

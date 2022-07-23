@@ -12,7 +12,9 @@ from brownie import (
     Weighted2TokenAuraRewardHelper,
     Weighted2TokenAuraVaultHelper,
     MockWeighted2TokenOracleMath,
-    MockStable2TokenOracleMath
+    MockStable2TokenOracleMath,
+    MockTwoTokenPoolUtils,
+    MockTwoTokenAuraStrategyUtils
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -99,10 +101,6 @@ class BalancerEnvironment(Environment):
         Weighted2TokenAuraVaultHelper.deploy({"from": self.deployer})
         SettlementHelper.deploy({"from": self.deployer})
 
-        # Deploy mocks to access internal library functions
-        self.mockWeighted2TokenOracleMath = MockWeighted2TokenOracleMath.deploy({"from": self.deployer})
-        self.mockStable2TokenOracleMath = MockStable2TokenOracleMath.deploy({"from": self.deployer})
-
         secondaryCurrencyId = 0
         if stratConfig["secondaryBorrowCurrency"] != None:
             secondaryCurrencyId = stratConfig["secondaryBorrowCurrency"]["currencyId"]
@@ -159,6 +157,18 @@ class BalancerEnvironment(Environment):
                 stratConfig["secondaryBorrowCurrency"]["maxCapacity"],
                 {"from": self.notional.owner()}
             )
+
+        strategyContext = vaultProxy.getStrategyContext()
+
+        # Deploy mocks to access internal library functions
+        self.mockWeighted2TokenOracleMath = MockWeighted2TokenOracleMath.deploy({"from": self.deployer})
+        self.mockStable2TokenOracleMath = MockStable2TokenOracleMath.deploy({"from": self.deployer})
+        self.mockTwoTokenPoolUtils = MockTwoTokenPoolUtils.deploy({"from": self.deployer})
+        self.mockTwoTokenAuraStrategyUtils = MockTwoTokenAuraStrategyUtils.deploy(
+            strategyContext["poolContext"],
+            strategyContext["stakingContext"],
+            {"from": self.deployer}
+        )
 
         return vaultProxy
 

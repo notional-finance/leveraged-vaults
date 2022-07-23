@@ -103,23 +103,6 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
 
-    /// @notice Can be used to delegate call to the TradingModule's implementation in order to execute
-    /// a trade.
-    function _executeTradeWithDynamicSlippage(
-        uint16 dexId,
-        Trade memory trade,
-        uint32 dynamicSlippageLimit
-    ) internal returns (uint256 amountSold, uint256 amountBought) {
-        (bool success, bytes memory result) = nProxy(payable(address(TRADING_MODULE))).getImplementation()
-            .delegatecall(abi.encodeWithSelector(
-                ITradingModule.executeTradeWithDynamicSlippage.selector,
-                dexId, trade, dynamicSlippageLimit
-            )
-        );
-        require(success);
-        (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
-    }
-
     /**************************************************************************/
     /* Virtual Methods Requiring Implementation                               */
     /**************************************************************************/

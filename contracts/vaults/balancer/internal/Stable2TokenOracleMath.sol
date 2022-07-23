@@ -2,6 +2,8 @@
 pragma solidity 0.8.15;
 
 import {StableOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
+import {BalancerUtils} from "./BalancerUtils.sol";
+import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 
 library Stable2TokenOracleMath {
     function _getSpotPrice(
@@ -22,19 +24,5 @@ library Stable2TokenOracleMath {
         uint256 primaryAmount
     ) internal view returns (uint256 secondaryAmount) {
     
-    }
-
-    /// @notice Gets the time-weighted primary token balance for a given bptAmount
-    /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
-    /// @param oracleContext oracle context variables
-    /// @param poolContext pool context variables
-    /// @param bptAmount amount of balancer pool lp tokens
-    /// @return primaryAmount primary token balance
-    function _getTimeWeightedPrimaryBalance(
-        StableOracleContext memory oracleContext,
-        TwoTokenPoolContext memory poolContext,
-        uint256 bptAmount
-    ) internal view returns (uint256 primaryAmount) {
-
     }
 }
