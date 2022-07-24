@@ -3,46 +3,35 @@ pragma solidity 0.8.15;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-
-import {Token, VaultAccount} from "../global/Types.sol";
-import {SafeInt256} from "../global/SafeInt256.sol";
 import {Constants} from "../global/Constants.sol";
-
-import {TokenUtils} from "../utils/TokenUtils.sol";
-import {NotionalUtils} from "../utils/NotionalUtils.sol";
-import {BalancerUtils} from "./balancer/internal/BalancerUtils.sol";
-import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
-import {Weighted2TokenVaultMixin} from "./balancer/mixins/Weighted2TokenVaultMixin.sol";
-import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
-import {Weighted2TokenAuraRewardHelper} from "./balancer/external/Weighted2TokenAuraRewardHelper.sol";
-import {Weighted2TokenAuraVaultHelper} from "./balancer/external/Weighted2TokenAuraVaultHelper.sol";
-import {Weighted2TokenAuraSettlementHelper} from "./balancer/external/Weighted2TokenAuraSettlementHelper.sol";
-import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
+import {SafeInt256} from "../global/SafeInt256.sol";
 import {
-    TwoTokenAuraDeploymentParams, 
-    InitParams, 
-    StrategyVaultSettings, 
-    StrategyVaultState,
+    TwoTokenAuraDeploymentParams,
+    InitParams,
     ReinvestRewardParams,
-    DepositParams,
-    RedeemParams,
-    SecondaryTradeParams,
-    SettlementState,
-    Weighted2TokenOracleContext,
-    OracleContext,
+    StrategyVaultSettings,
+    StrategyVaultState,
+    PoolContext,
     TwoTokenPoolContext,
+    Weighted2TokenOracleContext,
     Weighted2TokenAuraStrategyContext,
     StrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
-
-import {IERC20} from "../../interfaces/IERC20.sol";
+import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
+import {Weighted2TokenVaultMixin} from "./balancer/mixins/Weighted2TokenVaultMixin.sol";
+import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
+import {BalancerUtils} from "./balancer/internal/BalancerUtils.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "./balancer/internal/TwoTokenAuraStrategyUtils.sol";
-import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/TwoTokenPoolUtils.sol";
-import {Weighted2TokenOracleMath} from "./balancer/internal/Weighted2TokenOracleMath.sol";
+import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
+import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
+import {SettlementHelper} from "./balancer/internal/SettlementHelper.sol";
+import {Weighted2TokenAuraVaultHelper} from "./balancer/external/Weighted2TokenAuraVaultHelper.sol";
+import {Weighted2TokenAuraSettlementHelper} from "./balancer/external/Weighted2TokenAuraSettlementHelper.sol";
+import {Weighted2TokenAuraRewardHelper} from "./balancer/external/Weighted2TokenAuraRewardHelper.sol";
+import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
 contract Weighted2TokenAuraVault is 
     UUPSUpgradeable,
@@ -51,19 +40,10 @@ contract Weighted2TokenAuraVault is
     Weighted2TokenVaultMixin,
     AuraStakingMixin 
 {
-    using TokenUtils for IERC20;
     using SafeInt256 for uint256;
-    using SafeInt256 for int256;
     using VaultUtils for StrategyVaultSettings;
-    using VaultUtils for StrategyVaultState;
     using TwoTokenAuraStrategyUtils for StrategyContext;
-    using Weighted2TokenOracleMath for Weighted2TokenOracleContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
-
-    /** Errors */
-    error NotionalOwnerRequired(address sender);
-    error DepositNotAllowedInSettlementWindow();
-    error RedeemNotAllowedInSettlementWindow();
 
     /** Events */
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
@@ -182,7 +162,7 @@ contract Weighted2TokenAuraVault is
         if (block.timestamp < maturity) {
             revert SettlementHelper.HasNotMatured();
         }
-        Weighted2TokenSettlementHelper.settleVaultPostMaturity(
+        Weighted2TokenAuraSettlementHelper.settleVaultPostMaturity(
             _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
@@ -207,7 +187,7 @@ contract Weighted2TokenAuraVault is
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert SettlementHelper.NotInSettlementWindow();
         }
-        Weighted2TokenSettlementHelper.settleVaultNormal(
+        Weighted2TokenAuraSettlementHelper.settleVaultNormal(
             _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
@@ -218,7 +198,7 @@ contract Weighted2TokenAuraVault is
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
-        Weighted2TokenSettlementHelper.settleVaultEmergency(
+        Weighted2TokenAuraSettlementHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );
     }

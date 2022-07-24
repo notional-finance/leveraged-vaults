@@ -50,7 +50,7 @@ library VaultUtils {
         return store[maturity];
     }
 
-    function _setSettlementState(uint256 maturity, SettlementState memory state) internal {
+    function _setSettlementState(SettlementState memory state, uint256 maturity) internal {
         mapping(uint256 => SettlementState) storage store = LibBalancerStorage.getSettlementState();
         store[maturity] = state;
     }

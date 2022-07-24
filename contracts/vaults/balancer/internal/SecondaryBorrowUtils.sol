@@ -107,16 +107,11 @@ library SecondaryBorrowUtils {
         uint16 secondaryBorrowCurrencyId,
         address account,
         uint256 maturity,
-        uint256 strategyTokens,
+        uint256 debtSharesToRepay,
         RedeemParams memory params,
         uint256 secondaryBalance,
         uint256 primaryBalance
     ) internal returns (uint256 finalPrimaryBalance) {
-        // Returns the amount of secondary debt shares that need to be repaid
-        (uint256 debtSharesToRepay, /*  */) = _getDebtSharesToRepay(
-            secondaryBorrowCurrencyId, account, maturity, strategyTokens
-        );
-
         if (debtSharesToRepay == 0) return primaryBalance;
 
         bytes memory returnData = Constants.NOTIONAL.repaySecondaryCurrencyFromVault(

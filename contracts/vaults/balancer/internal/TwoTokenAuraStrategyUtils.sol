@@ -106,11 +106,16 @@ library TwoTokenAuraStrategyUtils {
         strategyContext.totalBPTHeld -= bptClaim;
 
         if (strategyContext.secondaryBorrowCurrencyId != 0) {
+            // Returns the amount of secondary debt shares that need to be repaid
+            (uint256 debtSharesToRepay, /*  */) = SecondaryBorrowUtils._getDebtSharesToRepay(
+                strategyContext.secondaryBorrowCurrencyId, account, maturity, strategyTokens
+            );
+
             finalPrimaryBalance = SecondaryBorrowUtils._repaySecondaryBorrow({
                 secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
                 account: account,
                 maturity: maturity,
-                strategyTokens: strategyTokens,
+                debtSharesToRepay: debtSharesToRepay,
                 params: params,
                 secondaryBalance: secondaryBalance,
                 primaryBalance: primaryBalance

@@ -27,7 +27,7 @@ import {TwoTokenAuraStrategyUtils} from "./balancer/internal/TwoTokenAuraStrateg
 import {TwoTokenPoolUtils} from "./balancer/internal/TwoTokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
-import {Stable2TokenOracleMath} from "./balancer/internal/Stable2TokenOracleMath.sol";
+import {SettlementHelper} from "./balancer/internal/SettlementHelper.sol";
 import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
 import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
 import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
@@ -43,9 +43,9 @@ contract MetaStable2TokenAuraVault is
     using SafeInt256 for uint256;
     using VaultUtils for StrategyVaultSettings;
     using TwoTokenAuraStrategyUtils for StrategyContext;
-    using Stable2TokenOracleMath for Stable2TokenOracleContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     
+    /** Events */
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
     constructor(NotionalProxy notional_, TwoTokenAuraDeploymentParams memory params)
@@ -146,6 +146,12 @@ contract MetaStable2TokenAuraVault is
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
+        if (maturity <= block.timestamp) {
+            revert SettlementHelper.PostMaturitySettlement();
+        }
+        if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
+            revert SettlementHelper.NotInSettlementWindow();
+        }
         MetaStable2TokenAuraSettlementHelper.settleVaultNormal(
             _strategyContext(), maturity, strategyTokensToRedeem, data
         );
@@ -156,12 +162,17 @@ contract MetaStable2TokenAuraVault is
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external onlyNotionalOwner {
+        if (block.timestamp < maturity) {
+            revert SettlementHelper.HasNotMatured();
+        }
         MetaStable2TokenAuraSettlementHelper.settleVaultPostMaturity(
             _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
+        // No need for emergency settlement during the settlement window
+        _revertInSettlementWindow(maturity);
         MetaStable2TokenAuraSettlementHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );
