@@ -29,7 +29,7 @@ import {
     RedeemParams,
     SecondaryTradeParams,
     SettlementState,
-    WeightedOracleContext,
+    Weighted2TokenOracleContext,
     OracleContext,
     TwoTokenPoolContext,
     Weighted2TokenAuraStrategyContext,
@@ -52,7 +52,7 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     using VaultUtils for StrategyVaultSettings;
     using VaultUtils for StrategyVaultState;
     using TwoTokenAuraStrategyUtils for StrategyContext;
-    using Weighted2TokenOracleMath for WeightedOracleContext;
+    using Weighted2TokenOracleMath for Weighted2TokenOracleContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
 
     /** Errors */

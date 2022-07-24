@@ -74,16 +74,15 @@ struct OracleContext {
     uint256 balancerOracleWeight;
 }
 
-struct WeightedOracleContext {
+struct Weighted2TokenOracleContext {
     uint256 primaryWeight;
     uint256 secondaryWeight;
     OracleContext baseContext;
 }
 
-struct StableOracleContext {
+struct Stable2TokenOracleContext {
     /// @notice Amplification parameter
     uint256 ampParam;
-    uint256 ampParamPrecision;
     OracleContext baseContext;
 }
 
@@ -110,6 +109,8 @@ struct TwoTokenPoolContext {
     uint8 secondaryIndex;
     uint8 primaryDecimals;
     uint8 secondaryDecimals;
+    uint256 primaryBalance;
+    uint256 secondaryBalance;
     PoolContext baseContext;
 }
 
@@ -123,14 +124,14 @@ struct StrategyContext {
 
 struct Weighted2TokenAuraStrategyContext {
     TwoTokenPoolContext poolContext;
-    WeightedOracleContext oracleContext;
+    Weighted2TokenOracleContext oracleContext;
     AuraStakingContext stakingContext;
     StrategyContext baseContext;
 }
 
 struct MetaStable2TokenAuraStrategyContext {
     TwoTokenPoolContext poolContext;
-    StableOracleContext oracleContext;
+    Stable2TokenOracleContext oracleContext;
     AuraStakingContext stakingContext;
     StrategyContext baseContext;
 }

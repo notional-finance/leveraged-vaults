@@ -9,7 +9,7 @@ import {
     SecondaryTradeParams,
     NormalSettlementContext,
     SettlementState,
-    WeightedOracleContext,
+    Weighted2TokenOracleContext,
     TwoTokenPoolContext,
     Weighted2TokenAuraStrategyContext,
     StrategyContext,
@@ -155,7 +155,7 @@ abstract contract Weighted2TokenVaultHelper is
     function _strategyContext() internal view returns (Weighted2TokenAuraStrategyContext memory) {
         return Weighted2TokenAuraStrategyContext({
             poolContext: _twoTokenPoolContext(),
-            oracleContext: _weightedOracleContext(),
+            oracleContext: _weighted2TokenOracleContext(),
             stakingContext: _auraStakingContext(),
             baseContext: StrategyContext({
                 totalBPTHeld: _bptHeld(),

@@ -6,7 +6,7 @@ import {
     DepositParams,
     RedeemParams,
     StrategyContext,
-    WeightedOracleContext,
+    Weighted2TokenOracleContext,
     SecondaryTradeParams
 } from "../BalancerVaultTypes.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/TwoTokenAuraStrategyUtils.sol";
@@ -15,7 +15,7 @@ import {SecondaryBorrowUtils} from "../internal/SecondaryBorrowUtils.sol";
 
 library Weighted2TokenAuraVaultHelper {
     using TwoTokenAuraStrategyUtils for StrategyContext;
-    using Weighted2TokenOracleMath for WeightedOracleContext;
+    using Weighted2TokenOracleMath for Weighted2TokenOracleContext;
 
     function _depositFromNotional(
         Weighted2TokenAuraStrategyContext memory context,

@@ -16,6 +16,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
     IERC20 internal immutable PRIMARY_TOKEN;
     IERC20 internal immutable SECONDARY_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
+    uint8 internal immutable SECONDARY_INDEX;
     uint8 internal immutable PRIMARY_DECIMALS;
     uint8 internal immutable SECONDARY_DECIMALS;
 
@@ -38,24 +39,23 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
         // Balancer tokens are sorted by address, so we need to figure out
         // the correct index for the primary token
         PRIMARY_INDEX = tokens[0] == primaryAddress ? 0 : 1;
-        uint8 secondaryIndex;
         unchecked {
-            secondaryIndex = 1 - PRIMARY_INDEX;
+            SECONDARY_INDEX = 1 - PRIMARY_INDEX;
         }
 
         // Since this is always a 2-token vault, SECONDARY_INDEX = 1-PRIMARY_INDEX
         SECONDARY_TOKEN = secondaryBorrowCurrencyId > 0
             ? IERC20(NotionalUtils._getNotionalUnderlyingToken(secondaryBorrowCurrencyId))
-            : IERC20(tokens[secondaryIndex]);
+            : IERC20(tokens[SECONDARY_INDEX]);
 
         // Make sure the deployment parameters are correct
         if (tokens[PRIMARY_INDEX] != primaryAddress) {
             revert InvalidPrimaryToken(tokens[PRIMARY_INDEX]);
         }
 
-        if (tokens[secondaryIndex] !=
+        if (tokens[SECONDARY_INDEX] !=
             BalancerUtils.getTokenAddress(address(SECONDARY_TOKEN))
-        ) revert InvalidSecondaryToken(tokens[secondaryIndex]);
+        ) revert InvalidSecondaryToken(tokens[SECONDARY_INDEX]);
 
         // If the underlying is ETH, primaryBorrowToken will be rewritten as WETH
         uint256 primaryDecimals = IERC20(primaryAddress).decimals();
@@ -72,18 +72,21 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
     }
 
     function _twoTokenPoolContext() internal view returns (TwoTokenPoolContext memory) {
-        uint8 secondaryIndex;
-        unchecked {
-            secondaryIndex = 1 - PRIMARY_INDEX;
-        }
+        (
+            /* address[] memory tokens */,
+            uint256[] memory balances,
+            /* uint256 lastChangeBlock */
+        ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
         return TwoTokenPoolContext({
             primaryToken: address(PRIMARY_TOKEN),
             secondaryToken: address(SECONDARY_TOKEN),
             primaryIndex: PRIMARY_INDEX,
-            secondaryIndex: secondaryIndex,
+            secondaryIndex: SECONDARY_INDEX,
             primaryDecimals: PRIMARY_DECIMALS,
             secondaryDecimals: SECONDARY_DECIMALS,
+            primaryBalance: balances[PRIMARY_INDEX],
+            secondaryBalance: balances[SECONDARY_INDEX],
             baseContext: _poolContext()
         });
     }

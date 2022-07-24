@@ -13,7 +13,7 @@ import {
     StrategyVaultState,
     PoolContext,
     TwoTokenPoolContext,
-    StableOracleContext,
+    Stable2TokenOracleContext,
     MetaStable2TokenAuraStrategyContext,
     StrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
@@ -43,7 +43,7 @@ contract MetaStable2TokenAuraVault is
     using SafeInt256 for uint256;
     using VaultUtils for StrategyVaultSettings;
     using TwoTokenAuraStrategyUtils for StrategyContext;
-    using Stable2TokenOracleMath for StableOracleContext;
+    using Stable2TokenOracleMath for Stable2TokenOracleContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
@@ -190,7 +190,7 @@ contract MetaStable2TokenAuraVault is
     function _strategyContext() internal view returns (MetaStable2TokenAuraStrategyContext memory) {
         return MetaStable2TokenAuraStrategyContext({
             poolContext: _twoTokenPoolContext(),
-            oracleContext: _stableOracleContext(),
+            oracleContext: _stable2TokenOracleContext(),
             stakingContext: _auraStakingContext(),
             baseContext: StrategyContext({
                 totalBPTHeld: _bptHeld(),

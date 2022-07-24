@@ -5,7 +5,7 @@ import {
     RewardTokenTradeParams,
     ReinvestRewardParams,
     PoolContext,
-    WeightedOracleContext,
+    Weighted2TokenOracleContext,
     AuraStakingContext,
     TwoTokenPoolContext
 } from "../BalancerVaultTypes.sol";

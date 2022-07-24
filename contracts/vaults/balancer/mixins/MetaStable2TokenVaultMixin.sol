@@ -3,9 +3,10 @@ pragma solidity 0.8.15;
 
 import {IMetaStablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
-import {StableOracleContext} from "../BalancerVaultTypes.sol";
+import {Stable2TokenOracleContext} from "../BalancerVaultTypes.sol";
 import {OracleMixin} from "./OracleMixin.sol";
 import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
+import {BalancerUtils} from "../internal/BalancerUtils.sol";
 
 abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, OracleMixin {
     constructor(
@@ -22,16 +23,15 @@ abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, OracleMixin {
         require(oracleEnabled);
     }
 
-    function _stableOracleContext() internal view returns (StableOracleContext memory) {
+    function _stable2TokenOracleContext() internal view returns (Stable2TokenOracleContext memory) {
         (
             uint256 value,
             /* bool isUpdating */,
-            uint256 precision
+            /* uint256 precision */
         ) = IMetaStablePool(address(BALANCER_POOL_TOKEN)).getAmplificationParameter();
         
-        return StableOracleContext({
+        return Stable2TokenOracleContext({
             ampParam: value,
-            ampParamPrecision: precision,
             baseContext: _oracleContext()
         });
     }

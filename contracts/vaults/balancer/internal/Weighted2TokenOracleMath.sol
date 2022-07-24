@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {WeightedOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
+import {Weighted2TokenOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 
@@ -13,7 +13,7 @@ library Weighted2TokenOracleMath {
     /// @param tokenIndex index of the token to receive the spot price in
     /// @return spotPrice token spot price
     function _getSpotPrice(
-        WeightedOracleContext memory oracleContext, 
+        Weighted2TokenOracleContext memory oracleContext, 
         TwoTokenPoolContext memory poolContext, 
         uint256 tokenIndex
     ) internal view returns (uint256 spotPrice) {
@@ -56,7 +56,7 @@ library Weighted2TokenOracleMath {
     /// @param poolContext oracle context variables
     /// @return secondaryAmount optimal amount of the secondary token to join the pool
     function _getOptimalSecondaryBorrowAmount(
-        WeightedOracleContext memory oracleContext,
+        Weighted2TokenOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         uint256 primaryAmount
     ) internal view returns (uint256 secondaryAmount) {

@@ -2,17 +2,17 @@
 pragma solidity 0.8.15;
 
 import {
-    WeightedOracleContext, 
+    Weighted2TokenOracleContext, 
     OracleContext, 
     TwoTokenPoolContext
 } from "../vaults/balancer/BalancerVaultTypes.sol";
 import {Weighted2TokenOracleMath} from "../vaults/balancer/internal/Weighted2TokenOracleMath.sol";
 
 contract MockWeighted2TokenOracleMath {
-    using Weighted2TokenOracleMath for WeightedOracleContext;
+    using Weighted2TokenOracleMath for Weighted2TokenOracleContext;
 
     function getSpotPrice(
-        WeightedOracleContext memory oracleContext,
+        Weighted2TokenOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         uint256 tokenIndex
     ) external view returns (uint256) {
@@ -20,7 +20,7 @@ contract MockWeighted2TokenOracleMath {
     }
 
     function getOptimalSecondaryBorrowAmount(
-        WeightedOracleContext memory oracleContext,
+        Weighted2TokenOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         uint256 primaryAmount
     ) external view returns (uint256) {

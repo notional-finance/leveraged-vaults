@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import {
-    PoolContext, 
-    OracleContext, 
-    WeightedOracleContext, 
-    TwoTokenPoolContext,
-    AuraStakingContext,
-    PoolParams
-} from "../BalancerVaultTypes.sol";
+import {PoolContext, OracleContext, PoolParams} from "../BalancerVaultTypes.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";

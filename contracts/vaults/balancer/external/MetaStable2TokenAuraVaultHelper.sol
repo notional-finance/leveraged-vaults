@@ -6,7 +6,7 @@ import {
     DepositParams,
     RedeemParams,
     StrategyContext,
-    StableOracleContext,
+    Stable2TokenOracleContext,
     SecondaryTradeParams
 } from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
@@ -16,7 +16,7 @@ import {SecondaryBorrowUtils} from "../internal/SecondaryBorrowUtils.sol";
 
 library MetaStable2TokenAuraVaultHelper {
     using TwoTokenAuraStrategyUtils for StrategyContext;
-    using Stable2TokenOracleMath for StableOracleContext;
+    using Stable2TokenOracleMath for Stable2TokenOracleContext;
 
     function _depositFromNotional(
         MetaStable2TokenAuraStrategyContext memory context,
