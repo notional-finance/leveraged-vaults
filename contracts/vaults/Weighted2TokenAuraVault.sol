@@ -16,9 +16,8 @@ import {Weighted2TokenVaultMixin} from "./balancer/mixins/Weighted2TokenVaultMix
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {Weighted2TokenAuraRewardHelper} from "./balancer/external/Weighted2TokenAuraRewardHelper.sol";
 import {Weighted2TokenAuraVaultHelper} from "./balancer/external/Weighted2TokenAuraVaultHelper.sol";
+import {Weighted2TokenAuraSettlementHelper} from "./balancer/external/Weighted2TokenAuraSettlementHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
-import {SettlementHelper} from "./balancer/SettlementHelper.sol";
-import {Weighted2TokenVaultHelper} from "./balancer/Weighted2TokenVaultHelper.sol";
 import {
     TwoTokenAuraDeploymentParams, 
     InitParams, 
@@ -45,7 +44,13 @@ import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol
 import {TwoTokenPoolUtils} from "./balancer/internal/TwoTokenPoolUtils.sol";
 import {Weighted2TokenOracleMath} from "./balancer/internal/Weighted2TokenOracleMath.sol";
 
-contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2TokenVaultHelper {
+contract Weighted2TokenAuraVault is 
+    UUPSUpgradeable,
+    Initializable,  
+    BaseVaultStorage,
+    Weighted2TokenVaultMixin,
+    AuraStakingMixin 
+{
     using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
@@ -162,17 +167,6 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         });
     }
 
-    /// @notice Validates the number of strategy tokens to redeem against
-    /// the total strategy tokens already redeemed for the current maturity
-    /// to ensure that we don't redeem tokens from other maturities
-    function _validateTokensToRedeem(uint256 maturity, uint256 strategyTokensToRedeem) 
-        internal view returns (SettlementState memory) {
-        SettlementState memory state = VaultUtils._getSettlementState(maturity);
-        uint256 totalInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
-        require(state.strategyTokensRedeemed + strategyTokensToRedeem <= totalInMaturity);
-        return state;
-    }
-
     /// @notice Settles the vault after maturity, at this point we assume something has gone wrong
     /// and we allow the owner to take over to ensure that the vault is properly settled. This vault
     /// is presumed to be able to settle fully prior to maturity.
@@ -188,18 +182,9 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         if (block.timestamp < maturity) {
             revert SettlementHelper.HasNotMatured();
         }
-        StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
-        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        SettlementState memory state = _validateTokensToRedeem(maturity, strategyTokensToRedeem);
-        RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
-            strategyVaultState.lastPostMaturitySettlementTimestamp,
-            strategyVaultSettings.postMaturitySettlementCoolDownInMinutes,
-            strategyVaultSettings.postMaturitySettlementSlippageLimitPercent,
-            data
+        Weighted2TokenSettlementHelper.settleVaultPostMaturity(
+            _strategyContext(), maturity, strategyTokensToRedeem, data
         );
-
-        _executeNormalSettlement(state, maturity, strategyTokensToRedeem, params);
-        strategyVaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);
     }
 
     /// @notice Once the settlement window begins, the vault may begin to be settled by anyone
@@ -222,46 +207,9 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert SettlementHelper.NotInSettlementWindow();
         }
-        StrategyVaultState memory strategyVaultState = VaultUtils._getStrategyVaultState();
-        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        SettlementState memory state = _validateTokensToRedeem(maturity, strategyTokensToRedeem);
-        RedeemParams memory params = SettlementHelper._decodeParamsAndValidate(
-            strategyVaultState.lastSettlementTimestamp,
-            strategyVaultSettings.settlementCoolDownInMinutes,
-            strategyVaultSettings.settlementSlippageLimitPercent,
-            data
+        Weighted2TokenSettlementHelper.settleVaultNormal(
+            _strategyContext(), maturity, strategyTokensToRedeem, data
         );
-
-        _executeNormalSettlement(state, maturity, strategyTokensToRedeem, params);
-        strategyVaultState.lastSettlementTimestamp = uint32(block.timestamp);
-    }
-
-    function _getEmergencySettlementParams(
-        StrategyVaultSettings memory settings,
-        StrategyVaultState memory state,
-        uint256 maturity
-    ) 
-        private view returns(uint256 bptToSettle, uint256 maxUnderlyingSurplus) {
-        // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
-        uint256 totalBPTSupply = BALANCER_POOL_TOKEN.totalSupply();
-        uint256 totalBPTHeld = _bptHeld();
-        uint256 emergencyBPTWithdrawThreshold = settings._bptThreshold(totalBPTSupply);
-
-        if (totalBPTHeld <= emergencyBPTWithdrawThreshold)
-            revert SettlementHelper.InvalidEmergencySettlement();
-
-        uint256 bptHeldInMaturity = state._getBPTHeldInMaturity(
-            NotionalUtils._totalSupplyInMaturity(maturity),
-            totalBPTHeld
-        );
-
-        bptToSettle = SettlementHelper._getEmergencySettlementBPTAmount({
-            bptTotalSupply: totalBPTSupply,
-            maxBalancerPoolShare: settings.maxBalancerPoolShare,
-            totalBPTHeld: totalBPTHeld,
-            bptHeldInMaturity: bptHeldInMaturity
-        });
-        maxUnderlyingSurplus = settings.maxUnderlyingSurplus;
     }
 
     /// @notice In the case where the total BPT held by the vault is greater than some threshold
@@ -270,28 +218,9 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
-
- /*       (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = _getEmergencySettlementParams(
-            VaultUtils._getStrategyVaultSettings(),
-            VaultUtils._getStrategyVaultState(),
-            maturity
+        Weighted2TokenSettlementHelper.settleVaultEmergency(
+            _strategyContext(), maturity, data
         );
-
-        uint256 redeemStrategyTokenAmount = _convertBPTClaimToStrategyTokens(bptToSettle, maturity);
-        int256 expectedUnderlyingRedeemed = convertStrategyToUnderlying(
-            address(this),
-            redeemStrategyTokenAmount,
-            maturity
-        );
-
-        SettlementHelper.settleVaultEmergency({
-            maturity: maturity,
-            bptToSettle: bptToSettle,
-            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: maxUnderlyingSurplus,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-            data: data
-        }); */
     }
 
     /// @notice Claim other liquidity gauge reward tokens (i.e. LIDO)
@@ -319,6 +248,21 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
         onlyNotionalOwner
     {
         _setStrategyVaultSettings(settings);
+    }
+
+    function _strategyContext() internal view returns (Weighted2TokenAuraStrategyContext memory) {
+        return Weighted2TokenAuraStrategyContext({
+            poolContext: _twoTokenPoolContext(),
+            oracleContext: _weighted2TokenOracleContext(),
+            stakingContext: _auraStakingContext(),
+            baseContext: StrategyContext({
+                totalBPTHeld: _bptHeld(),
+                secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
+                tradingModule: TRADING_MODULE,
+                vaultSettings: VaultUtils._getStrategyVaultSettings(),
+                vaultState: VaultUtils._getStrategyVaultState()
+            })
+        });
     }
 
     /** Public view functions */
@@ -350,6 +294,11 @@ contract Weighted2TokenAuraVault is UUPSUpgradeable, Initializable, Weighted2Tok
 
     function getStrategyContext() external view returns (Weighted2TokenAuraStrategyContext memory) {
         return _strategyContext();
+    }
+
+    /// @dev Gets the total BPT held by the aura reward pool
+    function _bptHeld() internal view returns (uint256) {
+        return AURA_REWARD_POOL.balanceOf(address(this));
     }
 
     function _authorizeUpgrade(

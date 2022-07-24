@@ -20,8 +20,6 @@ library BalancerUtils {
     uint256 internal constant BALANCER_PRECISION_SQUARED = 1e36;
     uint256 internal constant BALANCER_ORACLE_WEIGHT_PRECISION = 1e8;
 
-    error InvalidTokenIndex(uint256 tokenIndex);
-
     /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
     /// and Balancer uses WETH
     function getTokenAddress(address token) internal pure returns (address) {

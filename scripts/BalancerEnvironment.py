@@ -10,6 +10,7 @@ from brownie import (
     MetaStable2TokenAuraSettlementHelper,
     MetaStable2TokenAuraVaultHelper,
     Weighted2TokenAuraRewardHelper,
+    Weighted2TokenAuraSettlementHelper,
     Weighted2TokenAuraVaultHelper,
     MockWeighted2TokenOracleMath,
     MockStable2TokenOracleMath,
@@ -99,7 +100,7 @@ class BalancerEnvironment(Environment):
         MetaStable2TokenAuraVaultHelper.deploy({"from": self.deployer})
         Weighted2TokenAuraRewardHelper.deploy({"from": self.deployer})
         Weighted2TokenAuraVaultHelper.deploy({"from": self.deployer})
-        SettlementHelper.deploy({"from": self.deployer})
+        Weighted2TokenAuraSettlementHelper.deploy({"from": self.deployer})
 
         secondaryCurrencyId = 0
         if stratConfig["secondaryBorrowCurrency"] != None:
