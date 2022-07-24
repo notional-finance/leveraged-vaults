@@ -57,7 +57,7 @@ StrategyConfig = {
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
         },
-        "Strat50ETH50stETH": {
+        "StratStableETHstETH": {
             "vaultConfig": get_vault_config(
                 flags=set_flags(0, ENABLED=True),
                 minAccountBorrowSize=1,
@@ -66,7 +66,7 @@ StrategyConfig = {
             ),
             "secondaryBorrowCurrency": None,
             "maxPrimaryBorrowCapacity": 100_000_000e8,
-            "name": "Balancer 50ETH-50stETH Strategy",
+            "name": "Balancer Stable ETH-stETH Strategy",
             "primaryCurrency": 1, # ETH
             "poolId": "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080",
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
@@ -172,10 +172,10 @@ class BalancerEnvironment(Environment):
 
         return vaultProxy
 
-def getEnvironment(strategyName, network = "mainnet"):
+def getEnvironment(network = "mainnet"):
     if network == "mainnet-fork" or network == "hardhat-fork":
         network = "mainnet"
-    return BalancerEnvironment(network, strategyName)
+    return BalancerEnvironment(network)
 
 def main():
     networkName = network.show_active()
@@ -183,8 +183,18 @@ def main():
         networkName = "mainnet"
     env = BalancerEnvironment(networkName)
     weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
-    stableVault = env.deployBalancerVault("Strat50ETH50stETH", MetaStable2TokenAuraVault)
+    stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
 
+    env.whales["ETH"].transfer(env.mockTwoTokenAuraStrategyUtils.address, 5e18)
+    strategyContext = stableVault.getStrategyContext()
+    print(env.mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
+        strategyContext["baseContext"], 
+        strategyContext["stakingContext"], 
+        strategyContext["poolContext"], 
+        2e18, 
+        0, 
+        0
+    ))
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
     return

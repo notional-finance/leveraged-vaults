@@ -30,4 +30,6 @@ contract MockTwoTokenAuraStrategyUtils {
             stakingContext, poolContext, primaryAmount, secondaryAmount, minBPT
         );
     }
+
+    receive() external payable {}
 }

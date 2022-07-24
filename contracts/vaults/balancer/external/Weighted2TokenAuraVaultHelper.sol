@@ -37,7 +37,7 @@ library Weighted2TokenAuraVaultHelper {
             deposit: deposit,
             maturity: maturity,
             borrowedSecondaryAmount: borrowedSecondaryAmount,
-            minBPT: params.minBPT
+            params: params
         });
     }
 

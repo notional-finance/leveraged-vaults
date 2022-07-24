@@ -14,7 +14,7 @@ contract MockTwoTokenPoolUtils {
         TwoTokenPoolContext memory poolContext,
         OracleContext memory oracleContext,
         uint256 bptAmount
-    ) internal view returns (uint256) {
+    ) external view returns (uint256) {
         return poolContext._getTimeWeightedPrimaryBalance(oracleContext, bptAmount);
     } 
 }

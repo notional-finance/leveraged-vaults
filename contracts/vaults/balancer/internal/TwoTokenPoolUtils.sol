@@ -130,7 +130,8 @@ library TwoTokenPoolUtils {
 
             // And then normalizing to primary token precision we add:
             // PrimaryAmount = (SecondaryAmount * primaryPrecision) / PairPrice
-            primaryAmount = (secondaryAmount * primaryPrecision) / pairPrice;
+            primaryAmount = (secondaryAmount * pairPrice * primaryPrecision) / 
+                BalancerUtils.BALANCER_PRECISION_SQUARED;
         }
     }
 

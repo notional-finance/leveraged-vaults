@@ -3,6 +3,8 @@ pragma solidity 0.8.15;
 
 import {
     PoolParams,
+    DepositParams,
+    DepositTradeParams,
     RedeemParams,
     SecondaryTradeParams,
     TwoTokenPoolContext,
@@ -13,6 +15,7 @@ import {
     OracleContext
 } from "../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../global/SafeInt256.sol";
+import {TradeHandler} from "../../../trading/TradeHandler.sol";
 import {AuraStakingUtils} from "./AuraStakingUtils.sol";
 import {VaultUtils} from "./VaultUtils.sol";
 import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
@@ -20,14 +23,22 @@ import {BalancerUtils} from "./BalancerUtils.sol";
 import {SecondaryBorrowUtils} from "./SecondaryBorrowUtils.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
+import {ITradingModule, Trade} from "../../../../interfaces/trading/ITradingModule.sol";
 
 library TwoTokenAuraStrategyUtils {
+    using TradeHandler for Trade;
     using SafeInt256 for uint256;
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
     using VaultUtils for StrategyVaultSettings;
     using VaultUtils for StrategyVaultState;
+
+    /// @notice Trade primary currency for secondary if the trade is specified
+    function _tradePrimaryForSecondary(ITradingModule tradingModule, bytes memory data) private {
+        (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
+        params.trade._executeTradeWithStaticSlippage(params.dexId, tradingModule);
+    }
 
     function _deposit(
         StrategyContext memory strategyContext,
@@ -36,14 +47,18 @@ library TwoTokenAuraStrategyUtils {
         uint256 deposit,
         uint256 maturity,
         uint256 borrowedSecondaryAmount,
-        uint256 minBPT
+        DepositParams memory params
     ) internal returns (uint256 strategyTokensMinted) {
+        if (params.tradeData.length != 0) {
+            _tradePrimaryForSecondary(strategyContext.tradingModule, params.tradeData);
+        }
+
         uint256 bptMinted = strategyContext._joinPoolAndStake({
             stakingContext: stakingContext,
             poolContext: poolContext,
             primaryAmount: deposit,
             secondaryAmount: borrowedSecondaryAmount,
-            minBPT: minBPT
+            minBPT: params.minBPT
         });
 
         // Update _bptHeld() in memory
@@ -69,6 +84,7 @@ library TwoTokenAuraStrategyUtils {
     ) internal returns (uint256 finalPrimaryBalance) {
         // These min primary and min secondary amounts must be within some configured
         // delta of the current oracle price
+        // TODO: Is this check necessary if account != address(this)?
         poolContext._validateMinExitAmounts({
             oracleContext: oracleContext,
             tradingModule: strategyContext.tradingModule,

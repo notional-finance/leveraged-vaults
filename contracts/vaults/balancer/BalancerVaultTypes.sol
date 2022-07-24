@@ -43,6 +43,11 @@ struct DepositParams {
     bytes tradeData;
 }
 
+struct DepositTradeParams {
+    uint16 dexId;
+    Trade trade;
+}
+
 struct RedeemParams {
     uint32 minSecondaryLendRate;
     uint256 minPrimary;
