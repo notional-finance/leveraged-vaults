@@ -15,7 +15,7 @@ library TwoTokenPoolUtils {
 
     error InvalidMinAmounts(uint256 pairPrice, uint256 minPrimary, uint256 minSecondary);
 
-    /// @notice Returns parameters for joining and exiting pool
+    /// @notice Returns parameters for joining and exiting Balancer pools
     function _getPoolParams(
         TwoTokenPoolContext memory context,
         uint256 primaryAmount,

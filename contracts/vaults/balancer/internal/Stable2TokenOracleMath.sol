@@ -2,11 +2,13 @@
 pragma solidity 0.8.15;
 
 import {Stable2TokenOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
+import {Constants} from "../../../global/Constants.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 
 library Stable2TokenOracleMath {
-    error CalculateInvariantDidNotConverge();
+    error InvalidSpotPrice(uint256 oraclePrice, uint256 spotPrice);
+    error CalculationDidNotConverge();
 
     uint256 internal constant _AMP_PRECISION = 1e3;
     uint256 internal constant ONE = 1e18; // 18 decimal places
@@ -117,7 +119,7 @@ library Stable2TokenOracleMath {
             }
         }
 
-        revert CalculateInvariantDidNotConverge();
+        revert CalculationDidNotConverge();
     }
 
     function _getSpotPrice(
@@ -125,6 +127,14 @@ library Stable2TokenOracleMath {
         TwoTokenPoolContext memory poolContext, 
         uint256 tokenIndex
     ) internal view returns (uint256 spotPrice) {
+        (spotPrice, /* */) = _getSpotPriceAndInvariant(oracleContext, poolContext, tokenIndex);
+    }
+
+    function _getSpotPriceAndInvariant(
+        Stable2TokenOracleContext memory oracleContext, 
+        TwoTokenPoolContext memory poolContext, 
+        uint256 tokenIndex
+    ) private pure returns (uint256 spotPrice, uint256 invariant) {
         /**************************************************************************************************************
         //                                                                                                           //
         //                             2.a.x.y + a.y^2 + b.y                                                         //
@@ -141,7 +151,7 @@ library Stable2TokenOracleMath {
             (poolContext.primaryBalance, poolContext.secondaryBalance) :
             (poolContext.secondaryBalance, poolContext.primaryBalance);
 
-        uint256 invariant = _calculateInvariant(
+        invariant = _calculateInvariant(
             oracleContext.ampParam, _balances(balanceX, balanceY), true // round up
         );
 
@@ -168,6 +178,54 @@ library Stable2TokenOracleMath {
         balances[1] = balanceY;
     }
 
+    // This function calculates the balance of a given token (tokenIndex)
+    // given all the other balances and the invariant
+    function _getTokenBalanceGivenInvariantAndAllOtherBalances(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 invariant,
+        uint256 tokenIndex
+    ) internal pure returns (uint256) {
+        // Rounds result up overall
+
+        uint256 ampTimesTotal = amplificationParameter * balances.length;
+        uint256 sum = balances[0];
+        uint256 P_D = balances[0] * balances.length;
+        for (uint256 j = 1; j < balances.length; j++) {
+            P_D = divDown(P_D * balances[j] * balances.length, invariant);
+            sum = sum + balances[j];
+        }
+        // No need to use safe math, based on the loop above `sum` is greater than or equal to `balances[tokenIndex]`
+        sum = sum - balances[tokenIndex];
+
+        uint256 inv2 = invariant * invariant;
+        // We remove the balance fromm c by multiplying it
+        uint256 c = divUp(inv2, ampTimesTotal * P_D) * _AMP_PRECISION * balances[tokenIndex];
+        uint256 b = sum + divDown(invariant, ampTimesTotal) * _AMP_PRECISION;
+
+        // We iterate to find the balance
+        uint256 prevTokenBalance = 0;
+        // We multiply the first iteration outside the loop with the invariant to set the value of the
+        // initial approximation.
+        uint256 tokenBalance = divUp(inv2 + c, invariant + b);
+
+        for (uint256 i = 0; i < 255; i++) {
+            prevTokenBalance = tokenBalance;
+
+            tokenBalance = divUp(tokenBalance * tokenBalance + c, tokenBalance * 2 + b - invariant);
+
+            if (tokenBalance > prevTokenBalance) {
+                if (tokenBalance - prevTokenBalance <= 1) {
+                    return tokenBalance;
+                }
+            } else if (prevTokenBalance - tokenBalance <= 1) {
+                return tokenBalance;
+            }
+        }
+
+        revert CalculationDidNotConverge();
+    }
+
     /// @notice Returns the optimal amount to borrow for the secondary token
     /// @param oracleContext oracle context variables
     /// @param poolContext oracle context variables
@@ -177,6 +235,33 @@ library Stable2TokenOracleMath {
         TwoTokenPoolContext memory poolContext,
         uint256 primaryAmount
     ) internal view returns (uint256 secondaryAmount) {
-    
+        uint256 oraclePrice = BalancerUtils._getTimeWeightedOraclePrice(
+            address(poolContext.baseContext.pool),
+            IPriceOracle.Variable.PAIR_PRICE,
+            oracleContext.baseContext.oracleWindowInSeconds
+        );
+
+        (uint256 spotPrice, uint256 invariant) = _getSpotPriceAndInvariant(
+            oracleContext, poolContext, poolContext.secondaryIndex
+        ); 
+
+        uint256 lowerLimit = (oraclePrice * Constants.SPOT_PRICE_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePrice * Constants.SPOT_PRICE_UPPER_LIMIT) / 100;
+
+        // Check spot price against oracle price to make sure it hasn't been manipulated
+        if (spotPrice < lowerLimit || upperLimit < spotPrice) {
+            revert InvalidSpotPrice(oraclePrice, spotPrice);
+        }
+        
+        uint256 secondaryBalanceOut = _getTokenBalanceGivenInvariantAndAllOtherBalances({
+            amplificationParameter: oracleContext.ampParam,
+            balances: _balances(poolContext.primaryBalance + primaryAmount, poolContext.secondaryBalance),
+            invariant: invariant,
+            tokenIndex: 1
+        });
+
+        // https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/pkg/pool-stable-phantom/contracts/StableMath.sol#L158
+        // balances[tokenIndexOut].sub(finalBalanceOut).sub(1);
+        secondaryAmount = poolContext.secondaryBalance - secondaryBalanceOut - 1;
     }
 }

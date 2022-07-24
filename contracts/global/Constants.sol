@@ -140,4 +140,8 @@ library Constants {
     uint256 internal constant MAX_JOIN_AMOUNTS_LOWER_LIMIT = 95;
     /// @notice Slippage limit for reward trades (5e6 = 5%)
     uint32 internal constant REWARD_TRADE_SLIPPAGE_PERCENT = 5e6;
+    /// @notice Lower limit used to validate spot price against oracle price
+    uint256 internal constant SPOT_PRICE_UPPER_LIMIT = 105;
+    /// @notice Upper limit used to validate spot price against oracle price
+    uint256 internal constant SPOT_PRICE_LOWER_LIMIT = 95;
 }
