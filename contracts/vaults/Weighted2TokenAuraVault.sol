@@ -103,7 +103,7 @@ contract Weighted2TokenAuraVault is
     ) internal override returns (uint256 strategyTokensMinted) {
         // Entering the vault is not allowed within the settlement window
         _revertInSettlementWindow(maturity);
-        Weighted2TokenAuraVaultHelper._depositFromNotional(
+        strategyTokensMinted = Weighted2TokenAuraVaultHelper._depositFromNotional(
             _strategyContext(), account, deposit, maturity, data
         );
     }
