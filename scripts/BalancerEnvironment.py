@@ -48,8 +48,8 @@ StrategyConfig = {
             "maxUnderlyingSurplus": 10e18, # 10 ETH
             "oracleWindowInSeconds": 3600,
             "maxBalancerPoolShare": 1e3, # 10%
-            "settlementSlippageLimit": 5e3, # 5%
-            "postMaturitySettlementSlippageLimit": 10e3, # 10%
+            "settlementSlippageLimit": 5e6, # 5%
+            "postMaturitySettlementSlippageLimit": 10e6, # 10%
             "balancerOracleWeight": 0.6e4, # 60%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
@@ -74,8 +74,8 @@ StrategyConfig = {
             "maxUnderlyingSurplus": 10e18, # 10 ETH
             "oracleWindowInSeconds": 3600,
             "maxBalancerPoolShare": 1e3, # 10%
-            "settlementSlippageLimit": 5e3, # 5%
-            "postMaturitySettlementSlippageLimit": 10e3, # 10%
+            "settlementSlippageLimit": 5e6, # 5%
+            "postMaturitySettlementSlippageLimit": 10e6, # 10%
             "balancerOracleWeight": 0.6e4, # 60%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
@@ -129,9 +129,9 @@ class BalancerEnvironment(Environment):
                 [
                     stratConfig["maxUnderlyingSurplus"],
                     stratConfig["oracleWindowInSeconds"],
-                    stratConfig["maxBalancerPoolShare"],
                     stratConfig["settlementSlippageLimit"], 
                     stratConfig["postMaturitySettlementSlippageLimit"], 
+                    stratConfig["maxBalancerPoolShare"],
                     stratConfig["balancerOracleWeight"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["postMaturitySettlementCoolDownInMinutes"],
@@ -247,35 +247,6 @@ def main():
         {"from": env.whales["ETH"], "value": 10e18}
     )
 
-    print(env.notional.exitVault.encode_input(
-        env.whales["ETH"],
-        "0xc45d28d78f0d60f48230ce044b0370b47078b21e",
-        env.whales["ETH"],
-        90257630518,
-        5e8,
-        0,
-        eth_abi.encode_abi(
-            ['(uint32,uint256,uint256,bytes)'],
-            [[
-                0,
-                Wei(14916784772283813990 * 0.98),
-                Wei(16888857974 * 0.98),
-                eth_abi.encode_abi(
-                    ['(uint16,uint8,uint32,bytes)'],
-                    [[
-                        1,
-                        0,
-                        Wei(5e6),
-                        eth_abi.encode_abi(
-                            ['(uint24)'],
-                            [[3000]]
-                        )
-                    ]]
-                )
-            ]]
-        )
-    ))
-
     vaultAccount = env.notional.getVaultAccount(env.whales["ETH"], weightedVault.address)
     vaultShares = vaultAccount["vaultShares"]
     bptAmount = weightedVault.convertStrategyTokensToBPTClaim(vaultShares, maturity)
@@ -310,30 +281,38 @@ def main():
         {"from": env.whales["ETH"]}
     )
 
-    return
-
     chain.undo()
 
-    settings = vault.getStrategyVaultSettings()
-    vault.setStrategyVaultSettings(
-        [settings[0], settings[1], 0, settings[3], settings[4], settings[5], settings[6], settings[7], settings[8]], 
+    settings = weightedStrategyContext["baseStrategy"]["vaultSettings"]
+    weightedVault.setStrategyVaultSettings(
+        [
+            settings["maxUnderlyingSurplus"], 
+            settings["oracleWindowInSeconds"], 
+            settings["settlementSlippageLimitPercent"], 
+            settings["postMaturitySettlementSlippageLimitPercent"], 
+            0, 
+            settings["balancerOracleWeight"], 
+            settings["settlementCoolDownInMinutes"], 
+            settings["postMaturitySettlementCoolDownInMinutes"], 
+            settings["feePercentage"]
+        ], 
         {"from": env.notional.owner()}
     )
 
-    vault.settleVaultEmergency(
+    weightedVault.settleVaultEmergency(
         maturity,
         eth_abi.encode_abi(
             ['(uint32,uint256,uint256,bytes)'],
             [[
                 0,
-                Wei(14916784772283813990 * 0.98),
-                Wei(16888857974 * 0.98),
+                Wei(spotBalances["primaryBalance"] * 0.98),
+                Wei(spotBalances["secondaryBalance"] * 0.98),
                 eth_abi.encode_abi(
-                    ['(uint16,uint8,uint16,bytes)'],
+                    ['(uint16,uint8,uint32,bytes)'],
                     [[
                         1,
                         0,
-                        500,
+                        Wei(5e6),
                         eth_abi.encode_abi(
                             ['(uint24)'],
                             [[3000]]
@@ -349,21 +328,21 @@ def main():
     chain.sleep(maturity - 3600 * 24 * 6 - chain.time())
     chain.mine()
 
-    print(vault.settleVaultNormal.encode_input(
+    weightedVault.settleVaultNormal(
         maturity,
         vaultAccount["vaultShares"] / 2,
         eth_abi.encode_abi(
             ['(uint32,uint256,uint256,bytes)'],
             [[
                 0,
-                Wei(14916784772283813990 / 2 * 0.98),
-                Wei(16888857974 / 2 * 0.98),
+                Wei(spotBalances["primaryBalance"] / 2 * 0.98),
+                Wei(spotBalances["secondaryBalance"] / 2 * 0.98),
                 eth_abi.encode_abi(
-                    ['(uint16,uint8,uint16,bytes)'],
+                    ['(uint16,uint8,uint32,bytes)'],
                     [[
                         1,
                         0,
-                        500,
+                        Wei(5e6),
                         eth_abi.encode_abi(
                             ['(uint24)'],
                             [[3000]]
@@ -371,8 +350,11 @@ def main():
                     ]]
                 )
             ]]
-        )
-    ))
+        ),
+        {"from": env.whales["USDC"]}
+    )
+
+    return
 
     print(vault.settleVaultPostMaturity.encode_input(
         maturity,
@@ -384,11 +366,11 @@ def main():
                 Wei(14916784772283813990 * 0.98),
                 Wei(16888857974 * 0.98),
                 eth_abi.encode_abi(
-                    ['(uint16,uint8,uint16,bytes)'],
+                    ['(uint16,uint8,uint32,bytes)'],
                     [[
                         1,
                         0,
-                        500,
+                        Wei(5e6),
                         eth_abi.encode_abi(
                             ['(uint24)'],
                             [[3000]]

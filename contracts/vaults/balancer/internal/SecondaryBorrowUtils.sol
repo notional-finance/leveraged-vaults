@@ -73,7 +73,11 @@ library SecondaryBorrowUtils {
         uint256 strategyTokenAmount
     ) internal view returns (uint256 debtSharesToRepay, uint256 borrowedSecondaryfCashAmount) {
         // prettier-ignore
-        (uint256 totalfCashBorrowed, uint256 totalAccountDebtShares) = Constants.NOTIONAL.getSecondaryBorrow(
+        (
+            uint256 totalfCashBorrowed, 
+            uint256 totalAccountDebtShares,
+            /* uint256 totalfCashBorrowedInPrimarySnapshot */
+        ) = Constants.NOTIONAL.getSecondaryBorrow(
             address(this), secondaryBorrowCurrencyId, maturity
         );
 

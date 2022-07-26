@@ -169,11 +169,11 @@ struct StrategyVaultSettings {
     uint256 maxUnderlyingSurplus;
     /// @notice Balancer oracle window in seconds
     uint32 oracleWindowInSeconds;
-    uint16 maxBalancerPoolShare;
     /// @notice Slippage limit for normal settlement
-    uint16 settlementSlippageLimitPercent;
+    uint32 settlementSlippageLimitPercent;
     /// @notice Slippage limit for emergency settlement (vault owns too much of the Balancer pool)
-    uint16 postMaturitySettlementSlippageLimitPercent;
+    uint32 postMaturitySettlementSlippageLimitPercent;
+    uint16 maxBalancerPoolShare;
     uint16 balancerOracleWeight;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;

@@ -115,9 +115,10 @@ library Constants {
 
     // Equal to 100% of all deposit amounts for nToken liquidity across fCash markets.
     int256 internal constant DEPOSIT_PERCENT_BASIS = 1e8;
+    uint32 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
 
     /// @notice Precision for all percentages used by the vault
-    /// 1e4 = 100% (i.e. settlementSlippageLimitPercent)
+    /// 1e4 = 100% (i.e. maxBalancerPoolShare)
     uint16 internal constant VAULT_PERCENT_BASIS = 1e4;
     /// @notice Buffer percentage between the desired share of the Balancer pool
     /// and the maximum share of the pool allowed by maxBalancerPoolShare 1e4 = 100%, 8e3 = 80%

@@ -25,8 +25,8 @@ library VaultUtils {
         require(settings.postMaturitySettlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
         require(settings.balancerOracleWeight <= Constants.VAULT_PERCENT_BASIS);
         require(settings.maxBalancerPoolShare <= Constants.VAULT_PERCENT_BASIS);
-        require(settings.settlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
-        require(settings.postMaturitySettlementSlippageLimitPercent <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.settlementSlippageLimitPercent <= Constants.SLIPPAGE_LIMIT_PRECISION);
+        require(settings.postMaturitySettlementSlippageLimitPercent <= Constants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.feePercentage <= Constants.VAULT_PERCENT_BASIS);
     }
 

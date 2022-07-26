@@ -33,7 +33,6 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint8 rateDecimals;
     }
 
-    uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
     int256 internal constant RATE_DECIMALS = 1e18;
     mapping(address => PriceOracle) public priceOracles;
 
@@ -223,7 +222,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             limitAmount =
                 ((uint256(oraclePrice) +
                     ((uint256(oraclePrice) * uint256(slippageLimit)) /
-                        SLIPPAGE_LIMIT_PRECISION)) * amount) /
+                        Constants.SLIPPAGE_LIMIT_PRECISION)) * amount) /
                 uint256(oracleDecimals);
 
             // limitAmount is in buyToken precision after the previous calculation,
@@ -239,7 +238,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             limitAmount =
                 ((uint256(oraclePrice) -
                     ((uint256(oraclePrice) * uint256(slippageLimit)) /
-                        SLIPPAGE_LIMIT_PRECISION)) * amount) /
+                        Constants.SLIPPAGE_LIMIT_PRECISION)) * amount) /
                 uint256(oracleDecimals);
 
             // limitAmount is in sellToken precision after the previous calculation,

@@ -100,6 +100,7 @@ library SettlementHelper {
         if (callbackData.oracleSlippagePercent > slippageLimitPercent) {
             revert SlippageTooHigh(callbackData.oracleSlippagePercent, slippageLimitPercent);
         }
+
     }
 
     function _settleVaultNormal(
@@ -107,7 +108,7 @@ library SettlementHelper {
         uint256 maturity,
         uint256 strategyTokensToRedeem,
         bytes calldata data
-    ) internal {
+    ) internal {        
         SettlementState memory state = _validateTokensToRedeem(maturity, strategyTokensToRedeem);
         RedeemParams memory params = _decodeParamsAndValidate(
             context.strategyContext.vaultState.lastSettlementTimestamp,
@@ -388,7 +389,7 @@ library SettlementHelper {
         RedeemParams memory params
     ) internal returns (bool completedSettlement) {
         require(strategyTokensToRedeem <= type(uint80).max); /// @dev strategyTokensToRedeem overflow
-
+        
         // These min primary and min secondary amounts must be within some configured
         // delta of the current oracle price
         context.poolContext._validateMinExitAmounts({
