@@ -206,12 +206,10 @@ contract Weighted2TokenAuraVault is
     }
 
     /// @notice Claim other liquidity gauge reward tokens (i.e. LIDO)
-    function claimRewardTokens() external {
+    function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
         StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        AuraRewardHelperExternal.claimRewardTokens(
-            _auraStakingContext(), 
-            strategyVaultSettings.feePercentage,
-            FEE_RECEIVER
+        claimedBalances = AuraRewardHelperExternal.claimRewardTokens(
+            _auraStakingContext(), strategyVaultSettings.feePercentage, FEE_RECEIVER
         );
     }
 

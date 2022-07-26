@@ -180,9 +180,9 @@ contract MetaStable2TokenAuraVault is
         );
     }
 
-    function claimRewardTokens() external {
+    function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
         StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        AuraRewardHelperExternal.claimRewardTokens(
+        claimedBalances = AuraRewardHelperExternal.claimRewardTokens(
             _auraStakingContext(), strategyVaultSettings.feePercentage, FEE_RECEIVER
         );
     }

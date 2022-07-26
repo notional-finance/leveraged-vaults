@@ -97,9 +97,7 @@ struct AuraStakingContext {
     IAuraBooster auraBooster;
     IAuraRewardPool auraRewardPool;
     uint256 auraPoolId;
-    IERC20 balToken;
-    IERC20 auraToken;
-    // TODO: change to IERC20[] rewardTokens;
+    IERC20[] rewardTokens;
 }
 
 struct TwoTokenPoolContext {

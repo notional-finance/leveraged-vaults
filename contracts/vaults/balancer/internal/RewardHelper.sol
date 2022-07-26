@@ -34,17 +34,11 @@ library RewardHelper {
     event RewardReinvested(address token, uint256 primaryAmount, uint256 secondaryAmount, uint256 bptAmount);
 
     function _isValidRewardToken(AuraStakingContext memory context, address token)
-        private view returns (bool) {
-        if (token == address(context.balToken) || token == address(context.auraToken)) return true;
-        else {
-            if (address(context.liquidityGauge) != address(0)) {
-                uint256 rewardTokenCount = context.liquidityGauge.reward_count();
-                for (uint256 i; i < rewardTokenCount; i++) {
-                    if (context.liquidityGauge.reward_tokens(i) == token) return true;
-                }
-            }
-            return false;
+        private pure returns (bool) {
+        for (uint256 i; i < context.rewardTokens.length; i++) {
+            if (address(context.rewardTokens[i]) == token) return true;
         }
+        return false;
     }
 
     function _validateTrades(
@@ -53,7 +47,7 @@ library RewardHelper {
         Trade memory secondaryTrade,
         address primaryToken,
         address secondaryToken
-    ) private view {
+    ) private pure {
         // Validate trades
         if (!_isValidRewardToken(context, primaryTrade.sellToken)) {
             revert InvalidRewardToken(primaryTrade.sellToken);

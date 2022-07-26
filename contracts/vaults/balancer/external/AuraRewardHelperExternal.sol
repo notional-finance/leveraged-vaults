@@ -14,14 +14,19 @@ library AuraRewardHelperExternal {
         AuraStakingContext memory context, 
         uint16 feePercentage, 
         address feeReceiver
-    ) external {
-        uint256 balBefore = context.balToken.balanceOf(address(this));
+    ) external returns (uint256[] memory claimedBalances) {
+        claimedBalances = new uint256[](context.rewardTokens.length);
+        for (uint256 i; i < context.rewardTokens.length; i++) {
+            claimedBalances[i] = context.rewardTokens[i].balanceOf(address(this));
+        }
         context.auraRewardPool.getReward(address(this), true);
-        uint256 balClaimed = context.balToken.balanceOf(address(this)) - balBefore;
+        for (uint256 i; i < context.rewardTokens.length; i++) {
+            claimedBalances[i] = context.rewardTokens[i].balanceOf(address(this)) - claimedBalances[i];
 
-        if (balClaimed > 0 && feePercentage != 0 && feeReceiver != address(0)) {
-            uint256 feeAmount = balClaimed * feePercentage / Constants.VAULT_PERCENT_BASIS;
-            context.balToken.checkTransfer(feeReceiver, feeAmount);
+            if (claimedBalances[i] > 0 && feePercentage != 0 && feeReceiver != address(0)) {
+                uint256 feeAmount = claimedBalances[i] * feePercentage / Constants.VAULT_PERCENT_BASIS;
+                context.rewardTokens[i].checkTransfer(feeReceiver, feeAmount);
+            }
         }
     }
 }
