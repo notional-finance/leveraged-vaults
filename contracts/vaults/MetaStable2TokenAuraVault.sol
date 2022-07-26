@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Constants} from "../global/Constants.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
@@ -34,8 +33,7 @@ import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2T
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
 contract MetaStable2TokenAuraVault is
-    UUPSUpgradeable, 
-    Initializable,
+    UUPSUpgradeable,
     BaseVaultStorage,
     MetaStable2TokenVaultMixin,
     AuraStakingMixin
@@ -48,7 +46,7 @@ contract MetaStable2TokenAuraVault is
     /** Events */
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
-    constructor(NotionalProxy notional_, TwoTokenAuraDeploymentParams memory params)
+    constructor(NotionalProxy notional_, TwoTokenAuraDeploymentParams memory params) 
         BaseVaultStorage(notional_, params.baseParams) 
         MetaStable2TokenVaultMixin(
             params.primaryBorrowCurrencyId,
@@ -57,6 +55,10 @@ contract MetaStable2TokenAuraVault is
         )
         AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool)
     {}
+
+    function strategy() external override view returns (bytes4) {
+        return bytes4(keccak256("MetaStable2TokenAura"));
+    }
 
     function initialize(InitParams calldata params)
         external

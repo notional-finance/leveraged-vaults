@@ -8,7 +8,6 @@ import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
-import {NotionalUtils} from "../utils/NotionalUtils.sol";
 import {nProxy} from "../proxy/nProxy.sol";
 
 abstract contract BaseStrategyVault is Initializable, IStrategyVault {
@@ -66,6 +65,8 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         return _NAME;
     }
 
+    function strategy() external virtual view returns (bytes4);
+
     function _borrowCurrencyId() internal view returns (uint16) {
         return _BORROW_CURRENCY_ID;
     }
@@ -86,9 +87,16 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         _NAME = name_;
         _BORROW_CURRENCY_ID = borrowCurrencyId_;
 
-        address underlyingAddress = NotionalUtils._getNotionalUnderlyingToken(borrowCurrencyId_);
+        address underlyingAddress = _getNotionalUnderlyingToken(borrowCurrencyId_);
         _UNDERLYING_TOKEN = IERC20(underlyingAddress);
         _UNDERLYING_IS_ETH = underlyingAddress == address(0);
+    }
+
+    function _getNotionalUnderlyingToken(uint16 currencyId) internal view returns (address) {
+        (Token memory assetToken, Token memory underlyingToken) = NOTIONAL.getCurrency(currencyId);
+
+        return assetToken.tokenType == TokenType.NonMintable ?
+            assetToken.tokenAddress : underlyingToken.tokenAddress;
     }
 
     /// @notice Can be used to delegate call to the TradingModule's implementation in order to execute
@@ -99,6 +107,23 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
     ) internal returns (uint256 amountSold, uint256 amountBought) {
         (bool success, bytes memory result) = nProxy(payable(address(TRADING_MODULE))).getImplementation()
             .delegatecall(abi.encodeWithSelector(ITradingModule.executeTrade.selector, dexId, trade));
+        require(success);
+        (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
+    }
+
+    /// @notice Can be used to delegate call to the TradingModule's implementation in order to execute
+    /// a trade.
+    function _executeTradeWithDynamicSlippage(
+        uint16 dexId,
+        Trade memory trade,
+        uint32 dynamicSlippageLimit
+    ) internal returns (uint256 amountSold, uint256 amountBought) {
+        (bool success, bytes memory result) = nProxy(payable(address(TRADING_MODULE))).getImplementation()
+            .delegatecall(abi.encodeWithSelector(
+                ITradingModule.executeTradeWithDynamicSlippage.selector,
+                dexId, trade, dynamicSlippageLimit
+            )
+        );
         require(success);
         (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
@@ -153,11 +178,10 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         uint256 maturity,
         uint256 underlyingToRepayDebt,
         bytes calldata data
-    ) external onlyNotional {
+    ) external onlyNotional returns (uint256 transferToReceiver) {
         uint256 borrowedCurrencyAmount = _redeemFromNotional(account, strategyTokens, maturity, data);
 
         uint256 transferToNotional;
-        uint256 transferToAccount;
         if (account == address(this) || borrowedCurrencyAmount <= underlyingToRepayDebt) {
             // It may be the case that insufficient tokens were redeemed to repay the debt. If this
             // happens the Notional will attempt to recover the shortfall from the account directly.
@@ -168,14 +192,14 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
             transferToNotional = borrowedCurrencyAmount;
         } else {
             transferToNotional = underlyingToRepayDebt;
-            unchecked { transferToAccount = borrowedCurrencyAmount - underlyingToRepayDebt; }
+            unchecked { transferToReceiver = borrowedCurrencyAmount - underlyingToRepayDebt; }
         }
 
         if (_UNDERLYING_IS_ETH) {
-            if (transferToAccount > 0) payable(receiver).transfer(transferToAccount);
+            if (transferToReceiver > 0) payable(receiver).transfer(transferToReceiver);
             if (transferToNotional > 0) payable(address(NOTIONAL)).transfer(transferToNotional);
         } else {
-            if (transferToAccount > 0) _UNDERLYING_TOKEN.checkTransfer(receiver, transferToAccount);
+            if (transferToReceiver > 0) _UNDERLYING_TOKEN.checkTransfer(receiver, transferToReceiver);
             if (transferToNotional > 0) _UNDERLYING_TOKEN.checkTransfer(address(NOTIONAL), transferToNotional);
         }
     }

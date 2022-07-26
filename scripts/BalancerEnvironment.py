@@ -34,7 +34,7 @@ StrategyConfig = {
                 flags=set_flags(0, ENABLED=True),
                 minAccountBorrowSize=1,
                 maxBorrowMarketIndex=3,
-                secondaryBorrowCurrencies=[3,2] # USDC
+                secondaryBorrowCurrencies=[3,0] # USDC
             ),
             "secondaryBorrowCurrency": {
                 "currencyId": 3, # USDC
@@ -159,17 +159,10 @@ class BalancerEnvironment(Environment):
                 {"from": self.notional.owner()}
             )
 
-        strategyContext = vaultProxy.getStrategyContext()
-
         # Deploy mocks to access internal library functions
         self.mockWeighted2TokenOracleMath = MockWeighted2TokenOracleMath.deploy({"from": self.deployer})
         self.mockStable2TokenOracleMath = MockStable2TokenOracleMath.deploy({"from": self.deployer})
         self.mockTwoTokenPoolUtils = MockTwoTokenPoolUtils.deploy({"from": self.deployer})
-        self.mockTwoTokenAuraStrategyUtils = MockTwoTokenAuraStrategyUtils.deploy(
-            strategyContext["poolContext"],
-            strategyContext["stakingContext"],
-            {"from": self.deployer}
-        )
 
         return vaultProxy
 
@@ -186,40 +179,76 @@ def main():
     weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
     stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
 
-    env.whales["ETH"].transfer(env.mockTwoTokenAuraStrategyUtils.address, 5e18)
-    strategyContext = stableVault.getStrategyContext()
-    print(env.mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
+    strategyContext = weightedVault.getStrategyContext()
+    mockTwoTokenAuraStrategyUtils = MockTwoTokenAuraStrategyUtils.deploy(
+        strategyContext["poolContext"],
+        strategyContext["stakingContext"],
+        {"from": env.deployer}
+    )
+    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 5e18)
+    env.tokens["USDC"].transfer(mockTwoTokenAuraStrategyUtils.address, 100000e6, {"from": env.whales["USDC"]})
+    primaryAmount = 2e18
+    secondaryAmount = env.mockWeighted2TokenOracleMath.getOptimalSecondaryBorrowAmount(
+                    strategyContext["oracleContext"],
+                    strategyContext["poolContext"],
+                    primaryAmount)
+    print(secondaryAmount)
+    print(mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
         strategyContext["baseContext"], 
         strategyContext["stakingContext"], 
         strategyContext["poolContext"], 
-        2e18, 
-        0, 
+        primaryAmount, 
+        secondaryAmount, 
         0
     ))
+
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    return
+    stableStrategyContext = stableVault.getStrategyContext()
+    weightedStrategyContext = weightedVault.getStrategyContext()
 
     env.notional.enterVault(
         env.whales["ETH"],
-        vault.address,
+        weightedVault.address,
         10e18,
         maturity,
         5e8,
         0,
         eth_abi.encode_abi(
-            ['(uint256,uint256,uint32,uint32)'],
+            ['(uint256,uint256,uint32,uint32,bytes)'],
             [[
                 0,
-                Wei(env.mockBalancerUtils.getOptimalSecondaryBorrowAmount(vault.getOracleContext(), 15e18) * 1e2),
+                Wei(env.mockWeighted2TokenOracleMath.getOptimalSecondaryBorrowAmount(
+                    weightedStrategyContext["oracleContext"],
+                    weightedStrategyContext["poolContext"],
+                    15e18) * 1e2),
                 0,
-                0
+                0,
+                bytes(0)
             ]]
         ),
         {"from": env.whales["ETH"], "value": 10e18}
     )
-
-    vaultAccount = env.notional.getVaultAccount(env.whales["ETH"], vault.address)
+    
+    env.notional.enterVault(
+        env.whales["ETH"],
+        stableVault.address,
+        10e18,
+        maturity,
+        5e8,
+        0,
+        eth_abi.encode_abi(
+            ['(uint256,uint256,uint32,uint32,bytes)'],
+            [[
+                0,
+                0,
+                0,
+                0,
+                bytes(0)
+            ]]
+        ),
+        {"from": env.whales["ETH"], "value": 10e18}
+    )
 
     print(env.notional.exitVault.encode_input(
         env.whales["ETH"],
@@ -235,11 +264,11 @@ def main():
                 Wei(14916784772283813990 * 0.98),
                 Wei(16888857974 * 0.98),
                 eth_abi.encode_abi(
-                    ['(uint16,uint8,uint16,bytes)'],
+                    ['(uint16,uint8,uint32,bytes)'],
                     [[
                         1,
                         0,
-                        500,
+                        Wei(5e6),
                         eth_abi.encode_abi(
                             ['(uint24)'],
                             [[3000]]
@@ -250,25 +279,29 @@ def main():
         )
     ))
 
+    vaultAccount = env.notional.getVaultAccount(env.whales["ETH"], weightedVault.address)
+    vaultShares = vaultAccount["vaultShares"]
+    bptAmount = weightedVault.convertStrategyTokensToBPTClaim(vaultShares, maturity)
+    spotBalances = env.mockTwoTokenPoolUtils.getSpotBalances(weightedStrategyContext["poolContext"], bptAmount)
     env.notional.exitVault(
         env.whales["ETH"],
-        vault.address,
+        weightedVault.address,
         env.whales["ETH"],
-        vaultAccount["vaultShares"],
+        vaultShares,
         5e8,
         0,
         eth_abi.encode_abi(
             ['(uint32,uint256,uint256,bytes)'],
             [[
                 0,
-                Wei(14916784772283813990 * 0.98),
-                Wei(16888857974 * 0.98),
+                Wei(spotBalances["primaryBalance"] * 0.98),
+                Wei(spotBalances["secondaryBalance"] * 0.98),
                 eth_abi.encode_abi(
-                    ['(uint16,uint8,uint16,bytes)'],
+                    ['(uint16,uint8,uint32,bytes)'],
                     [[
                         1,
                         0,
-                        500,
+                        Wei(5e6),
                         eth_abi.encode_abi(
                             ['(uint24)'],
                             [[3000]]
@@ -279,6 +312,8 @@ def main():
         ),
         {"from": env.whales["ETH"]}
     )
+
+    return
 
     chain.undo()
 

@@ -223,7 +223,7 @@ library SecondaryBorrowUtils {
             IERC20(secondaryToken).checkTransfer(address(Constants.NOTIONAL), underlyingRequired);
         }
 
-        if (secondaryBalance > 0) {
+        if (secondaryBalance > 0) {            
             SecondaryBorrowUtils._sellSecondaryBalance(
                 params, tradingModule, primaryToken, secondaryToken, secondaryBalance
             );

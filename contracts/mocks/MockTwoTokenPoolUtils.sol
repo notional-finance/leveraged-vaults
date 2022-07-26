@@ -17,4 +17,13 @@ contract MockTwoTokenPoolUtils {
     ) external view returns (uint256) {
         return poolContext._getTimeWeightedPrimaryBalance(oracleContext, bptAmount);
     } 
+
+    function getSpotBalances(
+        TwoTokenPoolContext memory context,
+        uint256 bptAmount
+    ) external view returns (uint256 primaryBalance, uint256 secondaryBalance) {
+        uint256 totalBPTSupply = context.baseContext.pool.totalSupply();
+        primaryBalance = context.primaryBalance * bptAmount / totalBPTSupply;
+        secondaryBalance = context.secondaryBalance * bptAmount / totalBPTSupply;
+    }
 }

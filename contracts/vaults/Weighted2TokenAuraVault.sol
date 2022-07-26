@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Constants} from "../global/Constants.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
@@ -35,7 +34,6 @@ import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExte
 
 contract Weighted2TokenAuraVault is 
     UUPSUpgradeable,
-    Initializable,  
     BaseVaultStorage,
     Weighted2TokenVaultMixin,
     AuraStakingMixin 
@@ -57,6 +55,10 @@ contract Weighted2TokenAuraVault is
         )
         AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool)
     {}
+
+    function strategy() external override view returns (bytes4) {
+        return bytes4(keccak256("Weighted2TokenAuraVault"));
+    }
 
     function initialize(InitParams calldata params)
         external
@@ -127,7 +129,7 @@ contract Weighted2TokenAuraVault is
             finalPrimaryBalance = Weighted2TokenAuraVaultHelper._redeemFromNotional(
                 _strategyContext(), account, strategyTokens, maturity, data
             );
-        } 
+        }
     }
 
     function _repaySecondaryBorrowCallback(

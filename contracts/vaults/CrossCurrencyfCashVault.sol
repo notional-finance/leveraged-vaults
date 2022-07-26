@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IWrappedfCashFactory} from "../../interfaces/notional/IWrappedfCashFactory.sol";
@@ -74,6 +73,10 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
     constructor(NotionalProxy notional_, ITradingModule tradingModule_)
         BaseStrategyVault(notional_, tradingModule_) {}
 
+    function strategy() external override view returns (bytes4) {
+        return bytes4(keccak256("CrossCurrencyfCash"));
+    }
+    
     function initialize(
         string memory name_,
         uint16 borrowCurrencyId_,
