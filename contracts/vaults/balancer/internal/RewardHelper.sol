@@ -160,7 +160,7 @@ library RewardHelper {
         _validateJoinAmounts(poolContext, spotPrice, tradingModule, primaryAmount, secondaryAmount);
         
         uint256 bptAmount = BalancerUtils.joinPoolExactTokensIn({
-            context: poolContext.baseContext,
+            context: poolContext.basePool,
             params: poolContext._getPoolParams(
                 primaryAmount, 
                 secondaryAmount, 

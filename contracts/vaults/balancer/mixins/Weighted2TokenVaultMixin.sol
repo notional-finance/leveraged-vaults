@@ -39,7 +39,7 @@ abstract contract Weighted2TokenVaultMixin is TwoTokenPoolMixin, OracleMixin {
         return Weighted2TokenOracleContext({
             primaryWeight: PRIMARY_WEIGHT,
             secondaryWeight: SECONDARY_WEIGHT,
-            baseContext: _oracleContext()
+            baseOracle: _oracleContext()
         });
     }
 }

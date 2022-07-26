@@ -32,7 +32,7 @@ def test_bpt_valuation_2token_weighted_50_50_primary_second(Strat50ETH50USDC):
         2e18
     )
     bptAmount = env.mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
-        strategyContext["baseContext"], 
+        strategyContext["baseStrategy"], 
         strategyContext["stakingContext"], 
         strategyContext["poolContext"], 
         primaryAmount,
@@ -43,7 +43,7 @@ def test_bpt_valuation_2token_weighted_50_50_primary_second(Strat50ETH50USDC):
     # BPT value calculated based on oracle price
     actualBPTValueInPrimary = env.mockTwoTokenPoolUtils.getTimeWeightedPrimaryBalance(
         strategyContext["poolContext"], 
-        strategyContext["oracleContext"]["baseContext"],
+        strategyContext["oracleContext"]["baseOracle"],
         bptAmount
     )
     spotPrice = env.mockWeighted2TokenOracleMath.getSpotPrice(
@@ -72,7 +72,7 @@ def test_bpt_valuation_2token_metastable_primary_second(StratStableETHstETH):
     env.whales["ETH"].transfer(env.mockTwoTokenAuraStrategyUtils.address, 5e18)
     strategyContext = vault.getStrategyContext()
     bptAmount = env.mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
-        strategyContext["baseContext"], 
+        strategyContext["baseStrategy"], 
         strategyContext["stakingContext"], 
         strategyContext["poolContext"], 
         2e18, # 2 ETH primary
@@ -82,7 +82,7 @@ def test_bpt_valuation_2token_metastable_primary_second(StratStableETHstETH):
     assert pytest.approx(bptAmount, rel=1e-3) == 1982105365727602511
     actualBPTValueInPrimary = env.mockTwoTokenPoolUtils.getTimeWeightedPrimaryBalance(
         strategyContext["poolContext"], 
-        strategyContext["oracleContext"]["baseContext"],
+        strategyContext["oracleContext"]["baseOracle"],
         bptAmount
     )
     spotPrice = env.mockStable2TokenOracleMath.getSpotPrice(

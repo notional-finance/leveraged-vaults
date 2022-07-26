@@ -84,13 +84,15 @@ library TwoTokenAuraStrategyUtils {
     ) internal returns (uint256 finalPrimaryBalance) {
         // These min primary and min secondary amounts must be within some configured
         // delta of the current oracle price
-        // TODO: Is this check necessary if account != address(this)?
-        poolContext._validateMinExitAmounts({
-            oracleContext: oracleContext,
-            tradingModule: strategyContext.tradingModule,
-            minPrimary: params.minPrimary,
-            minSecondary: params.minSecondary
-        });
+        // This check is only necessary during settlement
+        if (account != address(this)) {
+            poolContext._validateMinExitAmounts({
+                oracleContext: oracleContext,
+                tradingModule: strategyContext.tradingModule,
+                minPrimary: params.minPrimary,
+                minSecondary: params.minSecondary
+            });
+        }
 
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens, maturity);
 
@@ -163,11 +165,11 @@ library TwoTokenAuraStrategyUtils {
 
         // Join the balancer pool and stake the tokens for boosting
         bptMinted = stakingContext._joinPoolAndStake({
-            poolContext: poolContext.baseContext,
+            poolContext: poolContext.basePool,
             poolParams: poolParams,
             totalBPTHeld: strategyContext.totalBPTHeld,
             bptThreshold: strategyContext.vaultSettings._bptThreshold(
-                poolContext.baseContext.pool.totalSupply()
+                poolContext.basePool.pool.totalSupply()
             ),
             minBPT: minBPT
         });
@@ -182,7 +184,7 @@ library TwoTokenAuraStrategyUtils {
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
         uint256[] memory exitBalances = AuraStakingUtils._unstakeAndExitPoolExactBPTIn({
             stakingContext: stakingContext, 
-            poolContext: poolContext.baseContext,
+            poolContext: poolContext.basePool,
             poolParams: poolContext._getPoolParams(minPrimary, minSecondary, false), // isJoin = false
             bptExitAmount: bptClaim
         });

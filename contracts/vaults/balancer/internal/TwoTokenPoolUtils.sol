@@ -53,7 +53,7 @@ library TwoTokenPoolUtils {
         uint256 balancerWeightedPrice;
         if (oracleContext.balancerOracleWeight > 0) {
             uint256 balancerPrice = BalancerUtils._getTimeWeightedOraclePrice(
-                address(poolContext.baseContext.pool),
+                address(poolContext.basePool.pool),
                 IPriceOracle.Variable.PAIR_PRICE,
                 oracleContext.oracleWindowInSeconds
             );
@@ -101,14 +101,14 @@ library TwoTokenPoolUtils {
     ) internal view returns (uint256 primaryAmount) {
         // Gets the BPT token price denominated in token index = 0
         uint256 bptPrice = BalancerUtils._getTimeWeightedOraclePrice(
-            address(poolContext.baseContext.pool),
+            address(poolContext.basePool.pool),
             IPriceOracle.Variable.BPT_PRICE,
             oracleContext.oracleWindowInSeconds
         );
 
         // Gets the pair price
         uint256 pairPrice = BalancerUtils._getTimeWeightedOraclePrice(
-            address(poolContext.baseContext.pool),
+            address(poolContext.basePool.pool),
             IPriceOracle.Variable.PAIR_PRICE,
             oracleContext.oracleWindowInSeconds
         );
@@ -161,6 +161,6 @@ library TwoTokenPoolUtils {
         IERC20(poolContext.primaryToken).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
         IERC20(poolContext.secondaryToken).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
         // Allow BPT spender to pull BALANCER_POOL_TOKEN
-        IERC20(address(poolContext.baseContext.pool)).checkApprove(bptSpender, type(uint256).max);
+        IERC20(address(poolContext.basePool.pool)).checkApprove(bptSpender, type(uint256).max);
     }
 }

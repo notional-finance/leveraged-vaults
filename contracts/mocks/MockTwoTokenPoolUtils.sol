@@ -22,7 +22,7 @@ contract MockTwoTokenPoolUtils {
         TwoTokenPoolContext memory context,
         uint256 bptAmount
     ) external view returns (uint256 primaryBalance, uint256 secondaryBalance) {
-        uint256 totalBPTSupply = context.baseContext.pool.totalSupply();
+        uint256 totalBPTSupply = context.basePool.pool.totalSupply();
         primaryBalance = context.primaryBalance * bptAmount / totalBPTSupply;
         secondaryBalance = context.secondaryBalance * bptAmount / totalBPTSupply;
     }

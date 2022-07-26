@@ -87,7 +87,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             secondaryDecimals: SECONDARY_DECIMALS,
             primaryBalance: balances[PRIMARY_INDEX],
             secondaryBalance: balances[SECONDARY_INDEX],
-            baseContext: _poolContext()
+            basePool: _poolContext()
         });
     }
 }

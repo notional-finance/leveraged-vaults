@@ -189,7 +189,7 @@ library SettlementHelper {
         bytes calldata data
     ) internal {
         (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = _getEmergencySettlementParams(
-            context.strategyContext, context.poolContext.baseContext, maturity
+            context.strategyContext, context.poolContext.basePool, maturity
         );
 
         uint256 redeemStrategyTokenAmount = context.strategyContext._convertBPTClaimToStrategyTokens(

@@ -236,9 +236,9 @@ library Stable2TokenOracleMath {
         uint256 primaryAmount
     ) internal view returns (uint256 secondaryAmount) {
         uint256 oraclePrice = BalancerUtils._getTimeWeightedOraclePrice(
-            address(poolContext.baseContext.pool),
+            address(poolContext.basePool.pool),
             IPriceOracle.Variable.PAIR_PRICE,
-            oracleContext.baseContext.oracleWindowInSeconds
+            oracleContext.baseOracle.oracleWindowInSeconds
         );
 
         (uint256 spotPrice, uint256 invariant) = _getSpotPriceAndInvariant(

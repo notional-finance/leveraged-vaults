@@ -32,7 +32,7 @@ library MetaStable2TokenAuraVaultHelper {
             context, account, maturity, deposit, params
         );
 
-        strategyTokensMinted = context.baseContext._deposit({
+        strategyTokensMinted = context.baseStrategy._deposit({
             stakingContext: context.stakingContext, 
             poolContext: context.poolContext,
             deposit: deposit,
@@ -50,7 +50,7 @@ library MetaStable2TokenAuraVaultHelper {
         DepositParams memory params
     ) private returns (uint256) {
         // If secondary currency is not specified then return
-        if (context.baseContext.secondaryBorrowCurrencyId == 0) return 0;
+        if (context.baseStrategy.secondaryBorrowCurrencyId == 0) return 0;
 
         uint256 optimalSecondaryAmount = context.oracleContext._getOptimalSecondaryBorrowAmount(
             context.poolContext, primaryAmount
@@ -69,8 +69,8 @@ library MetaStable2TokenAuraVaultHelper {
         bytes calldata data
     ) external returns (uint256 finalPrimaryBalance) {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
-        finalPrimaryBalance = context.baseContext._redeem({
-            oracleContext: context.oracleContext.baseContext,
+        finalPrimaryBalance = context.baseStrategy._redeem({
+            oracleContext: context.oracleContext.baseOracle,
             stakingContext: context.stakingContext,
             poolContext: context.poolContext,
             account: account,

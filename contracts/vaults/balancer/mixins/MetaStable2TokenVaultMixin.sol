@@ -32,7 +32,7 @@ abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, OracleMixin {
         
         return Stable2TokenOracleContext({
             ampParam: value,
-            baseContext: _oracleContext()
+            baseOracle: _oracleContext()
         });
     }
 }

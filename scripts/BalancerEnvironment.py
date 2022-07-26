@@ -4,14 +4,12 @@ from brownie import (
     nProxy,
     Weighted2TokenAuraVault,
     MetaStable2TokenAuraVault,
-    SettlementHelper,
     AuraRewardHelperExternal,
     MetaStable2TokenAuraRewardHelper,
-    MetaStable2TokenAuraSettlementHelper,
     MetaStable2TokenAuraVaultHelper,
     Weighted2TokenAuraRewardHelper,
-    Weighted2TokenAuraSettlementHelper,
     Weighted2TokenAuraVaultHelper,
+    TwoTokenAuraSettlementHelper,
     MockWeighted2TokenOracleMath,
     MockStable2TokenOracleMath,
     MockTwoTokenPoolUtils,
@@ -96,11 +94,10 @@ class BalancerEnvironment(Environment):
         # Deploy external libs
         AuraRewardHelperExternal.deploy({"from": self.deployer})
         MetaStable2TokenAuraRewardHelper.deploy({"from": self.deployer})
-        MetaStable2TokenAuraSettlementHelper.deploy({"from": self.deployer})
         MetaStable2TokenAuraVaultHelper.deploy({"from": self.deployer})
         Weighted2TokenAuraRewardHelper.deploy({"from": self.deployer})
         Weighted2TokenAuraVaultHelper.deploy({"from": self.deployer})
-        Weighted2TokenAuraSettlementHelper.deploy({"from": self.deployer})
+        TwoTokenAuraSettlementHelper.deploy({"from": self.deployer})
 
         secondaryCurrencyId = 0
         if stratConfig["secondaryBorrowCurrency"] != None:
@@ -194,7 +191,7 @@ def main():
                     primaryAmount)
     print(secondaryAmount)
     print(mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
-        strategyContext["baseContext"], 
+        strategyContext["baseStrategy"], 
         strategyContext["stakingContext"], 
         strategyContext["poolContext"], 
         primaryAmount, 

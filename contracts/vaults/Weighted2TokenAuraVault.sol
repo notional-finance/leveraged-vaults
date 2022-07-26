@@ -14,7 +14,8 @@ import {
     TwoTokenPoolContext,
     Weighted2TokenOracleContext,
     Weighted2TokenAuraStrategyContext,
-    StrategyContext
+    StrategyContext,
+    TwoTokenAuraSettlementContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {Weighted2TokenVaultMixin} from "./balancer/mixins/Weighted2TokenVaultMixin.sol";
@@ -28,7 +29,7 @@ import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {SettlementHelper} from "./balancer/internal/SettlementHelper.sol";
 import {Weighted2TokenAuraVaultHelper} from "./balancer/external/Weighted2TokenAuraVaultHelper.sol";
-import {Weighted2TokenAuraSettlementHelper} from "./balancer/external/Weighted2TokenAuraSettlementHelper.sol";
+import {TwoTokenAuraSettlementHelper} from "./balancer/external/TwoTokenAuraSettlementHelper.sol";
 import {Weighted2TokenAuraRewardHelper} from "./balancer/external/Weighted2TokenAuraRewardHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
@@ -88,8 +89,8 @@ contract Weighted2TokenAuraVault is
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         Weighted2TokenAuraStrategyContext memory context = _strategyContext();
-        underlyingValue = context.baseContext._convertStrategyToUnderlying({
-            oracleContext: context.oracleContext.baseContext,
+        underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
+            oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
             account: account,
             strategyTokenAmount: strategyTokenAmount,
@@ -164,8 +165,8 @@ contract Weighted2TokenAuraVault is
         if (block.timestamp < maturity) {
             revert SettlementHelper.HasNotMatured();
         }
-        Weighted2TokenAuraSettlementHelper.settleVaultPostMaturity(
-            _strategyContext(), maturity, strategyTokensToRedeem, data
+        TwoTokenAuraSettlementHelper.settleVaultPostMaturity(
+            _settlementContext(), maturity, strategyTokensToRedeem, data
         );
     }
 
@@ -189,8 +190,8 @@ contract Weighted2TokenAuraVault is
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert SettlementHelper.NotInSettlementWindow();
         }
-        Weighted2TokenAuraSettlementHelper.settleVaultNormal(
-            _strategyContext(), maturity, strategyTokensToRedeem, data
+        TwoTokenAuraSettlementHelper.settleVaultNormal(
+            _settlementContext(), maturity, strategyTokensToRedeem, data
         );
     }
 
@@ -200,8 +201,8 @@ contract Weighted2TokenAuraVault is
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
-        Weighted2TokenAuraSettlementHelper.settleVaultEmergency(
-            _strategyContext(), maturity, data
+        TwoTokenAuraSettlementHelper.settleVaultEmergency(
+            _settlementContext(), maturity, data
         );
     }
 
@@ -230,12 +231,22 @@ contract Weighted2TokenAuraVault is
         _setStrategyVaultSettings(settings);
     }
 
+    function _settlementContext() private view returns (TwoTokenAuraSettlementContext memory) {
+        Weighted2TokenAuraStrategyContext memory context = _strategyContext();
+        return TwoTokenAuraSettlementContext({
+            strategyContext: context.baseStrategy,
+            oracleContext: context.oracleContext.baseOracle,
+            poolContext: context.poolContext,
+            stakingContext: context.stakingContext
+        });
+    }
+
     function _strategyContext() internal view returns (Weighted2TokenAuraStrategyContext memory) {
         return Weighted2TokenAuraStrategyContext({
             poolContext: _twoTokenPoolContext(),
             oracleContext: _weighted2TokenOracleContext(),
             stakingContext: _auraStakingContext(),
-            baseContext: StrategyContext({
+            baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
                 secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
                 tradingModule: TRADING_MODULE,
@@ -263,13 +274,13 @@ contract Weighted2TokenAuraVault is
 
     function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
         external view returns (uint256 strategyTokenAmount) {
-        return _strategyContext().baseContext._convertBPTClaimToStrategyTokens(bptClaim, maturity);
+        return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(bptClaim, maturity);
     }
 
    /// @notice Converts strategy tokens to BPT
     function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
         external view returns (uint256 bptClaim) {
-        return _strategyContext().baseContext._convertStrategyTokensToBPTClaim(strategyTokenAmount, maturity);
+        return _strategyContext().baseStrategy._convertStrategyTokensToBPTClaim(strategyTokenAmount, maturity);
     }
 
     function getStrategyContext() external view returns (Weighted2TokenAuraStrategyContext memory) {

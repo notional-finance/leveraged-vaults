@@ -25,7 +25,7 @@ library Weighted2TokenOracleMath {
 
         // prettier-ignore
         (/* */, uint256[] memory balances, /* */) 
-            = BalancerUtils.BALANCER_VAULT.getPoolTokens(poolContext.baseContext.poolId);
+            = BalancerUtils.BALANCER_VAULT.getPoolTokens(poolContext.basePool.poolId);
 
         // Normalize balances to 18 decimal places
         (balances[poolContext.primaryIndex], balances[poolContext.secondaryIndex]) = 
@@ -66,9 +66,9 @@ library Weighted2TokenOracleMath {
         // excess slippage when joining, the user must specify a minBPT amount that will
         // cause the transaction to revert.
         uint256 pairPrice = BalancerUtils._getTimeWeightedOraclePrice(
-            address(poolContext.baseContext.pool),
+            address(poolContext.basePool.pool),
             IPriceOracle.Variable.PAIR_PRICE,
-            oracleContext.baseContext.oracleWindowInSeconds
+            oracleContext.baseOracle.oracleWindowInSeconds
         );
 
         if (poolContext.primaryIndex == 0) {

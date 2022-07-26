@@ -20,7 +20,7 @@ library MetaStable2TokenAuraRewardHelper {
     ) external {
         RewardHelper._reinvestReward(
             params, 
-            context.baseContext.tradingModule, 
+            context.baseStrategy.tradingModule, 
             context.poolContext,
             context.stakingContext,
             context.oracleContext._getSpotPrice(context.poolContext, 0)
