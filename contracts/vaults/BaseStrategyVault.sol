@@ -65,6 +65,8 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         return _NAME;
     }
 
+    function strategy() external virtual view returns (bytes4);
+
     function _borrowCurrencyId() internal view returns (uint16) {
         return _BORROW_CURRENCY_ID;
     }
@@ -176,11 +178,10 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         uint256 maturity,
         uint256 underlyingToRepayDebt,
         bytes calldata data
-    ) external onlyNotional {
+    ) external onlyNotional returns (uint256 transferToReceiver) {
         uint256 borrowedCurrencyAmount = _redeemFromNotional(account, strategyTokens, maturity, data);
 
         uint256 transferToNotional;
-        uint256 transferToAccount;
         if (account == address(this) || borrowedCurrencyAmount <= underlyingToRepayDebt) {
             // It may be the case that insufficient tokens were redeemed to repay the debt. If this
             // happens the Notional will attempt to recover the shortfall from the account directly.
@@ -191,14 +192,14 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
             transferToNotional = borrowedCurrencyAmount;
         } else {
             transferToNotional = underlyingToRepayDebt;
-            unchecked { transferToAccount = borrowedCurrencyAmount - underlyingToRepayDebt; }
+            unchecked { transferToReceiver = borrowedCurrencyAmount - underlyingToRepayDebt; }
         }
 
         if (_UNDERLYING_IS_ETH) {
-            if (transferToAccount > 0) payable(receiver).transfer(transferToAccount);
+            if (transferToReceiver > 0) payable(receiver).transfer(transferToReceiver);
             if (transferToNotional > 0) payable(address(NOTIONAL)).transfer(transferToNotional);
         } else {
-            if (transferToAccount > 0) _UNDERLYING_TOKEN.checkTransfer(receiver, transferToAccount);
+            if (transferToReceiver > 0) _UNDERLYING_TOKEN.checkTransfer(receiver, transferToReceiver);
             if (transferToNotional > 0) _UNDERLYING_TOKEN.checkTransfer(address(NOTIONAL), transferToNotional);
         }
     }

@@ -314,7 +314,7 @@ def test_settle_vault_success(env, usdcDaiVault, accounts):
     assert vaultAccount['vaultShares'] == 0
     balanceAfter = env.tokens["USDC"].balanceOf(accounts[0])
 
-    assert pytest.approx(balanceAfter - balanceBefore, rel=1e-6) == 19743280960 
+    assert pytest.approx(balanceAfter - balanceBefore, rel=1e-6) == 19743453813
 
 #def test_settle_vault_fail_purchase_limit(env, usdcDaiVault, accounts):
 #def test_settle_vault_insolvent(env, usdcDaiVault, accounts):

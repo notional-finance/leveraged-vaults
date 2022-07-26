@@ -58,6 +58,10 @@ contract Balancer2TokenVault is UUPSUpgradeable, Initializable, VaultHelper {
         BalancerVaultStorage(notional_, params)
     {}
 
+    function strategy() external override view returns (bytes4) {
+        return bytes4(keccak256("BalancerWeighted2Token"));
+    }
+
     function initialize(InitParams calldata params)
         external
         initializer
