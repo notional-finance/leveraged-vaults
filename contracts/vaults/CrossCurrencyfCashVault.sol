@@ -76,7 +76,11 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
     function strategy() external override view returns (bytes4) {
         return bytes4(keccak256("CrossCurrencyfCash"));
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> master
     function initialize(
         string memory name_,
         uint16 borrowCurrencyId_,

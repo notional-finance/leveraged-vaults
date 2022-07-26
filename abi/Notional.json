@@ -433,6 +433,12 @@
                 "type": "uint16"
             },
             {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            },
+            {
                 "indexed": false,
                 "internalType": "int256",
                 "name": "shortfall",
@@ -1026,7 +1032,7 @@
             {
                 "indexed": true,
                 "internalType": "uint256",
-                "name": "newMaturity",
+                "name": "maturity",
                 "type": "uint256"
             }
         ],
@@ -1084,6 +1090,12 @@
                 "internalType": "uint16",
                 "name": "currencyId",
                 "type": "uint16"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
             },
             {
                 "indexed": false,
@@ -1243,6 +1255,12 @@
             {
                 "indexed": false,
                 "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
                 "name": "debtSharesRepaid",
                 "type": "uint256"
             },
@@ -1311,6 +1329,12 @@
             {
                 "indexed": false,
                 "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
                 "name": "debtSharesMinted",
                 "type": "uint256"
             },
@@ -1322,6 +1346,43 @@
             }
         ],
         "name": "VaultSecondaryBorrow",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "vault",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint16",
+                "name": "currencyId",
+                "type": "uint16"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "int256",
+                "name": "totalfCashBorrowedInPrimarySnapshot",
+                "type": "int256"
+            },
+            {
+                "indexed": false,
+                "internalType": "int256",
+                "name": "exchangeRate",
+                "type": "int256"
+            }
+        ],
+        "name": "VaultSecondaryBorrowSnapshot",
         "type": "event"
     },
     {
@@ -1418,6 +1479,12 @@
                 "internalType": "uint16",
                 "name": "currencyId",
                 "type": "uint16"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
             },
             {
                 "indexed": false,
@@ -2493,7 +2560,13 @@
             }
         ],
         "name": "enterVault",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "strategyTokensAdded",
+                "type": "uint256"
+            }
+        ],
         "stateMutability": "payable",
         "type": "function"
     },
@@ -2536,7 +2609,13 @@
             }
         ],
         "name": "exitVault",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "underlyingToReceiver",
+                "type": "uint256"
+            }
+        ],
         "stateMutability": "payable",
         "type": "function"
     },
@@ -4136,6 +4215,11 @@
                 "internalType": "uint256",
                 "name": "totalAccountDebtShares",
                 "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "totalfCashBorrowedInPrimarySnapshot",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -4294,11 +4378,6 @@
                 "internalType": "int256",
                 "name": "maxLiquidatorDepositAssetCash",
                 "type": "int256"
-            },
-            {
-                "internalType": "bool",
-                "name": "mustLiquidateFull",
-                "type": "bool"
             }
         ],
         "stateMutability": "view",
@@ -4683,6 +4762,25 @@
         ],
         "name": "initializeMarkets",
         "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            }
+        ],
+        "name": "initiateSecondaryBorrowSettlement",
+        "outputs": [
+            {
+                "internalType": "uint256[2]",
+                "name": "secondaryBorrowSnapshot",
+                "type": "uint256[2]"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
@@ -5596,7 +5694,13 @@
             }
         ],
         "name": "rollVaultPosition",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "strategyTokensAdded",
+                "type": "uint256"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
