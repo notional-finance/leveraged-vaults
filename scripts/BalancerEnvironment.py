@@ -384,11 +384,10 @@ def main():
         {"from": env.notional.owner()}
     )
 
-    return
-
     packedEncoder = eth_abi.codec.ABIEncoder(eth_abi.registry.registry_packed)
+    env.tokens["BAL"].transfer(weightedVault.address, 50e18, {"from": env.whales["BAL"]})
 
-    print(vault.reinvestReward.encode_input([eth_abi.encode_abi(
+    weightedVault.reinvestReward([eth_abi.encode_abi(
         ['(uint16,(uint8,address,address,uint256,uint256,uint256,bytes),uint16,(uint8,address,address,uint256,uint256,uint256,bytes))'],
         [[
             1,
@@ -429,92 +428,6 @@ def main():
                 )          
             ]
         ]]
-    ), 0]))
-
-    env.tokens["BAL"].transfer(vault.address, 2000e18, {"from": env.whales["BAL"]})
-
-    vault.reinvestReward([eth_abi.encode_abi(
-        ['(uint16,(uint8,address,address,uint256,uint256,uint256,bytes),uint16,(uint8,address,address,uint256,uint256,uint256,bytes))'],
-        [[
-            1,
-            [
-                0,
-                env.tokens["BAL"].address,
-                ETH_ADDRESS,
-                Wei(10e18),
-                0,
-                chain.time() + 10000,
-                eth_abi.encode_abi(
-                    ['(uint24)'],
-                    [[3000]]
-                )                   
-            ],
-            1,
-            [
-                2,
-                env.tokens["BAL"].address,
-                env.tokens["USDC"].address,
-                Wei(10e18),
-                0,
-                chain.time() + 10000,
-                eth_abi.encode_abi(
-                    ['(bytes)'],
-                    [[
-                        packedEncoder.encode_abi(
-                            ["address", "uint24", "address", "uint24", "address"], 
-                            [
-                                env.tokens["BAL"].address, 
-                                3000, 
-                                env.tokens["WETH"].address,
-                                3000, 
-                                env.tokens["USDC"].address
-                            ]
-                        )                 
-                    ]]
-                )
-            ]
-        ]]
-    ), 0], {"from": env.notional.owner()})
-
-    vault.reinvestReward([eth_abi.encode_abi(
-        ['(uint16,(uint8,address,address,uint256,uint256,uint256,bytes),uint16,(uint8,address,address,uint256,uint256,uint256,bytes))'],
-        [[
-            1,
-            [
-                0,
-                env.tokens["BAL"].address,
-                ETH_ADDRESS,
-                Wei(10e18),
-                0,
-                chain.time() + 10000,
-                eth_abi.encode_abi(
-                    ['(uint24)'],
-                    [[3000]]
-                )                   
-            ],
-            1,
-            [
-                2,
-                env.tokens["BAL"].address,
-                env.tokens["USDC"].address,
-                Wei(10e18),
-                0,
-                chain.time() + 10000,
-                eth_abi.encode_abi(
-                    ['(bytes)'],
-                    [[
-                        packedEncoder.encode_abi(
-                            ["address", "uint24", "address", "uint24", "address"], 
-                            [
-                                env.tokens["BAL"].address, 
-                                3000, 
-                                env.tokens["WETH"].address,
-                                3000, 
-                                env.tokens["USDC"].address
-                            ]
-                        )                 
-                    ]]
-                )
-            ]
-        ]]
-    ), 0], {"from": env.notional.owner()})
+    ), 0],
+        {"from": env.whales["USDC"]}
+    )
