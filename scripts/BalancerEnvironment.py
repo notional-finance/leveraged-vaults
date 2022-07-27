@@ -176,28 +176,43 @@ def main():
     weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
     stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
 
-    strategyContext = weightedVault.getStrategyContext()
+    strategyContext = stableVault.getStrategyContext()
     mockTwoTokenAuraStrategyUtils = MockTwoTokenAuraStrategyUtils.deploy(
         strategyContext["poolContext"],
         strategyContext["stakingContext"],
         {"from": env.deployer}
     )
-    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 5e18)
-    env.tokens["USDC"].transfer(mockTwoTokenAuraStrategyUtils.address, 100000e6, {"from": env.whales["USDC"]})
-    primaryAmount = 2e18
-    secondaryAmount = env.mockWeighted2TokenOracleMath.getOptimalSecondaryBorrowAmount(
+    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 500e18)
+    env.tokens["wstETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 1000e18, {"from": env.whales["wstETH"]})
+    primaryAmount = 300e18
+    secondaryAmount = env.mockStable2TokenOracleMath.getOptimalSecondaryBorrowAmount(
                     strategyContext["oracleContext"],
                     strategyContext["poolContext"],
                     primaryAmount)
     print(secondaryAmount)
-    print(mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
+    spotPriceBefore = env.mockStable2TokenOracleMath.getSpotPrice(
+        strategyContext["oracleContext"],
+        strategyContext["poolContext"],
+        0
+    )
+    print(spotPriceBefore)
+    mockTwoTokenAuraStrategyUtils.joinPoolAndStake(
         strategyContext["baseStrategy"], 
         strategyContext["stakingContext"], 
         strategyContext["poolContext"], 
         primaryAmount, 
         secondaryAmount, 
         0
-    ))
+    )
+    strategyContext = stableVault.getStrategyContext()
+    spotPriceAfter = env.mockStable2TokenOracleMath.getSpotPrice(
+        strategyContext["oracleContext"],
+        strategyContext["poolContext"],
+        0
+    )
+    print(spotPriceAfter)
+
+    return
 
     maturity = env.notional.getActiveMarkets(1)[0][1]
 

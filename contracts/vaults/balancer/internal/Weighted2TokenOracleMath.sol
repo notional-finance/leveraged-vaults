@@ -19,9 +19,9 @@ library Weighted2TokenOracleMath {
     ) internal view returns (uint256 spotPrice) {
         // Prevents overflows, we don't expect tokens to be greater than 18 decimals, don't use
         // equal sign for minor gas optimization
-        require(poolContext.primaryDecimals < 19);
-        require(poolContext.secondaryDecimals < 19);
-        require(tokenIndex < 2);
+        require(poolContext.primaryDecimals < 19); /// @dev primaryDecimals overflow
+        require(poolContext.secondaryDecimals < 19); /// @dev secondaryDecimals overflow
+        require(tokenIndex < 2); /// @dev invalid token index
 
         // prettier-ignore
         (/* */, uint256[] memory balances, /* */) 
@@ -60,6 +60,11 @@ library Weighted2TokenOracleMath {
         TwoTokenPoolContext memory poolContext,
         uint256 primaryAmount
     ) internal view returns (uint256 secondaryAmount) {
+        // Prevents overflows, we don't expect tokens to be greater than 18 decimals, don't use
+        // equal sign for minor gas optimization
+        require(poolContext.primaryDecimals < 19); /// @dev primaryDecimals overflow
+        require(poolContext.secondaryDecimals < 19); /// @dev secondaryDecimals overflow
+
         // Use the oracle price here rather than the spot price to prevent flash loan
         // manipulation (would force the user to join at a disadvantageous price). If
         // the pool is being manipulated away from the oracle price and this generates

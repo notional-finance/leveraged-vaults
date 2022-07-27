@@ -1,6 +1,20 @@
 import pytest
 from tests.fixtures import *
 
+def test_get_optimal_secondary_amount_weighted():
+    pass
+
+def test_get_optimal_secondary_amount_stable(StratStableETHstETH):
+    (env, vault, mockTwoTokenAuraStrategyUtils) = StratStableETHstETH
+    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 5e18)
+    env.tokens["USDC"].transfer(mockTwoTokenAuraStrategyUtils.address, 5000e6, {"from": env.whales["USDC"]})
+    strategyContext = vault.getStrategyContext()
+    spotPriceBefore = env.mockStable2TokenOracleMath.getSpotPrice(
+        strategyContext["oracleContext"],
+        strategyContext["poolContext"],
+        1
+    )
+
 def test_bpt_valuation_2token_weighted_50_50_primary_first():
     pass
 
