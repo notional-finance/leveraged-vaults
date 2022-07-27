@@ -1,29 +1,13 @@
 import pytest
-import eth_abi
-from brownie import (Weighted2TokenAuraVault, MetaStable2TokenAuraVault)
-from brownie import network, Wei
 from tests.fixtures import *
-from scripts.BalancerEnvironment import getEnvironment
-
-@pytest.fixture(scope="module", autouse=True)
-def Strat50ETH50USDC():
-    env = getEnvironment(network.show_active())
-    vault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
-    return (env, vault)
-
-@pytest.fixture(scope="module", autouse=True)
-def StratStableETHstETH():
-    env = getEnvironment(network.show_active())
-    vault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
-    return (env, vault)
 
 def test_bpt_valuation_2token_weighted_50_50_primary_first():
     pass
 
 def test_bpt_valuation_2token_weighted_50_50_primary_second(Strat50ETH50USDC):
-    (env, vault) = Strat50ETH50USDC
-    env.whales["ETH"].transfer(env.mockTwoTokenAuraStrategyUtils.address, 5e18)
-    env.tokens["USDC"].transfer(env.mockTwoTokenAuraStrategyUtils.address, 5000e6, {"from": env.whales["USDC"]})
+    (env, vault, mockTwoTokenAuraStrategyUtils) = Strat50ETH50USDC
+    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 5e18)
+    env.tokens["USDC"].transfer(mockTwoTokenAuraStrategyUtils.address, 5000e6, {"from": env.whales["USDC"]})
     strategyContext = vault.getStrategyContext()
     primaryAmount = 2e18 # 2 ETH primary
     optimalSecondaryAmount = env.mockWeighted2TokenOracleMath.getOptimalSecondaryBorrowAmount(
@@ -31,7 +15,7 @@ def test_bpt_valuation_2token_weighted_50_50_primary_second(Strat50ETH50USDC):
         strategyContext["poolContext"], 
         2e18
     )
-    bptAmount = env.mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
+    bptAmount = mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
         strategyContext["baseStrategy"], 
         strategyContext["stakingContext"], 
         strategyContext["poolContext"], 
@@ -68,10 +52,10 @@ def test_bpt_valuation_2token_metastable_primary_first():
     pass
 
 def test_bpt_valuation_2token_metastable_primary_second(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
-    env.whales["ETH"].transfer(env.mockTwoTokenAuraStrategyUtils.address, 5e18)
+    (env, vault, mockTwoTokenAuraStrategyUtils) = StratStableETHstETH
+    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 5e18)
     strategyContext = vault.getStrategyContext()
-    bptAmount = env.mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
+    bptAmount = mockTwoTokenAuraStrategyUtils.joinPoolAndStake.call(
         strategyContext["baseStrategy"], 
         strategyContext["stakingContext"], 
         strategyContext["poolContext"], 
@@ -85,10 +69,6 @@ def test_bpt_valuation_2token_metastable_primary_second(StratStableETHstETH):
         strategyContext["oracleContext"]["baseOracle"],
         bptAmount
     )
-    spotPrice = env.mockStable2TokenOracleMath.getSpotPrice(
-        strategyContext["oracleContext"],
-        strategyContext["poolContext"],
-        1
-    )    
-    assert pytest.approx(actualBPTValueInPrimary, abs=1000) == 2054761115742549740
+    # 5% variation due to oracle price
+    assert pytest.approx(actualBPTValueInPrimary, rel=5e-2) == 2e18
 
