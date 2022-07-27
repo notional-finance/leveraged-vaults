@@ -45,7 +45,7 @@ StrategyConfig = {
             "liquidityGauge": "0x9ab7b0c7b154f626451c9e8a68dc04f58fb6e5ce",
             "auraRewardPool": "0x71c8ea7395999aa2007ca860ce66dafa8d5c44fb",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 10e18, # 10 ETH
+            "maxUnderlyingSurplus": 100e18, # 10 ETH
             "oracleWindowInSeconds": 3600,
             "maxBalancerPoolShare": 1e3, # 10%
             "settlementSlippageLimit": 5e6, # 5%
@@ -71,7 +71,7 @@ StrategyConfig = {
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
             "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 10e18, # 10 ETH
+            "maxUnderlyingSurplus": 100e18, # 10 ETH
             "oracleWindowInSeconds": 3600,
             "maxBalancerPoolShare": 1e3, # 10%
             "settlementSlippageLimit": 5e6, # 5%
@@ -354,17 +354,19 @@ def main():
         {"from": env.whales["USDC"]}
     )
 
-    return
+    chain.undo()
+    chain.sleep(maturity + 3600 * 24 - chain.time())
+    chain.mine()
 
-    print(vault.settleVaultPostMaturity.encode_input(
+    weightedVault.settleVaultPostMaturity(
         maturity,
-        Wei(90316937079),
+        vaultAccount["vaultShares"],
         eth_abi.encode_abi(
             ['(uint32,uint256,uint256,bytes)'],
             [[
                 0,
-                Wei(14916784772283813990 * 0.98),
-                Wei(16888857974 * 0.98),
+                Wei(spotBalances["primaryBalance"] * 0.98),
+                Wei(spotBalances["secondaryBalance"] * 0.98),
                 eth_abi.encode_abi(
                     ['(uint16,uint8,uint32,bytes)'],
                     [[
@@ -378,8 +380,11 @@ def main():
                     ]]
                 )
             ]]
-        )
-    ))
+        ),
+        {"from": env.notional.owner()}
+    )
+
+    return
 
     packedEncoder = eth_abi.codec.ABIEncoder(eth_abi.registry.registry_packed)
 
