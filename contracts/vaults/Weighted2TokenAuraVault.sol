@@ -5,7 +5,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 import {Constants} from "../global/Constants.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
 import {
-    TwoTokenAuraDeploymentParams,
+    AuraDeploymentParams,
     InitParams,
     ReinvestRewardParams,
     StrategyVaultSettings,
@@ -23,6 +23,7 @@ import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerUtils} from "./balancer/internal/BalancerUtils.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
+import {StrategyUtils} from "./balancer/internal/StrategyUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "./balancer/internal/TwoTokenAuraStrategyUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/TwoTokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
@@ -41,13 +42,11 @@ contract Weighted2TokenAuraVault is
 {
     using SafeInt256 for uint256;
     using VaultUtils for StrategyVaultSettings;
+    using StrategyUtils for StrategyContext;
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
 
-    /** Events */
-    event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
-
-    constructor(NotionalProxy notional_, TwoTokenAuraDeploymentParams memory params)
+    constructor(NotionalProxy notional_, AuraDeploymentParams memory params)
         BaseVaultStorage(notional_, params.baseParams) 
         Weighted2TokenVaultMixin(
             params.primaryBorrowCurrencyId,
@@ -67,14 +66,10 @@ contract Weighted2TokenAuraVault is
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        _setStrategyVaultSettings(params.settings);
+        VaultUtils._setStrategyVaultSettings(
+            params.settings, uint32(MAX_ORACLE_QUERY_WINDOW), Constants.VAULT_PERCENT_BASIS
+        );
         _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
-    }
-
-    function _setStrategyVaultSettings(StrategyVaultSettings memory settings) private {
-        settings._validateStrategyVaultSettings(uint32(MAX_ORACLE_QUERY_WINDOW));
-        settings._setStrategyVaultSettings();
-        emit StrategyVaultSettingsUpdated(settings);
     }
 
     /// @notice Converts strategy tokens to underlyingValue
@@ -228,7 +223,9 @@ contract Weighted2TokenAuraVault is
         external
         onlyNotionalOwner
     {
-        _setStrategyVaultSettings(settings);
+        VaultUtils._setStrategyVaultSettings(
+            settings, uint32(MAX_ORACLE_QUERY_WINDOW), Constants.VAULT_PERCENT_BASIS
+        );
     }
 
     function _settlementContext() private view returns (TwoTokenAuraSettlementContext memory) {

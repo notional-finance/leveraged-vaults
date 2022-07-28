@@ -18,16 +18,17 @@ import {SafeInt256} from "../../../global/SafeInt256.sol";
 import {TradeHandler} from "../../../trading/TradeHandler.sol";
 import {AuraStakingUtils} from "./AuraStakingUtils.sol";
 import {VaultUtils} from "./VaultUtils.sol";
+import {StrategyUtils} from "./StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {SecondaryBorrowUtils} from "./SecondaryBorrowUtils.sol";
 import {Constants} from "../../../global/Constants.sol";
-import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {ITradingModule, Trade} from "../../../../interfaces/trading/ITradingModule.sol";
 
 library TwoTokenAuraStrategyUtils {
     using TradeHandler for Trade;
     using SafeInt256 for uint256;
+    using StrategyUtils for StrategyContext;
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
@@ -191,43 +192,6 @@ library TwoTokenAuraStrategyUtils {
 
         (primaryBalance, secondaryBalance) 
             = (exitBalances[poolContext.primaryIndex], exitBalances[poolContext.secondaryIndex]);
-    }
-
-    /// @notice Converts strategy tokens to BPT
-    function _convertStrategyTokensToBPTClaim(
-        StrategyContext memory context,
-        uint256 strategyTokenAmount, 
-        uint256 maturity
-    ) internal view returns (uint256 bptClaim) {
-        StrategyVaultState memory state = context.vaultState;
-        if (state.totalStrategyTokenGlobal == 0)
-            return strategyTokenAmount;
-
-        uint256 totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
-        uint256 bptHeldInMaturity = state._getBPTHeldInMaturity(totalSupplyInMaturity, context.totalBPTHeld);
-        bptClaim = (bptHeldInMaturity * strategyTokenAmount) / totalSupplyInMaturity;
-    }
-
-    /// @notice Converts BPT to strategy tokens
-    function _convertBPTClaimToStrategyTokens(
-        StrategyContext memory context,
-        uint256 bptClaim, 
-        uint256 maturity
-    ) internal view returns (uint256 strategyTokenAmount) {
-        StrategyVaultState memory state = context.vaultState;
-        if (state.totalStrategyTokenGlobal == 0) {
-            // Strategy tokens are in 8 decimal precision, BPT is in 18. Scale the minted amount down.
-            return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
-                BalancerUtils.BALANCER_PRECISION;
-        }
-
-        uint256 totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
-        uint256 bptHeldInMaturity = state._getBPTHeldInMaturity(totalSupplyInMaturity, context.totalBPTHeld);
-
-        // BPT held in maturity is calculated before the new BPT tokens are minted, so this calculation
-        // is the tokens minted that will give the account a corresponding share of the new bpt balance held.
-        // The precision here will be the same as strategy token supply.
-        strategyTokenAmount = (bptClaim * totalSupplyInMaturity) / bptHeldInMaturity;
     }
 
     function _convertStrategyToUnderlying(

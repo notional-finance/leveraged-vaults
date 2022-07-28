@@ -20,6 +20,7 @@ import {Constants} from "../../../global/Constants.sol";
 import {SafeInt256} from "../../../global/SafeInt256.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {VaultUtils} from "./VaultUtils.sol";
+import {StrategyUtils} from "./StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "./TwoTokenAuraStrategyUtils.sol";
 import {SecondaryBorrowUtils} from "./SecondaryBorrowUtils.sol";
@@ -29,6 +30,7 @@ import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol"
 library SettlementHelper {
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
+    using StrategyUtils for StrategyContext;
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenAuraStrategyUtils for AuraStakingContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;

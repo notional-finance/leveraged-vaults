@@ -11,21 +11,20 @@ import {
     StrategyVaultSettings,
     StrategyVaultState,
     PoolContext,
-    TwoTokenPoolContext,
-    Stable2TokenOracleContext,
-    MetaStable2TokenAuraStrategyContext,
+    ThreeTokenPoolContext,
+    Stable3TokenAuraStrategyContext,
     StrategyContext,
-    TwoTokenAuraSettlementContext
+    ThreeTokenAuraSettlementContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
-import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
+import {ThreeTokenPoolMixin} from "./balancer/mixins/ThreeTokenPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerUtils} from "./balancer/internal/BalancerUtils.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
 import {StrategyUtils} from "./balancer/internal/StrategyUtils.sol";
-import {TwoTokenAuraStrategyUtils} from "./balancer/internal/TwoTokenAuraStrategyUtils.sol";
-import {TwoTokenPoolUtils} from "./balancer/internal/TwoTokenPoolUtils.sol";
+import {ThreeTokenAuraStrategyUtils} from "./balancer/internal/ThreeTokenAuraStrategyUtils.sol";
+import {ThreeTokenPoolUtils} from "./balancer/internal/ThreeTokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {SettlementHelper} from "./balancer/internal/SettlementHelper.sol";
@@ -34,21 +33,19 @@ import {TwoTokenAuraSettlementHelper} from "./balancer/external/TwoTokenAuraSett
 import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
-contract MetaStable2TokenAuraVault is
+contract Stable3TokenAuraVault is
     UUPSUpgradeable,
     BaseVaultStorage,
-    MetaStable2TokenVaultMixin,
+    ThreeTokenPoolMixin,
     AuraStakingMixin
 {
-    using SafeInt256 for uint256;
-    using VaultUtils for StrategyVaultSettings;
+    using ThreeTokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
-    using TwoTokenAuraStrategyUtils for StrategyContext;
-    using TwoTokenPoolUtils for TwoTokenPoolContext;
-    
+    using ThreeTokenAuraStrategyUtils for StrategyContext;
+
     constructor(NotionalProxy notional_, AuraDeploymentParams memory params) 
         BaseVaultStorage(notional_, params.baseParams) 
-        MetaStable2TokenVaultMixin(
+        ThreeTokenPoolMixin(
             params.primaryBorrowCurrencyId,
             params.baseParams.balancerPoolId,
             params.secondaryBorrowCurrencyId
@@ -57,7 +54,7 @@ contract MetaStable2TokenAuraVault is
     {}
 
     function strategy() external override view returns (bytes4) {
-        return bytes4(keccak256("MetaStable2TokenAura"));
+        return bytes4(keccak256("Stable3TokenAuraVault"));
     }
 
     function initialize(InitParams calldata params)
@@ -66,10 +63,9 @@ contract MetaStable2TokenAuraVault is
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        VaultUtils._setStrategyVaultSettings(
-            params.settings, uint32(MAX_ORACLE_QUERY_WINDOW), Constants.VAULT_PERCENT_BASIS
-        );
-        _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
+        // 3 token vaults do not use the Balancer oracle
+        VaultUtils._setStrategyVaultSettings(params.settings, 0, 0);
+        _threeTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
     function _depositFromNotional(
@@ -80,9 +76,9 @@ contract MetaStable2TokenAuraVault is
     ) internal override returns (uint256 strategyTokensMinted) {
         // Entering the vault is not allowed within the settlement window
         _revertInSettlementWindow(maturity);
-        strategyTokensMinted = MetaStable2TokenAuraVaultHelper._depositFromNotional(
+ /*       strategyTokensMinted = Stable3TokenAuraVaultHelper._depositFromNotional(
             _strategyContext(), account, deposit, maturity, data
-        );
+        ); */
     }
 
     function _redeemFromNotional(
@@ -101,27 +97,10 @@ contract MetaStable2TokenAuraVault is
         } else {
             // Exiting the vault is not allowed within the settlement window
             _revertInSettlementWindow(maturity);
-            finalPrimaryBalance = MetaStable2TokenAuraVaultHelper._redeemFromNotional(
+          /*  finalPrimaryBalance = Stable3TokenAuraVaultHelper._redeemFromNotional(
                 _strategyContext(), account, strategyTokens, maturity, data
-            );
+            ); */
         }
-    }
-
-    function _repaySecondaryBorrowCallback(
-        address, /* secondaryToken */
-        uint256 underlyingRequired,
-        bytes calldata data
-    ) internal override returns (bytes memory returnData) {
-        require(SECONDARY_BORROW_CURRENCY_ID != 0); /// @dev invalid secondary currency
-
-        returnData = SecondaryBorrowUtils._handleSecondaryBorrowCallback({
-            secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID, 
-            tradingModule: TRADING_MODULE,
-            primaryToken: address(_underlyingToken()),
-            secondaryToken: address(SECONDARY_TOKEN),
-            underlyingRequired: underlyingRequired, 
-            data: data
-        });
     }
 
     function convertStrategyToUnderlying(
@@ -129,62 +108,13 @@ contract MetaStable2TokenAuraVault is
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
-        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        Stable3TokenAuraStrategyContext memory context = _strategyContext();
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
-            oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
             account: account,
             strategyTokenAmount: strategyTokenAmount,
             maturity: maturity
         });
-    }
-
-    function settleVaultNormal(
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        bytes calldata data
-    ) external {
-        if (maturity <= block.timestamp) {
-            revert SettlementHelper.PostMaturitySettlement();
-        }
-        if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
-            revert SettlementHelper.NotInSettlementWindow();
-        }
-        TwoTokenAuraSettlementHelper.settleVaultNormal(
-            _settlementContext(), maturity, strategyTokensToRedeem, data
-        );
-    }
-
-    function settleVaultPostMaturity(
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        bytes calldata data
-    ) external onlyNotionalOwner {
-        if (block.timestamp < maturity) {
-            revert SettlementHelper.HasNotMatured();
-        }
-        TwoTokenAuraSettlementHelper.settleVaultPostMaturity(
-            _settlementContext(), maturity, strategyTokensToRedeem, data
-        );
-    }
-
-    function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
-        // No need for emergency settlement during the settlement window
-        _revertInSettlementWindow(maturity);
-        TwoTokenAuraSettlementHelper.settleVaultEmergency(
-            _settlementContext(), maturity, data
-        );
-    }
-
-    function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
-        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        claimedBalances = AuraRewardHelperExternal.claimRewardTokens(
-            _auraStakingContext(), strategyVaultSettings.feePercentage, FEE_RECEIVER
-        );
-    }
-
-    function reinvestReward(ReinvestRewardParams calldata params) external {
-        MetaStable2TokenAuraRewardHelper.reinvestReward(_strategyContext(), params);
     }
 
     /// @notice Updates the vault settings
@@ -193,25 +123,22 @@ contract MetaStable2TokenAuraVault is
         external
         onlyNotionalOwner
     {
-        VaultUtils._setStrategyVaultSettings(
-            settings, uint32(MAX_ORACLE_QUERY_WINDOW), Constants.VAULT_PERCENT_BASIS
-        );
+        // 3 token vaults do not use the Balancer oracle
+        VaultUtils._setStrategyVaultSettings(settings, 0, 0);
     }
 
-    function _settlementContext() private view returns (TwoTokenAuraSettlementContext memory) {
-        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        return TwoTokenAuraSettlementContext({
+    function _settlementContext() private view returns (ThreeTokenAuraSettlementContext memory) {
+        Stable3TokenAuraStrategyContext memory context = _strategyContext();
+        return ThreeTokenAuraSettlementContext({
             strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
             stakingContext: context.stakingContext
         });
     }
 
-    function _strategyContext() private view returns (MetaStable2TokenAuraStrategyContext memory) {
-        return MetaStable2TokenAuraStrategyContext({
-            poolContext: _twoTokenPoolContext(),
-            oracleContext: _stable2TokenOracleContext(),
+    function _strategyContext() private view returns (Stable3TokenAuraStrategyContext memory) {
+        return Stable3TokenAuraStrategyContext({
+            poolContext: _threeTokenPoolContext(),
             stakingContext: _auraStakingContext(),
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
@@ -223,7 +150,7 @@ contract MetaStable2TokenAuraVault is
         });
     }
     
-    function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory) {
+    function getStrategyContext() external view returns (Stable3TokenAuraStrategyContext memory) {
         return _strategyContext();
     }
 

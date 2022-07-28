@@ -11,26 +11,27 @@ import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {Constants} from "../../../global/Constants.sol";
 
 library VaultUtils {
+    event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
+
     function _getStrategyVaultSettings() internal view returns (StrategyVaultSettings memory) {
         mapping(uint256 => StrategyVaultSettings) storage store = LibBalancerStorage.getStrategyVaultSettings();
         return store[0];
     }
 
-    function _validateStrategyVaultSettings(
+    function _setStrategyVaultSettings(
         StrategyVaultSettings memory settings, 
-        uint32 maxOracleQueryWindow
-    ) internal pure {
+        uint32 maxOracleQueryWindow,
+        uint16 balancerOracleWeight
+    ) internal {
         require(settings.oracleWindowInSeconds <= maxOracleQueryWindow);
         require(settings.settlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
         require(settings.postMaturitySettlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
-        require(settings.balancerOracleWeight <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.balancerOracleWeight <= balancerOracleWeight);
         require(settings.maxBalancerPoolShare <= Constants.VAULT_PERCENT_BASIS);
         require(settings.settlementSlippageLimitPercent <= Constants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.postMaturitySettlementSlippageLimitPercent <= Constants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.feePercentage <= Constants.VAULT_PERCENT_BASIS);
-    }
 
-    function _setStrategyVaultSettings(StrategyVaultSettings memory settings) internal {
         mapping(uint256 => StrategyVaultSettings) storage store = LibBalancerStorage.getStrategyVaultSettings();
         store[0] = settings;
     }

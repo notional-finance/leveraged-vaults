@@ -22,7 +22,7 @@ struct DeploymentParams {
     address feeReceiver;
 }
 
-struct TwoTokenAuraDeploymentParams {
+struct AuraDeploymentParams {
     uint16 primaryBorrowCurrencyId;
     uint16 secondaryBorrowCurrencyId;
     IAuraRewardPool auraRewardPool;
@@ -86,6 +86,10 @@ struct Stable2TokenOracleContext {
     OracleContext baseOracle;
 }
 
+struct Stable3TokenOracleContext {
+    OracleContext baseOracle;
+}
+
 /// @notice Balancer pool related fields
 struct PoolContext {
     IERC20 pool;
@@ -112,6 +116,14 @@ struct TwoTokenPoolContext {
     PoolContext basePool;
 }
 
+struct ThreeTokenPoolContext {
+    address tertiaryToken;
+    uint8 tertiaryIndex;
+    uint8 tertiaryDecimals;
+    uint256 tertiaryBalance;
+    TwoTokenPoolContext basePool;
+}
+
 struct StrategyContext {
     uint256 totalBPTHeld;
     uint16 secondaryBorrowCurrencyId;
@@ -134,10 +146,22 @@ struct MetaStable2TokenAuraStrategyContext {
     StrategyContext baseStrategy;
 }
 
+struct Stable3TokenAuraStrategyContext {
+    ThreeTokenPoolContext poolContext;
+    AuraStakingContext stakingContext;
+    StrategyContext baseStrategy;
+}
+
 struct TwoTokenAuraSettlementContext {
     StrategyContext strategyContext;
     OracleContext oracleContext;
     TwoTokenPoolContext poolContext;
+    AuraStakingContext stakingContext;
+}
+
+struct ThreeTokenAuraSettlementContext {
+    StrategyContext strategyContext;
+    ThreeTokenPoolContext poolContext;
     AuraStakingContext stakingContext;
 }
 
