@@ -1,19 +1,68 @@
 import pytest
 from tests.fixtures import *
 
-def test_get_optimal_secondary_amount_weighted():
-    pass
+def test_get_optimal_secondary_amount_weighted(Strat50ETH50USDC):
+    (env, vault, mockTwoTokenAuraStrategyUtils) = Strat50ETH50USDC
+    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 500e18)
+    env.tokens["USDC"].transfer(mockTwoTokenAuraStrategyUtils.address, 500000e6, {"from": env.whales["USDC"]})
+    strategyContext = vault.getStrategyContext()
+    primaryAmount = 300e18
+    secondaryAmount = env.mockWeighted2TokenOracleMath.getOptimalSecondaryBorrowAmount(
+                    strategyContext["oracleContext"],
+                    strategyContext["poolContext"],
+                    primaryAmount)
+    spotPriceBefore = env.mockWeighted2TokenOracleMath.getSpotPrice(
+        strategyContext["oracleContext"],
+        strategyContext["poolContext"],
+        0
+    )
+    mockTwoTokenAuraStrategyUtils.joinPoolAndStake(
+        strategyContext["baseStrategy"], 
+        strategyContext["stakingContext"], 
+        strategyContext["poolContext"], 
+        primaryAmount, 
+        secondaryAmount, 
+        0
+    )
+    strategyContext = vault.getStrategyContext()
+    spotPriceAfter = env.mockWeighted2TokenOracleMath.getSpotPrice(
+        strategyContext["oracleContext"],
+        strategyContext["poolContext"],
+        0
+    )
+    assert pytest.approx(spotPriceBefore, rel=1e-3) == spotPriceAfter
 
 def test_get_optimal_secondary_amount_stable(StratStableETHstETH):
     (env, vault, mockTwoTokenAuraStrategyUtils) = StratStableETHstETH
-    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 5e18)
-    env.tokens["USDC"].transfer(mockTwoTokenAuraStrategyUtils.address, 5000e6, {"from": env.whales["USDC"]})
+    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 500e18)
+    env.tokens["wstETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 1000e18, {"from": env.whales["wstETH"]})
     strategyContext = vault.getStrategyContext()
+    primaryAmount = 300e18
+    secondaryAmount = env.mockStable2TokenOracleMath.getOptimalSecondaryBorrowAmount(
+                    strategyContext["oracleContext"],
+                    strategyContext["poolContext"],
+                    primaryAmount)
     spotPriceBefore = env.mockStable2TokenOracleMath.getSpotPrice(
         strategyContext["oracleContext"],
         strategyContext["poolContext"],
-        1
+        0
     )
+    mockTwoTokenAuraStrategyUtils.joinPoolAndStake(
+        strategyContext["baseStrategy"], 
+        strategyContext["stakingContext"], 
+        strategyContext["poolContext"], 
+        primaryAmount, 
+        secondaryAmount, 
+        0
+    )
+    strategyContext = vault.getStrategyContext()
+    spotPriceAfter = env.mockStable2TokenOracleMath.getSpotPrice(
+        strategyContext["oracleContext"],
+        strategyContext["poolContext"],
+        0
+    )
+    assert pytest.approx(spotPriceBefore, rel=1e-8) == spotPriceAfter
+
 
 def test_bpt_valuation_2token_weighted_50_50_primary_first():
     pass

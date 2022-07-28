@@ -47,7 +47,7 @@ StrategyConfig = {
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 100e18, # 10 ETH
             "oracleWindowInSeconds": 3600,
-            "maxBalancerPoolShare": 1e3, # 10%
+            "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimit": 5e6, # 5%
             "postMaturitySettlementSlippageLimit": 10e6, # 10%
             "balancerOracleWeight": 0.6e4, # 60%
@@ -73,7 +73,7 @@ StrategyConfig = {
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 100e18, # 10 ETH
             "oracleWindowInSeconds": 3600,
-            "maxBalancerPoolShare": 1e3, # 10%
+            "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimit": 5e6, # 5%
             "postMaturitySettlementSlippageLimit": 10e6, # 10%
             "balancerOracleWeight": 0.6e4, # 60%
@@ -176,92 +176,13 @@ def main():
     weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
     stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
 
-    strategyContext = stableVault.getStrategyContext()
-    mockTwoTokenAuraStrategyUtils = MockTwoTokenAuraStrategyUtils.deploy(
-        strategyContext["poolContext"],
-        strategyContext["stakingContext"],
-        {"from": env.deployer}
-    )
-    env.whales["ETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 500e18)
-    env.tokens["wstETH"].transfer(mockTwoTokenAuraStrategyUtils.address, 1000e18, {"from": env.whales["wstETH"]})
-    primaryAmount = 300e18
-    secondaryAmount = env.mockStable2TokenOracleMath.getOptimalSecondaryBorrowAmount(
-                    strategyContext["oracleContext"],
-                    strategyContext["poolContext"],
-                    primaryAmount)
-    print(secondaryAmount)
-    spotPriceBefore = env.mockStable2TokenOracleMath.getSpotPrice(
-        strategyContext["oracleContext"],
-        strategyContext["poolContext"],
-        0
-    )
-    print(spotPriceBefore)
-    mockTwoTokenAuraStrategyUtils.joinPoolAndStake(
-        strategyContext["baseStrategy"], 
-        strategyContext["stakingContext"], 
-        strategyContext["poolContext"], 
-        primaryAmount, 
-        secondaryAmount, 
-        0
-    )
-    strategyContext = stableVault.getStrategyContext()
-    spotPriceAfter = env.mockStable2TokenOracleMath.getSpotPrice(
-        strategyContext["oracleContext"],
-        strategyContext["poolContext"],
-        0
-    )
-    print(spotPriceAfter)
-
     return
 
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
     stableStrategyContext = stableVault.getStrategyContext()
     weightedStrategyContext = weightedVault.getStrategyContext()
-
-    env.notional.enterVault(
-        env.whales["ETH"],
-        weightedVault.address,
-        10e18,
-        maturity,
-        5e8,
-        0,
-        eth_abi.encode_abi(
-            ['(uint256,uint256,uint32,uint32,bytes)'],
-            [[
-                0,
-                Wei(env.mockWeighted2TokenOracleMath.getOptimalSecondaryBorrowAmount(
-                    weightedStrategyContext["oracleContext"],
-                    weightedStrategyContext["poolContext"],
-                    15e18) * 1e2),
-                0,
-                0,
-                bytes(0)
-            ]]
-        ),
-        {"from": env.whales["ETH"], "value": 10e18}
-    )
     
-    env.notional.enterVault(
-        env.whales["ETH"],
-        stableVault.address,
-        10e18,
-        maturity,
-        5e8,
-        0,
-        eth_abi.encode_abi(
-            ['(uint256,uint256,uint32,uint32,bytes)'],
-            [[
-                0,
-                0,
-                0,
-                0,
-                bytes(0)
-            ]]
-        ),
-        {"from": env.whales["ETH"], "value": 10e18}
-    )
-
     vaultAccount = env.notional.getVaultAccount(env.whales["ETH"], weightedVault.address)
     vaultShares = vaultAccount["vaultShares"]
     bptAmount = weightedVault.convertStrategyTokensToBPTClaim(vaultShares, maturity)
@@ -399,50 +320,3 @@ def main():
         {"from": env.notional.owner()}
     )
 
-    packedEncoder = eth_abi.codec.ABIEncoder(eth_abi.registry.registry_packed)
-    env.tokens["BAL"].transfer(weightedVault.address, 50e18, {"from": env.whales["BAL"]})
-
-    weightedVault.reinvestReward([eth_abi.encode_abi(
-        ['(uint16,(uint8,address,address,uint256,uint256,uint256,bytes),uint16,(uint8,address,address,uint256,uint256,uint256,bytes))'],
-        [[
-            1,
-            [
-                0,
-                env.tokens["BAL"].address,
-                ETH_ADDRESS,
-                Wei(10e18),
-                0,
-                chain.time() + 10000,
-                eth_abi.encode_abi(
-                    ['(uint24)'],
-                    [[3000]]
-                )                   
-            ],
-            1,
-            [
-                2,
-                env.tokens["BAL"].address,
-                env.tokens["USDC"].address,
-                Wei(10e18),
-                0,
-                chain.time() + 10000,
-                eth_abi.encode_abi(
-                    ['(bytes)'],
-                    [[
-                        packedEncoder.encode_abi(
-                            ["address", "uint24", "address", "uint24", "address"], 
-                            [
-                                env.tokens["BAL"].address, 
-                                3000, 
-                                env.tokens["WETH"].address,
-                                3000, 
-                                env.tokens["USDC"].address
-                            ]
-                        )                 
-                    ]]
-                )          
-            ]
-        ]]
-    ), 0],
-        {"from": env.whales["USDC"]}
-    )
