@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Constants} from "../global/Constants.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
+import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {
     AuraDeploymentParams,
     InitParams,
@@ -23,8 +24,8 @@ import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerUtils} from "./balancer/internal/BalancerUtils.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
 import {StrategyUtils} from "./balancer/internal/StrategyUtils.sol";
-import {ThreeTokenAuraStrategyUtils} from "./balancer/internal/ThreeTokenAuraStrategyUtils.sol";
-import {ThreeTokenPoolUtils} from "./balancer/internal/ThreeTokenPoolUtils.sol";
+import {Boosted3TokenAuraStrategyUtils} from "./balancer/internal/Boosted3TokenAuraStrategyUtils.sol";
+import {Boosted3TokenPoolUtils} from "./balancer/internal/Boosted3TokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {SettlementHelper} from "./balancer/internal/SettlementHelper.sol";
@@ -39,9 +40,10 @@ contract Boosted3TokenAuraVault is
     ThreeTokenBoostedPoolMixin,
     AuraStakingMixin
 {
-    using ThreeTokenPoolUtils for ThreeTokenPoolContext;
+    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
-    using ThreeTokenAuraStrategyUtils for StrategyContext;
+    using Boosted3TokenAuraStrategyUtils for StrategyContext;
+    using TokenUtils for IERC20;
 
     constructor(NotionalProxy notional_, AuraDeploymentParams memory params) 
         BaseVaultStorage(notional_, params.baseParams) 
@@ -80,7 +82,7 @@ contract Boosted3TokenAuraVault is
     ) internal override returns (uint256 strategyTokensMinted) {
         // Entering the vault is not allowed within the settlement window
         _revertInSettlementWindow(maturity);
-        strategyTokensMinted = Boosted3TokenAuraVaultHelper._depositFromNotional(
+        strategyTokensMinted = Boosted3TokenAuraVaultHelper.depositFromNotional(
             _strategyContext(), deposit, maturity, data
         );
     }
@@ -101,7 +103,7 @@ contract Boosted3TokenAuraVault is
         } else {
             // Exiting the vault is not allowed within the settlement window
             _revertInSettlementWindow(maturity);
-            finalPrimaryBalance = Boosted3TokenAuraVaultHelper._redeemFromNotional(
+            finalPrimaryBalance = Boosted3TokenAuraVaultHelper.redeemFromNotional(
                 _strategyContext(), account, strategyTokens, maturity, data
             );
         }

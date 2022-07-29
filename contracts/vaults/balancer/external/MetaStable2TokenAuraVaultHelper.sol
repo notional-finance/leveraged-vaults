@@ -18,7 +18,7 @@ library MetaStable2TokenAuraVaultHelper {
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using Stable2TokenOracleMath for Stable2TokenOracleContext;
 
-    function _depositFromNotional(
+    function depositFromNotional(
         MetaStable2TokenAuraStrategyContext memory context,
         address account,
         uint256 deposit,
@@ -61,7 +61,7 @@ library MetaStable2TokenAuraVaultHelper {
         );
     }
 
-    function _redeemFromNotional(
+    function redeemFromNotional(
         MetaStable2TokenAuraStrategyContext memory context,
         address account,
         uint256 strategyTokens,

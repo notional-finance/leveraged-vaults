@@ -17,7 +17,7 @@ library Weighted2TokenAuraVaultHelper {
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using Weighted2TokenOracleMath for Weighted2TokenOracleContext;
 
-    function _depositFromNotional(
+    function depositFromNotional(
         Weighted2TokenAuraStrategyContext memory context,
         address account,
         uint256 deposit,
@@ -60,7 +60,7 @@ library Weighted2TokenAuraVaultHelper {
         );
     }
 
-    function _redeemFromNotional(
+    function redeemFromNotional(
         Weighted2TokenAuraStrategyContext memory context,
         address account,
         uint256 strategyTokens,

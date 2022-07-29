@@ -11,9 +11,11 @@ from brownie import (
     Weighted2TokenAuraRewardHelper,
     Weighted2TokenAuraVaultHelper,
     TwoTokenAuraSettlementHelper,
+    Boosted3TokenAuraVaultHelper,
     MockWeighted2TokenOracleMath,
     MockStable2TokenOracleMath,
-    MockTwoTokenPoolUtils
+    MockTwoTokenPoolUtils,
+    MockBoosted3TokenAuraVault
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -124,6 +126,7 @@ class BalancerEnvironment(Environment):
         Weighted2TokenAuraRewardHelper.deploy({"from": self.deployer})
         Weighted2TokenAuraVaultHelper.deploy({"from": self.deployer})
         TwoTokenAuraSettlementHelper.deploy({"from": self.deployer})
+        Boosted3TokenAuraVaultHelper.deploy({"from": self.deployer})
 
         secondaryCurrencyId = 0
         if stratConfig["secondaryBorrowCurrency"] != None:
@@ -199,13 +202,32 @@ def main():
     if networkName == "hardhat-fork":
         networkName = "mainnet"
     env = BalancerEnvironment(networkName)
+    maturity = env.notional.getActiveMarkets(1)[0][1]
+
     #weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
     #stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
-    stable3TokenVault = env.deployBalancerVault("StratBoostedPool", Boosted3TokenAuraVault)
+    boosted3TokenVault = env.deployBalancerVault("StratBoostedPool", Boosted3TokenAuraVault)
 
+    boostedStrategyContext = boosted3TokenVault.getStrategyContext()
+
+    env.mockThreeTokenAuraVault = MockBoosted3TokenAuraVault.deploy(
+        boostedStrategyContext["poolContext"],
+        boostedStrategyContext["stakingContext"],
+        {"from": env.deployer}
+    )
+    env.tokens["DAI"].transfer(env.mockThreeTokenAuraVault.address, 10000e18, {"from": env.whales["DAI_EOA"]})
+    env.tokens["DAI"].approve(env.balancerVault, 2 ** 255, {"from": env.mockThreeTokenAuraVault.address})
+
+    print(env.mockThreeTokenAuraVault._deposit.call(
+        boostedStrategyContext["baseStrategy"],
+        boostedStrategyContext["stakingContext"],
+        boostedStrategyContext["poolContext"],
+        5000e18, 
+        maturity,
+        0
+    ))
+    
     return
-
-    maturity = env.notional.getActiveMarkets(1)[0][1]
 
     stableStrategyContext = stableVault.getStrategyContext()
     weightedStrategyContext = weightedVault.getStrategyContext()

@@ -11,14 +11,16 @@ import {
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
-import {ThreeTokenPoolUtils} from "./ThreeTokenPoolUtils.sol";
+import {Boosted3TokenPoolUtils} from "./Boosted3TokenPoolUtils.sol";
 import {AuraStakingUtils} from "./AuraStakingUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
 import {VaultUtils} from "./VaultUtils.sol";
+import {BalancerUtils} from "./BalancerUtils.sol";
+import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 
-library ThreeTokenAuraStrategyUtils {
-    using ThreeTokenAuraStrategyUtils for StrategyContext;
-    using ThreeTokenPoolUtils for ThreeTokenPoolContext;
+library Boosted3TokenAuraStrategyUtils {
+    using Boosted3TokenAuraStrategyUtils for StrategyContext;
+    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
     using StrategyUtils for StrategyContext;
     using VaultUtils for StrategyVaultSettings;
@@ -30,21 +32,32 @@ library ThreeTokenAuraStrategyUtils {
         ThreeTokenPoolContext memory poolContext,
         uint256 deposit,
         uint256 maturity,
-        DepositParams memory params
+        uint256 minBPT
     ) internal returns (uint256 strategyTokensMinted) {
-        uint256 bptMinted = strategyContext._joinPoolAndStake({
-            stakingContext: stakingContext,
-            poolContext: poolContext,
-            primaryAmount: deposit,
-            secondaryAmount: 0,
-            tertiaryAmount: 0,
-            minBPT: params.minBPT
+        IBoostedPool underlyingPool = IBoostedPool(address(poolContext.basePool.primaryToken));
+
+        // Swap underlyingToken for LinearPool BPT
+        uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
+            poolId: underlyingPool.getPoolId(),
+            tokenIn: underlyingPool.getMainToken(),
+            tokenOut: address(underlyingPool),
+            amountIn: deposit,
+            limit: 0
         });
 
-        // Update _bptHeld() in memory
-        strategyContext.totalBPTHeld += bptMinted;
+        // Swap LinearPool BPT for Boosted BPT
+        uint256 boostedBPTMinted = BalancerUtils._swapGivenIn({
+            poolId: poolContext.basePool.basePool.poolId,
+            tokenIn: address(underlyingPool),
+            tokenOut: address(poolContext.basePool.basePool.pool), // Boosted pool
+            amountIn: linearPoolBPT,
+            limit: minBPT
+        });
 
-        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted, maturity);
+        // Transfer token to Aura protocol for boosted staking
+        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, boostedBPTMinted, true); // stake = true
+
+        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(boostedBPTMinted, maturity);
         require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
 
         // Update global supply count
@@ -62,35 +75,6 @@ library ThreeTokenAuraStrategyUtils {
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
     
-    }
-
-    function _joinPoolAndStake(
-        StrategyContext memory strategyContext,
-        AuraStakingContext memory stakingContext,
-        ThreeTokenPoolContext memory poolContext,
-        uint256 primaryAmount,
-        uint256 secondaryAmount,
-        uint256 tertiaryAmount,
-        uint256 minBPT
-    ) internal returns (uint256 bptMinted) {
-        // prettier-ignore
-        PoolParams memory poolParams = poolContext._getBoostedPoolParams( 
-            primaryAmount, 
-            secondaryAmount,
-            tertiaryAmount,
-            true // isJoin
-        );
-
-        // Join the balancer pool and stake the tokens for boosting
-        bptMinted = stakingContext._joinPoolAndStake({
-            poolContext: poolContext.basePool.basePool,
-            poolParams: poolParams,
-            totalBPTHeld: strategyContext.totalBPTHeld,
-            bptThreshold: strategyContext.vaultSettings._bptThreshold(
-                poolContext.basePool.basePool.pool.totalSupply()
-            ),
-            minBPT: minBPT
-        });
     }
 
     function _convertStrategyToUnderlying(

@@ -101,7 +101,7 @@ contract Weighted2TokenAuraVault is
     ) internal override returns (uint256 strategyTokensMinted) {
         // Entering the vault is not allowed within the settlement window
         _revertInSettlementWindow(maturity);
-        strategyTokensMinted = Weighted2TokenAuraVaultHelper._depositFromNotional(
+        strategyTokensMinted = Weighted2TokenAuraVaultHelper.depositFromNotional(
             _strategyContext(), account, deposit, maturity, data
         );
     }
@@ -122,7 +122,7 @@ contract Weighted2TokenAuraVault is
         } else {
             // Exiting the vault is not allowed within the settlement window
             _revertInSettlementWindow(maturity);
-            finalPrimaryBalance = Weighted2TokenAuraVaultHelper._redeemFromNotional(
+            finalPrimaryBalance = Weighted2TokenAuraVaultHelper.redeemFromNotional(
                 _strategyContext(), account, strategyTokens, maturity, data
             );
         }

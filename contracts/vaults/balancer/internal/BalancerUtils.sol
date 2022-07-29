@@ -127,4 +127,33 @@ library BalancerUtils {
             exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i])) - exitBalances[i];
         }
     }
+
+    function _swapGivenIn(
+        bytes32 poolId, 
+        address tokenIn, 
+        address tokenOut, 
+        uint256 amountIn,
+        uint256 limit
+    ) internal returns (uint256 amountOut) {
+        amountOut = IERC20(tokenOut).balanceOf(address(this));
+        BALANCER_VAULT.swap({
+            singleSwap: IBalancerVault.SingleSwap({
+                poolId: poolId,
+                kind: IBalancerVault.SwapKind.GIVEN_IN,
+                assetIn: IAsset(tokenIn),
+                assetOut: IAsset(tokenOut),
+                amount: amountIn,
+                userData: new bytes(0)
+            }),
+            funds: IBalancerVault.FundManagement({
+                sender: address(this),
+                fromInternalBalance: false,
+                recipient: payable(address(this)),
+                toInternalBalance: false
+            }),
+            limit: limit,
+            deadline: block.timestamp
+        });
+        amountOut = IERC20(tokenOut).balanceOf(address(this)) - amountOut;
+    }
 }
