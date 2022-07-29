@@ -4,6 +4,7 @@ from brownie import (
     nProxy,
     Weighted2TokenAuraVault,
     MetaStable2TokenAuraVault,
+    Boosted3TokenAuraVault,
     AuraRewardHelperExternal,
     MetaStable2TokenAuraRewardHelper,
     MetaStable2TokenAuraVaultHelper,
@@ -12,8 +13,7 @@ from brownie import (
     TwoTokenAuraSettlementHelper,
     MockWeighted2TokenOracleMath,
     MockStable2TokenOracleMath,
-    MockTwoTokenPoolUtils,
-    MockTwoTokenAuraStrategyUtils
+    MockTwoTokenPoolUtils
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -61,7 +61,7 @@ StrategyConfig = {
                 flags=set_flags(0, ENABLED=True),
                 minAccountBorrowSize=1,
                 maxBorrowMarketIndex=3,
-                secondaryBorrowCurrencies=[0,0] # USDC
+                secondaryBorrowCurrencies=[0,0]
             ),
             "secondaryBorrowCurrency": None,
             "maxPrimaryBorrowCapacity": 100_000_000e8,
@@ -77,6 +77,32 @@ StrategyConfig = {
             "settlementSlippageLimit": 5e6, # 5%
             "postMaturitySettlementSlippageLimit": 10e6, # 10%
             "balancerOracleWeight": 0.6e4, # 60%
+            "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
+            "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
+            "feePercentage": 1e2, # 1%
+            "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
+        },
+        "StratBoostedPool": {
+            "vaultConfig": get_vault_config(
+                flags=set_flags(0, ENABLED=True),
+                minAccountBorrowSize=1,
+                maxBorrowMarketIndex=3,
+                secondaryBorrowCurrencies=[0,0]
+            ),
+            "secondaryBorrowCurrency": None,
+            "maxPrimaryBorrowCapacity": 100_000_000e8,
+            "name": "Balancer Boosted Pool Strategy",
+            "primaryCurrency": 2, # DAI
+            "poolId": "0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb20000000000000000000000fe",
+            "liquidityGauge": "0x68d019f64a7aa97e2d4e7363aee42251d08124fb",
+            "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
+            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
+            "maxUnderlyingSurplus": 100e18, # 10 ETH
+            "oracleWindowInSeconds": 0,
+            "maxBalancerPoolShare": 2e3, # 20%
+            "settlementSlippageLimit": 5e6, # 5%
+            "postMaturitySettlementSlippageLimit": 10e6, # 10%
+            "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "feePercentage": 1e2, # 1%
@@ -173,8 +199,9 @@ def main():
     if networkName == "hardhat-fork":
         networkName = "mainnet"
     env = BalancerEnvironment(networkName)
-    weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
-    stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
+    #weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
+    #stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
+    stable3TokenVault = env.deployBalancerVault("StratBoostedPool", Boosted3TokenAuraVault)
 
     return
 

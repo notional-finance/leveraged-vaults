@@ -2,6 +2,10 @@ pragma solidity 0.8.15;
 
 import {IERC20} from "../IERC20.sol";
 
+interface IBoostedPool {
+    function getMainToken() external view returns (address);   
+}
+
 interface IMetaStablePool is IERC20 {
     function getOracleMiscData() external view returns (
         int256 logInvariant, 

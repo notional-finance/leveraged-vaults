@@ -18,14 +18,14 @@ library TokenUtils {
     function checkApprove(IERC20 token, address spender, uint256 amount) internal {
         if (address(token) == address(0)) return;
 
-        token.approve(spender, amount);
+        IEIP20NonStandard(address(token)).approve(spender, amount);
         _checkReturnCode();
     }
 
     function checkRevoke(IERC20 token, address spender) internal {
         if (address(token) == address(0)) return;
 
-        token.approve(spender, 0);
+        IEIP20NonStandard(address(token)).approve(spender, 0);
         _checkReturnCode();
     }
 

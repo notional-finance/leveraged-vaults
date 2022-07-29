@@ -17,7 +17,7 @@ import {
     ThreeTokenAuraSettlementContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
-import {ThreeTokenPoolMixin} from "./balancer/mixins/ThreeTokenPoolMixin.sol";
+import {ThreeTokenBoostedPoolMixin} from "./balancer/mixins/ThreeTokenBoostedPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerUtils} from "./balancer/internal/BalancerUtils.sol";
@@ -33,10 +33,10 @@ import {TwoTokenAuraSettlementHelper} from "./balancer/external/TwoTokenAuraSett
 import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
-contract Stable3TokenAuraVault is
+contract Boosted3TokenAuraVault is
     UUPSUpgradeable,
     BaseVaultStorage,
-    ThreeTokenPoolMixin,
+    ThreeTokenBoostedPoolMixin,
     AuraStakingMixin
 {
     using ThreeTokenPoolUtils for ThreeTokenPoolContext;
@@ -45,10 +45,9 @@ contract Stable3TokenAuraVault is
 
     constructor(NotionalProxy notional_, AuraDeploymentParams memory params) 
         BaseVaultStorage(notional_, params.baseParams) 
-        ThreeTokenPoolMixin(
+        ThreeTokenBoostedPoolMixin(
             params.primaryBorrowCurrencyId,
-            params.baseParams.balancerPoolId,
-            params.secondaryBorrowCurrencyId
+            params.baseParams.balancerPoolId
         )
         AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool)
     {}
@@ -64,7 +63,12 @@ contract Stable3TokenAuraVault is
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         // 3 token vaults do not use the Balancer oracle
-        VaultUtils._setStrategyVaultSettings(params.settings, 0, 0);
+        VaultUtils._setStrategyVaultSettings(
+            params.settings, 
+            0, // Max Balancer oracle window size
+            0  // Balancer oracle weight
+        );
+
         _threeTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
@@ -124,7 +128,11 @@ contract Stable3TokenAuraVault is
         onlyNotionalOwner
     {
         // 3 token vaults do not use the Balancer oracle
-        VaultUtils._setStrategyVaultSettings(settings, 0, 0);
+        VaultUtils._setStrategyVaultSettings(
+            settings, 
+            0, // Max Balancer oracle window size
+            0  // Balancer oracle weight
+        );
     }
 
     function _settlementContext() private view returns (ThreeTokenAuraSettlementContext memory) {
@@ -142,7 +150,7 @@ contract Stable3TokenAuraVault is
             stakingContext: _auraStakingContext(),
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
-                secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
+                secondaryBorrowCurrencyId: 0, // This strategy does not support secondary borrow
                 tradingModule: TRADING_MODULE,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
                 vaultState: VaultUtils._getStrategyVaultState()
@@ -152,20 +160,6 @@ contract Stable3TokenAuraVault is
     
     function getStrategyContext() external view returns (Stable3TokenAuraStrategyContext memory) {
         return _strategyContext();
-    }
-
-    function getDebtSharesToRepay(
-        address account, 
-        uint256 maturity, 
-        uint256 strategyTokenAmount
-    ) external view returns (uint256 debtSharesToRepay, uint256 borrowedSecondaryfCashAmount) {
-        if (SECONDARY_BORROW_CURRENCY_ID == 0) return (0, 0);
-        return SecondaryBorrowUtils._getDebtSharesToRepay(
-            SECONDARY_BORROW_CURRENCY_ID, 
-            account, 
-            maturity, 
-            strategyTokenAmount
-        );
     }
     
     function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
