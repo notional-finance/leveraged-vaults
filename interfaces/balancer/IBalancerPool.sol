@@ -4,6 +4,8 @@ import {IERC20} from "../IERC20.sol";
 
 interface IBoostedPool {
     function getMainToken() external view returns (address);   
+    function getWrappedToken() external view returns (address);   
+    function getPoolId() external view returns (bytes32);   
 }
 
 interface IMetaStablePool is IERC20 {

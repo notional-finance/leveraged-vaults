@@ -12,7 +12,7 @@ import {
     StrategyVaultState,
     PoolContext,
     ThreeTokenPoolContext,
-    Stable3TokenAuraStrategyContext,
+    Boosted3TokenAuraStrategyContext,
     StrategyContext,
     ThreeTokenAuraSettlementContext
 } from "./balancer/BalancerVaultTypes.sol";
@@ -28,7 +28,7 @@ import {ThreeTokenPoolUtils} from "./balancer/internal/ThreeTokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {SettlementHelper} from "./balancer/internal/SettlementHelper.sol";
-import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
+import {Boosted3TokenAuraVaultHelper} from "./balancer/external/Boosted3TokenAuraVaultHelper.sol";
 import {TwoTokenAuraSettlementHelper} from "./balancer/external/TwoTokenAuraSettlementHelper.sol";
 import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
@@ -73,16 +73,16 @@ contract Boosted3TokenAuraVault is
     }
 
     function _depositFromNotional(
-        address account,
+        address /* account */,
         uint256 deposit,
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
         // Entering the vault is not allowed within the settlement window
         _revertInSettlementWindow(maturity);
- /*       strategyTokensMinted = Stable3TokenAuraVaultHelper._depositFromNotional(
-            _strategyContext(), account, deposit, maturity, data
-        ); */
+        strategyTokensMinted = Boosted3TokenAuraVaultHelper._depositFromNotional(
+            _strategyContext(), deposit, maturity, data
+        );
     }
 
     function _redeemFromNotional(
@@ -101,9 +101,9 @@ contract Boosted3TokenAuraVault is
         } else {
             // Exiting the vault is not allowed within the settlement window
             _revertInSettlementWindow(maturity);
-          /*  finalPrimaryBalance = Stable3TokenAuraVaultHelper._redeemFromNotional(
+            finalPrimaryBalance = Boosted3TokenAuraVaultHelper._redeemFromNotional(
                 _strategyContext(), account, strategyTokens, maturity, data
-            ); */
+            );
         }
     }
 
@@ -112,7 +112,7 @@ contract Boosted3TokenAuraVault is
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
-        Stable3TokenAuraStrategyContext memory context = _strategyContext();
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
             poolContext: context.poolContext,
             account: account,
@@ -136,7 +136,7 @@ contract Boosted3TokenAuraVault is
     }
 
     function _settlementContext() private view returns (ThreeTokenAuraSettlementContext memory) {
-        Stable3TokenAuraStrategyContext memory context = _strategyContext();
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         return ThreeTokenAuraSettlementContext({
             strategyContext: context.baseStrategy,
             poolContext: context.poolContext,
@@ -144,8 +144,8 @@ contract Boosted3TokenAuraVault is
         });
     }
 
-    function _strategyContext() private view returns (Stable3TokenAuraStrategyContext memory) {
-        return Stable3TokenAuraStrategyContext({
+    function _strategyContext() private view returns (Boosted3TokenAuraStrategyContext memory) {
+        return Boosted3TokenAuraStrategyContext({
             poolContext: _threeTokenPoolContext(),
             stakingContext: _auraStakingContext(),
             baseStrategy: StrategyContext({
@@ -158,7 +158,7 @@ contract Boosted3TokenAuraVault is
         });
     }
     
-    function getStrategyContext() external view returns (Stable3TokenAuraStrategyContext memory) {
+    function getStrategyContext() external view returns (Boosted3TokenAuraStrategyContext memory) {
         return _strategyContext();
     }
     

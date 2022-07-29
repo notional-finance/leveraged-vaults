@@ -15,6 +15,14 @@ library TokenUtils {
                 : IERC20(token).balanceOf(address(this));
     }
 
+    function uint8Decimals(IERC20 token) internal view returns (uint8) {
+        uint256 decimals = token.decimals();
+
+        // Do not allow decimal places greater than 18
+        require(decimals <= 18);
+        return uint8(decimals);
+    }
+
     function checkApprove(IERC20 token, address spender, uint256 amount) internal {
         if (address(token) == address(0)) return;
 
@@ -57,5 +65,4 @@ library TokenUtils {
 
         if (!success) revert ERC20Error();
     }
-
 }

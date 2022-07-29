@@ -25,8 +25,9 @@ abstract contract ThreeTokenBoostedPoolMixin is PoolMixin {
     uint8 internal immutable TERTIARY_DECIMALS;
 
     constructor(uint16 primaryBorrowCurrencyId, bytes32 balancerPoolId) PoolMixin(balancerPoolId) {
-        PRIMARY_TOKEN = IERC20(NotionalUtils._getNotionalUnderlyingToken(primaryBorrowCurrencyId));
-        address primaryAddress = BalancerUtils.getTokenAddress(address(PRIMARY_TOKEN));
+        address primaryAddress = BalancerUtils.getTokenAddress(
+            NotionalUtils._getNotionalUnderlyingToken(primaryBorrowCurrencyId)
+        );
         
         // prettier-ignore
         (
@@ -62,8 +63,9 @@ abstract contract ThreeTokenBoostedPoolMixin is PoolMixin {
         SECONDARY_INDEX = secondaryIndex;
         TERTIARY_INDEX = tertiaryIndex;
 
-        SECONDARY_TOKEN = IERC20(IBoostedPool(tokens[SECONDARY_INDEX]).getMainToken());
-        TERTIARY_TOKEN = IERC20(IBoostedPool(tokens[TERTIARY_INDEX]).getMainToken());
+        PRIMARY_TOKEN = IERC20(tokens[PRIMARY_INDEX]);
+        SECONDARY_TOKEN = IERC20(tokens[SECONDARY_INDEX]);
+        TERTIARY_TOKEN = IERC20(tokens[TERTIARY_INDEX]);
 
         uint256 primaryDecimals = IERC20(primaryAddress).decimals();
 

@@ -86,10 +86,6 @@ struct Stable2TokenOracleContext {
     OracleContext baseOracle;
 }
 
-struct Stable3TokenOracleContext {
-    OracleContext baseOracle;
-}
-
 /// @notice Balancer pool related fields
 struct PoolContext {
     IERC20 pool;
@@ -146,7 +142,7 @@ struct MetaStable2TokenAuraStrategyContext {
     StrategyContext baseStrategy;
 }
 
-struct Stable3TokenAuraStrategyContext {
+struct Boosted3TokenAuraStrategyContext {
     ThreeTokenPoolContext poolContext;
     AuraStakingContext stakingContext;
     StrategyContext baseStrategy;
