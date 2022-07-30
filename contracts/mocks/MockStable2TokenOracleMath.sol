@@ -2,17 +2,17 @@
 pragma solidity 0.8.15;
 
 import {
-    Stable2TokenOracleContext, 
+    StableOracleContext, 
     OracleContext, 
     TwoTokenPoolContext
 } from "../vaults/balancer/BalancerVaultTypes.sol";
 import {Stable2TokenOracleMath} from "../vaults/balancer/internal/Stable2TokenOracleMath.sol";
 
 contract MockStable2TokenOracleMath {
-    using Stable2TokenOracleMath for Stable2TokenOracleContext;
+    using Stable2TokenOracleMath for StableOracleContext;
 
     function getSpotPrice(
-        Stable2TokenOracleContext memory oracleContext,
+        StableOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         uint256 tokenIndex
     ) external view returns (uint256 spotPrice) {
@@ -20,7 +20,7 @@ contract MockStable2TokenOracleMath {
     }
 
     function getOptimalSecondaryBorrowAmount(
-        Stable2TokenOracleContext memory oracleContext,
+        StableOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         uint256 primaryAmount
     ) external view returns (uint256) {

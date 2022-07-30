@@ -62,9 +62,6 @@ library TwoTokenAuraStrategyUtils {
             minBPT: params.minBPT
         });
 
-        // Update _bptHeld() in memory
-        strategyContext.totalBPTHeld += bptMinted;
-
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted, maturity);
         require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
 
@@ -104,9 +101,6 @@ library TwoTokenAuraStrategyUtils {
             = TwoTokenAuraStrategyUtils._unstakeAndExitPoolExactBPTIn(
                 stakingContext, poolContext, bptClaim, params.minPrimary, params.minSecondary
             );
-
-        // Update _bptHeld() in memory
-        strategyContext.totalBPTHeld -= bptClaim;
 
         if (strategyContext.secondaryBorrowCurrencyId != 0) {
             // Returns the amount of secondary debt shares that need to be repaid

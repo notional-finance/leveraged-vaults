@@ -12,7 +12,7 @@ import {
     StrategyVaultState,
     PoolContext,
     TwoTokenPoolContext,
-    Stable2TokenOracleContext,
+    StableOracleContext,
     MetaStable2TokenAuraStrategyContext,
     StrategyContext,
     TwoTokenAuraSettlementContext
@@ -211,7 +211,7 @@ contract MetaStable2TokenAuraVault is
     function _strategyContext() private view returns (MetaStable2TokenAuraStrategyContext memory) {
         return MetaStable2TokenAuraStrategyContext({
             poolContext: _twoTokenPoolContext(),
-            oracleContext: _stable2TokenOracleContext(),
+            oracleContext: _stableOracleContext(),
             stakingContext: _auraStakingContext(),
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),

@@ -208,37 +208,20 @@ def main():
     #stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
     boosted3TokenVault = env.deployBalancerVault("StratBoostedPool", Boosted3TokenAuraVault)
 
-    boostedStrategyContext = boosted3TokenVault.getStrategyContext()
-
     env.mockThreeTokenAuraVault = MockBoosted3TokenAuraVault.deploy(
-        boostedStrategyContext["poolContext"],
-        boostedStrategyContext["stakingContext"],
+        boosted3TokenVault.getStrategyContext(),
         {"from": env.deployer}
     )
     env.tokens["DAI"].transfer(env.mockThreeTokenAuraVault.address, 10000e18, {"from": env.whales["DAI_EOA"]})
     env.tokens["DAI"].approve(env.balancerVault, 2 ** 255, {"from": env.mockThreeTokenAuraVault.address})
 
-    tx = env.mockThreeTokenAuraVault._deposit(
-        boostedStrategyContext["baseStrategy"],
-        boostedStrategyContext["stakingContext"],
-        boostedStrategyContext["poolContext"],
-        5000e18, 
-        maturity,
-        0
-    )
+    tx = env.mockThreeTokenAuraVault._deposit(5000e18, maturity, 0)
 
     strategyTokenAmount = tx.return_value
 
     print(strategyTokenAmount)
     
-    tx = env.mockThreeTokenAuraVault._redeem(
-        boostedStrategyContext["baseStrategy"],
-        boostedStrategyContext["stakingContext"],
-        boostedStrategyContext["poolContext"],
-        strategyTokenAmount,
-        maturity,
-        0
-    )
+    tx = env.mockThreeTokenAuraVault._redeem(strategyTokenAmount, maturity, 0)
 
     primaryBalance = tx.return_value
 

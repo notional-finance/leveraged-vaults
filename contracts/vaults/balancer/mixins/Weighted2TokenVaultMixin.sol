@@ -5,9 +5,9 @@ import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
 import {TwoTokenPoolContext, Weighted2TokenOracleContext} from "../BalancerVaultTypes.sol";
 import {IWeightedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
-import {OracleMixin} from "./OracleMixin.sol";
+import {BalancerOracleMixin} from "./BalancerOracleMixin.sol";
 
-abstract contract Weighted2TokenVaultMixin is TwoTokenPoolMixin, OracleMixin {
+abstract contract Weighted2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracleMixin {
     uint256 internal immutable PRIMARY_WEIGHT;
     uint256 internal immutable SECONDARY_WEIGHT;
         
@@ -17,7 +17,7 @@ abstract contract Weighted2TokenVaultMixin is TwoTokenPoolMixin, OracleMixin {
         uint16 secondaryBorrowCurrencyId
     ) 
         TwoTokenPoolMixin(primaryBorrowCurrencyId, balancerPoolId, secondaryBorrowCurrencyId) 
-        OracleMixin(balancerPoolId) 
+        BalancerOracleMixin(balancerPoolId) 
     {
         // The oracle is required for the vault to behave properly
         (/* */, /* */, /* */, /* */, bool oracleEnabled, /* */) 

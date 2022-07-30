@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
+import {
+    ThreeTokenPoolContext, 
+    TwoTokenPoolContext, 
+    BoostedOracleContext,
+    OracleContext
+} from "../BalancerVaultTypes.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
-import {ThreeTokenPoolContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
 import {BalancerUtils} from "../internal/BalancerUtils.sol";
 import {PoolMixin} from "./PoolMixin.sol";
 
-abstract contract ThreeTokenBoostedPoolMixin is PoolMixin {
+abstract contract Boosted3TokenPoolMixin is PoolMixin {
     error InvalidPrimaryToken(address token);
 
     uint8 internal constant NOT_FOUND = type(uint8).max;
@@ -20,6 +25,7 @@ abstract contract ThreeTokenBoostedPoolMixin is PoolMixin {
     uint8 internal immutable PRIMARY_INDEX;
     uint8 internal immutable SECONDARY_INDEX;
     uint8 internal immutable TERTIARY_INDEX;
+    uint8 internal immutable BPT_INDEX;
     uint8 internal immutable PRIMARY_DECIMALS;
     uint8 internal immutable SECONDARY_DECIMALS;
     uint8 internal immutable TERTIARY_DECIMALS;
@@ -36,17 +42,18 @@ abstract contract ThreeTokenBoostedPoolMixin is PoolMixin {
             /* uint256 lastChangeBlock */
         ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(balancerPoolId);
 
-        // Boosted pools contain 4 tokens
+        // Boosted pools contain 4 tokens (3 LinearPool LP tokens + 1 BoostedPool LP token)
         require(tokens.length == 4);
 
         uint8 primaryIndex = NOT_FOUND;
         uint8 secondaryIndex = NOT_FOUND;
         uint8 tertiaryIndex = NOT_FOUND;
+        uint8 bptIndex = NOT_FOUND;
         for (uint256 i; i < 4; i++) {
             // Skip pool token
-            if (tokens[i] == address(BALANCER_POOL_TOKEN)) continue;
-
-            if (IBoostedPool(tokens[i]).getMainToken() == primaryAddress) {
+            if (tokens[i] == address(BALANCER_POOL_TOKEN)) {
+                bptIndex = uint8(i);
+            } else if (IBoostedPool(tokens[i]).getMainToken() == primaryAddress) {
                 primaryIndex = uint8(i);
             } else {
                 if (secondaryIndex == NOT_FOUND) {
@@ -62,6 +69,7 @@ abstract contract ThreeTokenBoostedPoolMixin is PoolMixin {
         PRIMARY_INDEX = primaryIndex;
         SECONDARY_INDEX = secondaryIndex;
         TERTIARY_INDEX = tertiaryIndex;
+        BPT_INDEX = bptIndex;
 
         PRIMARY_TOKEN = IERC20(tokens[PRIMARY_INDEX]);
         SECONDARY_TOKEN = IERC20(tokens[SECONDARY_INDEX]);
@@ -86,6 +94,28 @@ abstract contract ThreeTokenBoostedPoolMixin is PoolMixin {
         // Do not allow decimal places greater than 18
         require(tertiaryDecimals <= 18);
         TERTIARY_DECIMALS = uint8(tertiaryDecimals);
+    }
+
+    function _boostedOracleContext() internal view returns (BoostedOracleContext memory) {
+        IBoostedPool pool = IBoostedPool(address(BALANCER_POOL_TOKEN));
+
+        (
+            uint256 value,
+            /* bool isUpdating */,
+            /* uint256 precision */
+        ) = pool.getAmplificationParameter();
+        
+        (
+            /* address[] memory tokens */,
+            uint256[] memory balances,
+            /* uint256 lastChangeBlock */
+        ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+
+        return BoostedOracleContext({
+            ampParam: value,
+            bptBalance: balances[BPT_INDEX],
+            dueProtocolFeeBptAmount: pool.getDueProtocolFeeBptAmount() 
+        });
     }
 
     function _threeTokenPoolContext() internal view returns (ThreeTokenPoolContext memory) {

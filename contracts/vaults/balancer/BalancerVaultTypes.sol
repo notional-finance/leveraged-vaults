@@ -80,10 +80,19 @@ struct Weighted2TokenOracleContext {
     OracleContext baseOracle;
 }
 
-struct Stable2TokenOracleContext {
+struct StableOracleContext {
     /// @notice Amplification parameter
     uint256 ampParam;
     OracleContext baseOracle;
+}
+
+struct BoostedOracleContext {
+    /// @notice Amplification parameter
+    uint256 ampParam;
+    /// @notice BPT balance in the pool
+    uint256 bptBalance;
+    /// @notice Protocol fee amount used to calculate the virtual supply
+    uint256 dueProtocolFeeBptAmount;
 }
 
 /// @notice Balancer pool related fields
@@ -137,13 +146,14 @@ struct Weighted2TokenAuraStrategyContext {
 
 struct MetaStable2TokenAuraStrategyContext {
     TwoTokenPoolContext poolContext;
-    Stable2TokenOracleContext oracleContext;
+    StableOracleContext oracleContext;
     AuraStakingContext stakingContext;
     StrategyContext baseStrategy;
 }
 
 struct Boosted3TokenAuraStrategyContext {
     ThreeTokenPoolContext poolContext;
+    BoostedOracleContext oracleContext;
     AuraStakingContext stakingContext;
     StrategyContext baseStrategy;
 }

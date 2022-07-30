@@ -17,7 +17,7 @@ import {
     ThreeTokenAuraSettlementContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
-import {ThreeTokenBoostedPoolMixin} from "./balancer/mixins/ThreeTokenBoostedPoolMixin.sol";
+import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerUtils} from "./balancer/internal/BalancerUtils.sol";
@@ -36,7 +36,7 @@ import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExte
 contract Boosted3TokenAuraVault is
     UUPSUpgradeable,
     BaseVaultStorage,
-    ThreeTokenBoostedPoolMixin,
+    Boosted3TokenPoolMixin,
     AuraStakingMixin
 {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
@@ -45,7 +45,7 @@ contract Boosted3TokenAuraVault is
 
     constructor(NotionalProxy notional_, AuraDeploymentParams memory params) 
         BaseVaultStorage(notional_, params.baseParams) 
-        ThreeTokenBoostedPoolMixin(
+        Boosted3TokenPoolMixin(
             params.primaryBorrowCurrencyId,
             params.baseParams.balancerPoolId
         )
@@ -108,14 +108,14 @@ contract Boosted3TokenAuraVault is
     }
 
     function convertStrategyToUnderlying(
-        address account,
+        address /* account */,
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
+            oracleContext: context.oracleContext,
             poolContext: context.poolContext,
-            account: account,
             strategyTokenAmount: strategyTokenAmount,
             maturity: maturity
         });
@@ -147,6 +147,7 @@ contract Boosted3TokenAuraVault is
     function _strategyContext() private view returns (Boosted3TokenAuraStrategyContext memory) {
         return Boosted3TokenAuraStrategyContext({
             poolContext: _threeTokenPoolContext(),
+            oracleContext: _boostedOracleContext(),
             stakingContext: _auraStakingContext(),
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),

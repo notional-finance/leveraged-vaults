@@ -6,7 +6,7 @@ import {StrategyVaultSettings, OracleContext} from "../BalancerVaultTypes.sol";
 import {LibBalancerStorage} from "../internal/LibBalancerStorage.sol";
 import {BalancerUtils} from "../internal/Balancerutils.sol";
 
-abstract contract OracleMixin {
+abstract contract BalancerOracleMixin {
     uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;
 
     constructor(bytes32 balancerPoolId) {

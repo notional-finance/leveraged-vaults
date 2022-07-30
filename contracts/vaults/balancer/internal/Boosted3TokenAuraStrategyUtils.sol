@@ -7,10 +7,12 @@ import {
     PoolParams,
     StrategyContext, 
     ThreeTokenPoolContext, 
+    BoostedOracleContext,
     AuraStakingContext,
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
+import {SafeInt256} from "../../../global/SafeInt256.sol";
 import {Boosted3TokenPoolUtils} from "./Boosted3TokenPoolUtils.sol";
 import {AuraStakingUtils} from "./AuraStakingUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
@@ -19,6 +21,7 @@ import {BalancerUtils} from "./BalancerUtils.sol";
 import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 
 library Boosted3TokenAuraStrategyUtils {
+    using SafeInt256 for uint256;
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
@@ -113,11 +116,15 @@ library Boosted3TokenAuraStrategyUtils {
 
     function _convertStrategyToUnderlying(
         StrategyContext memory strategyContext,
+        BoostedOracleContext memory oracleContext,
         ThreeTokenPoolContext memory poolContext,
-        address account,
         uint256 strategyTokenAmount,
         uint256 maturity
     ) internal view returns (int256 underlyingValue) {
-        // TODO: implement this
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
+            strategyTokenAmount, maturity
+        );
+
+        underlyingValue = poolContext._getTimeWeightedPrimaryBalance(oracleContext, bptClaim).toInt();
     }
 }
