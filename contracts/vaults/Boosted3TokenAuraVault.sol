@@ -4,7 +4,6 @@ pragma solidity 0.8.15;
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Constants} from "../global/Constants.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
-import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {
     AuraDeploymentParams,
     InitParams,
@@ -43,7 +42,6 @@ contract Boosted3TokenAuraVault is
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
-    using TokenUtils for IERC20;
 
     constructor(NotionalProxy notional_, AuraDeploymentParams memory params) 
         BaseVaultStorage(notional_, params.baseParams) 
@@ -104,7 +102,7 @@ contract Boosted3TokenAuraVault is
             // Exiting the vault is not allowed within the settlement window
             _revertInSettlementWindow(maturity);
             finalPrimaryBalance = Boosted3TokenAuraVaultHelper.redeemFromNotional(
-                _strategyContext(), account, strategyTokens, maturity, data
+                _strategyContext(), strategyTokens, maturity, data
             );
         }
     }

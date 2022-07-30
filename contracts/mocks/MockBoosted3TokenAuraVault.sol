@@ -33,5 +33,18 @@ contract MockBoosted3TokenAuraVault {
         );
     }
 
+    function _redeem(
+        StrategyContext memory strategyContext,
+        AuraStakingContext memory stakingContext,
+        ThreeTokenPoolContext memory poolContext,
+        uint256 strategyTokens,
+        uint256 maturity,
+        uint256 minPrimary
+    ) external returns (uint256 finalPrimaryBalance) {
+        return strategyContext._redeem(
+            stakingContext, poolContext, strategyTokens, maturity, minPrimary
+        );
+    }
+
     receive() external payable {}
 }

@@ -43,7 +43,6 @@ library Boosted3TokenAuraVaultHelper {
 
     function redeemFromNotional(
         Boosted3TokenAuraStrategyContext memory context,
-        address account,
         uint256 strategyTokens,
         uint256 maturity,
         bytes calldata data
@@ -52,10 +51,9 @@ library Boosted3TokenAuraVaultHelper {
         finalPrimaryBalance = context.baseStrategy._redeem({
             stakingContext: context.stakingContext,
             poolContext: context.poolContext,
-            account: account,
             strategyTokens: strategyTokens,
             maturity: maturity,
-            params: params
+            minPrimary: params.minPrimary
         });
     }
 }

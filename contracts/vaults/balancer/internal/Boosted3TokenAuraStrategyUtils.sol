@@ -69,12 +69,38 @@ library Boosted3TokenAuraStrategyUtils {
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         ThreeTokenPoolContext memory poolContext,
-        address account,
         uint256 strategyTokens,
         uint256 maturity,
-        RedeemParams memory params
+        uint256 minPrimary
     ) internal returns (uint256 finalPrimaryBalance) {
-    
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens, maturity);
+
+        if (bptClaim == 0) return 0;
+
+        // Withdraw BPT tokens back to the vault for redemption
+        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+
+        IBoostedPool underlyingPool = IBoostedPool(address(poolContext.basePool.primaryToken));
+
+        // Swap Boosted BPT for LinearPool BPT
+        uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
+            poolId: poolContext.basePool.basePool.poolId,
+            tokenIn: address(poolContext.basePool.basePool.pool), // Boosted pool
+            tokenOut: address(underlyingPool),
+            amountIn: bptClaim,
+            limit: 0
+        });
+
+        // Swap LinearPool BPT for underlyingToken
+        uint256 primaryBalance = BalancerUtils._swapGivenIn({
+            poolId: underlyingPool.getPoolId(),
+            tokenIn: address(underlyingPool),
+            tokenOut: underlyingPool.getMainToken(),
+            amountIn: linearPoolBPT,
+            limit: minPrimary
+        });
+
+        return primaryBalance;
     }
 
     function _convertStrategyToUnderlying(

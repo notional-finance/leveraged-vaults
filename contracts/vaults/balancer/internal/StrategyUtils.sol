@@ -17,8 +17,11 @@ library StrategyUtils {
         uint256 maturity
     ) internal view returns (uint256 bptClaim) {
         StrategyVaultState memory state = context.vaultState;
-        if (state.totalStrategyTokenGlobal == 0)
-            return strategyTokenAmount;
+        if (state.totalStrategyTokenGlobal == 0) {
+            // Strategy tokens are in 8 decimal precision, BPT is in 18
+            return (strategyTokenAmount * BalancerUtils.BALANCER_PRECISION) /
+                uint256(Constants.INTERNAL_TOKEN_PRECISION);
+        }
 
         uint256 totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
         uint256 bptHeldInMaturity = state._getBPTHeldInMaturity(totalSupplyInMaturity, context.totalBPTHeld);
