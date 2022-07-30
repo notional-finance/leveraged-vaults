@@ -12,7 +12,7 @@ import {
     StrategyVaultState,
     PoolContext,
     TwoTokenPoolContext,
-    Weighted2TokenOracleContext,
+    WeightedOracleContext,
     Weighted2TokenAuraStrategyContext,
     StrategyContext,
     TwoTokenAuraSettlementContext
@@ -241,7 +241,7 @@ contract Weighted2TokenAuraVault is
     function _strategyContext() internal view returns (Weighted2TokenAuraStrategyContext memory) {
         return Weighted2TokenAuraStrategyContext({
             poolContext: _twoTokenPoolContext(),
-            oracleContext: _weighted2TokenOracleContext(),
+            oracleContext: _weightedOracleContext(),
             stakingContext: _auraStakingContext(),
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),

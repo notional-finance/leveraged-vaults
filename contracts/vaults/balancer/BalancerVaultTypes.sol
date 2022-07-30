@@ -74,9 +74,8 @@ struct OracleContext {
     uint256 balancerOracleWeight;
 }
 
-struct Weighted2TokenOracleContext {
-    uint256 primaryWeight;
-    uint256 secondaryWeight;
+struct WeightedOracleContext {
+    uint256[] weights;
     OracleContext baseOracle;
 }
 
@@ -139,7 +138,7 @@ struct StrategyContext {
 
 struct Weighted2TokenAuraStrategyContext {
     TwoTokenPoolContext poolContext;
-    Weighted2TokenOracleContext oracleContext;
+    WeightedOracleContext oracleContext;
     AuraStakingContext stakingContext;
     StrategyContext baseStrategy;
 }

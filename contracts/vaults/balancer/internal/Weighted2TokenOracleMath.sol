@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {Weighted2TokenOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
+import {WeightedOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 
@@ -13,7 +13,7 @@ library Weighted2TokenOracleMath {
     /// @param tokenIndex index of the token to receive the spot price in
     /// @return spotPrice token spot price
     function _getSpotPrice(
-        Weighted2TokenOracleContext memory oracleContext, 
+        WeightedOracleContext memory oracleContext, 
         TwoTokenPoolContext memory poolContext, 
         uint256 tokenIndex
     ) internal view returns (uint256 spotPrice) {
@@ -43,8 +43,8 @@ library Weighted2TokenOracleMath {
         // Assign the weights based on the token index
         (uint256 targetTokenWeight, uint256 otherWeight) = 
             tokenIndex == poolContext.primaryIndex ?
-                (oracleContext.primaryWeight, oracleContext.secondaryWeight) :
-                (oracleContext.secondaryWeight, oracleContext.primaryWeight);
+                (oracleContext.weights[poolContext.primaryIndex], oracleContext.weights[poolContext.secondaryIndex]) :
+                (oracleContext.weights[poolContext.secondaryIndex], oracleContext.weights[poolContext.primaryIndex]);
 
         // SpotPrice = (otherBalance * targetWeight * 1e18) / (targetBalance * otherWeight)
         spotPrice = (otherBalance * targetTokenWeight * BalancerUtils.BALANCER_PRECISION) / 
@@ -56,7 +56,7 @@ library Weighted2TokenOracleMath {
     /// @param poolContext oracle context variables
     /// @return secondaryAmount optimal amount of the secondary token to join the pool
     function _getOptimalSecondaryBorrowAmount(
-        Weighted2TokenOracleContext memory oracleContext,
+        WeightedOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         uint256 primaryAmount
     ) internal view returns (uint256 secondaryAmount) {
@@ -90,7 +90,7 @@ library Weighted2TokenOracleMath {
         // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice * SecondaryPrecision) /
         //    (PrimaryWeight * PrimaryPrecision * BalancerPrecision[for PairPrice])
         secondaryAmount = 
-            (primaryAmount * oracleContext.secondaryWeight * pairPrice * secondaryPrecision) / 
-            (oracleContext.primaryWeight * primaryPrecision * BalancerUtils.BALANCER_PRECISION);
+            (primaryAmount * oracleContext.weights[poolContext.secondaryIndex] * pairPrice * secondaryPrecision) / 
+            (oracleContext.weights[poolContext.primaryIndex] * primaryPrecision * BalancerUtils.BALANCER_PRECISION);
     }
 }

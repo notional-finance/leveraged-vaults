@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
-import {TwoTokenPoolContext, Weighted2TokenOracleContext} from "../BalancerVaultTypes.sol";
+import {TwoTokenPoolContext, WeightedOracleContext} from "../BalancerVaultTypes.sol";
 import {IWeightedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {BalancerOracleMixin} from "./BalancerOracleMixin.sol";
@@ -35,10 +35,13 @@ abstract contract Weighted2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracleM
         SECONDARY_WEIGHT = weights[secondaryIndex];
     }
 
-    function _weighted2TokenOracleContext() internal view returns (Weighted2TokenOracleContext memory) {
-        return Weighted2TokenOracleContext({
-            primaryWeight: PRIMARY_WEIGHT,
-            secondaryWeight: SECONDARY_WEIGHT,
+    function _weightedOracleContext() internal view returns (WeightedOracleContext memory) {
+        uint256[] memory weights = new uint256[](2);
+        weights[PRIMARY_INDEX] = PRIMARY_WEIGHT;
+        weights[SECONDARY_INDEX] = SECONDARY_WEIGHT;
+
+        return WeightedOracleContext({
+            weights: weights,
             baseOracle: _oracleContext()
         });
     }
