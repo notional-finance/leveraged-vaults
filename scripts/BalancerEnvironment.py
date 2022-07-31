@@ -14,7 +14,6 @@ from brownie import (
     Boosted3TokenAuraVaultHelper,
     MockWeighted2TokenAuraVault,
     MockStable2TokenAuraVault,
-    MockTwoTokenPoolUtils,
     MockBoosted3TokenAuraVault
 )
 from brownie.network.contract import Contract
@@ -184,9 +183,6 @@ class BalancerEnvironment(Environment):
                 stratConfig["secondaryBorrowCurrency"]["maxCapacity"],
                 {"from": self.notional.owner()}
             )
-
-        # Deploy mocks to access internal library functions
-        self.mockTwoTokenPoolUtils = MockTwoTokenPoolUtils.deploy({"from": self.deployer})
 
         return vaultProxy
 

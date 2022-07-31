@@ -3,18 +3,18 @@ import eth_abi
 from brownie import Wei
 from tests.fixtures import *
 
-def test_enter_vault_low_leverage_success(StratStableETHstETH):
-    (env, vault, mockTwoTokenAuraStrategyUtils) = StratStableETHstETH
+def test_enter_vault_low_leverage_success(StratBoostedPoolDAIPrimary):
+    (env, vault, mockTwoTokenAuraStrategyUtils) = StratBoostedPoolDAIPrimary
     maturity = env.notional.getActiveMarkets(1)[0][1]
     env.notional.enterVault(
-        env.whales["ETH"],
+        env.whales["DAI"],
         vault.address,
         10e18,
         maturity,
         5e8,
         0,
         get_deposit_params(),
-        {"from": env.whales["ETH"], "value": 10e18}
+        {"from": env.whales["DAI"], "value": 10e18}
     )
 
 def get_deposit_params():

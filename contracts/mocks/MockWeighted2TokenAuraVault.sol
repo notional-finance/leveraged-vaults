@@ -6,7 +6,8 @@ import {
     AuraStakingContext,
     TwoTokenPoolContext,
     WeightedOracleContext,
-    Weighted2TokenAuraStrategyContext
+    Weighted2TokenAuraStrategyContext,
+    StrategyVaultSettings
 } from "../vaults/balancer/BalancerVaultTypes.sol";
 import {TwoTokenAuraStrategyUtils} from "../vaults/balancer/internal/TwoTokenAuraStrategyUtils.sol";
 import {VaultUtils} from "../vaults/balancer/internal/VaultUtils.sol";
@@ -14,25 +15,37 @@ import {TwoTokenPoolUtils} from "../vaults/balancer/internal/TwoTokenPoolUtils.s
 import {BalancerUtils} from "../vaults/balancer/internal/BalancerUtils.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import {Weighted2TokenOracleMath} from "../vaults/balancer/internal/Weighted2TokenOracleMath.sol";
+import {MockTwoTokenVaultBase} from "./MockTwoTokenVaultBase.sol";
 
-contract MockWeighted2TokenAuraVault {
+contract MockWeighted2TokenAuraVault is MockTwoTokenVaultBase {
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using Weighted2TokenOracleMath for WeightedOracleContext;
+    using VaultUtils for StrategyVaultSettings;
 
-    TwoTokenPoolContext poolContext;
-    WeightedOracleContext oracleContext;
-    AuraStakingContext stakingContext;
-    ITradingModule tradingModule;
-    uint16 secondaryBorrowCurrencyId;
+    WeightedOracleContext private oracleContext;
+    AuraStakingContext private stakingContext;
+    ITradingModule private tradingModule;
+    uint16 private secondaryBorrowCurrencyId;
 
-    constructor(Weighted2TokenAuraStrategyContext memory context) {
-        poolContext = context.poolContext;
+    constructor(Weighted2TokenAuraStrategyContext memory context) 
+        MockTwoTokenVaultBase(context.poolContext, context.oracleContext.baseOracle) {
         oracleContext = context.oracleContext;
         stakingContext = context.stakingContext;
         secondaryBorrowCurrencyId = context.baseStrategy.secondaryBorrowCurrencyId;
         tradingModule = context.baseStrategy.tradingModule;
+        context.baseStrategy.vaultSettings._setStrategyVaultSettings(
+            context.baseStrategy.vaultSettings.oracleWindowInSeconds,
+            context.baseStrategy.vaultSettings.balancerOracleWeight
+        );
         poolContext._approveBalancerTokens(address(stakingContext.auraBooster));
+    }
+
+    function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 minBPT) 
+        external returns (uint256 bptMinted) {
+        return getStrategyContext().baseStrategy._joinPoolAndStake(
+            stakingContext, poolContext, primaryAmount, secondaryAmount, minBPT
+        );
     }
 
     function getSpotPrice(uint256 tokenIndex) external view returns (uint256) {
@@ -43,7 +56,7 @@ contract MockWeighted2TokenAuraVault {
         return oracleContext._getOptimalSecondaryBorrowAmount(poolContext, primaryAmount);
     }
 
-    function getStrategyContext() external view returns (Weighted2TokenAuraStrategyContext memory) {
+    function getStrategyContext() public view returns (Weighted2TokenAuraStrategyContext memory) {
         return Weighted2TokenAuraStrategyContext({
             poolContext: poolContext,
             oracleContext: oracleContext,
