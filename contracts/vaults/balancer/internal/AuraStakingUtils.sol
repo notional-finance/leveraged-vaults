@@ -17,7 +17,7 @@ library AuraStakingUtils {
         uint256 bptThreshold,
         uint256 minBPT
     ) internal returns (uint256 bptAmount) {
-        bptAmount = BalancerUtils.joinPoolExactTokensIn({
+        bptAmount = BalancerUtils._joinPoolExactTokensIn({
             context: poolContext,
             params: poolParams,
             minBPT: minBPT

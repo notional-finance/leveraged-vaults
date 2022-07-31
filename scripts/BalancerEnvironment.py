@@ -12,8 +12,8 @@ from brownie import (
     Weighted2TokenAuraVaultHelper,
     TwoTokenAuraSettlementHelper,
     Boosted3TokenAuraVaultHelper,
-    MockWeighted2TokenOracleMath,
-    MockStable2TokenOracleMath,
+    MockWeighted2TokenAuraVault,
+    MockStable2TokenAuraVault,
     MockTwoTokenPoolUtils,
     MockBoosted3TokenAuraVault
 )
@@ -84,7 +84,7 @@ StrategyConfig = {
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
         },
-        "StratBoostedPool": {
+        "StratBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
                 flags=set_flags(0, ENABLED=True),
                 minAccountBorrowSize=1,
@@ -186,8 +186,6 @@ class BalancerEnvironment(Environment):
             )
 
         # Deploy mocks to access internal library functions
-        self.mockWeighted2TokenOracleMath = MockWeighted2TokenOracleMath.deploy({"from": self.deployer})
-        self.mockStable2TokenOracleMath = MockStable2TokenOracleMath.deploy({"from": self.deployer})
         self.mockTwoTokenPoolUtils = MockTwoTokenPoolUtils.deploy({"from": self.deployer})
 
         return vaultProxy
@@ -204,9 +202,19 @@ def main():
     env = BalancerEnvironment(networkName)
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    #weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
-    #stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
-    boosted3TokenVault = env.deployBalancerVault("StratBoostedPool", Boosted3TokenAuraVault)
+    weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
+    env.mockWeighted2TokenAuraVault = MockWeighted2TokenAuraVault.deploy(
+        weightedVault.getStrategyContext(),
+        {"from": env.deployer}
+    )
+
+    stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
+    env.mockStable2TokenAuraVault = MockStable2TokenAuraVault.deploy(
+        stableVault.getStrategyContext(),
+        {"from": env.deployer}
+    )
+
+    boosted3TokenVault = env.deployBalancerVault("StratBoostedPoolDAIPrimary", Boosted3TokenAuraVault)
 
     env.mockThreeTokenAuraVault = MockBoosted3TokenAuraVault.deploy(
         boosted3TokenVault.getStrategyContext(),
@@ -221,11 +229,11 @@ def main():
 
     print(strategyTokenAmount)
     
-    tx = env.mockThreeTokenAuraVault._redeem(strategyTokenAmount, maturity, 0)
+    #tx = env.mockThreeTokenAuraVault._redeem(strategyTokenAmount, maturity, 0)
 
-    primaryBalance = tx.return_value
+    #primaryBalance = tx.return_value
 
-    print(primaryBalance)
+    #print(primaryBalance)
     
     return
 

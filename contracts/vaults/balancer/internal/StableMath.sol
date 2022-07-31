@@ -212,13 +212,12 @@ library StableMath {
         uint256 tokenIndex,
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
-        uint256 swapFeePercentage
+        uint256 swapFeePercentage,
+        uint256 invariant
     ) internal pure returns (uint256) {
         // Token out, so we round down overall.
 
-        // Get the current and new invariants. Since we need a bigger new invariant, we round the current one up.
-        uint256 currentInvariant = _calculateInvariant(amp, balances, true);
-        uint256 newInvariant = mulUpFixed(divUpFixed((bptTotalSupply - bptAmountIn), bptTotalSupply), currentInvariant);
+        uint256 newInvariant = mulUpFixed(divUpFixed((bptTotalSupply - bptAmountIn), bptTotalSupply), invariant);
 
         // Calculate amount out without fee
         uint256 newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(
@@ -248,5 +247,45 @@ library StableMath {
 
         // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
         return nonTaxableAmount + mulDownFixed(taxableAmount, ONE - swapFeePercentage);
+    }
+
+    // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the current balances.
+    // The amplification parameter equals: A n^(n-1)
+    // The invariant should be rounded up.
+    function _calcOutGivenIn(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountIn,
+        uint256 invariant
+    ) internal pure returns (uint256) {
+        /**************************************************************************************************************
+        // outGivenIn token x for y - polynomial equation to solve                                                   //
+        // ay = amount out to calculate                                                                              //
+        // by = balance token out                                                                                    //
+        // y = by - ay (finalBalanceOut)                                                                             //
+        // D = invariant                                               D                     D^(n+1)                 //
+        // A = amplification coefficient               y^2 + ( S - ----------  - D) * y -  ------------- = 0         //
+        // n = number of tokens                                    (A * n^n)               A * n^2n * P              //
+        // S = sum of final balances but y                                                                           //
+        // P = product of final balances but y                                                                       //
+        **************************************************************************************************************/
+
+        // Amount out, so we round down overall.
+        balances[tokenIndexIn] = balances[tokenIndexIn] + tokenAmountIn;
+
+        uint256 finalBalanceOut = _getTokenBalanceGivenInvariantAndAllOtherBalances(
+            amplificationParameter,
+            balances,
+            invariant,
+            tokenIndexOut
+        );
+
+        // No need to use checked arithmetic since `tokenAmountIn` was actually added to the same balance right before
+        // calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
+        balances[tokenIndexIn] = balances[tokenIndexIn] - tokenAmountIn;
+
+        return balances[tokenIndexOut] - (finalBalanceOut) - 1;
     }
 }

@@ -71,12 +71,11 @@ library BalancerUtils {
     }
 
     /// @notice Joins a balancer pool using exact tokens in
-    function joinPoolExactTokensIn(
+    function _joinPoolExactTokensIn(
         PoolContext memory context,
         PoolParams memory params,
         uint256 minBPT
     ) internal returns (uint256 bptAmount) {
-        // Join pool
         bptAmount = IERC20(address(context.pool)).balanceOf(address(this));
         BALANCER_VAULT.joinPool{value: params.msgValue}(
             context.poolId,

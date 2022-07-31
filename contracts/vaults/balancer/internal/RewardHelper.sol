@@ -9,6 +9,7 @@ import {
     AuraStakingContext,
     TwoTokenPoolContext
 } from "../BalancerVaultTypes.sol";
+import {Errors} from "../../../global/Errors.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {SafeInt256} from "../../../global/SafeInt256.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
@@ -29,7 +30,6 @@ library RewardHelper {
 
     error InvalidRewardToken(address token);
     error InvalidMaxAmounts(uint256 oraclePrice, uint256 maxPrimary, uint256 maxSecondary);
-    error InvalidSpotPrice(uint256 oraclePrice, uint256 spotPrice);
 
     event RewardReinvested(address token, uint256 primaryAmount, uint256 secondaryAmount, uint256 bptAmount);
 
@@ -131,7 +131,7 @@ library RewardHelper {
 
         // Check spot price against oracle price to make sure it hasn't been manipulated
         if (spotPrice < lowerLimit || upperLimit < spotPrice) {
-            revert InvalidSpotPrice(oraclePrice, spotPrice);
+            revert Errors.InvalidSpotPrice(oraclePrice, spotPrice);
         }
 
         // Check join amounts against oracle price to minimize BPT slippage
@@ -159,7 +159,7 @@ library RewardHelper {
         // Make sure we are joining with the right proportion to minimize slippage
         _validateJoinAmounts(poolContext, spotPrice, tradingModule, primaryAmount, secondaryAmount);
         
-        uint256 bptAmount = BalancerUtils.joinPoolExactTokensIn({
+        uint256 bptAmount = BalancerUtils._joinPoolExactTokensIn({
             context: poolContext.basePool,
             params: poolContext._getPoolParams(
                 primaryAmount, 

@@ -145,6 +145,12 @@ class Environment:
             "0x8fffffd4afb6115b954bd326cbe7b4ba576818f6",
             {"from": self.notional.owner()}
         )
+        # USDT/USD oracle
+        self.tradingModule.setPriceOracle(
+            self.tokens["USDT"].address,
+            "0x3e7d1eab13ad0104d2750b8863b489d65364e32d",
+            {"from": self.notional.owner()}
+        )
         # WBTC/USD oracle
         self.tradingModule.setPriceOracle(
             self.tokens["WBTC"].address,

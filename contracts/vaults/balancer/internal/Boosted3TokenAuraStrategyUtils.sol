@@ -45,7 +45,7 @@ library Boosted3TokenAuraStrategyUtils {
             tokenIn: underlyingPool.getMainToken(),
             tokenOut: address(underlyingPool),
             amountIn: deposit,
-            limit: 0
+            limit: 0 // slippage checked on the second swap
         });
 
         // Swap LinearPool BPT for Boosted BPT
@@ -91,7 +91,7 @@ library Boosted3TokenAuraStrategyUtils {
             tokenIn: address(poolContext.basePool.basePool.pool), // Boosted pool
             tokenOut: address(underlyingPool),
             amountIn: bptClaim,
-            limit: 0
+            limit: 0 // slippage checked on the second swap
         });
 
         // Swap LinearPool BPT for underlyingToken
@@ -125,6 +125,10 @@ library Boosted3TokenAuraStrategyUtils {
             strategyTokenAmount, maturity
         );
 
-        underlyingValue = poolContext._getTimeWeightedPrimaryBalance(oracleContext, bptClaim).toInt();
+        underlyingValue = poolContext._getTimeWeightedPrimaryBalance(
+            oracleContext, 
+            strategyContext.tradingModule, 
+            bptClaim
+        ).toInt();
     }
 }

@@ -3,14 +3,13 @@ pragma solidity 0.8.15;
 
 import {StableOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
+import {Errors} from "../../../global/Errors.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {StableMath} from "./StableMath.sol";
 
 library Stable2TokenOracleMath {
     using Stable2TokenOracleMath for StableOracleContext;
-
-    error InvalidSpotPrice(uint256 oraclePrice, uint256 spotPrice);
 
     function _getSpotPrice(
         StableOracleContext memory oracleContext, 
@@ -88,12 +87,12 @@ library Stable2TokenOracleMath {
 
         uint256 spotPrice = oracleContext._getSpotPrice(poolContext, poolContext.secondaryIndex); 
 
-        uint256 lowerLimit = (oraclePrice * Constants.SPOT_PRICE_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (oraclePrice * Constants.SPOT_PRICE_UPPER_LIMIT) / 100;
+        uint256 lowerLimit = (oraclePrice * Constants.META_STABLE_SPOT_PRICE_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePrice * Constants.META_STABLE_SPOT_PRICE_UPPER_LIMIT) / 100;
 
         // Check spot price against oracle price to make sure it hasn't been manipulated
         if (spotPrice < lowerLimit || upperLimit < spotPrice) {
-            revert InvalidSpotPrice(oraclePrice, spotPrice);
+            revert Errors.InvalidSpotPrice(oraclePrice, spotPrice);
         }
         
         // Secondary amount is calculated by matching the primary amount proportionally based

@@ -31,7 +31,6 @@ library Boosted3TokenAuraVaultHelper {
         bytes calldata data
     ) external returns (uint256 strategyTokensMinted) {
         DepositParams memory params = abi.decode(data, (DepositParams));
-
         strategyTokensMinted = context.baseStrategy._deposit({
             stakingContext: context.stakingContext, 
             poolContext: context.poolContext,
