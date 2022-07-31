@@ -83,25 +83,7 @@ library Boosted3TokenAuraStrategyUtils {
         // Withdraw BPT tokens back to the vault for redemption
         stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
 
-        IBoostedPool underlyingPool = IBoostedPool(address(poolContext.basePool.primaryToken));
-
-        // Swap Boosted BPT for LinearPool BPT
-        uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
-            poolId: poolContext.basePool.basePool.poolId,
-            tokenIn: address(poolContext.basePool.basePool.pool), // Boosted pool
-            tokenOut: address(underlyingPool),
-            amountIn: bptClaim,
-            limit: 0 // slippage checked on the second swap
-        });
-
-        // Swap LinearPool BPT for underlyingToken
-        uint256 primaryBalance = BalancerUtils._swapGivenIn({
-            poolId: underlyingPool.getPoolId(),
-            tokenIn: address(underlyingPool),
-            tokenOut: underlyingPool.getMainToken(),
-            amountIn: linearPoolBPT,
-            limit: minPrimary
-        });
+        uint256 primaryBalance = poolContext._exitPoolExactBPTIn(bptClaim, minPrimary);
 
         // Update global strategy token balance
         // This only needs to be updated for normal redemption

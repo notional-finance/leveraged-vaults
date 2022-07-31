@@ -2,38 +2,38 @@
 pragma solidity 0.8.15;
 
 import {
-    TwoTokenAuraSettlementContext, 
+    Boosted3TokenAuraStrategyContext, 
     StrategyContext,
     SettlementState,
     RedeemParams,
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
-import {TwoTokenAuraSettlementUtils} from "../internal/TwoTokenAuraSettlementUtils.sol";
+import {Boosted3TokenAuraSettlementUtils} from "../internal/Boosted3TokenAuraSettlementUtils.sol";
 import {SettlementUtils} from "../internal/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/StrategyUtils.sol";
-import {TwoTokenAuraStrategyUtils} from "../internal/TwoTokenAuraStrategyUtils.sol";
+import {Boosted3TokenAuraStrategyUtils} from "../internal/Boosted3TokenAuraStrategyUtils.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
 
-library TwoTokenAuraSettlementHelper {
-    using TwoTokenAuraSettlementUtils for TwoTokenAuraSettlementContext;
-    using TwoTokenAuraStrategyUtils for StrategyContext;
+library Boosted3TokenAuraSettlementHelper {
+    using Boosted3TokenAuraSettlementUtils for Boosted3TokenAuraStrategyContext;
+    using Boosted3TokenAuraStrategyUtils for StrategyContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
     using VaultUtils for StrategyVaultSettings;
     using VaultUtils for StrategyVaultState;
 
     function settleVaultNormal(
-        TwoTokenAuraSettlementContext memory context,
+        Boosted3TokenAuraStrategyContext memory context,
         uint256 maturity,
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
         SettlementState memory state = SettlementUtils._validateTokensToRedeem(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.strategyContext.vaultState.lastSettlementTimestamp,
-            context.strategyContext.vaultSettings.settlementCoolDownInMinutes,
-            context.strategyContext.vaultSettings.settlementSlippageLimitPercent,
+            context.baseStrategy.vaultState.lastSettlementTimestamp,
+            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
             data
         );
 
@@ -44,21 +44,21 @@ library TwoTokenAuraSettlementHelper {
             params: params
         });
 
-        context.strategyContext.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
-        context.strategyContext.vaultState._setStrategyVaultState();
+        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
+        context.baseStrategy.vaultState._setStrategyVaultState();
     }
 
     function settleVaultPostMaturity(
-        TwoTokenAuraSettlementContext memory context,
+        Boosted3TokenAuraStrategyContext memory context,
         uint256 maturity,
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
         SettlementState memory state = SettlementUtils._validateTokensToRedeem(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.strategyContext.vaultState.lastPostMaturitySettlementTimestamp,
-            context.strategyContext.vaultSettings.postMaturitySettlementCoolDownInMinutes,
-            context.strategyContext.vaultSettings.postMaturitySettlementSlippageLimitPercent,
+            context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
+            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
             data
         );
 
@@ -69,28 +69,27 @@ library TwoTokenAuraSettlementHelper {
             params: params
         });
 
-        context.strategyContext.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
-        context.strategyContext.vaultState._setStrategyVaultState();  
+        context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
+        context.baseStrategy.vaultState._setStrategyVaultState();  
     }
 
     function settleVaultEmergency(
-        TwoTokenAuraSettlementContext memory context, 
+        Boosted3TokenAuraStrategyContext memory context, 
         uint256 maturity, 
         bytes calldata data
     ) external {
         (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = 
-            context.strategyContext._getEmergencySettlementParams(
-                context.poolContext.basePool, maturity
+            context.baseStrategy._getEmergencySettlementParams(
+                context.poolContext.basePool.basePool, maturity
             );
 
-        uint256 redeemStrategyTokenAmount = context.strategyContext._convertBPTClaimToStrategyTokens(
+        uint256 redeemStrategyTokenAmount = context.baseStrategy._convertBPTClaimToStrategyTokens(
             bptToSettle, maturity
         );
 
-        int256 expectedUnderlyingRedeemed = context.strategyContext._convertStrategyToUnderlying({
+        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
-            account: address(this),
             strategyTokenAmount: redeemStrategyTokenAmount,
             maturity: maturity
         });

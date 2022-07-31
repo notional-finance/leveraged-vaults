@@ -190,4 +190,27 @@ library Boosted3TokenPoolUtils {
         address primaryUnderlyingAddress = BalancerUtils.getTokenAddress(underlyingPool.getMainToken());
         IERC20(primaryUnderlyingAddress).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
     }
+
+    function _exitPoolExactBPTIn(ThreeTokenPoolContext memory poolContext, uint256 bptExitAmount, uint256 minPrimary)
+        internal returns (uint256 primaryBalance) {
+        IBoostedPool underlyingPool = IBoostedPool(address(poolContext.basePool.primaryToken));
+
+        // Swap Boosted BPT for LinearPool BPT
+        uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
+            poolId: poolContext.basePool.basePool.poolId,
+            tokenIn: address(poolContext.basePool.basePool.pool), // Boosted pool
+            tokenOut: address(underlyingPool),
+            amountIn: bptExitAmount,
+            limit: 0 // slippage checked on the second swap
+        });
+
+        // Swap LinearPool BPT for underlyingToken
+        primaryBalance = BalancerUtils._swapGivenIn({
+            poolId: underlyingPool.getPoolId(),
+            tokenIn: address(underlyingPool),
+            tokenOut: underlyingPool.getMainToken(),
+            amountIn: linearPoolBPT,
+            limit: minPrimary
+        }); 
+    }
 }

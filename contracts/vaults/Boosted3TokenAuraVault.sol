@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Constants} from "../global/Constants.sol";
+import {Errors} from "../global/Errors.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
 import {
     AuraDeploymentParams,
@@ -13,8 +14,7 @@ import {
     PoolContext,
     ThreeTokenPoolContext,
     Boosted3TokenAuraStrategyContext,
-    StrategyContext,
-    ThreeTokenAuraSettlementContext
+    StrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.sol";
@@ -27,9 +27,8 @@ import {Boosted3TokenAuraStrategyUtils} from "./balancer/internal/Boosted3TokenA
 import {Boosted3TokenPoolUtils} from "./balancer/internal/Boosted3TokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
-import {SettlementHelper} from "./balancer/internal/SettlementHelper.sol";
 import {Boosted3TokenAuraVaultHelper} from "./balancer/external/Boosted3TokenAuraVaultHelper.sol";
-import {TwoTokenAuraSettlementHelper} from "./balancer/external/TwoTokenAuraSettlementHelper.sol";
+import {Boosted3TokenAuraSettlementHelper} from "./balancer/external/Boosted3TokenAuraSettlementHelper.sol";
 import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
@@ -107,6 +106,54 @@ contract Boosted3TokenAuraVault is
         }
     }
 
+    function settleVaultNormal(
+        uint256 maturity,
+        uint256 strategyTokensToRedeem,
+        bytes calldata data
+    ) external {
+        if (maturity <= block.timestamp) {
+            revert Errors.PostMaturitySettlement();
+        }
+        if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
+            revert Errors.NotInSettlementWindow();
+        }
+        Boosted3TokenAuraSettlementHelper.settleVaultNormal(
+            _strategyContext(), maturity, strategyTokensToRedeem, data
+        );
+    }
+
+    function settleVaultPostMaturity(
+        uint256 maturity,
+        uint256 strategyTokensToRedeem,
+        bytes calldata data
+    ) external onlyNotionalOwner {
+        if (block.timestamp < maturity) {
+            revert Errors.HasNotMatured();
+        }
+        Boosted3TokenAuraSettlementHelper.settleVaultPostMaturity(
+            _strategyContext(), maturity, strategyTokensToRedeem, data
+        );
+    }
+
+    function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
+        // No need for emergency settlement during the settlement window
+        _revertInSettlementWindow(maturity);
+        Boosted3TokenAuraSettlementHelper.settleVaultEmergency(
+            _strategyContext(), maturity, data
+        );
+    }
+
+    function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
+        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
+        claimedBalances = AuraRewardHelperExternal.claimRewardTokens(
+            _auraStakingContext(), strategyVaultSettings.feePercentage, FEE_RECEIVER
+        );
+    }
+
+    function reinvestReward(ReinvestRewardParams calldata params) external {
+        //MetaStable2TokenAuraRewardHelper.reinvestReward(_strategyContext(), params);
+    }
+
     function convertStrategyToUnderlying(
         address /* account */,
         uint256 strategyTokenAmount,
@@ -133,15 +180,6 @@ contract Boosted3TokenAuraVault is
             0, // Max Balancer oracle window size
             0  // Balancer oracle weight
         );
-    }
-
-    function _settlementContext() private view returns (ThreeTokenAuraSettlementContext memory) {
-        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        return ThreeTokenAuraSettlementContext({
-            strategyContext: context.baseStrategy,
-            poolContext: context.poolContext,
-            stakingContext: context.stakingContext
-        });
     }
 
     function _strategyContext() private view returns (Boosted3TokenAuraStrategyContext memory) {

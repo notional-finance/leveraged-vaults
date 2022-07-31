@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Constants} from "../global/Constants.sol";
+import {Errors} from "../global/Errors.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
 import {
     AuraDeploymentParams,
@@ -28,7 +29,6 @@ import {TwoTokenAuraStrategyUtils} from "./balancer/internal/TwoTokenAuraStrateg
 import {TwoTokenPoolUtils} from "./balancer/internal/TwoTokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
-import {SettlementHelper} from "./balancer/internal/SettlementHelper.sol";
 import {Weighted2TokenAuraVaultHelper} from "./balancer/external/Weighted2TokenAuraVaultHelper.sol";
 import {TwoTokenAuraSettlementHelper} from "./balancer/external/TwoTokenAuraSettlementHelper.sol";
 import {Weighted2TokenAuraRewardHelper} from "./balancer/external/Weighted2TokenAuraRewardHelper.sol";
@@ -158,7 +158,7 @@ contract Weighted2TokenAuraVault is
         bytes calldata data
     ) external onlyNotionalOwner {
         if (block.timestamp < maturity) {
-            revert SettlementHelper.HasNotMatured();
+            revert Errors.HasNotMatured();
         }
         TwoTokenAuraSettlementHelper.settleVaultPostMaturity(
             _settlementContext(), maturity, strategyTokensToRedeem, data
@@ -180,10 +180,10 @@ contract Weighted2TokenAuraVault is
         bytes calldata data
     ) external {
         if (maturity <= block.timestamp) {
-            revert SettlementHelper.PostMaturitySettlement();
+            revert Errors.PostMaturitySettlement();
         }
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
-            revert SettlementHelper.NotInSettlementWindow();
+            revert Errors.NotInSettlementWindow();
         }
         TwoTokenAuraSettlementHelper.settleVaultNormal(
             _settlementContext(), maturity, strategyTokensToRedeem, data

@@ -164,12 +164,6 @@ struct TwoTokenAuraSettlementContext {
     AuraStakingContext stakingContext;
 }
 
-struct ThreeTokenAuraSettlementContext {
-    StrategyContext strategyContext;
-    ThreeTokenPoolContext poolContext;
-    AuraStakingContext stakingContext;
-}
-
 struct NormalSettlementData {
     uint16 secondaryBorrowCurrencyId;
     uint256 maxUnderlyingSurplus;
@@ -180,6 +174,13 @@ struct NormalSettlementData {
     uint256 debtSharesToRepay;
     /// @notice Amount of secondary fCash borrowed in external precision
     uint256 borrowedSecondaryfCashAmountExternal;
+}
+
+struct BoostedSettlementData {
+    uint256 maxUnderlyingSurplus;
+    uint256 primarySettlementBalance;
+    uint256 redeemStrategyTokenAmount;
+    int256 underlyingCashRequiredToSettle;
 }
 
 struct RewardTokenTradeParams {
