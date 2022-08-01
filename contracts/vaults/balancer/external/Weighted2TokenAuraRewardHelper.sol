@@ -7,10 +7,10 @@ import {
     WeightedOracleContext,
     TwoTokenPoolContext
 } from "../BalancerVaultTypes.sol";
-import {TwoTokenAuraRewardUtils} from "../internal/TwoTokenAuraRewardUtils.sol";
-import {BalancerUtils} from "../internal/BalancerUtils.sol";
+import {TwoTokenAuraRewardUtils} from "../internal/reward/TwoTokenAuraRewardUtils.sol";
+import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
-import {Weighted2TokenOracleMath} from "../internal/Weighted2TokenOracleMath.sol";
+import {Weighted2TokenOracleMath} from "../internal/math/Weighted2TokenOracleMath.sol";
 
 library Weighted2TokenAuraRewardHelper {
     using Weighted2TokenOracleMath for WeightedOracleContext;

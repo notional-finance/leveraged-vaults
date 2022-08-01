@@ -11,7 +11,7 @@ import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
-import {BalancerUtils} from "../internal/BalancerUtils.sol";
+import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {PoolMixin} from "./PoolMixin.sol";
 
 abstract contract Boosted3TokenPoolMixin is PoolMixin {

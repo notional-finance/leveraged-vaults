@@ -13,17 +13,17 @@ import {
     StrategyVaultSettings,
     StrategyVaultState,
     OracleContext
-} from "../BalancerVaultTypes.sol";
-import {SafeInt256} from "../../../global/SafeInt256.sol";
-import {TradeHandler} from "../../../trading/TradeHandler.sol";
-import {AuraStakingUtils} from "./AuraStakingUtils.sol";
-import {VaultUtils} from "./VaultUtils.sol";
-import {StrategyUtils} from "./StrategyUtils.sol";
-import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {SecondaryBorrowUtils} from "./SecondaryBorrowUtils.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {ITradingModule, Trade} from "../../../../interfaces/trading/ITradingModule.sol";
+} from "../../BalancerVaultTypes.sol";
+import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {TradeHandler} from "../../../../trading/TradeHandler.sol";
+import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
+import {VaultUtils} from "../VaultUtils.sol";
+import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {SecondaryBorrowUtils} from "../SecondaryBorrowUtils.sol";
+import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library TwoTokenAuraStrategyUtils {
     using TradeHandler for Trade;

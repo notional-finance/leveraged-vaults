@@ -7,10 +7,10 @@ import {
     StableOracleContext,
     TwoTokenPoolContext
 } from "../BalancerVaultTypes.sol";
-import {TwoTokenAuraRewardUtils} from "../internal/TwoTokenAuraRewardUtils.sol";
-import {BalancerUtils} from "../internal/BalancerUtils.sol";
+import {TwoTokenAuraRewardUtils} from "../internal/reward/TwoTokenAuraRewardUtils.sol";
+import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
-import {Stable2TokenOracleMath} from "../internal/Stable2TokenOracleMath.sol";
+import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 
 library MetaStable2TokenAuraRewardHelper {
     using Stable2TokenOracleMath for StableOracleContext;

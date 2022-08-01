@@ -9,14 +9,14 @@ import {
     StrategyContext,
     ThreeTokenPoolContext,
     StrategyVaultState
-} from "../BalancerVaultTypes.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {SafeInt256} from "../../../global/SafeInt256.sol";
-import {Errors} from "../../../global/Errors.sol";
+} from "../../BalancerVaultTypes.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {Errors} from "../../../../global/Errors.sol";
 import {SettlementUtils} from "./SettlementUtils.sol";
-import {StrategyUtils} from "./StrategyUtils.sol";
-import {VaultUtils} from "./VaultUtils.sol";
-import {Boosted3TokenPoolUtils} from "./Boosted3TokenPoolUtils.sol";
+import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {VaultUtils} from "../VaultUtils.sol";
+import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 
 library Boosted3TokenAuraSettlementUtils {
     using SafeInt256 for uint256;

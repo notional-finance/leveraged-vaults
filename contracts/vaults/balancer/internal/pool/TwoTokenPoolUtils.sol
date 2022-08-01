@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {TwoTokenPoolContext, OracleContext, PoolParams} from "../BalancerVaultTypes.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {Errors} from "../../../global/Errors.sol";
-import {SafeInt256} from "../../../global/SafeInt256.sol";
-import {IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
-import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
-import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
+import {TwoTokenPoolContext, OracleContext, PoolParams} from "../../BalancerVaultTypes.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {Errors} from "../../../../global/Errors.sol";
+import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
+import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 
 library TwoTokenPoolUtils {
     using SafeInt256 for uint256;

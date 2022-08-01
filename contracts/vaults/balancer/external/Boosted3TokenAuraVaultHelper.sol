@@ -13,9 +13,9 @@ import {
 } from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
-import {Boosted3TokenAuraStrategyUtils} from "../internal/Boosted3TokenAuraStrategyUtils.sol";
-import {BalancerUtils} from "../internal/BalancerUtils.sol";
-import {Boosted3TokenPoolUtils} from "../internal/Boosted3TokenPoolUtils.sol";
+import {Boosted3TokenAuraStrategyUtils} from "../internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
+import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
+import {Boosted3TokenPoolUtils} from "../internal/pool/Boosted3TokenPoolUtils.sol";
 import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
 

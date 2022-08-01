@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {StrategyContext, StrategyVaultState} from "../BalancerVaultTypes.sol";
-import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {VaultUtils} from "./VaultUtils.sol";
+import {StrategyContext, StrategyVaultState} from "../../BalancerVaultTypes.sol";
+import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {VaultUtils} from "../VaultUtils.sol";
 
 library StrategyUtils {
     using VaultUtils for StrategyVaultState;

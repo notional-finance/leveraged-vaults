@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {StrategyVaultSettings, OracleContext} from "../BalancerVaultTypes.sol";
 import {LibBalancerStorage} from "../internal/LibBalancerStorage.sol";
-import {BalancerUtils} from "../internal/Balancerutils.sol";
+import {BalancerUtils} from "../internal/pool/Balancerutils.sol";
 
 abstract contract BalancerOracleMixin {
     uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;

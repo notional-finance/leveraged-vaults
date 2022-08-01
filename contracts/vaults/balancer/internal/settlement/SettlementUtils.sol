@@ -9,13 +9,13 @@ import {
     PoolContext,
     StrategyVaultSettings,
     StrategyVaultState
-} from "../BalancerVaultTypes.sol";
-import {Errors} from "../../../global/Errors.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {SafeInt256} from "../../../global/SafeInt256.sol";
-import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
-import {VaultUtils} from "./VaultUtils.sol";
-import {IERC20} from "../../../../interfaces/IERC20.sol";
+} from "../../BalancerVaultTypes.sol";
+import {Errors} from "../../../../global/Errors.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
+import {VaultUtils} from "../VaultUtils.sol";
+import {IERC20} from "../../../../../interfaces/IERC20.sol";
 
 library SettlementUtils {
     using SafeInt256 for uint256;

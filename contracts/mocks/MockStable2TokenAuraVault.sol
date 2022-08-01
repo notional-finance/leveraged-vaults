@@ -10,11 +10,11 @@ import {
     AuraStakingContext,
     StrategyVaultSettings
 } from "../vaults/balancer/BalancerVaultTypes.sol";
-import {TwoTokenAuraStrategyUtils} from "../vaults/balancer/internal/TwoTokenAuraStrategyUtils.sol";
-import {Stable2TokenOracleMath} from "../vaults/balancer/internal/Stable2TokenOracleMath.sol";
+import {TwoTokenAuraStrategyUtils} from "../vaults/balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
+import {Stable2TokenOracleMath} from "../vaults/balancer/internal/math/Stable2TokenOracleMath.sol";
 import {VaultUtils} from "../vaults/balancer/internal/VaultUtils.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
-import {TwoTokenPoolUtils} from "../vaults/balancer/internal/TwoTokenPoolUtils.sol";
+import {TwoTokenPoolUtils} from "../vaults/balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {MockTwoTokenVaultBase} from "./MockTwoTokenVaultBase.sol";
 
 contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {

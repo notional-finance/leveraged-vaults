@@ -10,9 +10,9 @@ import {
     StrategyVaultState
 } from "../vaults/balancer/BalancerVaultTypes.sol";
 import {Boosted3TokenAuraVaultHelper} from "../vaults/balancer/external/Boosted3TokenAuraVaultHelper.sol";
-import {Boosted3TokenAuraStrategyUtils} from "../vaults/balancer/internal/Boosted3TokenAuraStrategyUtils.sol";
-import {Boosted3TokenPoolUtils} from "../vaults/balancer/internal/Boosted3TokenPoolUtils.sol";
-import {BalancerUtils} from "../vaults/balancer/internal/BalancerUtils.sol";
+import {Boosted3TokenAuraStrategyUtils} from "../vaults/balancer/internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
+import {Boosted3TokenPoolUtils} from "../vaults/balancer/internal/pool/Boosted3TokenPoolUtils.sol";
+import {BalancerUtils} from "../vaults/balancer/internal/pool/BalancerUtils.sol";
 import {VaultUtils} from "../vaults/balancer/internal/VaultUtils.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 

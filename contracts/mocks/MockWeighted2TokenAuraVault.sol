@@ -9,12 +9,12 @@ import {
     Weighted2TokenAuraStrategyContext,
     StrategyVaultSettings
 } from "../vaults/balancer/BalancerVaultTypes.sol";
-import {TwoTokenAuraStrategyUtils} from "../vaults/balancer/internal/TwoTokenAuraStrategyUtils.sol";
+import {TwoTokenAuraStrategyUtils} from "../vaults/balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {VaultUtils} from "../vaults/balancer/internal/VaultUtils.sol";
-import {TwoTokenPoolUtils} from "../vaults/balancer/internal/TwoTokenPoolUtils.sol";
-import {BalancerUtils} from "../vaults/balancer/internal/BalancerUtils.sol";
+import {TwoTokenPoolUtils} from "../vaults/balancer/internal/pool/TwoTokenPoolUtils.sol";
+import {BalancerUtils} from "../vaults/balancer/internal/pool/BalancerUtils.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
-import {Weighted2TokenOracleMath} from "../vaults/balancer/internal/Weighted2TokenOracleMath.sol";
+import {Weighted2TokenOracleMath} from "../vaults/balancer/internal/math/Weighted2TokenOracleMath.sol";
 import {MockTwoTokenVaultBase} from "./MockTwoTokenVaultBase.sol";
 
 contract MockWeighted2TokenAuraVault is MockTwoTokenVaultBase {

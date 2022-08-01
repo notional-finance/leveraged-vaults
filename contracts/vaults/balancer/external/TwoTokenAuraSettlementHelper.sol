@@ -9,10 +9,10 @@ import {
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
-import {TwoTokenAuraSettlementUtils} from "../internal/TwoTokenAuraSettlementUtils.sol";
-import {SettlementUtils} from "../internal/SettlementUtils.sol";
-import {StrategyUtils} from "../internal/StrategyUtils.sol";
-import {TwoTokenAuraStrategyUtils} from "../internal/TwoTokenAuraStrategyUtils.sol";
+import {TwoTokenAuraSettlementUtils} from "../internal/settlement/TwoTokenAuraSettlementUtils.sol";
+import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
+import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
+import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
 
 library TwoTokenAuraSettlementHelper {

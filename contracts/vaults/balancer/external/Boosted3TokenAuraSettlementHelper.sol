@@ -9,10 +9,10 @@ import {
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
-import {Boosted3TokenAuraSettlementUtils} from "../internal/Boosted3TokenAuraSettlementUtils.sol";
-import {SettlementUtils} from "../internal/SettlementUtils.sol";
-import {StrategyUtils} from "../internal/StrategyUtils.sol";
-import {Boosted3TokenAuraStrategyUtils} from "../internal/Boosted3TokenAuraStrategyUtils.sol";
+import {Boosted3TokenAuraSettlementUtils} from "../internal/settlement/Boosted3TokenAuraSettlementUtils.sol";
+import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
+import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
+import {Boosted3TokenAuraStrategyUtils} from "../internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
 
 library Boosted3TokenAuraSettlementHelper {

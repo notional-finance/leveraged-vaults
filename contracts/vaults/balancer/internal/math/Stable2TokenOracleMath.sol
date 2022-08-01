@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {StableOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {Errors} from "../../../global/Errors.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
+import {StableOracleContext, TwoTokenPoolContext} from "../../BalancerVaultTypes.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {Errors} from "../../../../global/Errors.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {StableMath} from "./StableMath.sol";
 
 library Stable2TokenOracleMath {

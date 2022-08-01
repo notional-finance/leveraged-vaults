@@ -9,8 +9,8 @@ import {
     WeightedOracleContext,
     SecondaryTradeParams
 } from "../BalancerVaultTypes.sol";
-import {TwoTokenAuraStrategyUtils} from "../internal/TwoTokenAuraStrategyUtils.sol";
-import {Weighted2TokenOracleMath} from "../internal/Weighted2TokenOracleMath.sol";
+import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
+import {Weighted2TokenOracleMath} from "../internal/math/Weighted2TokenOracleMath.sol";
 import {SecondaryBorrowUtils} from "../internal/SecondaryBorrowUtils.sol";
 
 library Weighted2TokenAuraVaultHelper {

@@ -11,14 +11,14 @@ import {
     AuraStakingContext,
     StrategyVaultSettings,
     StrategyVaultState
-} from "../BalancerVaultTypes.sol";
-import {SafeInt256} from "../../../global/SafeInt256.sol";
-import {Boosted3TokenPoolUtils} from "./Boosted3TokenPoolUtils.sol";
-import {AuraStakingUtils} from "./AuraStakingUtils.sol";
+} from "../../BalancerVaultTypes.sol";
+import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
+import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
-import {VaultUtils} from "./VaultUtils.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
+import {VaultUtils} from "../VaultUtils.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 
 library Boosted3TokenAuraStrategyUtils {
     using SafeInt256 for uint256;

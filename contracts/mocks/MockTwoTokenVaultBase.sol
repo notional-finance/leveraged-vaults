@@ -5,7 +5,7 @@ import {
     OracleContext, 
     TwoTokenPoolContext
 } from "../vaults/balancer/BalancerVaultTypes.sol";
-import {TwoTokenPoolUtils} from "../vaults/balancer/internal/TwoTokenPoolUtils.sol";
+import {TwoTokenPoolUtils} from "../vaults/balancer/internal/pool/TwoTokenPoolUtils.sol";
 
 contract MockTwoTokenVaultBase {
     using TwoTokenPoolUtils for TwoTokenPoolContext;

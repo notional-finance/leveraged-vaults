@@ -6,10 +6,10 @@ import {
     Boosted3TokenAuraStrategyContext,
     StableOracleContext
 } from "../BalancerVaultTypes.sol";
-import {Boosted3TokenAuraRewardUtils} from "../internal/Boosted3TokenAuraRewardUtils.sol";
-import {BalancerUtils} from "../internal/BalancerUtils.sol";
+import {Boosted3TokenAuraRewardUtils} from "../internal/reward/Boosted3TokenAuraRewardUtils.sol";
+import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
-import {Stable2TokenOracleMath} from "../internal/Stable2TokenOracleMath.sol";
+import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 
 library Boosted3TokenAuraRewardHelper {
     using Stable2TokenOracleMath for StableOracleContext;

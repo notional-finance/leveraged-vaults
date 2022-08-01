@@ -6,17 +6,17 @@ import {
     TwoTokenPoolContext, 
     BoostedOracleContext, 
     PoolParams
-} from "../BalancerVaultTypes.sol";
-import {SafeInt256} from "../../../global/SafeInt256.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {Errors} from "../../../global/Errors.sol";
-import {IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
-import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
-import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
+} from "../../BalancerVaultTypes.sol";
+import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {Errors} from "../../../../global/Errors.sol";
+import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
+import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
-import {StableMath} from "./StableMath.sol";
+import {StableMath} from "../math/StableMath.sol";
 
 library Boosted3TokenPoolUtils {
     using SafeInt256 for uint256;

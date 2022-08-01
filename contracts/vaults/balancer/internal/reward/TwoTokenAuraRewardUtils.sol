@@ -8,17 +8,15 @@ import {
     WeightedOracleContext,
     AuraStakingContext,
     TwoTokenPoolContext
-} from "../BalancerVaultTypes.sol";
-import {Errors} from "../../../global/Errors.sol";
-import {Events} from "../../../global/Events.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {TradeHandler} from "../../../trading/TradeHandler.sol";
-import {ITradingModule, Trade} from "../../../../interfaces/trading/ITradingModule.sol";
-import {ILiquidityGauge} from "../../../../interfaces/balancer/ILiquidityGauge.sol";
-import {nProxy} from "../../../proxy/nProxy.sol";
-import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
-import {AuraStakingUtils} from "./AuraStakingUtils.sol";
+} from "../../BalancerVaultTypes.sol";
+import {Errors} from "../../../../global/Errors.sol";
+import {Events} from "../../../../global/Events.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {TradeHandler} from "../../../../trading/TradeHandler.sol";
+import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
+import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 
 library TwoTokenAuraRewardUtils {
     using TradeHandler for Trade;

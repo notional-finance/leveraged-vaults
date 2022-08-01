@@ -6,14 +6,14 @@ import {
     ReinvestRewardParams,
     ThreeTokenPoolContext,
     AuraStakingContext
-} from "../BalancerVaultTypes.sol";
-import {Events} from "../../../global/Events.sol";
-import {Errors} from "../../../global/Errors.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {TradeHandler} from "../../../trading/TradeHandler.sol";
-import {Boosted3TokenPoolUtils} from "./Boosted3TokenPoolUtils.sol";
-import {AuraStakingUtils} from "./AuraStakingUtils.sol";
-import {ITradingModule, Trade} from "../../../../interfaces/trading/ITradingModule.sol";
+} from "../../BalancerVaultTypes.sol";
+import {Events} from "../../../../global/Events.sol";
+import {Errors} from "../../../../global/Errors.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {TradeHandler} from "../../../../trading/TradeHandler.sol";
+import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
+import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
+import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library Boosted3TokenAuraRewardUtils {
     using TradeHandler for Trade;

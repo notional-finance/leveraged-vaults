@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {AuraStakingContext, PoolContext, PoolParams} from "../BalancerVaultTypes.sol";
-import {IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {TokenUtils} from "../../../utils/TokenUtils.sol";
+import {AuraStakingContext, PoolContext, PoolParams} from "../../BalancerVaultTypes.sol";
+import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {TokenUtils} from "../../../../utils/TokenUtils.sol";
 
 library AuraStakingUtils {
     error BalancerPoolShareTooHigh(uint256 totalBPTHeld, uint256 bptThreshold);

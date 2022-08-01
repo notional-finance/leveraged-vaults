@@ -10,8 +10,8 @@ import {
     SecondaryTradeParams
 } from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
-import {TwoTokenAuraStrategyUtils} from "../internal/TwoTokenAuraStrategyUtils.sol";
-import {Stable2TokenOracleMath} from "../internal/Stable2TokenOracleMath.sol";
+import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
+import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 import {SecondaryBorrowUtils} from "../internal/SecondaryBorrowUtils.sol";
 
 library MetaStable2TokenAuraVaultHelper {

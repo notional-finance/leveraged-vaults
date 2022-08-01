@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {WeightedOracleContext, TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
-import {BalancerUtils} from "./BalancerUtils.sol";
-import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
+import {WeightedOracleContext, TwoTokenPoolContext} from "../../BalancerVaultTypes.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 
 library Weighted2TokenOracleMath {
     /// @notice Gets the current spot price with a given token index, this is used to check against

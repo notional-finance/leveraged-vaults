@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {PoolContext} from "../BalancerVaultTypes.sol";
-import {BalancerUtils} from "../internal/BalancerUtils.sol";
+import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 
 abstract contract PoolMixin {
     bytes32 internal immutable BALANCER_POOL_ID;
