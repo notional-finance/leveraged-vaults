@@ -9,6 +9,14 @@ import {TokenUtils} from "../../../utils/TokenUtils.sol";
 library AuraStakingUtils {
     error BalancerPoolShareTooHigh(uint256 totalBPTHeld, uint256 bptThreshold);
 
+    function _isValidRewardToken(AuraStakingContext memory context, address token)
+        internal pure returns (bool) {
+        for (uint256 i; i < context.rewardTokens.length; i++) {
+            if (address(context.rewardTokens[i]) == token) return true;
+        }
+        return false;
+    }
+    
     function _joinPoolAndStake(
         AuraStakingContext memory stakingContext,
         PoolContext memory poolContext,

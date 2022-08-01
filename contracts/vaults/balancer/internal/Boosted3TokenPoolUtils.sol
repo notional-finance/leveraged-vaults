@@ -191,14 +191,37 @@ library Boosted3TokenPoolUtils {
         IERC20(primaryUnderlyingAddress).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
     }
 
-    function _exitPoolExactBPTIn(ThreeTokenPoolContext memory poolContext, uint256 bptExitAmount, uint256 minPrimary)
+    function _joinPoolExactTokensIn(ThreeTokenPoolContext memory context, uint256 primaryAmount, uint256 minBPT)
+        internal returns (uint256 bptAmount) {
+        IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
+
+        // Swap underlyingToken for LinearPool BPT
+        uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
+            poolId: underlyingPool.getPoolId(),
+            tokenIn: underlyingPool.getMainToken(),
+            tokenOut: address(underlyingPool),
+            amountIn: primaryAmount,
+            limit: 0 // slippage checked on the second swap
+        });
+
+        // Swap LinearPool BPT for Boosted BPT
+        bptAmount = BalancerUtils._swapGivenIn({
+            poolId: context.basePool.basePool.poolId,
+            tokenIn: address(underlyingPool),
+            tokenOut: address(context.basePool.basePool.pool), // Boosted pool
+            amountIn: linearPoolBPT,
+            limit: minBPT
+        });        
+    }
+
+    function _exitPoolExactBPTIn(ThreeTokenPoolContext memory context, uint256 bptExitAmount, uint256 minPrimary)
         internal returns (uint256 primaryBalance) {
-        IBoostedPool underlyingPool = IBoostedPool(address(poolContext.basePool.primaryToken));
+        IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
 
         // Swap Boosted BPT for LinearPool BPT
         uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
-            poolId: poolContext.basePool.basePool.poolId,
-            tokenIn: address(poolContext.basePool.basePool.pool), // Boosted pool
+            poolId: context.basePool.basePool.poolId,
+            tokenIn: address(context.basePool.basePool.pool), // Boosted pool
             tokenOut: address(underlyingPool),
             amountIn: bptExitAmount,
             limit: 0 // slippage checked on the second swap

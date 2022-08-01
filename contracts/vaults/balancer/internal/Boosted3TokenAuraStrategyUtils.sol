@@ -37,30 +37,12 @@ library Boosted3TokenAuraStrategyUtils {
         uint256 maturity,
         uint256 minBPT
     ) internal returns (uint256 strategyTokensMinted) {
-        IBoostedPool underlyingPool = IBoostedPool(address(poolContext.basePool.primaryToken));
-
-        // Swap underlyingToken for LinearPool BPT
-        uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
-            poolId: underlyingPool.getPoolId(),
-            tokenIn: underlyingPool.getMainToken(),
-            tokenOut: address(underlyingPool),
-            amountIn: deposit,
-            limit: 0 // slippage checked on the second swap
-        });
-
-        // Swap LinearPool BPT for Boosted BPT
-        uint256 boostedBPTMinted = BalancerUtils._swapGivenIn({
-            poolId: poolContext.basePool.basePool.poolId,
-            tokenIn: address(underlyingPool),
-            tokenOut: address(poolContext.basePool.basePool.pool), // Boosted pool
-            amountIn: linearPoolBPT,
-            limit: minBPT
-        });
+        uint256 bptMinted = poolContext._joinPoolExactTokensIn(deposit, minBPT);
 
         // Transfer token to Aura protocol for boosted staking
-        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, boostedBPTMinted, true); // stake = true
+        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
 
-        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(boostedBPTMinted, maturity);
+        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted, maturity);
         require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
 
         // Update global supply count

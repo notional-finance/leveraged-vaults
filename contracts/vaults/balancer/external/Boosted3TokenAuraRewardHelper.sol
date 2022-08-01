@@ -3,28 +3,26 @@ pragma solidity 0.8.15;
 
 import {
     ReinvestRewardParams, 
-    MetaStable2TokenAuraStrategyContext,
-    StableOracleContext,
-    TwoTokenPoolContext
+    Boosted3TokenAuraStrategyContext,
+    StableOracleContext
 } from "../BalancerVaultTypes.sol";
-import {TwoTokenAuraRewardUtils} from "../internal/TwoTokenAuraRewardUtils.sol";
+import {Boosted3TokenAuraRewardUtils} from "../internal/Boosted3TokenAuraRewardUtils.sol";
 import {BalancerUtils} from "../internal/BalancerUtils.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
 import {Stable2TokenOracleMath} from "../internal/Stable2TokenOracleMath.sol";
 
-library MetaStable2TokenAuraRewardHelper {
+library Boosted3TokenAuraRewardHelper {
     using Stable2TokenOracleMath for StableOracleContext;
-    using TwoTokenAuraRewardUtils for TwoTokenPoolContext;
 
     function reinvestReward(
-        MetaStable2TokenAuraStrategyContext memory context,
+        Boosted3TokenAuraStrategyContext memory context,
         ReinvestRewardParams memory params
     ) external {
-        context.poolContext._reinvestReward({
+        Boosted3TokenAuraRewardUtils._reinvestReward({
+            poolContext: context.poolContext,
             stakingContext: context.stakingContext,
             tradingModule: context.baseStrategy.tradingModule,
-            params: params,
-            spotPrice: context.oracleContext._getSpotPrice(context.poolContext, 0)
+            params: params
         });
     }
 }

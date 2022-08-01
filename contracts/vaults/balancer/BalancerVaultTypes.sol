@@ -183,11 +183,16 @@ struct BoostedSettlementData {
     int256 underlyingCashRequiredToSettle;
 }
 
-struct RewardTokenTradeParams {
+struct Balanced2TokenRewardTradeParams {
     uint16 primaryTradeDexId;
     Trade primaryTrade;
     uint16 secondaryTradeDexId;
     Trade secondaryTrade;
+}
+
+struct SingleSidedRewardTradeParams {
+    uint16 dexId;
+    Trade trade;
 }
 
 struct ReinvestRewardParams {

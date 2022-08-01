@@ -3,7 +3,6 @@ pragma solidity 0.8.15;
 
 import {AuraStakingContext} from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
-import {RewardHelper} from "../internal/RewardHelper.sol";
 import {TokenUtils} from "../../../utils/TokenUtils.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 

@@ -15,4 +15,6 @@ library Errors {
     error InSettlementCoolDown(uint32 lastSettlementTimestamp, uint32 coolDownInMinutes);
     /// @notice settleVault called when there is no debt
     error SettlementNotRequired();
+    error InvalidRewardToken(address token);
+    error InvalidJoinAmounts(uint256 oraclePrice, uint256 maxPrimary, uint256 maxSecondary);
 }

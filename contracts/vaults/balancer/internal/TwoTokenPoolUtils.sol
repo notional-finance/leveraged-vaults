@@ -3,6 +3,8 @@ pragma solidity 0.8.15;
 
 import {TwoTokenPoolContext, OracleContext, PoolParams} from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
+import {Errors} from "../../../global/Errors.sol";
+import {SafeInt256} from "../../../global/SafeInt256.sol";
 import {IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
@@ -10,6 +12,8 @@ import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
 
 library TwoTokenPoolUtils {
+    using SafeInt256 for uint256;
+    using SafeInt256 for int256;
     using TokenUtils for IERC20;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
 
@@ -154,6 +158,39 @@ library TwoTokenPoolUtils {
         uint256 upperLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_UPPER_LIMIT) / 100;
         if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
             revert InvalidMinAmounts(pairPrice, minPrimary, minSecondary);
+        }
+    }
+
+    function _validateJoinAmounts(
+        TwoTokenPoolContext memory context,
+        uint256 spotPrice,
+        ITradingModule tradingModule,
+        uint256 primaryAmount, 
+        uint256 secondaryAmount
+    ) internal view {
+        (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
+            primaryAmount, context.primaryDecimals, secondaryAmount, context.secondaryDecimals
+        );
+        (
+            int256 answer, int256 decimals
+        ) = tradingModule.getOraclePrice(context.secondaryToken, context.primaryToken);
+
+        require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
+
+        uint256 oraclePrice = answer.toUint();
+        uint256 lowerLimit = (oraclePrice * Constants.MAX_JOIN_AMOUNTS_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePrice * Constants.MAX_JOIN_AMOUNTS_UPPER_LIMIT) / 100;
+
+        // Check spot price against oracle price to make sure it hasn't been manipulated
+        if (spotPrice < lowerLimit || upperLimit < spotPrice) {
+            revert Errors.InvalidSpotPrice(oraclePrice, spotPrice);
+        }
+
+        // Check join amounts against oracle price to minimize BPT slippage
+        uint256 calculatedPairPrice = normalizedPrimary * BalancerUtils.BALANCER_PRECISION / 
+            normalizedSecondary;
+        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
+            revert Errors.InvalidJoinAmounts(oraclePrice, primaryAmount, secondaryAmount);
         }
     }
 
