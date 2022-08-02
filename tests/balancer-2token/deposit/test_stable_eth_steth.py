@@ -4,7 +4,7 @@ from brownie import Wei
 from tests.fixtures import *
 
 def test_enter_vault_low_leverage_success(StratStableETHstETH):
-    (env, vault, mockTwoTokenAuraStrategyUtils) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     maturity = env.notional.getActiveMarkets(1)[0][1]
     env.notional.enterVault(
         env.whales["ETH"],
@@ -18,7 +18,7 @@ def test_enter_vault_low_leverage_success(StratStableETHstETH):
     )
 
 def get_deposit_params():
-    eth_abi.encode_abi(
+    return eth_abi.encode_abi(
         ['(uint256,uint256,uint32,uint32,bytes)'],
         [[
             0,

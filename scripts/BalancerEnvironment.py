@@ -5,6 +5,8 @@ from brownie import (
     Weighted2TokenAuraVault,
     MetaStable2TokenAuraVault,
     Boosted3TokenAuraVault,
+    Boosted3TokenAuraSettlementHelper,
+    Boosted3TokenAuraRewardHelper,
     AuraRewardHelperExternal,
     MetaStable2TokenAuraRewardHelper,
     MetaStable2TokenAuraVaultHelper,
@@ -31,6 +33,7 @@ StrategyConfig = {
         "Strat50ETH50USDC": {
             "vaultConfig": get_vault_config(
                 flags=set_flags(0, ENABLED=True),
+                currencyId=1,
                 minAccountBorrowSize=1,
                 maxBorrowMarketIndex=3,
                 secondaryBorrowCurrencies=[3,0] # USDC
@@ -60,6 +63,7 @@ StrategyConfig = {
         "StratStableETHstETH": {
             "vaultConfig": get_vault_config(
                 flags=set_flags(0, ENABLED=True),
+                currencyId=1,
                 minAccountBorrowSize=1,
                 maxBorrowMarketIndex=3,
                 secondaryBorrowCurrencies=[0,0]
@@ -86,6 +90,7 @@ StrategyConfig = {
         "StratBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
                 flags=set_flags(0, ENABLED=True),
+                currencyId=2,
                 minAccountBorrowSize=1,
                 maxBorrowMarketIndex=3,
                 secondaryBorrowCurrencies=[0,0]
@@ -126,6 +131,8 @@ class BalancerEnvironment(Environment):
         Weighted2TokenAuraVaultHelper.deploy({"from": self.deployer})
         TwoTokenAuraSettlementHelper.deploy({"from": self.deployer})
         Boosted3TokenAuraVaultHelper.deploy({"from": self.deployer})
+        Boosted3TokenAuraSettlementHelper.deploy({"from": self.deployer})
+        Boosted3TokenAuraRewardHelper.deploy({"from": self.deployer})
 
         secondaryCurrencyId = 0
         if stratConfig["secondaryBorrowCurrency"] != None:
