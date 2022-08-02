@@ -29,8 +29,8 @@ library Boosted3TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._validateTokensToRedeem(maturity, strategyTokensToRedeem);
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
+        SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastSettlementTimestamp,
             context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
             context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
@@ -40,8 +40,7 @@ library Boosted3TokenAuraSettlementHelper {
         context._executeNormalSettlement({
             state: state,
             maturity: maturity,
-            strategyTokensToRedeem: strategyTokensToRedeem,
-            params: params
+            strategyTokensToRedeem: strategyTokensToRedeem
         });
 
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
@@ -54,8 +53,8 @@ library Boosted3TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._validateTokensToRedeem(maturity, strategyTokensToRedeem);
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
+        SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
             context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
             context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
@@ -65,8 +64,7 @@ library Boosted3TokenAuraSettlementHelper {
         context._executeNormalSettlement({
             state: state,
             maturity: maturity,
-            strategyTokensToRedeem: strategyTokensToRedeem,
-            params: params
+            strategyTokensToRedeem: strategyTokensToRedeem
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    

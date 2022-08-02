@@ -213,11 +213,11 @@ library StableMath {
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage,
-        uint256 invariant
+        uint256 currentInvariant
     ) internal pure returns (uint256) {
         // Token out, so we round down overall.
 
-        uint256 newInvariant = mulUpFixed(divUpFixed((bptTotalSupply - bptAmountIn), bptTotalSupply), invariant);
+        uint256 newInvariant = mulUpFixed(divUpFixed((bptTotalSupply - bptAmountIn), bptTotalSupply), currentInvariant);
 
         // Calculate amount out without fee
         uint256 newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(
@@ -288,4 +288,62 @@ library StableMath {
 
         return balances[tokenIndexOut] - (finalBalanceOut) - 1;
     }
+
+    function _calcBptOutGivenExactTokensIn(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256[] memory amountsIn,
+        uint256 bptTotalSupply,
+        uint256 swapFeePercentage,
+        uint256 currentInvariant
+    ) internal pure returns (uint256) {
+        // BPT out, so we round down overall.
+
+        // First loop calculates the sum of all token balances, which will be used to calculate
+        // the current weights of each token, relative to this sum
+        uint256 sumBalances = 0;
+        for (uint256 i = 0; i < balances.length; i++) {
+            sumBalances = sumBalances + balances[i];
+        }
+
+        // Calculate the weighted balance ratio without considering fees
+        uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
+        // The weighted sum of token balance ratios with fee
+        uint256 invariantRatioWithFees = 0;
+        for (uint256 i = 0; i < balances.length; i++) {
+            uint256 currentWeight = divDownFixed(balances[i], sumBalances);
+            balanceRatiosWithFee[i] = balances[i] + divDownFixed(amountsIn[i], balances[i]);
+            invariantRatioWithFees = invariantRatioWithFees + mulDownFixed(balanceRatiosWithFee[i], currentWeight);
+        }
+
+        // Second loop calculates new amounts in, taking into account the fee on the percentage excess
+        uint256[] memory newBalances = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            uint256 amountInWithoutFee;
+
+            // Check if the balance ratio is greater than the ideal ratio to charge fees or not
+            if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
+                uint256 nonTaxableAmount = mulDownFixed(balances[i], invariantRatioWithFees - ONE);
+                uint256 taxableAmount = amountsIn[i] - nonTaxableAmount;
+                // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
+                amountInWithoutFee = nonTaxableAmount + mulDownFixed(taxableAmount, ONE - swapFeePercentage);
+            } else {
+                amountInWithoutFee = amountsIn[i];
+            }
+
+            newBalances[i] = balances[i] + amountInWithoutFee;
+        }
+
+        // Get current and new invariants, taking swap fees into account
+        uint256 newInvariant = _calculateInvariant(amp, newBalances, false);
+        uint256 invariantRatio = divDownFixed(newInvariant, currentInvariant);
+
+        // If the invariant didn't increase for any reason, we simply don't mint BPT
+        if (invariantRatio > ONE) {
+            return mulDownFixed(bptTotalSupply, invariantRatio - ONE);
+        } else {
+            return 0;
+        }
+    }
 }
+

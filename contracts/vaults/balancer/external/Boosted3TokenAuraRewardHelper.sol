@@ -4,7 +4,8 @@ pragma solidity 0.8.15;
 import {
     ReinvestRewardParams, 
     Boosted3TokenAuraStrategyContext,
-    StableOracleContext
+    StableOracleContext,
+    ThreeTokenPoolContext
 } from "../BalancerVaultTypes.sol";
 import {Boosted3TokenAuraRewardUtils} from "../internal/reward/Boosted3TokenAuraRewardUtils.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
@@ -13,13 +14,14 @@ import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.so
 
 library Boosted3TokenAuraRewardHelper {
     using Stable2TokenOracleMath for StableOracleContext;
+    using Boosted3TokenAuraRewardUtils for ThreeTokenPoolContext;
 
     function reinvestReward(
         Boosted3TokenAuraStrategyContext memory context,
         ReinvestRewardParams memory params
     ) external {
-        Boosted3TokenAuraRewardUtils._reinvestReward({
-            poolContext: context.poolContext,
+        context.poolContext._reinvestReward({
+            oracleContext: context.oracleContext,
             stakingContext: context.stakingContext,
             tradingModule: context.baseStrategy.tradingModule,
             params: params

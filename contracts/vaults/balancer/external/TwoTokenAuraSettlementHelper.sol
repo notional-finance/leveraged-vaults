@@ -29,7 +29,7 @@ library TwoTokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._validateTokensToRedeem(maturity, strategyTokensToRedeem);
+        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.strategyContext.vaultState.lastSettlementTimestamp,
             context.strategyContext.vaultSettings.settlementCoolDownInMinutes,
@@ -54,7 +54,7 @@ library TwoTokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._validateTokensToRedeem(maturity, strategyTokensToRedeem);
+        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.strategyContext.vaultState.lastPostMaturitySettlementTimestamp,
             context.strategyContext.vaultSettings.postMaturitySettlementCoolDownInMinutes,

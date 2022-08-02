@@ -5,6 +5,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 import {Constants} from "../global/Constants.sol";
 import {Errors} from "../global/Errors.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
+import {NotionalUtils} from "../utils/NotionalUtils.sol";
 import {
     AuraDeploymentParams,
     InitParams,
@@ -203,13 +204,17 @@ contract Boosted3TokenAuraVault is
     
     function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
         external view returns (uint256 strategyTokenAmount) {
-        return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(bptClaim, maturity);
+        return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(
+            bptClaim, NotionalUtils._totalSupplyInMaturity(maturity)
+        );
     }
 
    /// @notice Converts strategy tokens to BPT
     function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
         external view returns (uint256 bptClaim) {
-        return _strategyContext().baseStrategy._convertStrategyTokensToBPTClaim(strategyTokenAmount, maturity);
+        return _strategyContext().baseStrategy._convertStrategyTokensToBPTClaim(
+            strategyTokenAmount, NotionalUtils._totalSupplyInMaturity(maturity)
+        );
     }
 
     /// @dev Gets the total BPT held by the aura reward pool

@@ -57,8 +57,8 @@ library TwoTokenAuraSettlementUtils {
             minSecondary: params.minSecondary
         });
 
-        primaryBalance += data.primarySettlementBalance;
-        secondaryBalance += data.secondarySettlementBalance;
+        primaryBalance += data.state.primarySettlementBalance;
+        secondaryBalance += data.state.secondarySettlementBalance;
 
         // We can settle if we have enough to pay off either the primary side or the secondary size
         bool hasSufficientBalanceToSettle = (data.underlyingCashRequiredToSettle <= primaryBalance.toInt() ||
@@ -67,6 +67,10 @@ library TwoTokenAuraSettlementUtils {
         if (hasSufficientBalanceToSettle) {
             // Settle secondary currency first
             if (data.borrowedSecondaryfCashAmountExternal > 0) {
+                if (data.state.inSettlement) {
+                    Constants.NOTIONAL.initiateSecondaryBorrowSettlement(maturity);
+                }
+
                 // This method call will trade any primary balance into secondary to repay or it will
                 // trade any excess secondary back into the primary currency
                 primaryBalance = SecondaryBorrowUtils._repaySecondaryBorrow({
@@ -120,7 +124,7 @@ library TwoTokenAuraSettlementUtils {
         });
 
         uint256 bptToSettle = context.strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokensToRedeem, maturity
+            strategyTokensToRedeem, state.totalStrategyTokensInMaturity
         );
 
         NormalSettlementData memory data = _normalSettlementData({
@@ -154,11 +158,12 @@ library TwoTokenAuraSettlementUtils {
         require(secondaryBalance <= type(uint88).max); /// @dev secondaryBalance overflow
 
         // Update settlement balances and strategy tokens redeemed
-        SettlementState(
-            uint88(primaryBalance), 
-            uint88(secondaryBalance), 
-            state.strategyTokensRedeemed + uint80(strategyTokensToRedeem)
-        )._setSettlementState(maturity);
+        SettlementState({
+            primarySettlementBalance: uint88(primaryBalance), 
+            secondarySettlementBalance: uint88(secondaryBalance), 
+            totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity - uint80(strategyTokensToRedeem),
+            inSettlement: true
+        })._setSettlementState(maturity);
 
         emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement); 
     }
@@ -199,16 +204,14 @@ library TwoTokenAuraSettlementUtils {
             (borrowedSecondaryfCashAmount * (10**poolContext.secondaryDecimals)) /
             uint256(Constants.INTERNAL_TOKEN_PRECISION);
 
-        return
-            NormalSettlementData({
-                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
-                maxUnderlyingSurplus: strategyContext.vaultSettings.maxUnderlyingSurplus,
-                primarySettlementBalance: state.primarySettlementBalance,
-                secondarySettlementBalance: state.secondarySettlementBalance,
-                redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-                debtSharesToRepay: debtSharesToRepay,
-                underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
-                borrowedSecondaryfCashAmountExternal: borrowedSecondaryfCashAmount
-            });
+        return NormalSettlementData({
+            secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
+            maxUnderlyingSurplus: strategyContext.vaultSettings.maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            debtSharesToRepay: debtSharesToRepay,
+            underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
+            borrowedSecondaryfCashAmountExternal: borrowedSecondaryfCashAmount,
+            state: state
+        });
     }
 }

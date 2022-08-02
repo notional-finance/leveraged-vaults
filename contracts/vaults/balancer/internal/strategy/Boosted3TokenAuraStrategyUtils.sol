@@ -13,6 +13,7 @@ import {
     StrategyVaultState
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
@@ -58,7 +59,9 @@ library Boosted3TokenAuraStrategyUtils {
         uint256 maturity,
         uint256 minPrimary
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens, maturity);
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
+            strategyTokens, NotionalUtils._totalSupplyInMaturity(maturity)
+        );
 
         if (bptClaim == 0) return 0;
 
@@ -86,7 +89,7 @@ library Boosted3TokenAuraStrategyUtils {
         uint256 maturity
     ) internal view returns (int256 underlyingValue) {
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokenAmount, maturity
+            strategyTokenAmount, NotionalUtils._totalSupplyInMaturity(maturity)
         );
 
         underlyingValue = poolContext._getTimeWeightedPrimaryBalance(

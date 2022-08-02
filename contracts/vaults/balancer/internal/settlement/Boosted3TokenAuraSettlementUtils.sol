@@ -15,6 +15,7 @@ import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {SettlementUtils} from "./SettlementUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {StableMath} from "../math/StableMath.sol";
 import {VaultUtils} from "../VaultUtils.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 
@@ -35,24 +36,23 @@ library Boosted3TokenAuraSettlementUtils {
         Boosted3TokenAuraStrategyContext memory context,
         SettlementState memory state,
         uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        RedeemParams memory params
+        uint256 strategyTokensToRedeem
     ) internal returns (bool completedSettlement) {
         require(strategyTokensToRedeem <= type(uint80).max); /// @dev strategyTokensToRedeem overflow
 
-        // These min primary and min secondary amounts must be within some configured
-        // delta of the current oracle price
-        // TODO: implement minPrimary validation
-        /*context.poolContext._validateMinExitAmounts({
-            oracleContext: context.oracleContext,
-            tradingModule: context.strategyContext.tradingModule,
-            minPrimary: params.minPrimary,
-            minSecondary: params.minSecondary
-        });*/
-
         uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(
-            strategyTokensToRedeem, maturity
+            strategyTokensToRedeem, state.totalStrategyTokensInMaturity
         );
+
+        // Calculate the min expected primary amount to minimize slippage
+        uint256 minPrimary = context.poolContext._getTimeWeightedPrimaryBalance({
+            oracleContext: context.oracleContext,
+            tradingModule: context.baseStrategy.tradingModule,
+            bptAmount: bptToSettle
+        });
+
+        // TODO: make this look nicer, reduce minPrimary by 5%
+        minPrimary = minPrimary * 95 / 100;
 
         BoostedSettlementData memory data = _boostedSettlementData({
             strategyContext: context.baseStrategy,
@@ -71,7 +71,7 @@ library Boosted3TokenAuraSettlementUtils {
         (
             completedSettlement,
             primaryBalance
-        ) = _exitAndSettle(context, data, bptToSettle, maturity, params);
+        ) = _exitAndSettle(context, data, bptToSettle, maturity, minPrimary);
 
         // Mark the vault as settled
         if (maturity <= block.timestamp) {
@@ -81,11 +81,12 @@ library Boosted3TokenAuraSettlementUtils {
         require(primaryBalance <= type(uint88).max); /// @dev primaryBalance overflow
 
         // Update settlement balances and strategy tokens redeemed
-        SettlementState(
-            uint88(primaryBalance), 
-            0, 
-            state.strategyTokensRedeemed + uint80(strategyTokensToRedeem)
-        )._setSettlementState(maturity);
+        SettlementState({
+            primarySettlementBalance: uint88(primaryBalance), 
+            secondarySettlementBalance: 0, 
+            totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity - uint80(strategyTokensToRedeem),
+            inSettlement: true
+        })._setSettlementState(maturity);
 
         emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement); 
     }
@@ -97,13 +98,13 @@ library Boosted3TokenAuraSettlementUtils {
         BoostedSettlementData memory data,
         uint256 bptToSettle,
         uint256 maturity,
-        RedeemParams memory params
+        uint256 minPrimary
     ) private returns (bool completedSettlement, uint256 primaryBalance) {
         // Withdraw BPT tokens back to the vault for redemption
         context.stakingContext.auraRewardPool.withdrawAndUnwrap(bptToSettle, false); // claimRewards = false
         
         /// @notice minPrimary is validated before this function is called
-        primaryBalance = context.poolContext._exitPoolExactBPTIn(bptToSettle, params.minPrimary);
+        primaryBalance = context.poolContext._exitPoolExactBPTIn(bptToSettle, minPrimary);
         primaryBalance += data.primarySettlementBalance;
 
         // We can settle if we have enough to pay off either the primary side or the secondary size
@@ -140,12 +141,11 @@ library Boosted3TokenAuraSettlementUtils {
             revert Errors.SettlementNotRequired(); /// @dev no debt
         }
 
-        return
-            BoostedSettlementData({
-                maxUnderlyingSurplus: strategyContext.vaultSettings.maxUnderlyingSurplus,
-                primarySettlementBalance: state.primarySettlementBalance,
-                redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-                underlyingCashRequiredToSettle: underlyingCashRequiredToSettle
-            });
+        return BoostedSettlementData({
+            maxUnderlyingSurplus: strategyContext.vaultSettings.maxUnderlyingSurplus,
+            primarySettlementBalance: state.primarySettlementBalance,
+            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            underlyingCashRequiredToSettle: underlyingCashRequiredToSettle
+        });
     }
 }

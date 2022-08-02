@@ -117,6 +117,30 @@ library Boosted3TokenPoolUtils {
         spotPrice = amountOut;
     }
 
+    function _getValidatedPoolData(
+        ThreeTokenPoolContext memory poolContext,
+        BoostedOracleContext memory oracleContext,
+        ITradingModule tradingModule
+    ) internal view returns (uint256 virtualSupply, uint256[] memory balances, uint256 invariant) {
+
+        (virtualSupply, balances) = 
+            _getVirtualSupplyAndBalances(poolContext, oracleContext);
+
+        // Get the current and new invariants. Since we need a bigger new invariant, we round the current one up.
+        invariant = StableMath._calculateInvariant(
+            oracleContext.ampParam, balances, true // roundUp = true
+        );
+
+        // validate spot prices against oracle prices
+        _validateTokenPrices({
+            poolContext: poolContext,
+            tradingModule: tradingModule,
+            balances: balances,
+            ampParam: oracleContext.ampParam,
+            invariant: invariant
+        });
+    }
+
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
     /// @dev Boosted pool can't use the Balancer oracle, using Chainlink instead
     /// @param poolContext pool context variables
@@ -129,22 +153,11 @@ library Boosted3TokenPoolUtils {
         ITradingModule tradingModule,
         uint256 bptAmount
     ) internal view returns (uint256 primaryAmount) {
-        (uint256 virtualSupply, uint256[] memory balances) = 
-            _getVirtualSupplyAndBalances(poolContext, oracleContext);
-
-        // Get the current and new invariants. Since we need a bigger new invariant, we round the current one up.
-        uint256 invariant = StableMath._calculateInvariant(
-            oracleContext.ampParam, balances, true // roundUp = true
-        );
-
-        // validate spot prices against oracle prices
-        _validateTokenPrices({
-            poolContext: poolContext,
-            tradingModule: tradingModule,
-            balances: balances,
-            ampParam: oracleContext.ampParam,
-            invariant: invariant
-        });
+        (
+           uint256 virtualSupply, 
+           uint256[] memory balances, 
+           uint256 invariant
+        ) = _getValidatedPoolData(poolContext, oracleContext, tradingModule);
 
         // NOTE: For Boosted 3 token pools, the LP token (BPT) is just another
         // token in the pool. So, we use _calcTokenOutGivenExactBptIn
@@ -157,14 +170,14 @@ library Boosted3TokenPoolUtils {
             bptAmountIn: bptAmount, 
             bptTotalSupply: virtualSupply, 
             swapFeePercentage: 0, 
-            invariant: invariant
+            currentInvariant: invariant
         });
     }
 
     function _getVirtualSupplyAndBalances(
         ThreeTokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext
-    ) internal view returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
+    ) internal pure returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
         // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
         // vault. So the virtualSupply (the actual supply in circulation) is defined as:
         // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)

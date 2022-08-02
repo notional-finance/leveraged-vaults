@@ -39,11 +39,18 @@ library SettlementUtils {
     /// @notice Validates the number of strategy tokens to redeem against
     /// the total strategy tokens already redeemed for the current maturity
     /// to ensure that we don't redeem tokens from other maturities
-    function _validateTokensToRedeem(uint256 maturity, uint256 strategyTokensToRedeem) 
+    function _getSettlementState(uint256 maturity, uint256 strategyTokensToRedeem) 
         internal view returns (SettlementState memory) {
         SettlementState memory state = VaultUtils._getSettlementState(maturity);
-        uint256 totalInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
-        require(state.strategyTokensRedeemed + strategyTokensToRedeem <= totalInMaturity);
+        if (!state.inSettlement) {
+            uint256 totalInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
+            require(totalInMaturity <= type(uint80).max);
+            state.totalStrategyTokensInMaturity = uint80(totalInMaturity);
+        } else {
+            // Make sure we have enough tokens in the current maturity to satisfy the
+            // redemption request
+            require(strategyTokensToRedeem <= state.totalStrategyTokensInMaturity);
+        }
         return state;
     }
 

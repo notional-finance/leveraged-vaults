@@ -14,8 +14,8 @@ library StrategyUtils {
     function _convertStrategyTokensToBPTClaim(
         StrategyContext memory context,
         uint256 strategyTokenAmount, 
-        uint256 maturity
-    ) internal view returns (uint256 bptClaim) {
+        uint256 totalSupplyInMaturity
+    ) internal pure returns (uint256 bptClaim) {
         StrategyVaultState memory state = context.vaultState;
         if (state.totalStrategyTokenGlobal == 0) {
             // Strategy tokens are in 8 decimal precision, BPT is in 18
@@ -23,7 +23,6 @@ library StrategyUtils {
                 uint256(Constants.INTERNAL_TOKEN_PRECISION);
         }
 
-        uint256 totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
         uint256 bptHeldInMaturity = state._getBPTHeldInMaturity(totalSupplyInMaturity, context.totalBPTHeld);
 
         if (totalSupplyInMaturity == 0) {
@@ -39,8 +38,8 @@ library StrategyUtils {
     function _convertBPTClaimToStrategyTokens(
         StrategyContext memory context,
         uint256 bptClaim, 
-        uint256 maturity
-    ) internal view returns (uint256 strategyTokenAmount) {
+        uint256 totalSupplyInMaturity
+    ) internal pure returns (uint256 strategyTokenAmount) {
         StrategyVaultState memory state = context.vaultState;
         if (state.totalStrategyTokenGlobal == 0) {
             // Strategy tokens are in 8 decimal precision, BPT is in 18. Scale the minted amount down.
@@ -48,7 +47,6 @@ library StrategyUtils {
                 BalancerUtils.BALANCER_PRECISION;
         }
 
-        uint256 totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
         uint256 bptHeldInMaturity = state._getBPTHeldInMaturity(totalSupplyInMaturity, context.totalBPTHeld);
 
         if (bptHeldInMaturity == 0) {

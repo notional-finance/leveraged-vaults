@@ -16,6 +16,7 @@ import {
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {Constants} from "../../../../global/Constants.sol";
+import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {VaultUtils} from "../VaultUtils.sol";
@@ -92,7 +93,9 @@ library TwoTokenAuraStrategyUtils {
             });
         }
 
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens, maturity);
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
+            strategyTokens, NotionalUtils._totalSupplyInMaturity(maturity)
+        );
 
         if (bptClaim == 0) return 0;
 
@@ -197,7 +200,7 @@ library TwoTokenAuraStrategyUtils {
         uint256 maturity
     ) internal view returns (int256 underlyingValue) {
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokenAmount, maturity
+            strategyTokenAmount, NotionalUtils._totalSupplyInMaturity(maturity)
         );
 
         uint256 primaryBalance = poolContext._getTimeWeightedPrimaryBalance(

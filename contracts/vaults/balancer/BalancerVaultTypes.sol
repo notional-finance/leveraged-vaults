@@ -167,13 +167,12 @@ struct TwoTokenAuraSettlementContext {
 struct NormalSettlementData {
     uint16 secondaryBorrowCurrencyId;
     uint256 maxUnderlyingSurplus;
-    uint256 primarySettlementBalance;
-    uint256 secondarySettlementBalance;
     uint256 redeemStrategyTokenAmount;
     int256 underlyingCashRequiredToSettle;
     uint256 debtSharesToRepay;
     /// @notice Amount of secondary fCash borrowed in external precision
     uint256 borrowedSecondaryfCashAmountExternal;
+    SettlementState state;
 }
 
 struct BoostedSettlementData {
@@ -228,5 +227,6 @@ struct StrategyVaultState {
 struct SettlementState {
     uint88 primarySettlementBalance;
     uint88 secondarySettlementBalance;
-    uint80 strategyTokensRedeemed;
+    uint80 totalStrategyTokensInMaturity;
+    bool inSettlement;
 }

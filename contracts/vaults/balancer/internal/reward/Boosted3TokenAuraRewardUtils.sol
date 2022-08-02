@@ -5,7 +5,8 @@ import {
     SingleSidedRewardTradeParams,
     ReinvestRewardParams,
     ThreeTokenPoolContext,
-    AuraStakingContext
+    AuraStakingContext,
+    BoostedOracleContext
 } from "../../BalancerVaultTypes.sol";
 import {Events} from "../../../../global/Events.sol";
 import {Errors} from "../../../../global/Errors.sol";
@@ -13,6 +14,7 @@ import {Constants} from "../../../../global/Constants.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
+import {StableMath} from "../math/StableMath.sol";
 import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library Boosted3TokenAuraRewardUtils {
@@ -60,6 +62,7 @@ library Boosted3TokenAuraRewardUtils {
 
     function _reinvestReward(
         ThreeTokenPoolContext memory poolContext,
+        BoostedOracleContext memory oracleContext,
         AuraStakingContext memory stakingContext,
         ITradingModule tradingModule,
         ReinvestRewardParams memory params
@@ -71,9 +74,31 @@ library Boosted3TokenAuraRewardUtils {
             params.tradeData
         );
 
-        // TODO: validate minBPT, maybe use StableMath.calcBptOutGivenTokenIn?
-        
-        uint256 bptAmount = poolContext._joinPoolExactTokensIn(primaryAmount, params.minBPT);
+        // Calculate minBPT to minimize slippage
+        (
+           uint256 virtualSupply, 
+           uint256[] memory balances, 
+           uint256 invariant
+        ) = poolContext._getValidatedPoolData(
+            oracleContext, tradingModule
+        );
+
+        uint256[] memory amountsIn = new uint256[](3);
+        amountsIn[0] = primaryAmount;
+
+        uint256 minBPT = StableMath._calcBptOutGivenExactTokensIn({
+            amp: oracleContext.ampParam,
+            balances: balances,
+            amountsIn: amountsIn,
+            bptTotalSupply: virtualSupply,
+            swapFeePercentage: 0,
+            currentInvariant: invariant
+        });
+
+        // TODO: make this nicer, reduce minBPT by 5%
+        minBPT = minBPT * 95 / 100;
+
+        uint256 bptAmount = poolContext._joinPoolExactTokensIn(primaryAmount, minBPT);
 
         stakingContext.auraBooster.deposit(
             stakingContext.auraPoolId, bptAmount, true // stake = true
