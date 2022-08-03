@@ -67,8 +67,7 @@ contract MockBoosted3TokenAuraVault {
         address account, 
         uint256 strategyTokenAmount, 
         uint256 maturity
-    ) 
-        external view returns (int256 underlyingValue) {
+    ) public view returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = getStrategyContext();
         return context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,

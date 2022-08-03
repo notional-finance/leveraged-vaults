@@ -64,6 +64,11 @@ library TwoTokenAuraSettlementUtils {
         bool hasSufficientBalanceToSettle = (data.underlyingCashRequiredToSettle <= primaryBalance.toInt() ||
             data.borrowedSecondaryfCashAmountExternal <= secondaryBalance);
 
+        // data.state.inSettlement is false if this is called for the first time
+        if (!data.state.inSettlement && data.borrowedSecondaryfCashAmountExternal > 0) {
+            Constants.NOTIONAL.initiateSecondaryBorrowSettlement(maturity);
+        }
+
         if (hasSufficientBalanceToSettle) {
             // Settle secondary currency first
             if (data.borrowedSecondaryfCashAmountExternal > 0) {
@@ -76,9 +81,7 @@ library TwoTokenAuraSettlementUtils {
                     debtSharesToRepay: data.debtSharesToRepay,
                     params: params,
                     secondaryBalance: secondaryBalance,
-                    primaryBalance: primaryBalance,
-                    // data.state.inSettlement is false if this is called for the first time
-                    snapshot: !data.state.inSettlement
+                    primaryBalance: primaryBalance
                 });
 
                 // Secondary balance should be 0 after repayment

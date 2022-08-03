@@ -125,8 +125,7 @@ library TwoTokenAuraStrategyUtils {
                 debtSharesToRepay: debtSharesToRepay,
                 params: params,
                 secondaryBalance: secondaryBalance,
-                primaryBalance: primaryBalance,
-                snapshot: true
+                primaryBalance: primaryBalance
             });
         } else if (secondaryBalance > 0) {
             // If there is no secondary debt, we still need to sell the secondary balance
@@ -225,6 +224,7 @@ library TwoTokenAuraStrategyUtils {
                 totalStrategyTokensInMaturity: totalSupplyInMaturity
             });
         } else {
+            // TODO: make sure we're not in settlement
             totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
             // prettier-ignore
             (

@@ -159,7 +159,7 @@ contract Boosted3TokenAuraVault is
         address account,
         uint256 strategyTokenAmount,
         uint256 maturity
-    ) public view override returns (int256 underlyingValue) {
+    ) external view override returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,

@@ -132,14 +132,9 @@ library SecondaryBorrowUtils {
         uint256 debtSharesToRepay,
         RedeemParams memory params,
         uint256 secondaryBalance,
-        uint256 primaryBalance,
-        bool snapshot
+        uint256 primaryBalance
     ) internal returns (uint256 finalPrimaryBalance) {
         if (debtSharesToRepay == 0) return primaryBalance;
-
-        if (snapshot) {
-            Constants.NOTIONAL.initiateSecondaryBorrowSettlement(maturity);
-        }
 
         bytes memory returnData = Constants.NOTIONAL.repaySecondaryCurrencyFromVault(
             account,
