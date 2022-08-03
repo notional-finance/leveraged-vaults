@@ -42,7 +42,7 @@ library SettlementUtils {
     function _getSettlementState(uint256 maturity, uint256 strategyTokensToRedeem) 
         internal view returns (SettlementState memory) {
         SettlementState memory state = VaultUtils._getSettlementState(maturity);
-        if (!state.inSettlement) {
+        if (!state.isInitialized) {
             uint256 totalInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
             require(totalInMaturity <= type(uint80).max);
             state.totalStrategyTokensInMaturity = uint80(totalInMaturity);

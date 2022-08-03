@@ -89,12 +89,19 @@ library TwoTokenAuraSettlementHelper {
             bptToSettle, NotionalUtils._totalSupplyInMaturity(maturity)
         );
 
+        (
+            uint256 totalSupplyInMaturity, 
+            uint256 borrowedSecondaryfCashAmount
+        ) = context.strategyContext._getTotalSupplyInMaturityAndSecondaryBorrowAmount(
+            address(this), maturity, redeemStrategyTokenAmount
+        );
+
         int256 expectedUnderlyingRedeemed = context.strategyContext._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
-            account: address(this),
-            maturity: maturity,
-            strategyTokenAmount: redeemStrategyTokenAmount
+            strategyTokenAmount: redeemStrategyTokenAmount,
+            totalSupplyInMaturity: totalSupplyInMaturity,
+            borrowedSecondaryfCashAmount: borrowedSecondaryfCashAmount
         });
 
         SettlementUtils._executeEmergencySettlement({

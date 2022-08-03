@@ -133,12 +133,19 @@ contract MetaStable2TokenAuraVault is
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        (
+            uint256 totalSupplyInMaturity, 
+            uint256 borrowedSecondaryfCashAmount
+        ) = context.baseStrategy._getTotalSupplyInMaturityAndSecondaryBorrowAmount(
+            account, maturity, strategyTokenAmount
+        );
+
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
-            account: account,
-            maturity: maturity,
-            strategyTokenAmount: strategyTokenAmount
+            strategyTokenAmount: strategyTokenAmount,
+            totalSupplyInMaturity: totalSupplyInMaturity,
+            borrowedSecondaryfCashAmount: borrowedSecondaryfCashAmount
         });
     }
 
@@ -219,6 +226,7 @@ contract MetaStable2TokenAuraVault is
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
                 secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
+                settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
                 tradingModule: TRADING_MODULE,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
                 vaultState: VaultUtils._getStrategyVaultState()

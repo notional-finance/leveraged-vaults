@@ -202,42 +202,10 @@ library TwoTokenAuraStrategyUtils {
         StrategyContext memory strategyContext,
         OracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
-        address account,
-        uint256 maturity,
-        uint256 strategyTokenAmount
+        uint256 strategyTokenAmount,
+        uint256 totalSupplyInMaturity,
+        uint256 borrowedSecondaryfCashAmount
     ) internal view returns (int256 underlyingValue) {
-        uint256 totalSupplyInMaturity;
-        uint256 borrowedSecondaryfCashAmount;
-        if (account == address(this)) {
-            // In settlement
-            SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokenAmount);
-            totalSupplyInMaturity = state.totalStrategyTokensInMaturity;
-            
-            // prettier-ignore
-            (
-                /* uint256 debtShares */,
-                borrowedSecondaryfCashAmount
-            ) = SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
-                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
-                strategyTokenAmount: strategyTokenAmount,
-                maturity: maturity, 
-                totalStrategyTokensInMaturity: totalSupplyInMaturity
-            });
-        } else {
-            // TODO: make sure we're not in settlement
-            totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
-            // prettier-ignore
-            (
-                /* uint256 debtShares */,
-                borrowedSecondaryfCashAmount
-            ) = SecondaryBorrowUtils._getAccountDebtSharesToRepay({
-                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId, 
-                account: account,
-                maturity: maturity, 
-                strategyTokenAmount: strategyTokenAmount
-            });
-        }
-
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
             strategyTokenAmount, totalSupplyInMaturity
         );

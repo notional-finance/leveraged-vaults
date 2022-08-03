@@ -64,8 +64,8 @@ library TwoTokenAuraSettlementUtils {
         bool hasSufficientBalanceToSettle = (data.underlyingCashRequiredToSettle <= primaryBalance.toInt() ||
             data.borrowedSecondaryfCashAmountExternal <= secondaryBalance);
 
-        // data.state.inSettlement is false if this is called for the first time
-        if (!data.state.inSettlement && data.borrowedSecondaryfCashAmountExternal > 0) {
+        // data.state.isInitialized is false if this is called for the first time
+        if (!data.state.isInitialized && data.borrowedSecondaryfCashAmountExternal > 0) {
             Constants.NOTIONAL.initiateSecondaryBorrowSettlement(maturity);
         }
 
@@ -163,7 +163,7 @@ library TwoTokenAuraSettlementUtils {
             primarySettlementBalance: uint88(primaryBalance), 
             secondarySettlementBalance: uint88(secondaryBalance), 
             totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity - uint80(strategyTokensToRedeem),
-            inSettlement: true
+            isInitialized: true
         })._setSettlementState(maturity);
 
         emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement); 

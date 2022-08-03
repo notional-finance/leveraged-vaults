@@ -159,14 +159,20 @@ contract Boosted3TokenAuraVault is
         address account,
         uint256 strategyTokenAmount,
         uint256 maturity
-    ) external view override returns (int256 underlyingValue) {
+    ) public view override returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        (
+            uint256 totalSupplyInMaturity, 
+            /* uint256 borrowedSecondaryfCashAmount */
+        ) = context.baseStrategy._getTotalSupplyInMaturityAndSecondaryBorrowAmount(
+            account, maturity, strategyTokenAmount
+        );
+
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
-            account: account,
-            maturity: maturity,
-            strategyTokenAmount: strategyTokenAmount
+            strategyTokenAmount: strategyTokenAmount,
+            totalSupplyInMaturity: totalSupplyInMaturity
         });
     }
 
@@ -192,6 +198,7 @@ contract Boosted3TokenAuraVault is
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
                 secondaryBorrowCurrencyId: 0, // This strategy does not support secondary borrow
+                settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
                 tradingModule: TRADING_MODULE,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
                 vaultState: VaultUtils._getStrategyVaultState()

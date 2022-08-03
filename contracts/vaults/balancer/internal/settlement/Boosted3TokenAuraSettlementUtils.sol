@@ -85,7 +85,7 @@ library Boosted3TokenAuraSettlementUtils {
             primarySettlementBalance: uint88(primaryBalance), 
             secondarySettlementBalance: 0, 
             totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity - uint80(strategyTokensToRedeem),
-            inSettlement: true
+            isInitialized: true
         })._setSettlementState(maturity);
 
         emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem, completedSettlement); 

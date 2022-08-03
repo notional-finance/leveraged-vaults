@@ -1,14 +1,57 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {StrategyContext, StrategyVaultState} from "../../BalancerVaultTypes.sol";
+import {StrategyContext, StrategyVaultState, SettlementState} from "../../BalancerVaultTypes.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {SettlementUtils} from "../settlement/SettlementUtils.sol";
+import {SecondaryBorrowUtils} from "../SecondaryBorrowUtils.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {VaultUtils} from "../VaultUtils.sol";
 
 library StrategyUtils {
     using VaultUtils for StrategyVaultState;
+
+    function _getTotalSupplyInMaturityAndSecondaryBorrowAmount(
+        StrategyContext memory context,
+        address account,
+        uint256 maturity,
+        uint256 strategyTokenAmount
+    ) internal view returns (uint256 totalSupplyInMaturity, uint256 borrowedSecondaryfCashAmount) {
+        if (account == address(this) || maturity - context.settlementPeriodInSeconds <= block.timestamp) {
+            // In settlement
+            SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokenAmount);
+            totalSupplyInMaturity = state.totalStrategyTokensInMaturity;
+        } else {
+            totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
+        }
+
+        if (context.secondaryBorrowCurrencyId > 0) {
+            if (account == address(this)) {
+                // prettier-ignore
+                (
+                    /* uint256 debtShares */,
+                    borrowedSecondaryfCashAmount
+                ) = SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
+                    secondaryBorrowCurrencyId: context.secondaryBorrowCurrencyId,
+                    strategyTokenAmount: strategyTokenAmount,
+                    maturity: maturity, 
+                    totalStrategyTokensInMaturity: totalSupplyInMaturity
+                });
+            } else {
+                // prettier-ignore
+                (
+                    /* uint256 debtShares */,
+                    borrowedSecondaryfCashAmount
+                ) = SecondaryBorrowUtils._getAccountDebtSharesToRepay({
+                    secondaryBorrowCurrencyId: context.secondaryBorrowCurrencyId, 
+                    account: account,
+                    maturity: maturity, 
+                    strategyTokenAmount: strategyTokenAmount
+                });
+            }
+        }
+    }
 
     /// @notice Converts strategy tokens to BPT
     function _convertStrategyTokensToBPTClaim(

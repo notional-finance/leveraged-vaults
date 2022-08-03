@@ -131,6 +131,7 @@ struct ThreeTokenPoolContext {
 struct StrategyContext {
     uint256 totalBPTHeld;
     uint16 secondaryBorrowCurrencyId;
+    uint32 settlementPeriodInSeconds;
     ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
@@ -228,5 +229,5 @@ struct SettlementState {
     uint88 primarySettlementBalance;
     uint88 secondarySettlementBalance;
     uint80 totalStrategyTokensInMaturity;
-    bool inSettlement;
+    bool isInitialized;
 }

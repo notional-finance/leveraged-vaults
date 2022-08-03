@@ -27,12 +27,14 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
     AuraStakingContext private stakingContext;
     ITradingModule private tradingModule;
     uint16 private secondaryBorrowCurrencyId;
+    uint32 private settlementPeriodInSeconds;
 
     constructor(MetaStable2TokenAuraStrategyContext memory context) 
         MockTwoTokenVaultBase(context.poolContext, context.oracleContext.baseOracle) {
         oracleContext = context.oracleContext;
         stakingContext = context.stakingContext;
         secondaryBorrowCurrencyId = context.baseStrategy.secondaryBorrowCurrencyId;
+        settlementPeriodInSeconds = context.baseStrategy.settlementPeriodInSeconds;
         tradingModule = context.baseStrategy.tradingModule;
         context.baseStrategy.vaultSettings._setStrategyVaultSettings(
             context.baseStrategy.vaultSettings.oracleWindowInSeconds,
@@ -56,6 +58,7 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
                 secondaryBorrowCurrencyId: secondaryBorrowCurrencyId,
+                settlementPeriodInSeconds: settlementPeriodInSeconds,
                 tradingModule: tradingModule,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
                 vaultState: VaultUtils._getStrategyVaultState()

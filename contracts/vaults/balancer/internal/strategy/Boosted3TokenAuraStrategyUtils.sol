@@ -89,19 +89,9 @@ library Boosted3TokenAuraStrategyUtils {
         StrategyContext memory strategyContext,
         BoostedOracleContext memory oracleContext,
         ThreeTokenPoolContext memory poolContext,
-        address account,
-        uint256 maturity,
-        uint256 strategyTokenAmount
+        uint256 strategyTokenAmount,
+        uint256 totalSupplyInMaturity
     ) internal view returns (int256 underlyingValue) {
-        uint256 totalSupplyInMaturity;
-        if (account == address(this)) {
-            // In settlement
-            SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokenAmount);
-            totalSupplyInMaturity = state.totalStrategyTokensInMaturity;
-        } else {
-            totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
-        }
-
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
             strategyTokenAmount, totalSupplyInMaturity
         );
