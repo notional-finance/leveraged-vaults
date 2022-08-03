@@ -9,6 +9,7 @@ import {
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
+import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {Boosted3TokenAuraSettlementUtils} from "../internal/settlement/Boosted3TokenAuraSettlementUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
@@ -82,7 +83,7 @@ library Boosted3TokenAuraSettlementHelper {
             );
 
         uint256 redeemStrategyTokenAmount = context.baseStrategy._convertBPTClaimToStrategyTokens(
-            bptToSettle, maturity
+            bptToSettle, NotionalUtils._totalSupplyInMaturity(maturity)
         );
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({

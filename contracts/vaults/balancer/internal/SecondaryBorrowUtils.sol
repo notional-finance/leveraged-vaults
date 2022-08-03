@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {DepositParams, RedeemParams, SecondaryTradeParams} from "../BalancerVaultTypes.sol";
+import {
+    DepositParams, 
+    RedeemParams, 
+    SecondaryTradeParams, 
+    SettlementState
+} from "../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../global/SafeInt256.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {TradeHandler} from "../../../trading/TradeHandler.sol";
+import {VaultUtils} from "./VaultUtils.sol";
 import {ITradingModule, Trade, TradeType} from "../../../../interfaces/trading/ITradingModule.sol";
 
 library SecondaryBorrowUtils {
@@ -82,16 +88,20 @@ library SecondaryBorrowUtils {
         );
 
         if (account == address(this)) {
-            uint256 _totalSupply = NotionalUtils._totalSupplyInMaturity(maturity);
+            // In settlement
+            SettlementState memory state = VaultUtils._getSettlementState(maturity);
 
-            if (_totalSupply == 0) return (0, 0);
+            uint256 totalSupplyInMaturity = state.inSettlement ? state.totalStrategyTokensInMaturity :
+                NotionalUtils._totalSupplyInMaturity(maturity);
+
+            if (totalSupplyInMaturity == 0) return (0, 0);
 
             // If the vault is repaying the debt, then look across the total secondary
             // fCash borrowed
             debtSharesToRepay =
-                (totalAccountDebtShares * strategyTokenAmount) / _totalSupply;
+                (totalAccountDebtShares * strategyTokenAmount) / totalSupplyInMaturity;
             borrowedSecondaryfCashAmount =
-                (totalfCashBorrowed * strategyTokenAmount) / _totalSupply;
+                (totalfCashBorrowed * strategyTokenAmount) / totalSupplyInMaturity;
         } else {
             // prettier-ignore
             (

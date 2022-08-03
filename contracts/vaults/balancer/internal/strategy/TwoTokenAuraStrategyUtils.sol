@@ -63,7 +63,9 @@ library TwoTokenAuraStrategyUtils {
             minBPT: params.minBPT
         });
 
-        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted, maturity);
+        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(
+            bptMinted, NotionalUtils._totalSupplyInMaturity(maturity)
+        );
         require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
 
         // Update global supply count

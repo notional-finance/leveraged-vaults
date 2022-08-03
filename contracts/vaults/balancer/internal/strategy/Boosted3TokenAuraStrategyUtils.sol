@@ -43,7 +43,9 @@ library Boosted3TokenAuraStrategyUtils {
         // Transfer token to Aura protocol for boosted staking
         stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
 
-        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted, maturity);
+        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(
+            bptMinted, NotionalUtils._totalSupplyInMaturity(maturity)
+        );
         require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
 
         // Update global supply count

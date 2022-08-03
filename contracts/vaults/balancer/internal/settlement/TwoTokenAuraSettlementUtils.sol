@@ -67,7 +67,7 @@ library TwoTokenAuraSettlementUtils {
         if (hasSufficientBalanceToSettle) {
             // Settle secondary currency first
             if (data.borrowedSecondaryfCashAmountExternal > 0) {
-                if (data.state.inSettlement) {
+                if (!data.state.inSettlement) {
                     Constants.NOTIONAL.initiateSecondaryBorrowSettlement(maturity);
                 }
 

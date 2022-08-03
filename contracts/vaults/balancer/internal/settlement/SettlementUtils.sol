@@ -46,11 +46,10 @@ library SettlementUtils {
             uint256 totalInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
             require(totalInMaturity <= type(uint80).max);
             state.totalStrategyTokensInMaturity = uint80(totalInMaturity);
-        } else {
-            // Make sure we have enough tokens in the current maturity to satisfy the
-            // redemption request
-            require(strategyTokensToRedeem <= state.totalStrategyTokensInMaturity);
         }
+        // Make sure we have enough tokens in the current maturity to satisfy the
+        // redemption request
+        require(strategyTokensToRedeem <= state.totalStrategyTokensInMaturity);
         return state;
     }
 
