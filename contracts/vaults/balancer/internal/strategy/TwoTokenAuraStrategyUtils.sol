@@ -12,7 +12,8 @@ import {
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState,
-    OracleContext
+    OracleContext,
+    SettlementState
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {Constants} from "../../../../global/Constants.sol";
@@ -20,6 +21,7 @@ import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {VaultUtils} from "../VaultUtils.sol";
+import {SettlementUtils} from "../settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
@@ -109,9 +111,12 @@ library TwoTokenAuraStrategyUtils {
 
         if (strategyContext.secondaryBorrowCurrencyId != 0) {
             // Returns the amount of secondary debt shares that need to be repaid
-            (uint256 debtSharesToRepay, /*  */) = SecondaryBorrowUtils._getDebtSharesToRepay(
-                strategyContext.secondaryBorrowCurrencyId, account, maturity, strategyTokens
-            );
+            (uint256 debtSharesToRepay, /*  */) = SecondaryBorrowUtils._getAccountDebtSharesToRepay({
+                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId, 
+                account: account, 
+                maturity: maturity, 
+                strategyTokenAmount: strategyTokens
+            });
 
             finalPrimaryBalance = SecondaryBorrowUtils._repaySecondaryBorrow({
                 secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
@@ -120,7 +125,8 @@ library TwoTokenAuraStrategyUtils {
                 debtSharesToRepay: debtSharesToRepay,
                 params: params,
                 secondaryBalance: secondaryBalance,
-                primaryBalance: primaryBalance
+                primaryBalance: primaryBalance,
+                snapshot: true
             });
         } else if (secondaryBalance > 0) {
             // If there is no secondary debt, we still need to sell the secondary balance
@@ -198,11 +204,42 @@ library TwoTokenAuraStrategyUtils {
         OracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         address account,
-        uint256 strategyTokenAmount,
-        uint256 maturity
+        uint256 maturity,
+        uint256 strategyTokenAmount
     ) internal view returns (int256 underlyingValue) {
+        uint256 totalSupplyInMaturity;
+        uint256 borrowedSecondaryfCashAmount;
+        if (account == address(this)) {
+            // In settlement
+            SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokenAmount);
+            totalSupplyInMaturity = state.totalStrategyTokensInMaturity;
+            
+            // prettier-ignore
+            (
+                /* uint256 debtShares */,
+                borrowedSecondaryfCashAmount
+            ) = SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
+                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
+                strategyTokenAmount: strategyTokenAmount,
+                maturity: maturity, 
+                totalStrategyTokensInMaturity: totalSupplyInMaturity
+            });
+        } else {
+            totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
+            // prettier-ignore
+            (
+                /* uint256 debtShares */,
+                borrowedSecondaryfCashAmount
+            ) = SecondaryBorrowUtils._getAccountDebtSharesToRepay({
+                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId, 
+                account: account,
+                maturity: maturity, 
+                strategyTokenAmount: strategyTokenAmount
+            });
+        }
+
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokenAmount, NotionalUtils._totalSupplyInMaturity(maturity)
+            strategyTokenAmount, totalSupplyInMaturity
         );
 
         uint256 primaryBalance = poolContext._getTimeWeightedPrimaryBalance(
@@ -214,14 +251,6 @@ library TwoTokenAuraStrategyUtils {
         // Oracle price for the pair in 18 decimals
         uint256 oraclePairPrice = poolContext._getOraclePairPrice(
             oracleContext, strategyContext.tradingModule
-        );
-
-        // prettier-ignore
-        (
-            /* uint256 debtShares */,
-            uint256 borrowedSecondaryfCashAmount
-        ) = SecondaryBorrowUtils._getDebtSharesToRepay(
-            strategyContext.secondaryBorrowCurrencyId, account, maturity, strategyTokenAmount
         );
 
         // Do not discount secondary fCash amount to present value so that we do not introduce

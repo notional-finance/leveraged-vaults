@@ -65,6 +65,31 @@ library SecondaryBorrowUtils {
         }
     }
 
+    function _getSettlementDebtSharesToRepay(
+        uint16 secondaryBorrowCurrencyId, 
+        uint256 strategyTokenAmount,
+        uint256 maturity,
+        uint256 totalStrategyTokensInMaturity
+    ) internal view returns (uint256 debtSharesToRepay, uint256 borrowedSecondaryfCashAmount) {
+        // prettier-ignore
+        (
+            uint256 totalfCashBorrowed, 
+            uint256 totalAccountDebtShares,
+            /* uint256 totalfCashBorrowedInPrimarySnapshot */
+        ) = Constants.NOTIONAL.getSecondaryBorrow(
+            address(this), secondaryBorrowCurrencyId, maturity
+        );
+
+        if (totalStrategyTokensInMaturity == 0) return (0, 0);
+
+        // If the vault is repaying the debt, then look across the total secondary
+        // fCash borrowed
+        debtSharesToRepay =
+            (totalAccountDebtShares * strategyTokenAmount) / totalStrategyTokensInMaturity;
+        borrowedSecondaryfCashAmount =
+            (totalfCashBorrowed * strategyTokenAmount) / totalStrategyTokensInMaturity;    
+    }
+
     /// @notice Gets the amount of debt shares needed to pay off the secondary debt
     /// @param secondaryBorrowCurrencyId secondary borrow currency ID
     /// @param account account address
@@ -72,7 +97,7 @@ library SecondaryBorrowUtils {
     /// @param strategyTokenAmount amount of strategy tokens
     /// @return debtSharesToRepay amount of secondary debt shares
     /// @return borrowedSecondaryfCashAmount amount of secondary fCash borrowed
-    function _getDebtSharesToRepay(
+    function _getAccountDebtSharesToRepay(
         uint16 secondaryBorrowCurrencyId, 
         address account, 
         uint256 maturity, 
@@ -87,34 +112,17 @@ library SecondaryBorrowUtils {
             address(this), secondaryBorrowCurrencyId, maturity
         );
 
-        if (account == address(this)) {
-            // In settlement
-            SettlementState memory state = VaultUtils._getSettlementState(maturity);
+        // prettier-ignore
+        (
+            /* uint256 debtSharesMaturity */,
+            uint256[2] memory accountDebtShares,
+            uint256 accountStrategyTokens
+        ) = Constants.NOTIONAL.getVaultAccountDebtShares(account, address(this));
 
-            uint256 totalSupplyInMaturity = state.inSettlement ? state.totalStrategyTokensInMaturity :
-                NotionalUtils._totalSupplyInMaturity(maturity);
-
-            if (totalSupplyInMaturity == 0) return (0, 0);
-
-            // If the vault is repaying the debt, then look across the total secondary
-            // fCash borrowed
-            debtSharesToRepay =
-                (totalAccountDebtShares * strategyTokenAmount) / totalSupplyInMaturity;
-            borrowedSecondaryfCashAmount =
-                (totalfCashBorrowed * strategyTokenAmount) / totalSupplyInMaturity;
-        } else {
-            // prettier-ignore
-            (
-                /* uint256 debtSharesMaturity */,
-                uint256[2] memory accountDebtShares,
-                uint256 accountStrategyTokens
-            ) = Constants.NOTIONAL.getVaultAccountDebtShares(account, address(this));
-
-            debtSharesToRepay = accountStrategyTokens == 0 ? 0 :
-                (accountDebtShares[0] * strategyTokenAmount) / accountStrategyTokens;
-            borrowedSecondaryfCashAmount = totalAccountDebtShares == 0 ? 0 :
-                (debtSharesToRepay * totalfCashBorrowed) / totalAccountDebtShares;
-        }
+        debtSharesToRepay = accountStrategyTokens == 0 ? 0 :
+            (accountDebtShares[0] * strategyTokenAmount) / accountStrategyTokens;
+        borrowedSecondaryfCashAmount = totalAccountDebtShares == 0 ? 0 :
+            (debtSharesToRepay * totalfCashBorrowed) / totalAccountDebtShares;
     }
 
     function _repaySecondaryBorrow(
@@ -124,9 +132,14 @@ library SecondaryBorrowUtils {
         uint256 debtSharesToRepay,
         RedeemParams memory params,
         uint256 secondaryBalance,
-        uint256 primaryBalance
+        uint256 primaryBalance,
+        bool snapshot
     ) internal returns (uint256 finalPrimaryBalance) {
         if (debtSharesToRepay == 0) return primaryBalance;
+
+        if (snapshot) {
+            Constants.NOTIONAL.initiateSecondaryBorrowSettlement(maturity);
+        }
 
         bytes memory returnData = Constants.NOTIONAL.repaySecondaryCurrencyFromVault(
             account,

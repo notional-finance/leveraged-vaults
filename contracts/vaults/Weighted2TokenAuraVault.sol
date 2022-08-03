@@ -17,7 +17,8 @@ import {
     WeightedOracleContext,
     Weighted2TokenAuraStrategyContext,
     StrategyContext,
-    TwoTokenAuraSettlementContext
+    TwoTokenAuraSettlementContext,
+    SettlementState
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {Weighted2TokenVaultMixin} from "./balancer/mixins/Weighted2TokenVaultMixin.sol";
@@ -26,6 +27,7 @@ import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerUtils} from "./balancer/internal/pool/BalancerUtils.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
+import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "./balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
@@ -89,8 +91,8 @@ contract Weighted2TokenAuraVault is
             oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
             account: account,
-            strategyTokenAmount: strategyTokenAmount,
-            maturity: maturity
+            maturity: maturity,
+            strategyTokenAmount: strategyTokenAmount
         });
     }
 
@@ -262,12 +264,27 @@ contract Weighted2TokenAuraVault is
         uint256 strategyTokenAmount
     ) external view returns (uint256 debtSharesToRepay, uint256 borrowedSecondaryfCashAmount) {
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return (0, 0);
-        return SecondaryBorrowUtils._getDebtSharesToRepay(
-            SECONDARY_BORROW_CURRENCY_ID, 
-            account, 
-            maturity, 
-            strategyTokenAmount
-        );
+        require(account != address(this));
+        return SecondaryBorrowUtils._getAccountDebtSharesToRepay({
+            secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID, 
+            account: account, 
+            maturity: maturity, 
+            strategyTokenAmount: strategyTokenAmount
+        });
+    }
+
+    function getSettlementDebtSharesToRepay(
+        uint256 maturity, 
+        uint256 strategyTokenAmount        
+    ) external view returns (uint256 debtSharesToRepay, uint256 borrowedSecondaryfCashAmount) {
+        if (SECONDARY_BORROW_CURRENCY_ID == 0) return (0, 0);
+        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokenAmount);
+        return SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
+            secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
+            maturity: maturity, 
+            strategyTokenAmount: strategyTokenAmount,
+            totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity
+        });        
     }
 
     function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)

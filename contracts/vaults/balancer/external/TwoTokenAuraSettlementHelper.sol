@@ -13,6 +13,7 @@ import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {TwoTokenAuraSettlementUtils} from "../internal/settlement/TwoTokenAuraSettlementUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
+import {SecondaryBorrowUtils} from "../internal/SecondaryBorrowUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
 
@@ -92,8 +93,8 @@ library TwoTokenAuraSettlementHelper {
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
             account: address(this),
-            strategyTokenAmount: redeemStrategyTokenAmount,
-            maturity: maturity
+            maturity: maturity,
+            strategyTokenAmount: redeemStrategyTokenAmount
         });
 
         SettlementUtils._executeEmergencySettlement({

@@ -9,6 +9,7 @@ import {
     Boosted3TokenAuraStrategyContext,
     StrategyVaultState
 } from "../vaults/balancer/BalancerVaultTypes.sol";
+import {NotionalUtils} from "../utils/NotionalUtils.sol";
 import {Boosted3TokenAuraVaultHelper} from "../vaults/balancer/external/Boosted3TokenAuraVaultHelper.sol";
 import {Boosted3TokenAuraStrategyUtils} from "../vaults/balancer/internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "../vaults/balancer/internal/pool/Boosted3TokenPoolUtils.sol";
@@ -62,14 +63,19 @@ contract MockBoosted3TokenAuraVault {
         });
     }
 
-    function convertStrategyToUnderlying(uint256 strategyTokenAmount, uint256 maturity) 
+    function convertStrategyToUnderlying(
+        address account, 
+        uint256 strategyTokenAmount, 
+        uint256 maturity
+    ) 
         external view returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = getStrategyContext();
         return context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
-            strategyTokenAmount: strategyTokenAmount,
-            maturity: maturity            
+            account: account,
+            maturity: maturity,
+            strategyTokenAmount: strategyTokenAmount   
         });
     }
 

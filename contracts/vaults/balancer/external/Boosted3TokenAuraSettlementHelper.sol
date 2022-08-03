@@ -82,15 +82,18 @@ library Boosted3TokenAuraSettlementHelper {
                 context.poolContext.basePool.basePool, maturity
             );
 
+        uint256 totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
+
         uint256 redeemStrategyTokenAmount = context.baseStrategy._convertBPTClaimToStrategyTokens(
-            bptToSettle, NotionalUtils._totalSupplyInMaturity(maturity)
+            bptToSettle, totalSupplyInMaturity
         );
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
-            strategyTokenAmount: redeemStrategyTokenAmount,
-            maturity: maturity
+            account: address(this),
+            maturity: maturity,
+            strategyTokenAmount: redeemStrategyTokenAmount
         });
 
         SettlementUtils._executeEmergencySettlement({

@@ -10,12 +10,14 @@ import {
     BoostedOracleContext,
     AuraStakingContext,
     StrategyVaultSettings,
-    StrategyVaultState
+    StrategyVaultState,
+    SettlementState
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
+import {SettlementUtils} from "../settlement/SettlementUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
 import {VaultUtils} from "../VaultUtils.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
@@ -87,11 +89,21 @@ library Boosted3TokenAuraStrategyUtils {
         StrategyContext memory strategyContext,
         BoostedOracleContext memory oracleContext,
         ThreeTokenPoolContext memory poolContext,
-        uint256 strategyTokenAmount,
-        uint256 maturity
+        address account,
+        uint256 maturity,
+        uint256 strategyTokenAmount
     ) internal view returns (int256 underlyingValue) {
+        uint256 totalSupplyInMaturity;
+        if (account == address(this)) {
+            // In settlement
+            SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokenAmount);
+            totalSupplyInMaturity = state.totalStrategyTokensInMaturity;
+        } else {
+            totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
+        }
+
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokenAmount, NotionalUtils._totalSupplyInMaturity(maturity)
+            strategyTokenAmount, totalSupplyInMaturity
         );
 
         underlyingValue = poolContext._getTimeWeightedPrimaryBalance(

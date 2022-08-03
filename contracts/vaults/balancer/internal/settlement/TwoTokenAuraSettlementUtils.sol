@@ -67,10 +67,6 @@ library TwoTokenAuraSettlementUtils {
         if (hasSufficientBalanceToSettle) {
             // Settle secondary currency first
             if (data.borrowedSecondaryfCashAmountExternal > 0) {
-                if (!data.state.inSettlement) {
-                    Constants.NOTIONAL.initiateSecondaryBorrowSettlement(maturity);
-                }
-
                 // This method call will trade any primary balance into secondary to repay or it will
                 // trade any excess secondary back into the primary currency
                 primaryBalance = SecondaryBorrowUtils._repaySecondaryBorrow({
@@ -80,7 +76,9 @@ library TwoTokenAuraSettlementUtils {
                     debtSharesToRepay: data.debtSharesToRepay,
                     params: params,
                     secondaryBalance: secondaryBalance,
-                    primaryBalance: primaryBalance
+                    primaryBalance: primaryBalance,
+                    // data.state.inSettlement is false if this is called for the first time
+                    snapshot: !data.state.inSettlement
                 });
 
                 // Secondary balance should be 0 after repayment
@@ -185,9 +183,12 @@ library TwoTokenAuraSettlementUtils {
         uint256 debtSharesToRepay;
         uint256 borrowedSecondaryfCashAmount;
         if (strategyContext.secondaryBorrowCurrencyId > 0) {
-            (debtSharesToRepay, borrowedSecondaryfCashAmount) = SecondaryBorrowUtils._getDebtSharesToRepay(
-                strategyContext.secondaryBorrowCurrencyId, address(this), maturity, redeemStrategyTokenAmount
-            );
+            (debtSharesToRepay, borrowedSecondaryfCashAmount) = SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
+                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
+                maturity: maturity,
+                strategyTokenAmount: redeemStrategyTokenAmount,
+                totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity
+            });
         }
 
         // If underlyingCashRequiredToSettle is 0 (no debt) or negative (surplus cash)

@@ -156,7 +156,7 @@ contract Boosted3TokenAuraVault is
     }
 
     function convertStrategyToUnderlying(
-        address /* account */,
+        address account,
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
@@ -164,8 +164,9 @@ contract Boosted3TokenAuraVault is
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
-            strategyTokenAmount: strategyTokenAmount,
-            maturity: maturity
+            account: account,
+            maturity: maturity,
+            strategyTokenAmount: strategyTokenAmount
         });
     }
 
