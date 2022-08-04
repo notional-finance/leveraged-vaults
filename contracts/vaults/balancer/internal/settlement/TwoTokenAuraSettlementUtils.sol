@@ -87,6 +87,19 @@ library TwoTokenAuraSettlementUtils {
                 // Secondary balance should be 0 after repayment
                 // Any residual balance should've been sold for primary currency
                 secondaryBalance = 0;
+            } else if (secondaryBalance > 0) {
+                // It's possible to receive some secondaryBalance from _unstakeAndExitPoolExactBPTIn
+                // without any secondary debt left to repay
+                (SecondaryTradeParams memory tradeParams) = abi.decode(
+                    params.secondaryTradeParams, (SecondaryTradeParams)
+                );
+                SecondaryBorrowUtils._sellSecondaryBalance({
+                    params: tradeParams,
+                    tradingModule: context.strategyContext.tradingModule,
+                    primaryToken: context.poolContext.primaryToken,
+                    secondaryToken: context.poolContext.secondaryToken,
+                    secondaryBalance: secondaryBalance
+                });
             }
 
             // Settle primary currency with updated primaryBalance (from secondary currency trading)

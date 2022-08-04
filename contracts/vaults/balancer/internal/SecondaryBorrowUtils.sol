@@ -246,9 +246,13 @@ library SecondaryBorrowUtils {
         }
 
         if (secondaryBalance > 0) {            
-            SecondaryBorrowUtils._sellSecondaryBalance(
-                params, tradingModule, primaryToken, secondaryToken, secondaryBalance
-            );
+            SecondaryBorrowUtils._sellSecondaryBalance({
+                params: params,
+                tradingModule: tradingModule,
+                primaryToken: primaryToken,
+                secondaryToken: secondaryToken,
+                secondaryBalance: secondaryBalance
+            });
         }
 
         int256 primaryBalanceAfter = TokenUtils.tokenBalance(primaryToken).toInt();

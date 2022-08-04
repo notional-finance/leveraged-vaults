@@ -133,13 +133,13 @@ library TwoTokenAuraStrategyUtils {
             (SecondaryTradeParams memory tradeParams) = abi.decode(
                 params.secondaryTradeParams, (SecondaryTradeParams)
             );
-            uint256 primaryPurchased = SecondaryBorrowUtils._sellSecondaryBalance(
-                tradeParams, 
-                strategyContext.tradingModule, 
-                poolContext.primaryToken, 
-                poolContext.primaryToken, 
-                secondaryBalance
-            );
+            uint256 primaryPurchased = SecondaryBorrowUtils._sellSecondaryBalance({
+                params: tradeParams,
+                tradingModule: strategyContext.tradingModule,
+                primaryToken: poolContext.primaryToken,
+                secondaryToken: poolContext.secondaryToken,
+                secondaryBalance: secondaryBalance
+            });
 
             finalPrimaryBalance = primaryBalance + primaryPurchased;
         }
