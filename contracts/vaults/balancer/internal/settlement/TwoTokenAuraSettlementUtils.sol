@@ -100,6 +100,8 @@ library TwoTokenAuraSettlementUtils {
                     secondaryToken: context.poolContext.secondaryToken,
                     secondaryBalance: secondaryBalance
                 });
+
+                secondaryBalance = 0;
             }
 
             // Settle primary currency with updated primaryBalance (from secondary currency trading)
