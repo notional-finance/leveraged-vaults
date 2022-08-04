@@ -2,6 +2,9 @@ import json
 import re
 import eth_abi
 from brownie import network, Contract
+from brownie.network.state import Chain
+
+chain = Chain()
 
 def getDependencies(bytecode):
     deps = set()
@@ -67,3 +70,51 @@ def set_flags(flags, **kwargs):
     if "ALLOW_REENTRNACY" in kwargs:
         binList[8] = "1"
     return int("".join(reversed(binList)), 2)
+
+def get_updated_vault_settings(settings, **kwargs):
+    return [
+        kwargs.get("maxUnderlyingSurplus", settings["maxUnderlyingSurplus"]), 
+        kwargs.get("oracleWindowInSeconds", settings["oracleWindowInSeconds"]), 
+        kwargs.get("settlementSlippageLimitPercent", settings["settlementSlippageLimitPercent"]), 
+        kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
+        kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
+        kwargs.get("balancerOracleWeight", settings["balancerOracleWeight"]), 
+        kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
+        kwargs.get("postMaturitySettlementCoolDownInMinutes", settings["postMaturitySettlementCoolDownInMinutes"]), 
+        kwargs.get("feePercentage", settings["feePercentage"])
+    ]
+
+def get_univ3_single_data(fee):
+    return eth_abi.encode_abi(['(uint24)'], [[fee]])
+
+def get_univ3_batch_data(path):
+    return eth_abi.encode_abi(['(bytes)'], [[path]])
+
+def get_deposit_trade_params(dexId, tradeType, sellToken, buyToken, amount, limit, exchangeData):
+    return eth_abi.encode_abi(
+        ['(uint16,(uint8,address,address,uint256,uint256,uint256,bytes))'],
+        [[
+            dexId,
+            [
+                tradeType,
+                sellToken,
+                buyToken,
+                amount,
+                limit,
+                chain.time() + 20000,
+                exchangeData
+            ]
+        ]]
+    )
+
+def get_deposit_params(minBPT=0, secondaryBorrow=0, trade=bytes(0)):
+    return eth_abi.encode_abi(
+        ['(uint256,uint256,uint32,uint32,bytes)'],
+        [[
+            minBPT,
+            secondaryBorrow,
+            0, # secondaryBorrowLimit
+            0, # secondaryRollLendLimit
+            trade
+        ]]
+    )
