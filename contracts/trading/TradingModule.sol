@@ -13,7 +13,7 @@ import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
 import {TradeHandler} from "./TradeHandler.sol";
 
 import {IERC20} from "../utils/TokenUtils.sol";
-import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
@@ -22,7 +22,7 @@ import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 /// exchange tokens via multiple DEXes as well as receive price oracle information
 contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     NotionalProxy public immutable NOTIONAL;
-    // Used to get the proxy address inside delegate call contexts 
+    // Used to get the proxy address inside delegate call contexts
     ITradingModule internal immutable PROXY;
 
     error SellTokenEqualsBuyToken();
@@ -39,7 +39,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
 
     event PriceOracleUpdated(address token, address oracle);
 
-    constructor(NotionalProxy notional_, ITradingModule proxy_) { 
+    constructor(NotionalProxy notional_, ITradingModule proxy_) {
         NOTIONAL = notional_;
         PROXY = proxy_;
     }
@@ -49,9 +49,15 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         _;
     }
 
-    function _authorizeUpgrade(address /* newImplementation */) internal override onlyNotionalOwner { }
+    function _authorizeUpgrade(
+        address /* newImplementation */
+    ) internal override onlyNotionalOwner {}
 
-    function setPriceOracle(address token, AggregatorV2V3Interface oracle) external override onlyNotionalOwner {
+    function setPriceOracle(address token, AggregatorV2V3Interface oracle)
+        external
+        override
+        onlyNotionalOwner
+    {
         PriceOracle storage oracleStorage = priceOracles[token];
         oracleStorage.oracle = oracle;
         oracleStorage.rateDecimals = oracle.decimals();
@@ -73,12 +79,17 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint16 dexId,
         address from,
         Trade calldata trade
-    ) external view override returns (
-        address spender,
-        address target,
-        uint256 msgValue,
-        bytes memory executionCallData
-    ) {
+    )
+        external
+        view
+        override
+        returns (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionCallData
+        )
+    {
         return _getExecutionData(dexId, from, trade);
     }
 
@@ -99,7 +110,11 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         // This method calls back into the implementation via the proxy so that it has proper
         // access to storage.
         trade.limit = PROXY.getLimitAmount(
-            trade.tradeType, trade.sellToken, trade.buyToken, trade.amount, dynamicSlippageLimit
+            trade.tradeType,
+            trade.sellToken,
+            trade.buyToken,
+            trade.amount,
+            dynamicSlippageLimit
         );
 
         (
@@ -109,9 +124,15 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             bytes memory executionData
         ) = PROXY.getExecutionData(dexId, address(this), trade);
 
-        return TradeHandler._executeInternal(
-            trade, dexId, spender, target, msgValue, executionData
-        );
+        return
+            TradeHandler._executeInternal(
+                trade,
+                dexId,
+                spender,
+                target,
+                msgValue,
+                executionData
+            );
     }
 
     /// @notice Should be called via delegate call to execute a trade on behalf of the caller.
@@ -119,10 +140,11 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     /// @param trade trade object
     /// @return amountSold amount of tokens sold
     /// @return amountBought amount of tokens purchased
-    function executeTrade(
-        uint16 dexId,
-        Trade calldata trade
-    ) external override returns (uint256 amountSold, uint256 amountBought) {
+    function executeTrade(uint16 dexId, Trade calldata trade)
+        external
+        override
+        returns (uint256 amountSold, uint256 amountBought)
+    {
         (
             address spender,
             address target,
@@ -130,21 +152,31 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             bytes memory executionData
         ) = _getExecutionData(dexId, address(this), trade);
 
-        return TradeHandler._executeInternal(
-            trade, dexId, spender, target, msgValue, executionData
-        );
+        return
+            TradeHandler._executeInternal(
+                trade,
+                dexId,
+                spender,
+                target,
+                msgValue,
+                executionData
+            );
     }
 
     function _getExecutionData(
         uint16 dexId,
         address from,
         Trade calldata trade
-    ) internal view returns (
-        address spender,
-        address target,
-        uint256 msgValue,
-        bytes memory executionCallData
-    ) {
+    )
+        internal
+        view
+        returns (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionCallData
+        )
+    {
         if (trade.buyToken == trade.sellToken) revert SellTokenEqualsBuyToken();
 
         if (DexId(dexId) == DexId.UNISWAP_V2) {
@@ -170,7 +202,10 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     /// @return answer exchange rate in rate decimals
     /// @return decimals number of decimals in the rate, currently hardcoded to 1e18
     function getOraclePrice(address baseToken, address quoteToken)
-        public view override returns (int256 answer, int256 decimals)
+        public
+        view
+        override
+        returns (int256 answer, int256 decimals)
     {
         PriceOracle memory baseOracle = priceOracles[baseToken];
         PriceOracle memory quoteOracle = priceOracles[quoteToken];
@@ -178,13 +213,29 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         int256 baseDecimals = int256(10**baseOracle.rateDecimals);
         int256 quoteDecimals = int256(10**quoteOracle.rateDecimals);
 
-        (/* */, int256 basePrice, /* */, /* */, /* */) = baseOracle.oracle.latestRoundData();
+        (
+            ,
+            /* */
+            int256 basePrice, /* */ /* */ /* */
+            ,
+            ,
+
+        ) = baseOracle.oracle.latestRoundData();
         require(basePrice > 0); /// @dev: Chainlink Rate Error
 
-        (/* */, int256 quotePrice, /* */, /* */, /* */) = quoteOracle.oracle.latestRoundData();
+        (
+            ,
+            /* */
+            int256 quotePrice, /* */ /* */ /* */
+            ,
+            ,
+
+        ) = quoteOracle.oracle.latestRoundData();
         require(quotePrice > 0); /// @dev: Chainlink Rate Error
 
-        answer = (basePrice * quoteDecimals * RATE_DECIMALS) / (quotePrice * baseDecimals);
+        answer =
+            (basePrice * quoteDecimals * RATE_DECIMALS) /
+            (quotePrice * baseDecimals);
         decimals = RATE_DECIMALS;
     }
 
@@ -196,7 +247,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         address buyToken,
         uint256 amount,
         uint32 slippageLimit
-    ) external override view returns (uint256 limitAmount) {
+    ) external view override returns (uint256 limitAmount) {
         // prettier-ignore
         (int256 oraclePrice, int256 oracleDecimals) = getOraclePrice(sellToken, buyToken);
 
@@ -204,9 +255,17 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         require(oracleDecimals >= 0); /// @dev Chainlink decimals error
 
         uint256 sellTokenDecimals = 10 **
-            (sellToken == Constants.ETH_ADDRESS ? 18 : IERC20(sellToken).decimals());
+            (
+                sellToken == Constants.ETH_ADDRESS
+                    ? 18
+                    : IERC20(sellToken).decimals()
+            );
         uint256 buyTokenDecimals = 10 **
-            (buyToken == Constants.ETH_ADDRESS ? 18 : IERC20(buyToken).decimals());
+            (
+                buyToken == Constants.ETH_ADDRESS
+                    ? 18
+                    : IERC20(buyToken).decimals()
+            );
 
         // @audit what about EXACT_OUT_BATCH, won't that fall into the wrong else condition?
         if (tradeType == TradeType.EXACT_OUT_SINGLE) {
@@ -247,5 +306,4 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             limitAmount = (limitAmount * buyTokenDecimals) / sellTokenDecimals;
         }
     }
-
 }

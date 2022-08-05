@@ -277,7 +277,7 @@ abstract contract VaultHelper is BalancerVaultStorage {
         if (SECONDARY_BORROW_CURRENCY_ID == 0) return (0, 0);
 
         // prettier-ignore
-        (uint256 totalfCashBorrowed, uint256 totalAccountDebtShares) = NOTIONAL.getSecondaryBorrow(
+        (uint256 totalfCashBorrowed, uint256 totalAccountDebtShares, /* */) = NOTIONAL.getSecondaryBorrow(
             address(this), SECONDARY_BORROW_CURRENCY_ID, maturity
         );
         uint256 _totalSupply = _totalSupplyInMaturity(maturity);

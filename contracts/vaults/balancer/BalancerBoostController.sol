@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
 import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";

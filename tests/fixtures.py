@@ -7,12 +7,13 @@ from scripts.EnvironmentConfig import getEnvironment
 chain = Chain()
 
 DEX_ID = {
-    'UNISWAP_V2': 0,
-    'UNISWAP_V3': 1,
-    'ZERO_EX': 2,
-    'BALANCER_V2': 3,
-    'CURVE': 4,
-    'NOTIONAL_VAULT': 5
+    'UNUSED': 0,
+    'UNISWAP_V2': 1,
+    'UNISWAP_V3': 2,
+    'ZERO_EX': 3,
+    'BALANCER_V2': 4,
+    'CURVE': 5,
+    'NOTIONAL_VAULT': 6
 }
 
 def encode_exchange_data(dex, tradeType, params):
