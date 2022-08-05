@@ -178,16 +178,4 @@ library TradeHandler {
         require(success);
         (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
-
-    function _executeTradeWithStaticSlippage(
-        Trade memory trade,
-        uint16 dexId,
-        ITradingModule tradingModule
-    ) internal returns (uint256 amountSold, uint256 amountBought) {
-        (bool success, bytes memory result) = nProxy(payable(address(tradingModule))).getImplementation()
-            .delegatecall(abi.encodeWithSelector(ITradingModule.executeTrade.selector, dexId, trade)
-        );
-        require(success);
-        (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
-    }
 }

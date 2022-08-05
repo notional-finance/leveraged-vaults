@@ -6,6 +6,22 @@ from brownie.network.state import Chain
 
 chain = Chain()
 
+DEX_ID = {
+    'UNISWAP_V2': 0,
+    'UNISWAP_V3': 1,
+    'ZERO_EX': 2,
+    'BALANCER_V2': 3,
+    'CURVE': 4,
+    'NOTIONAL_VAULT': 5
+}
+
+TRADE_TYPE = {
+    'EXACT_IN_SINGLE': 0,
+    'EXACT_OUT_SINGLE': 1,
+    'EXACT_IN_BATCH': 2,
+    'EXACT_OUT_BATCH': 3
+}
+
 def getDependencies(bytecode):
     deps = set()
     for marker in re.findall("_{1,}[^_]*_{1,}", bytecode):
@@ -90,20 +106,15 @@ def get_univ3_single_data(fee):
 def get_univ3_batch_data(path):
     return eth_abi.encode_abi(['(bytes)'], [[path]])
 
-def get_deposit_trade_params(dexId, tradeType, sellToken, buyToken, amount, limit, exchangeData):
+def get_deposit_trade_params(dexId, tradeType, amount, slippage, exchangeData):
     return eth_abi.encode_abi(
-        ['(uint16,(uint8,address,address,uint256,uint256,uint256,bytes))'],
+        ['(uint16,uint8,uint32,uint256,bytes))'],
         [[
             dexId,
-            [
-                tradeType,
-                sellToken,
-                buyToken,
-                amount,
-                limit,
-                chain.time() + 20000,
-                exchangeData
-            ]
+            tradeType,
+            amount,
+            slippage,
+            exchangeData
         ]]
     )
 

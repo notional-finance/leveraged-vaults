@@ -4,9 +4,9 @@ pragma solidity 0.8.15;
 import {
     PoolParams,
     DepositParams,
+    SecondaryTradeParams,
     DepositTradeParams,
     RedeemParams,
-    SecondaryTradeParams,
     TwoTokenPoolContext,
     AuraStakingContext,
     StrategyContext,
@@ -39,9 +39,24 @@ library TwoTokenAuraStrategyUtils {
     using VaultUtils for StrategyVaultState;
 
     /// @notice Trade primary currency for secondary if the trade is specified
-    function _tradePrimaryForSecondary(ITradingModule tradingModule, bytes memory data) private {
+    function _tradePrimaryForSecondary(
+        address primaryToken, 
+        address secondaryToken, 
+        ITradingModule tradingModule, 
+        bytes memory data
+    ) private {
         (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
-        params.trade._executeTradeWithStaticSlippage(params.dexId, tradingModule);
+        Trade memory trade = Trade(
+            params.tradeType,
+            primaryToken,
+            secondaryToken,
+            params.tradeAmount,
+            0,
+            block.timestamp, // deadline
+            params.exchangeData
+        );
+
+        trade._executeTradeWithDynamicSlippage(params.dexId, tradingModule, params.oracleSlippagePercent);
     }
 
     function _deposit(
@@ -54,7 +69,12 @@ library TwoTokenAuraStrategyUtils {
         DepositParams memory params
     ) internal returns (uint256 strategyTokensMinted) {
         if (params.tradeData.length != 0) {
-            _tradePrimaryForSecondary(strategyContext.tradingModule, params.tradeData);
+            _tradePrimaryForSecondary({
+                primaryToken: poolContext.primaryToken, 
+                secondaryToken: poolContext.secondaryToken, 
+                tradingModule: strategyContext.tradingModule,
+                data: params.tradeData
+            });
         }
 
         uint256 bptMinted = strategyContext._joinPoolAndStake({
