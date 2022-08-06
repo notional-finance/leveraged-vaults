@@ -18,6 +18,7 @@ import {
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
+import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {VaultUtils} from "../VaultUtils.sol";
@@ -30,6 +31,7 @@ import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingM
 
 library TwoTokenAuraStrategyUtils {
     using TradeHandler for Trade;
+    using TokenUtils for IERC20;
     using SafeInt256 for uint256;
     using StrategyUtils for StrategyContext;
     using TwoTokenAuraStrategyUtils for StrategyContext;
@@ -40,23 +42,38 @@ library TwoTokenAuraStrategyUtils {
 
     /// @notice Trade primary currency for secondary if the trade is specified
     function _tradePrimaryForSecondary(
-        address primaryToken, 
-        address secondaryToken, 
-        ITradingModule tradingModule, 
+        StrategyContext memory strategyContext,
+        TwoTokenPoolContext memory poolContext,
         bytes memory data
-    ) private {
+    ) private returns (uint256 primarySold, uint256 secondaryBought) {
         (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
+
+        address buyToken = poolContext.secondaryToken;
+        if (params.unwrapBeforeTrading && poolContext.secondaryToken == address(Constants.WRAPPED_STETH)) {
+            buyToken = Constants.WRAPPED_STETH.stETH();
+        }
+
         Trade memory trade = Trade(
             params.tradeType,
-            primaryToken,
-            secondaryToken,
+            poolContext.primaryToken,
+            buyToken,
             params.tradeAmount,
             0,
             block.timestamp, // deadline
             params.exchangeData
         );
 
-        trade._executeTradeWithDynamicSlippage(params.dexId, tradingModule, params.oracleSlippagePercent);
+        (primarySold, secondaryBought) = 
+            trade._executeTradeWithDynamicSlippage(params.dexId, strategyContext.tradingModule, params.oracleSlippagePercent);
+
+        if (
+            params.unwrapBeforeTrading && 
+            poolContext.secondaryToken == address(Constants.WRAPPED_STETH) && 
+            secondaryBought > 0
+        ) {
+            IERC20(buyToken).checkApprove(address(Constants.WRAPPED_STETH), secondaryBought);
+            secondaryBought = Constants.WRAPPED_STETH.wrap(secondaryBought);
+        }
     }
 
     function _deposit(
@@ -69,12 +86,13 @@ library TwoTokenAuraStrategyUtils {
         DepositParams memory params
     ) internal returns (uint256 strategyTokensMinted) {
         if (params.tradeData.length != 0) {
-            _tradePrimaryForSecondary({
-                primaryToken: poolContext.primaryToken, 
-                secondaryToken: poolContext.secondaryToken, 
-                tradingModule: strategyContext.tradingModule,
+            (uint256 primarySold, uint256 secondaryBought) = _tradePrimaryForSecondary({
+                strategyContext: strategyContext,
+                poolContext: poolContext,
                 data: params.tradeData
             });
+            deposit -= primarySold;
+            borrowedSecondaryAmount += secondaryBought;
         }
 
         uint256 bptMinted = strategyContext._joinPoolAndStake({

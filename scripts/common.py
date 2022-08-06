@@ -1,7 +1,7 @@
 import json
 import re
 import eth_abi
-from brownie import network, Contract
+from brownie import network, Contract, Wei
 from brownie.network.state import Chain
 
 chain = Chain()
@@ -106,14 +106,15 @@ def get_univ3_single_data(fee):
 def get_univ3_batch_data(path):
     return eth_abi.encode_abi(['(bytes)'], [[path]])
 
-def get_deposit_trade_params(dexId, tradeType, amount, slippage, exchangeData):
+def get_deposit_trade_params(dexId, tradeType, amount, slippage, unwrap, exchangeData):
     return eth_abi.encode_abi(
-        ['(uint16,uint8,uint32,uint256,bytes))'],
+        ['(uint16,uint8,uint256,uint32,bool,bytes)'],
         [[
             dexId,
             tradeType,
-            amount,
-            slippage,
+            Wei(amount),
+            Wei(slippage),
+            unwrap,
             exchangeData
         ]]
     )

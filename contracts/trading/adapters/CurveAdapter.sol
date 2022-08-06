@@ -13,7 +13,7 @@ import "../../../interfaces/curve/ICurveRegistryProvider.sol";
 library CurveAdapter {
     int128 internal constant MAX_TOKENS = 4;
     address internal constant CURVE_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    ICurveRegistry public constant REGISTRY = ICurveRegistry(0x0000000022D53366457F9d5E68Ec105046FC4383);
+    ICurveRegistry public constant REGISTRY = ICurveRegistry(0x90E00ACe148ca3b23Ac1bC8C240C2a7Dd9c2d7f5);
     ICurveRouter public constant ROUTER = ICurveRouter(0xfA9a30350048B2BF66865ee20363067c66f67e58);
     WETH9 public constant WETH = WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
@@ -49,7 +49,7 @@ library CurveAdapter {
 
         int128 i = -1;
         int128 j = -1;
-        for (int128 c = 0; c < MAX_TOKENS; i++) {
+        for (int128 c = 0; c < MAX_TOKENS; c++) {
             address coin = pool.coins(uint256(int256(c)));
             if (coin == sellToken) i = c;
             if (coin == buyToken) j = c;
@@ -88,7 +88,7 @@ library CurveAdapter {
             revert InvalidTrade();
         }
 
-        if (trade.sellToken == address(WETH)) {
+        if (trade.sellToken == address(WETH) || trade.sellToken == Constants.ETH_ADDRESS) {
             // Curve does not support WETH as an input
             spender = address(0);
             msgValue = trade.amount;

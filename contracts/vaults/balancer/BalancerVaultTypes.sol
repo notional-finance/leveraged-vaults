@@ -46,8 +46,9 @@ struct DepositParams {
 struct DepositTradeParams {
     uint16 dexId;
     TradeType tradeType;
-    uint32 oracleSlippagePercent;
     uint256 tradeAmount;
+    uint32 oracleSlippagePercent;
+    bool unwrapBeforeTrading;
     bytes exchangeData;
 }
 

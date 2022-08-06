@@ -115,6 +115,14 @@ def test_secondary_currency_trading_success(StratStableETHstETH):
     maturity = env.notional.getActiveMarkets(1)[0][1]
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
+    depositParams = get_deposit_params(trade=get_deposit_trade_params(
+        DEX_ID["CURVE"], 
+        TRADE_TYPE["EXACT_IN_SINGLE"],
+        5e18,
+        5e6,
+        True,
+        bytes(0)
+    ))
     env.notional.enterVault(
         env.whales["ETH"],
         vault.address,
@@ -122,13 +130,7 @@ def test_secondary_currency_trading_success(StratStableETHstETH):
         maturity,
         primaryBorrowAmount,
         0,
-        get_deposit_params(trade=get_deposit_trade_params(
-            DEX_ID["CURVE"], 
-            TRADE_TYPE["EXACT_IN_SINGLE"],
-            5e18,
-            Wei(5e6),
-            bytes(0)
-        )),
+        depositParams,
         {"from": env.whales["ETH"], "value": depositAmount}
     )
 

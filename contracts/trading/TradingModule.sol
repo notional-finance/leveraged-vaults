@@ -207,8 +207,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint256 buyTokenDecimals = 10 **
             (buyToken == Constants.ETH_ADDRESS ? 18 : IERC20(buyToken).decimals());
 
-        // @audit what about EXACT_OUT_BATCH, won't that fall into the wrong else condition?
-        if (tradeType == TradeType.EXACT_OUT_SINGLE) {
+        if (tradeType == TradeType.EXACT_OUT_SINGLE || tradeType == TradeType.EXACT_OUT_BATCH) {
             // 0 means no slippage limit
             if (slippageLimit == 0) {
                 return type(uint256).max;
