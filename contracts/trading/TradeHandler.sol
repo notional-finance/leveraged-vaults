@@ -120,8 +120,6 @@ library TradeHandler {
         IERC20(trade.sellToken).checkApprove(spender, allowance);
     }
 
-    event TradeParams(address target, uint256 msgValue, bytes params);
-
     function _executeTrade(
         address target,
         uint256 msgValue,
@@ -130,8 +128,6 @@ library TradeHandler {
         Trade memory trade
     ) private {
         uint256 preTradeBalance;
-
-        emit TradeParams(target, msgValue, params);
 
         if (trade.sellToken == address(WETH) && spender == Constants.ETH_ADDRESS) {
             preTradeBalance = address(this).balance;
@@ -144,8 +140,6 @@ library TradeHandler {
             uint256 depositAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             WETH.deposit{value: depositAmount }();
         }
-
-        emit TradeParams(target, msgValue, params);
 
         (bool success, bytes memory returnData) = target.call{value: msgValue}(params);
         if (!success) revert TradeExecution(returnData);

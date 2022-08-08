@@ -40,3 +40,10 @@ def StratBoostedPoolDAIPrimary():
     vault = env.deployBalancerVault("StratBoostedPoolDAIPrimary", Boosted3TokenAuraVault)
     mock = MockBoosted3TokenAuraVault.deploy(vault.getStrategyContext(), {"from": env.deployer})
     return (env, vault, mock)
+
+@pytest.fixture()
+def StratBoostedPoolUSDCPrimary():
+    env = getEnvironment(network.show_active())
+    vault = env.deployBalancerVault("StratBoostedPoolUSDCPrimary", Boosted3TokenAuraVault)
+    mock = MockBoosted3TokenAuraVault.deploy(vault.getStrategyContext(), {"from": env.deployer})
+    return (env, vault, mock)

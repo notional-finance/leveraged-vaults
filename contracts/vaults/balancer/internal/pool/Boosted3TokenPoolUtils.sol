@@ -166,12 +166,15 @@ library Boosted3TokenPoolUtils {
         primaryAmount = StableMath._calcTokenOutGivenExactBptIn({
             amp: oracleContext.ampParam, 
             balances: balances, 
-            tokenIndex: poolContext.basePool.primaryIndex, 
+            tokenIndex: 0, 
             bptAmountIn: bptAmount, 
             bptTotalSupply: virtualSupply, 
             swapFeePercentage: 0, 
             currentInvariant: invariant
         });
+
+        uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
+        primaryAmount = primaryAmount * primaryPrecision / BalancerUtils.BALANCER_PRECISION;
     }
 
     function _getVirtualSupplyAndBalances(

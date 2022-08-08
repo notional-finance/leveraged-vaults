@@ -95,7 +95,7 @@ library Boosted3TokenAuraStrategyUtils {
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
             strategyTokenAmount, totalSupplyInMaturity
         );
-
+        
         underlyingValue = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, 
             strategyContext.tradingModule, 

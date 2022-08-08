@@ -48,8 +48,10 @@ library TwoTokenAuraStrategyUtils {
     ) private returns (uint256 primarySold, uint256 secondaryBought) {
         (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
 
+        // stETH generally has deeper liquidity than wstETH, setting wrapAfterTrading
+        // lets the contract trade for stETH instead of wstETH
         address buyToken = poolContext.secondaryToken;
-        if (params.unwrapBeforeTrading && poolContext.secondaryToken == address(Constants.WRAPPED_STETH)) {
+        if (params.tradeUnwrapped && poolContext.secondaryToken == address(Constants.WRAPPED_STETH)) {
             buyToken = Constants.WRAPPED_STETH.stETH();
         }
 
@@ -67,7 +69,7 @@ library TwoTokenAuraStrategyUtils {
             trade._executeTradeWithDynamicSlippage(params.dexId, strategyContext.tradingModule, params.oracleSlippagePercent);
 
         if (
-            params.unwrapBeforeTrading && 
+            params.tradeUnwrapped && 
             poolContext.secondaryToken == address(Constants.WRAPPED_STETH) && 
             secondaryBought > 0
         ) {

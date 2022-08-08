@@ -133,6 +133,7 @@ def test_secondary_currency_trading_success(StratStableETHstETH):
         depositParams,
         {"from": env.whales["ETH"], "value": depositAmount}
     )
+    assert 1 == 2
 
 def test_leverage_ratio_too_high_failure(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
