@@ -37,7 +37,6 @@ library Boosted3TokenAuraStrategyUtils {
         AuraStakingContext memory stakingContext,
         ThreeTokenPoolContext memory poolContext,
         uint256 deposit,
-        uint256 maturity,
         uint256 minBPT
     ) internal returns (uint256 strategyTokensMinted) {
         uint256 bptMinted = poolContext._joinPoolExactTokensIn(deposit, minBPT);
@@ -45,9 +44,7 @@ library Boosted3TokenAuraStrategyUtils {
         // Transfer token to Aura protocol for boosted staking
         stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
 
-        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(
-            bptMinted, NotionalUtils._totalSupplyInMaturity(maturity)
-        );
+        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
         require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
 
         // Update global supply count
@@ -60,12 +57,9 @@ library Boosted3TokenAuraStrategyUtils {
         AuraStakingContext memory stakingContext,
         ThreeTokenPoolContext memory poolContext,
         uint256 strategyTokens,
-        uint256 maturity,
         uint256 minPrimary
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokens, NotionalUtils._totalSupplyInMaturity(maturity)
-        );
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
 
         if (bptClaim == 0) return 0;
 
@@ -89,12 +83,9 @@ library Boosted3TokenAuraStrategyUtils {
         StrategyContext memory strategyContext,
         BoostedOracleContext memory oracleContext,
         ThreeTokenPoolContext memory poolContext,
-        uint256 strategyTokenAmount,
-        uint256 totalSupplyInMaturity
+        uint256 strategyTokenAmount
     ) internal view returns (int256 underlyingValue) {
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokenAmount, totalSupplyInMaturity
-        );
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
         
         underlyingValue = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, 

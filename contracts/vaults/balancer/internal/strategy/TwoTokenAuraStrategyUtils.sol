@@ -83,7 +83,6 @@ library TwoTokenAuraStrategyUtils {
         AuraStakingContext memory stakingContext,
         TwoTokenPoolContext memory poolContext,
         uint256 deposit,
-        uint256 maturity,
         uint256 borrowedSecondaryAmount,
         DepositParams memory params
     ) internal returns (uint256 strategyTokensMinted) {
@@ -105,9 +104,7 @@ library TwoTokenAuraStrategyUtils {
             minBPT: params.minBPT
         });
 
-        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(
-            bptMinted, NotionalUtils._totalSupplyInMaturity(maturity)
-        );
+        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
         require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
 
         // Update global supply count
@@ -137,9 +134,7 @@ library TwoTokenAuraStrategyUtils {
             });
         }
 
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokens, NotionalUtils._totalSupplyInMaturity(maturity)
-        );
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
 
         if (bptClaim == 0) return 0;
 
@@ -242,13 +237,13 @@ library TwoTokenAuraStrategyUtils {
         StrategyContext memory strategyContext,
         OracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
-        uint256 strategyTokenAmount,
-        uint256 totalSupplyInMaturity,
-        uint256 borrowedSecondaryfCashAmount
+        address account,
+        uint256 maturity,
+        uint256 strategyTokenAmount
     ) internal view returns (int256 underlyingValue) {
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokenAmount, totalSupplyInMaturity
-        );
+        
+        uint256 bptClaim 
+            = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
 
         uint256 primaryBalance = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, bptClaim
@@ -259,6 +254,10 @@ library TwoTokenAuraStrategyUtils {
         // Oracle price for the pair in 18 decimals
         uint256 oraclePairPrice = poolContext._getOraclePairPrice(
             oracleContext, strategyContext.tradingModule
+        );
+
+        uint256 borrowedSecondaryfCashAmount = strategyContext._getSecondaryBorrowAmount(
+            account, maturity, strategyTokenAmount
         );
 
         // Do not discount secondary fCash amount to present value so that we do not introduce

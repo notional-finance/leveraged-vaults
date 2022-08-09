@@ -140,7 +140,7 @@ library TwoTokenAuraSettlementUtils {
         });
 
         uint256 bptToSettle = context.strategyContext._convertStrategyTokensToBPTClaim(
-            strategyTokensToRedeem, state.totalStrategyTokensInMaturity
+            strategyTokensToRedeem
         );
 
         NormalSettlementData memory data = _normalSettlementData({

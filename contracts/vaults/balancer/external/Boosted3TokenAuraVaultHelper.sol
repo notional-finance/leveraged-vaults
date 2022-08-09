@@ -35,7 +35,6 @@ library Boosted3TokenAuraVaultHelper {
             stakingContext: context.stakingContext, 
             poolContext: context.poolContext,
             deposit: deposit,
-            maturity: maturity,
             minBPT: params.minBPT
         });
     }
@@ -51,7 +50,6 @@ library Boosted3TokenAuraVaultHelper {
             stakingContext: context.stakingContext,
             poolContext: context.poolContext,
             strategyTokens: strategyTokens,
-            maturity: maturity,
             minPrimary: params.minPrimary
         });
     }

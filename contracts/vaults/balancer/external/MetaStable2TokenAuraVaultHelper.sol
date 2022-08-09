@@ -36,7 +36,6 @@ library MetaStable2TokenAuraVaultHelper {
             stakingContext: context.stakingContext, 
             poolContext: context.poolContext,
             deposit: deposit,
-            maturity: maturity,
             borrowedSecondaryAmount: borrowedSecondaryAmount,
             params: params
         });

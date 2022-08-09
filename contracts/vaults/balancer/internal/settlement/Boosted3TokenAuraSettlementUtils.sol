@@ -40,9 +40,8 @@ library Boosted3TokenAuraSettlementUtils {
     ) internal returns (bool completedSettlement) {
         require(strategyTokensToRedeem <= type(uint80).max); /// @dev strategyTokensToRedeem overflow
 
-        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(
-            strategyTokensToRedeem, state.totalStrategyTokensInMaturity
-        );
+        uint256 bptToSettle 
+            = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
 
         // Calculate the min expected primary amount to minimize slippage
         uint256 minPrimary = context.poolContext._getTimeWeightedPrimaryBalance({

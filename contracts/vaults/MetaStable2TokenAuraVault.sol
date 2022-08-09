@@ -133,19 +133,12 @@ contract MetaStable2TokenAuraVault is
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        (
-            uint256 totalSupplyInMaturity, 
-            uint256 borrowedSecondaryfCashAmount
-        ) = context.baseStrategy._getTotalSupplyInMaturityAndSecondaryBorrowAmount(
-            account, maturity, strategyTokenAmount
-        );
-
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
-            strategyTokenAmount: strategyTokenAmount,
-            totalSupplyInMaturity: totalSupplyInMaturity,
-            borrowedSecondaryfCashAmount: borrowedSecondaryfCashAmount
+            account: account,
+            maturity: maturity,
+            strategyTokenAmount: strategyTokenAmount
         });
     }
 
@@ -269,17 +262,13 @@ contract MetaStable2TokenAuraVault is
     
     function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
         external view returns (uint256 strategyTokenAmount) {
-        return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(
-            bptClaim, NotionalUtils._totalSupplyInMaturity(maturity)
-        );
+        return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(bptClaim);
     }
 
    /// @notice Converts strategy tokens to BPT
     function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
         external view returns (uint256 bptClaim) {
-        return _strategyContext().baseStrategy._convertStrategyTokensToBPTClaim(
-            strategyTokenAmount, NotionalUtils._totalSupplyInMaturity(maturity)
-        );
+        return _strategyContext().baseStrategy._convertStrategyTokensToBPTClaim(strategyTokenAmount);
     }
 
     /// @dev Gets the total BPT held by the aura reward pool

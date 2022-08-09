@@ -47,14 +47,14 @@ contract MockBoosted3TokenAuraVault {
     function _deposit(uint256 deposit, uint256 maturity, uint256 minBPT) 
         external returns (uint256 bptMinted) {
         return getStrategyContext().baseStrategy._deposit(
-            stakingContext, poolContext, deposit, maturity, minBPT
+            stakingContext, poolContext, deposit, minBPT
         );
     }
 
     function _redeem(uint256 strategyTokens, uint256 maturity, uint256 minPrimary) 
         external returns (uint256 finalPrimaryBalance) {
         return getStrategyContext().baseStrategy._redeem(
-            stakingContext, poolContext, strategyTokens, maturity, minPrimary
+            stakingContext, poolContext, strategyTokens, minPrimary
         );
     }
 
@@ -80,18 +80,10 @@ contract MockBoosted3TokenAuraVault {
         uint256 maturity
     ) public view returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = getStrategyContext();
-        (
-            uint256 totalSupplyInMaturity, 
-            /* uint256 borrowedSecondaryfCashAmount */
-        ) = context.baseStrategy._getTotalSupplyInMaturityAndSecondaryBorrowAmount(
-            account, maturity, strategyTokenAmount
-        );
-
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
-            strategyTokenAmount: strategyTokenAmount,
-            totalSupplyInMaturity: totalSupplyInMaturity 
+            strategyTokenAmount: strategyTokenAmount
         });
     }
 
