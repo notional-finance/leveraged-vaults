@@ -42,11 +42,11 @@ library MetaStable2TokenAuraSettlementHelper {
             data
         );
 
-        context.oracleContext._validateMinExitAmounts({
+        context.oracleContext._validatePairPrice({
             poolContext: context.poolContext,
             tradingModule: context.baseStrategy.tradingModule,
-            minPrimary: params.minPrimary,
-            minSecondary: params.minSecondary
+            primaryAmount: params.minPrimary,
+            secondaryAmount: params.minSecondary
         });
         
         TwoTokenAuraSettlementUtils._executeNormalSettlement({
@@ -80,11 +80,11 @@ library MetaStable2TokenAuraSettlementHelper {
             data
         );
 
-        context.oracleContext._validateMinExitAmounts({
+        context.oracleContext._validatePairPrice({
             poolContext: context.poolContext,
             tradingModule: context.baseStrategy.tradingModule,
-            minPrimary: params.minPrimary,
-            minSecondary: params.minSecondary
+            primaryAmount: params.minPrimary,
+            secondaryAmount: params.minSecondary
         });
 
         TwoTokenAuraSettlementUtils._executeNormalSettlement({

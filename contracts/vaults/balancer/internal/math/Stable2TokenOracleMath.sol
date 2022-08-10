@@ -107,14 +107,25 @@ library Stable2TokenOracleMath {
             primaryPrecision;
     }
 
-    /// @notice Validates the min Balancer exit amounts against the price oracle.
+    /// @notice Validates the Balancer join/exit amounts against the price oracle.
     /// These values are passed in as parameters. So, we must validate them.
-    function _validateMinExitAmounts(
+    function _validatePairPrice(
         StableOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         ITradingModule tradingModule,
-        uint256 minPrimary,
-        uint256 minSecondary
+        uint256 primaryAmount,
+        uint256 secondaryAmount
+    ) internal view {
+        // TODO: implement this
+    }
+
+    function _validateSpotPriceAndPairPrice(
+        StableOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        ITradingModule tradingModule,
+        uint256 spotPrice,
+        uint256 primaryAmount, 
+        uint256 secondaryAmount
     ) internal view {
         // TODO: implement this
     }

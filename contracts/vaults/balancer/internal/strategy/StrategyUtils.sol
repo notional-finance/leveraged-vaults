@@ -36,9 +36,7 @@ library StrategyUtils {
                     borrowedSecondaryfCashAmount
                 ) = SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
                     secondaryBorrowCurrencyId: context.secondaryBorrowCurrencyId,
-                    strategyTokenAmount: strategyTokenAmount,
-                    maturity: maturity, 
-                    totalStrategyTokensInMaturity: totalSupplyInMaturity
+                    maturity: maturity
                 });
             } else {
                 // prettier-ignore

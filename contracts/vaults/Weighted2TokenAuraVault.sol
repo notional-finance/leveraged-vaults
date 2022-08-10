@@ -272,9 +272,7 @@ contract Weighted2TokenAuraVault is
         SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokenAmount);
         return SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
             secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
-            maturity: maturity, 
-            strategyTokenAmount: strategyTokenAmount,
-            totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity
+            maturity: maturity
         });        
     }
 

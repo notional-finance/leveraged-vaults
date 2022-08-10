@@ -194,9 +194,7 @@ library TwoTokenAuraSettlementUtils {
         if (strategyContext.secondaryBorrowCurrencyId > 0) {
             (debtSharesToRepay, borrowedSecondaryfCashAmount) = SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
                 secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
-                maturity: maturity,
-                strategyTokenAmount: redeemStrategyTokenAmount,
-                totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity
+                maturity: maturity
             });
         }
 

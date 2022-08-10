@@ -20,11 +20,31 @@ library Weighted2TokenAuraRewardHelper {
         Weighted2TokenAuraStrategyContext memory context,
         ReinvestRewardParams memory params
     ) external {
-        context.poolContext._reinvestReward({
-            stakingContext: context.stakingContext,
+        (
+            address rewardToken, 
+            uint256 primaryAmount, 
+            uint256 secondaryAmount
+        ) = context.poolContext._executeRewardTrades(
+            context.stakingContext,
+            context.baseStrategy.tradingModule,
+            params.tradeData
+        );
+
+        // Make sure we are joining with the right proportion to minimize slippage
+        context.oracleContext._validateSpotPriceAndPairPrice({
+            poolContext: context.poolContext,
             tradingModule: context.baseStrategy.tradingModule,
+            spotPrice: context.oracleContext._getSpotPrice(context.poolContext, 0),
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount
+        });
+
+        context.poolContext._reinvestReward({
+            stakingContext: context.stakingContext, 
             params: params,
-            spotPrice: context.oracleContext._getSpotPrice(context.poolContext, 0)
+            rewardToken: rewardToken,
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount
         });
     }
 }

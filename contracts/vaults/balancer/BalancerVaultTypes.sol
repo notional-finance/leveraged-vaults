@@ -63,6 +63,7 @@ struct SecondaryTradeParams {
     uint16 dexId;
     TradeType tradeType;
     uint32 oracleSlippagePercent;
+    bool tradeUnwrapped;
     bytes exchangeData;
 }
 

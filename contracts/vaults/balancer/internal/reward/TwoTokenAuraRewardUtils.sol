@@ -50,7 +50,7 @@ library TwoTokenAuraRewardUtils {
         AuraStakingContext memory stakingContext,
         ITradingModule tradingModule,
         bytes memory data
-    ) private returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
+    ) internal returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
         Balanced2TokenRewardTradeParams memory params = abi.decode(
             data,
             (Balanced2TokenRewardTradeParams)
@@ -78,20 +78,11 @@ library TwoTokenAuraRewardUtils {
     function _reinvestReward(
         TwoTokenPoolContext memory poolContext,
         AuraStakingContext memory stakingContext,
-        ITradingModule tradingModule,
         ReinvestRewardParams memory params,
-        uint256 spotPrice
-    ) internal {
-        (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) = _executeRewardTrades(
-            poolContext,
-            stakingContext,
-            tradingModule,
-            params.tradeData
-        );
-
-        // Make sure we are joining with the right proportion to minimize slippage
-        poolContext._validateJoinAmounts(spotPrice, tradingModule, primaryAmount, secondaryAmount);
-        
+        address rewardToken,
+        uint256 primaryAmount,
+        uint256 secondaryAmount
+    ) internal {        
         uint256 bptAmount = BalancerUtils._joinPoolExactTokensIn({
             context: poolContext.basePool,
             params: poolContext._getPoolParams(

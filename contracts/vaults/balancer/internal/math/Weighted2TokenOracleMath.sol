@@ -5,11 +5,14 @@ import {WeightedOracleContext, TwoTokenPoolContext} from "../../BalancerVaultTyp
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {Errors} from "../../../../global/Errors.sol";
+import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library Weighted2TokenOracleMath {
+    using SafeInt256 for uint256;
+    using SafeInt256 for int256;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
 
     /// @notice Gets the current spot price with a given token index, this is used to check against
@@ -100,27 +103,77 @@ library Weighted2TokenOracleMath {
             (oracleContext.weights[poolContext.primaryIndex] * primaryPrecision * BalancerUtils.BALANCER_PRECISION);
     }
 
-    /// @notice Validates the min Balancer exit amounts against the price oracle.
+    function _validatePairPriceInternal(
+        WeightedOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        uint256 oraclePairPrice,
+        uint256 primaryAmount,
+        uint256 secondaryAmount
+    ) private view {
+        (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
+            primaryAmount, poolContext.primaryDecimals, secondaryAmount, poolContext.secondaryDecimals
+        );
+        
+        uint256 calculatedPairPrice = 
+            (normalizedSecondary * oracleContext.weights[poolContext.primaryIndex] * BalancerUtils.BALANCER_PRECISION) / 
+            (normalizedPrimary * oracleContext.weights[poolContext.secondaryIndex]);
+
+        uint256 lowerLimit = (oraclePairPrice * Constants.WEIGHTED_PAIR_PRICE_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePairPrice * Constants.WEIGHTED_PAIR_PRICE_UPPER_LIMIT) / 100;
+        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
+            revert Errors.InvalidPairPrice(oraclePairPrice, calculatedPairPrice, primaryAmount, secondaryAmount);
+        }
+    }
+
+    /// @notice Validates the Balancer join/exit amounts against the price oracle.
     /// These values are passed in as parameters. So, we must validate them.
-    function _validateMinExitAmounts(
+    function _validatePairPrice(
         WeightedOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         ITradingModule tradingModule,
-        uint256 minPrimary,
-        uint256 minSecondary
+        uint256 primaryAmount,
+        uint256 secondaryAmount
     ) internal view {
-        (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
-            minPrimary, poolContext.primaryDecimals, minSecondary, poolContext.secondaryDecimals
-        );
-        
         uint256 pairPrice = poolContext._getOraclePairPrice(oracleContext.baseOracle, tradingModule);
-        uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
-            normalizedPrimary;
 
-        uint256 lowerLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_UPPER_LIMIT) / 100;
-        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
-            revert Errors.InvalidMinAmounts(pairPrice, minPrimary, minSecondary);
+        _validatePairPriceInternal({
+            oracleContext: oracleContext,
+            poolContext: poolContext,
+            oraclePairPrice: pairPrice,
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount      
+        });
+    }
+
+    function _validateSpotPriceAndPairPrice(
+        WeightedOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        ITradingModule tradingModule,
+        uint256 spotPrice,
+        uint256 primaryAmount, 
+        uint256 secondaryAmount
+    ) internal view {
+        (
+            int256 answer, int256 decimals
+        ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
+
+        require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
+
+        uint256 oraclePrice = answer.toUint();
+        uint256 lowerLimit = (oraclePrice * Constants.WEIGHTED_SPOT_PRICE_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePrice * Constants.WEIGHTED_SPOT_PRICE_UPPER_LIMIT) / 100;
+
+        // Check spot price against oracle price to make sure it hasn't been manipulated
+        if (spotPrice < lowerLimit || upperLimit < spotPrice) {
+            revert Errors.InvalidSpotPrice(oraclePrice, spotPrice);
         }
+
+        _validatePairPriceInternal({
+            oracleContext: oracleContext,
+            poolContext: poolContext,
+            oraclePairPrice: oraclePrice,
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount      
+        });
     }
 }

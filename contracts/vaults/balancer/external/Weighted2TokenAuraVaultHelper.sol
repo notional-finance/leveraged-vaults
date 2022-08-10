@@ -72,11 +72,11 @@ library Weighted2TokenAuraVaultHelper {
         // delta of the current oracle price
         // This check is only necessary during settlement
         if (account == address(this)) {
-            context.oracleContext._validateMinExitAmounts({
+            context.oracleContext._validatePairPrice({
                 poolContext: context.poolContext,
                 tradingModule: context.baseStrategy.tradingModule,
-                minPrimary: params.minPrimary,
-                minSecondary: params.minSecondary
+                primaryAmount: params.minPrimary,
+                secondaryAmount: params.minSecondary
             });
         }
 

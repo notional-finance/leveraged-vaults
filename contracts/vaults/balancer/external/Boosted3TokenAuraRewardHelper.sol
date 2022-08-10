@@ -19,7 +19,7 @@ library Boosted3TokenAuraRewardHelper {
     function reinvestReward(
         Boosted3TokenAuraStrategyContext memory context,
         ReinvestRewardParams memory params
-    ) external {
+    ) external {        
         context.poolContext._reinvestReward({
             oracleContext: context.oracleContext,
             stakingContext: context.stakingContext,

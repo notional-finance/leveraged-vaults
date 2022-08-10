@@ -67,9 +67,7 @@ library SecondaryBorrowUtils {
 
     function _getSettlementDebtSharesToRepay(
         uint16 secondaryBorrowCurrencyId, 
-        uint256 strategyTokenAmount,
-        uint256 maturity,
-        uint256 totalStrategyTokensInMaturity
+        uint256 maturity
     ) internal view returns (uint256 debtSharesToRepay, uint256 borrowedSecondaryfCashAmount) {
         // prettier-ignore
         (
@@ -80,14 +78,10 @@ library SecondaryBorrowUtils {
             address(this), secondaryBorrowCurrencyId, maturity
         );
 
-        if (totalStrategyTokensInMaturity == 0) return (0, 0);
-
         // If the vault is repaying the debt, then look across the total secondary
         // fCash borrowed
-        debtSharesToRepay =
-            (totalAccountDebtShares * strategyTokenAmount) / totalStrategyTokensInMaturity;
-        borrowedSecondaryfCashAmount =
-            (totalfCashBorrowed * strategyTokenAmount) / totalStrategyTokensInMaturity;    
+        debtSharesToRepay = totalAccountDebtShares;
+        borrowedSecondaryfCashAmount = totalfCashBorrowed;    
     }
 
     /// @notice Gets the amount of debt shares needed to pay off the secondary debt
@@ -166,10 +160,17 @@ library SecondaryBorrowUtils {
             params.tradeType == TradeType.EXACT_IN_SINGLE || params.tradeType == TradeType.EXACT_IN_BATCH
         );
 
+        // Unwrap wstETH if necessary to get better liquididty
+        address sellToken = secondaryToken;
+        if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
+            sellToken = Constants.WRAPPED_STETH.stETH();
+            secondaryBalance = Constants.WRAPPED_STETH.unwrap(secondaryBalance);
+        }
+
         // Sell residual secondary balance
         Trade memory trade = Trade(
             params.tradeType,
-            secondaryToken,
+            sellToken,
             primaryToken,
             secondaryBalance,
             0,
@@ -180,6 +181,46 @@ library SecondaryBorrowUtils {
         (/* */, primaryPurchased) = trade._executeTradeWithDynamicSlippage(
             params.dexId, tradingModule, params.oracleSlippagePercent
         );
+    }
+
+    function _sellPrimaryBalance(
+        SecondaryTradeParams memory params,
+        ITradingModule tradingModule,
+        address primaryToken,
+        address secondaryToken,
+        uint256 secondaryShortfall
+    ) internal returns (uint256 secondaryPurchased) {
+        require(
+            params.tradeType == TradeType.EXACT_OUT_SINGLE || params.tradeType == TradeType.EXACT_OUT_BATCH
+        );
+        
+        // Trade using stETH instead of wstETH if requested
+        address buyToken = secondaryToken;
+        if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
+            buyToken = Constants.WRAPPED_STETH.stETH();
+            secondaryShortfall = Constants.WRAPPED_STETH.getStETHByWstETH(secondaryShortfall);
+        }
+
+        Trade memory trade = Trade(
+            params.tradeType,
+            primaryToken,
+            buyToken,
+            secondaryShortfall,
+            0,
+            block.timestamp, // deadline
+            params.exchangeData
+        );
+
+        (
+            /* uint256 amountSold */, 
+            secondaryPurchased
+        ) = trade._executeTradeWithDynamicSlippage(params.dexId, tradingModule, params.oracleSlippagePercent);
+
+        // Wrap stETH if necessary
+        if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
+            IERC20(buyToken).checkApprove(address(Constants.WRAPPED_STETH), secondaryPurchased);
+            secondaryPurchased = Constants.WRAPPED_STETH.wrap(secondaryPurchased);
+        }    
     }
 
     function _handleSecondaryBorrowCallback(
@@ -214,27 +255,19 @@ library SecondaryBorrowUtils {
                 secondaryShortfall = underlyingRequired - secondaryBalance;
             }
 
-            require(
-                params.tradeType == TradeType.EXACT_OUT_SINGLE || params.tradeType == TradeType.EXACT_OUT_BATCH
-            );
+            uint256 secondaryPurchased = _sellPrimaryBalance({
+                params: params,
+                tradingModule: tradingModule,
+                primaryToken: primaryToken,
+                secondaryToken: secondaryToken,
+                secondaryShortfall: secondaryShortfall
+            });
 
-            Trade memory trade = Trade(
-                params.tradeType,
-                primaryToken,
-                secondaryToken,
-                secondaryShortfall,
-                0,
-                block.timestamp, // deadline
-                params.exchangeData
-            );
-
-            trade._executeTradeWithDynamicSlippage(params.dexId, tradingModule, params.oracleSlippagePercent);
-
-            // @audit this should be validated by the returned parameters from the
             // trade execution
             // Setting secondaryBalance to 0 here because it should be
             // equal to underlyingRequired after the trade (validated by the TradingModule)
             // and 0 after the repayment token transfer.
+            require(secondaryPurchased == secondaryShortfall);
             secondaryBalance = 0;
         }
 

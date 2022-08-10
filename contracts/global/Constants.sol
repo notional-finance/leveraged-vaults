@@ -133,14 +133,14 @@ library Constants {
     uint256 internal constant SECONDARY_BORROW_LOWER_LIMIT = 95;
     /// @notice Max settlement cool down period allowed (1 day)
     uint16 internal constant MAX_SETTLEMENT_COOLDOWN_IN_MINUTES = 24 * 60;
-    /// @notice Lower limit used to validate Balancer min exit amounts (+5%)
-    uint256 internal constant MIN_EXIT_AMOUNTS_UPPER_LIMIT = 105;
-    /// @notice Upper limit used to validate Balancer min exit amounts (-5%)
-    uint256 internal constant MIN_EXIT_AMOUNTS_LOWER_LIMIT = 95;
-    /// @notice Lower limit used to validate Balancer max join amounts (+5%)
-    uint256 internal constant MAX_JOIN_AMOUNTS_UPPER_LIMIT = 105;
-    /// @notice Upper limit used to validate Balancer max join amounts (-5%)
-    uint256 internal constant MAX_JOIN_AMOUNTS_LOWER_LIMIT = 95;
+    /// @notice Lower limit used to validate calculated pair price against oracle price (+5%)
+    uint256 internal constant WEIGHTED_PAIR_PRICE_UPPER_LIMIT = 105;
+    /// @notice Upper limit used to validate calculated pair price against oracle price (-5%)
+    uint256 internal constant WEIGHTED_PAIR_PRICE_LOWER_LIMIT = 95;
+    /// @notice Lower limit used to validate weighted spot price against oracle price (+5%)
+    uint256 internal constant WEIGHTED_SPOT_PRICE_UPPER_LIMIT = 105;
+    /// @notice Upper limit used to validate weighted spot price against oracle price (-5%)
+    uint256 internal constant WEIGHTED_SPOT_PRICE_LOWER_LIMIT = 95;
     /// @notice Slippage limit for reward trades (5e6 = 5%)
     uint32 internal constant REWARD_TRADE_SLIPPAGE_PERCENT = 5e6;
     /// @notice Lower limit used to validate spot price against oracle price (+5%)

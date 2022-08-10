@@ -17,5 +17,10 @@ library Errors {
     error SettlementNotRequired();
     error InvalidRewardToken(address token);
     error InvalidJoinAmounts(uint256 oraclePrice, uint256 maxPrimary, uint256 maxSecondary);
-    error InvalidMinAmounts(uint256 pairPrice, uint256 minPrimary, uint256 minSecondary);
+    error InvalidPairPrice(
+        uint256 oraclePairPrice, 
+        uint256 calculatedPairPrice, 
+        uint256 primaryAmount, 
+        uint256 secondaryAmount
+    );
 }
