@@ -143,6 +143,10 @@ library Constants {
     uint256 internal constant WEIGHTED_SPOT_PRICE_LOWER_LIMIT = 95;
     /// @notice Slippage limit for reward trades (5e6 = 5%)
     uint32 internal constant REWARD_TRADE_SLIPPAGE_PERCENT = 5e6;
+    /// @notice Lower limit used to validate calculated pair price against oracle price (+5%)
+    uint256 internal constant META_STABLE_PAIR_PRICE_UPPER_LIMIT = 105;
+    /// @notice Upper limit used to validate calculated pair price against oracle price (-5%)
+    uint256 internal constant META_STABLE_PAIR_PRICE_LOWER_LIMIT = 95;
     /// @notice Lower limit used to validate spot price against oracle price (+5%)
     uint256 internal constant META_STABLE_SPOT_PRICE_UPPER_LIMIT = 105;
     /// @notice Upper limit used to validate spot price against oracle price (-5%)

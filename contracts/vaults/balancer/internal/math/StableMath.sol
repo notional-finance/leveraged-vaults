@@ -158,6 +158,48 @@ library StableMath {
         revert CalculationDidNotConverge();
     }
 
+    function _calcSpotPrice(
+        uint256 amplificationParameter,
+        uint256 invariant, 
+        uint256 balanceX,
+        uint256 balanceY
+    ) internal view returns (uint256 spotPrice) {
+        /**************************************************************************************************************
+        //                                                                                                           //
+        //                             2.a.x.y + a.y^2 + b.y                                                         //
+        // spot price Y/X = - dx/dy = -----------------------                                                        //
+        //                             2.a.x.y + a.x^2 + b.x                                                         //
+        //                                                                                                           //
+        // n = 2                                                                                                     //
+        // a = amp param * n                                                                                         //
+        // b = D + a.(S - D)                                                                                         //
+        // D = invariant                                                                                             //
+        // S = sum of balances but x,y = 0 since x  and y are the only tokens                                        //
+        **************************************************************************************************************/
+
+        uint256 a = (amplificationParameter * 2) / StableMath._AMP_PRECISION;
+        uint256 b = invariant * a - invariant;
+
+        uint256 axy2 = mulDown(a * 2 * balanceX, balanceY); // n = 2
+
+        // dx = a.x.y.2 + a.y^2 - b.y
+        uint256 derivativeX = axy2 + mulDown(a * balanceY, balanceY) - (mulDown(b, balanceY));
+
+        // dy = a.x.y.2 + a.x^2 - b.x
+        uint256 derivativeY = axy2 + mulDown(a * balanceX, balanceX) - (mulDown(b, balanceX));
+
+        // The rounding direction is irrelevant as we're about to introduce a much larger error when converting to log
+        // space. We use `divUp` as it prevents the result from being zero, which would make the logarithm revert. A
+        // result of zero is therefore only possible with zero balances, which are prevented via other means.
+        spotPrice = divUpFixed(derivativeX, derivativeY);
+    }
+
+    function _balances(uint256 balanceX, uint256 balanceY) internal pure returns (uint256[] memory balances) {
+        balances = new uint256[](2);
+        balances[0] = balanceX;
+        balances[1] = balanceY;
+    }
+
     // This function calculates the balance of a given token (tokenIndex)
     // given all the other balances and the invariant
     function _getTokenBalanceGivenInvariantAndAllOtherBalances(

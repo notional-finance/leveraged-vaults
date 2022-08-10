@@ -4,12 +4,15 @@ pragma solidity 0.8.15;
 import {StableOracleContext, TwoTokenPoolContext} from "../../BalancerVaultTypes.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {Errors} from "../../../../global/Errors.sol";
+import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {StableMath} from "./StableMath.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library Stable2TokenOracleMath {
+    using SafeInt256 for uint256;
+    using SafeInt256 for int256;
     using Stable2TokenOracleMath for StableOracleContext;
 
     function _getSpotPrice(
@@ -23,47 +26,20 @@ library Stable2TokenOracleMath {
         require(poolContext.secondaryDecimals < 19); /// @dev secondaryDecimals overflow
         require(tokenIndex < 2); /// @dev invalid token index
 
-        /**************************************************************************************************************
-        //                                                                                                           //
-        //                             2.a.x.y + a.y^2 + b.y                                                         //
-        // spot price Y/X = - dx/dy = -----------------------                                                        //
-        //                             2.a.x.y + a.x^2 + b.x                                                         //
-        //                                                                                                           //
-        // n = 2                                                                                                     //
-        // a = amp param * n                                                                                         //
-        // b = D + a.(S - D)                                                                                         //
-        // D = invariant                                                                                             //
-        // S = sum of balances but x,y = 0 since x  and y are the only tokens                                        //
-        **************************************************************************************************************/
         (uint256 balanceX, uint256 balanceY) = tokenIndex == 0 ?
             (poolContext.primaryBalance, poolContext.secondaryBalance) :
             (poolContext.secondaryBalance, poolContext.primaryBalance);
 
         uint256 invariant = StableMath._calculateInvariant(
-            oracleContext.ampParam, _balances(balanceX, balanceY), true // round up
+            oracleContext.ampParam, StableMath._balances(balanceX, balanceY), true // round up
         );
 
-        uint256 a = (oracleContext.ampParam * 2) / StableMath._AMP_PRECISION;
-        uint256 b = invariant * a - invariant;
-
-        uint256 axy2 = StableMath.mulDown(a * 2 * balanceX, balanceY); // n = 2
-
-        // dx = a.x.y.2 + a.y^2 - b.y
-        uint256 derivativeX = axy2 + StableMath.mulDown(a * balanceY, balanceY) - (StableMath.mulDown(b, balanceY));
-
-        // dy = a.x.y.2 + a.x^2 - b.x
-        uint256 derivativeY = axy2 + StableMath.mulDown(a * balanceX, balanceX) - (StableMath.mulDown(b, balanceX));
-
-        // The rounding direction is irrelevant as we're about to introduce a much larger error when converting to log
-        // space. We use `divUp` as it prevents the result from being zero, which would make the logarithm revert. A
-        // result of zero is therefore only possible with zero balances, which are prevented via other means.
-        spotPrice = StableMath.divUpFixed(derivativeX, derivativeY);
-    }
-
-    function _balances(uint256 balanceX, uint256 balanceY) private pure returns (uint256[] memory balances) {
-        balances = new uint256[](2);
-        balances[0] = balanceX;
-        balances[1] = balanceY;
+        spotPrice = StableMath._calcSpotPrice({
+            amplificationParameter: oracleContext.ampParam,
+            invariant: invariant,
+            balanceX: balanceX,
+            balanceY: balanceY
+        });
     }
 
     /// @notice Returns the optimal amount to borrow for the secondary token
@@ -116,7 +92,30 @@ library Stable2TokenOracleMath {
         uint256 primaryAmount,
         uint256 secondaryAmount
     ) internal view {
-        // TODO: implement this
+        uint256 invariant = StableMath._calculateInvariant(
+            oracleContext.ampParam, StableMath._balances(primaryAmount, secondaryAmount), true // round up
+        );
+
+        uint256 calculatedPairPrice = StableMath._calcSpotPrice({
+            amplificationParameter: oracleContext.ampParam,
+            invariant: invariant,
+            balanceX: primaryAmount,
+            balanceY: secondaryAmount
+        });
+
+        (
+            int256 answer, int256 decimals
+        ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
+
+        require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
+
+        uint256 oraclePairPrice = answer.toUint();
+
+        uint256 lowerLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
+        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
+            revert Errors.InvalidPairPrice(oraclePairPrice, calculatedPairPrice, primaryAmount, secondaryAmount);
+        }
     }
 
     function _validateSpotPriceAndPairPrice(
