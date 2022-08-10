@@ -114,7 +114,6 @@ library TwoTokenAuraStrategyUtils {
 
     function _redeem(
         StrategyContext memory strategyContext,
-        OracleContext memory oracleContext,
         AuraStakingContext memory stakingContext,
         TwoTokenPoolContext memory poolContext,
         address account,
@@ -122,18 +121,6 @@ library TwoTokenAuraStrategyUtils {
         uint256 maturity,
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
-        // These min primary and min secondary amounts must be within some configured
-        // delta of the current oracle price
-        // This check is only necessary during settlement
-        if (account != address(this)) {
-            poolContext._validateMinExitAmounts({
-                oracleContext: oracleContext,
-                tradingModule: strategyContext.tradingModule,
-                minPrimary: params.minPrimary,
-                minSecondary: params.minSecondary
-            });
-        }
-
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
 
         if (bptClaim == 0) return 0;

@@ -17,8 +17,6 @@ library TwoTokenPoolUtils {
     using TokenUtils for IERC20;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
 
-    error InvalidMinAmounts(uint256 pairPrice, uint256 minPrimary, uint256 minSecondary);
-
     /// @notice Returns parameters for joining and exiting Balancer pools
     function _getPoolParams(
         TwoTokenPoolContext memory context,
@@ -135,29 +133,6 @@ library TwoTokenPoolUtils {
             // And then normalizing to primary token precision we add:
             // PrimaryAmount = (SecondaryAmount * primaryPrecision) / PairPrice
             primaryAmount = (secondaryAmount * primaryPrecision) / pairPrice;
-        }
-    }
-
-    /// @notice Validates the min Balancer exit amounts against the price oracle.
-    /// These values are passed in as parameters. So, we must validate them.
-    function _validateMinExitAmounts(
-        TwoTokenPoolContext memory poolContext,
-        OracleContext memory oracleContext,
-        ITradingModule tradingModule,
-        uint256 minPrimary,
-        uint256 minSecondary
-    ) internal view {
-        (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
-            minPrimary, poolContext.primaryDecimals, minSecondary, poolContext.secondaryDecimals
-        );
-        uint256 pairPrice = poolContext._getOraclePairPrice(oracleContext, tradingModule);
-        uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
-            normalizedPrimary;
-
-        uint256 lowerLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_UPPER_LIMIT) / 100;
-        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
-            revert InvalidMinAmounts(pairPrice, minPrimary, minSecondary);
         }
     }
 

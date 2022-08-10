@@ -3,9 +3,15 @@ pragma solidity 0.8.15;
 
 import {WeightedOracleContext, TwoTokenPoolContext} from "../../BalancerVaultTypes.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {Errors} from "../../../../global/Errors.sol";
+import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
+import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library Weighted2TokenOracleMath {
+    using TwoTokenPoolUtils for TwoTokenPoolContext;
+
     /// @notice Gets the current spot price with a given token index, this is used to check against
     /// the oracle pair price to prevent front running
     /// @param oracleContext oracle context fields
@@ -92,5 +98,29 @@ library Weighted2TokenOracleMath {
         secondaryAmount = 
             (primaryAmount * oracleContext.weights[poolContext.secondaryIndex] * pairPrice * secondaryPrecision) / 
             (oracleContext.weights[poolContext.primaryIndex] * primaryPrecision * BalancerUtils.BALANCER_PRECISION);
+    }
+
+    /// @notice Validates the min Balancer exit amounts against the price oracle.
+    /// These values are passed in as parameters. So, we must validate them.
+    function _validateMinExitAmounts(
+        WeightedOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        ITradingModule tradingModule,
+        uint256 minPrimary,
+        uint256 minSecondary
+    ) internal view {
+        (uint256 normalizedPrimary, uint256 normalizedSecondary) = BalancerUtils._normalizeBalances(
+            minPrimary, poolContext.primaryDecimals, minSecondary, poolContext.secondaryDecimals
+        );
+        
+        uint256 pairPrice = poolContext._getOraclePairPrice(oracleContext.baseOracle, tradingModule);
+        uint256 calculatedPairPrice = normalizedSecondary * BalancerUtils.BALANCER_PRECISION / 
+            normalizedPrimary;
+
+        uint256 lowerLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (pairPrice * Constants.MIN_EXIT_AMOUNTS_UPPER_LIMIT) / 100;
+        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
+            revert Errors.InvalidMinAmounts(pairPrice, minPrimary, minSecondary);
+        }
     }
 }

@@ -33,7 +33,7 @@ import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol"
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
-import {TwoTokenAuraSettlementHelper} from "./balancer/external/TwoTokenAuraSettlementHelper.sol";
+import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
 import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
@@ -93,7 +93,7 @@ contract MetaStable2TokenAuraVault is
         uint256 strategyTokens,
         uint256 maturity,
         bytes calldata data
-    ) internal override returns (uint256 finalPrimaryBalance) {
+    ) internal override returns (uint256 finalPrimaryBalance) {        
         require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
 
         if (account == address(this) && data.length == 32) {
@@ -153,8 +153,8 @@ contract MetaStable2TokenAuraVault is
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert Errors.NotInSettlementWindow();
         }
-        TwoTokenAuraSettlementHelper.settleVaultNormal(
-            _settlementContext(), maturity, strategyTokensToRedeem, data
+        MetaStable2TokenAuraSettlementHelper.settleVaultNormal(
+            _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
 
@@ -166,16 +166,16 @@ contract MetaStable2TokenAuraVault is
         if (block.timestamp < maturity) {
             revert Errors.HasNotMatured();
         }
-        TwoTokenAuraSettlementHelper.settleVaultPostMaturity(
-            _settlementContext(), maturity, strategyTokensToRedeem, data
+        MetaStable2TokenAuraSettlementHelper.settleVaultPostMaturity(
+            _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
-        TwoTokenAuraSettlementHelper.settleVaultEmergency(
-            _settlementContext(), maturity, data
+        MetaStable2TokenAuraSettlementHelper.settleVaultEmergency(
+            _strategyContext(), maturity, data
         );
     }
 
@@ -199,16 +199,6 @@ contract MetaStable2TokenAuraVault is
         VaultUtils._setStrategyVaultSettings(
             settings, uint32(MAX_ORACLE_QUERY_WINDOW), Constants.VAULT_PERCENT_BASIS
         );
-    }
-
-    function _settlementContext() private view returns (TwoTokenAuraSettlementContext memory) {
-        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        return TwoTokenAuraSettlementContext({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext.baseOracle,
-            poolContext: context.poolContext,
-            stakingContext: context.stakingContext
-        });
     }
 
     function _strategyContext() private view returns (MetaStable2TokenAuraStrategyContext memory) {

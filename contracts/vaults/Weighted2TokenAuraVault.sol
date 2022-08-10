@@ -33,7 +33,7 @@ import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol"
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {Weighted2TokenAuraVaultHelper} from "./balancer/external/Weighted2TokenAuraVaultHelper.sol";
-import {TwoTokenAuraSettlementHelper} from "./balancer/external/TwoTokenAuraSettlementHelper.sol";
+import {Weighted2TokenAuraSettlementHelper} from "./balancer/external/Weighted2TokenAuraSettlementHelper.sol";
 import {Weighted2TokenAuraRewardHelper} from "./balancer/external/Weighted2TokenAuraRewardHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
@@ -163,8 +163,8 @@ contract Weighted2TokenAuraVault is
         if (block.timestamp < maturity) {
             revert Errors.HasNotMatured();
         }
-        TwoTokenAuraSettlementHelper.settleVaultPostMaturity(
-            _settlementContext(), maturity, strategyTokensToRedeem, data
+        Weighted2TokenAuraSettlementHelper.settleVaultPostMaturity(
+            _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
 
@@ -188,8 +188,8 @@ contract Weighted2TokenAuraVault is
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert Errors.NotInSettlementWindow();
         }
-        TwoTokenAuraSettlementHelper.settleVaultNormal(
-            _settlementContext(), maturity, strategyTokensToRedeem, data
+        Weighted2TokenAuraSettlementHelper.settleVaultNormal(
+            _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
 
@@ -199,8 +199,8 @@ contract Weighted2TokenAuraVault is
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
-        TwoTokenAuraSettlementHelper.settleVaultEmergency(
-            _settlementContext(), maturity, data
+        Weighted2TokenAuraSettlementHelper.settleVaultEmergency(
+            _strategyContext(), maturity, data
         );
     }
 
@@ -230,17 +230,7 @@ contract Weighted2TokenAuraVault is
             settings, uint32(MAX_ORACLE_QUERY_WINDOW), Constants.VAULT_PERCENT_BASIS
         );
     }
-
-    function _settlementContext() private view returns (TwoTokenAuraSettlementContext memory) {
-        Weighted2TokenAuraStrategyContext memory context = _strategyContext();
-        return TwoTokenAuraSettlementContext({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext.baseOracle,
-            poolContext: context.poolContext,
-            stakingContext: context.stakingContext
-        });
-    }
-
+    
     function _strategyContext() internal view returns (Weighted2TokenAuraStrategyContext memory) {
         return Weighted2TokenAuraStrategyContext({
             poolContext: _twoTokenPoolContext(),

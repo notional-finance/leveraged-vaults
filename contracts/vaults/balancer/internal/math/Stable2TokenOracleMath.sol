@@ -7,6 +7,7 @@ import {Errors} from "../../../../global/Errors.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {StableMath} from "./StableMath.sol";
+import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library Stable2TokenOracleMath {
     using Stable2TokenOracleMath for StableOracleContext;
@@ -104,5 +105,17 @@ library Stable2TokenOracleMath {
             poolContext.primaryBalance;
         secondaryAmount = (change - primaryPrecision) * poolContext.secondaryBalance / 
             primaryPrecision;
+    }
+
+    /// @notice Validates the min Balancer exit amounts against the price oracle.
+    /// These values are passed in as parameters. So, we must validate them.
+    function _validateMinExitAmounts(
+        StableOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        ITradingModule tradingModule,
+        uint256 minPrimary,
+        uint256 minSecondary
+    ) internal view {
+        // TODO: implement this
     }
 }

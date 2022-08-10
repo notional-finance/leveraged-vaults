@@ -130,15 +130,6 @@ library TwoTokenAuraSettlementUtils {
     ) internal returns (bool completedSettlement) {
         require(strategyTokensToRedeem <= type(uint80).max); /// @dev strategyTokensToRedeem overflow
         
-        // These min primary and min secondary amounts must be within some configured
-        // delta of the current oracle price
-        context.poolContext._validateMinExitAmounts({
-            oracleContext: context.oracleContext,
-            tradingModule: context.strategyContext.tradingModule,
-            minPrimary: params.minPrimary,
-            minSecondary: params.minSecondary
-        });
-
         uint256 bptToSettle = context.strategyContext._convertStrategyTokensToBPTClaim(
             strategyTokensToRedeem
         );
