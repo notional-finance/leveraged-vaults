@@ -12,7 +12,6 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
 
-    uint16 internal immutable SECONDARY_BORROW_CURRENCY_ID;
     IERC20 internal immutable PRIMARY_TOKEN;
     IERC20 internal immutable SECONDARY_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
@@ -22,10 +21,8 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
 
     constructor(
         uint16 primaryBorrowCurrencyId, 
-        bytes32 balancerPoolId, 
-        uint16 secondaryBorrowCurrencyId
+        bytes32 balancerPoolId
     ) PoolMixin(balancerPoolId) {
-        SECONDARY_BORROW_CURRENCY_ID = secondaryBorrowCurrencyId;
         PRIMARY_TOKEN = IERC20(NotionalUtils._getNotionalUnderlyingToken(primaryBorrowCurrencyId));
         address primaryAddress = BalancerUtils.getTokenAddress(address(PRIMARY_TOKEN));
 
@@ -43,10 +40,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             SECONDARY_INDEX = 1 - PRIMARY_INDEX;
         }
 
-        // Since this is always a 2-token vault, SECONDARY_INDEX = 1-PRIMARY_INDEX
-        SECONDARY_TOKEN = secondaryBorrowCurrencyId > 0
-            ? IERC20(NotionalUtils._getNotionalUnderlyingToken(secondaryBorrowCurrencyId))
-            : IERC20(tokens[SECONDARY_INDEX]);
+        SECONDARY_TOKEN = IERC20(tokens[SECONDARY_INDEX]);
 
         // Make sure the deployment parameters are correct
         if (tokens[PRIMARY_INDEX] != primaryAddress) {

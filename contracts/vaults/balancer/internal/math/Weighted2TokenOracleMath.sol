@@ -60,49 +60,6 @@ library Weighted2TokenOracleMath {
             (targetTokenBalance * otherWeight);
     }
 
-    /// @notice Returns the optimal amount to borrow for the secondary token
-    /// @param oracleContext oracle context variables
-    /// @param poolContext oracle context variables
-    /// @return secondaryAmount optimal amount of the secondary token to join the pool
-    function _getOptimalSecondaryBorrowAmount(
-        WeightedOracleContext memory oracleContext,
-        TwoTokenPoolContext memory poolContext,
-        uint256 primaryAmount
-    ) internal view returns (uint256 secondaryAmount) {
-        // Prevents overflows, we don't expect tokens to be greater than 18 decimals, don't use
-        // equal sign for minor gas optimization
-        require(poolContext.primaryDecimals < 19); /// @dev primaryDecimals overflow
-        require(poolContext.secondaryDecimals < 19); /// @dev secondaryDecimals overflow
-
-        // Use the oracle price here rather than the spot price to prevent flash loan
-        // manipulation (would force the user to join at a disadvantageous price). If
-        // the pool is being manipulated away from the oracle price and this generates
-        // excess slippage when joining, the user must specify a minBPT amount that will
-        // cause the transaction to revert.
-        uint256 pairPrice = BalancerUtils._getTimeWeightedOraclePrice(
-            address(poolContext.basePool.pool),
-            IPriceOracle.Variable.PAIR_PRICE,
-            oracleContext.baseOracle.oracleWindowInSeconds
-        );
-
-        if (poolContext.primaryIndex == 0) {
-            // If the primary index is the first token, invert the pair price
-            pairPrice = BalancerUtils.BALANCER_PRECISION_SQUARED / pairPrice;
-        }
-
-        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
-        uint256 secondaryPrecision = 10 ** poolContext.secondaryDecimals;
-
-        // PrimaryAmount = (SecondaryAmount * PrimaryWeight) / (SecondaryWeight * PairPrice)
-        // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice) / PrimaryWeight
-        // Also, we want to normalize to secondary token precision
-        // SecondaryAmount = (PrimaryAmount * SecondaryWeight * PairPrice * SecondaryPrecision) /
-        //    (PrimaryWeight * PrimaryPrecision * BalancerPrecision[for PairPrice])
-        secondaryAmount = 
-            (primaryAmount * oracleContext.weights[poolContext.secondaryIndex] * pairPrice * secondaryPrecision) / 
-            (oracleContext.weights[poolContext.primaryIndex] * primaryPrecision * BalancerUtils.BALANCER_PRECISION);
-    }
-
     function _validatePairPriceInternal(
         WeightedOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,

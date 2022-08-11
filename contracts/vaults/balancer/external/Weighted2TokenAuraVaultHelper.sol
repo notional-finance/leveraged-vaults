@@ -11,7 +11,6 @@ import {
 } from "../BalancerVaultTypes.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {Weighted2TokenOracleMath} from "../internal/math/Weighted2TokenOracleMath.sol";
-import {SecondaryBorrowUtils} from "../internal/SecondaryBorrowUtils.sol";
 
 library Weighted2TokenAuraVaultHelper {
     using TwoTokenAuraStrategyUtils for StrategyContext;
@@ -26,37 +25,12 @@ library Weighted2TokenAuraVaultHelper {
     ) external returns (uint256 strategyTokensMinted) {
         DepositParams memory params = abi.decode(data, (DepositParams));
 
-        // First borrow any secondary tokens (if required)
-        uint256 borrowedSecondaryAmount = _borrowSecondaryCurrency(
-            context, account, maturity, deposit, params
-        );
-
         strategyTokensMinted = context.baseStrategy._deposit({
             stakingContext: context.stakingContext, 
             poolContext: context.poolContext,
             deposit: deposit,
-            borrowedSecondaryAmount: borrowedSecondaryAmount,
             params: params
         });
-    }
-
-    function _borrowSecondaryCurrency(
-        Weighted2TokenAuraStrategyContext memory context,
-        address account,
-        uint256 maturity,
-        uint256 primaryAmount,
-        DepositParams memory params
-    ) private returns (uint256 borrowedSecondaryAmount) {
-        // If secondary currency is not specified then return
-        if (context.baseStrategy.secondaryBorrowCurrencyId == 0) return 0;
-
-        uint256 optimalSecondaryAmount = context.oracleContext._getOptimalSecondaryBorrowAmount(
-            context.poolContext, primaryAmount
-        );
-
-        return SecondaryBorrowUtils._borrowSecondaryCurrency(
-            account, maturity, optimalSecondaryAmount, params
-        );
     }
 
     function redeemFromNotional(

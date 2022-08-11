@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import {
-    SettlementState, 
     RedeemParams, 
     SecondaryTradeParams,
     StrategyContext,
@@ -26,8 +25,7 @@ library SettlementUtils {
     event VaultSettlement(
         uint256 maturity,
         uint256 bptSettled,
-        uint256 strategyTokensRedeemed,
-        bool completedSettlement
+        uint256 strategyTokensRedeemed
     );
 
     event EmergencyVaultSettlement(
@@ -35,23 +33,6 @@ library SettlementUtils {
         uint256 bptToSettle,
         uint256 redeemStrategyTokenAmount
     );
-
-    /// @notice Validates the number of strategy tokens to redeem against
-    /// the total strategy tokens already redeemed for the current maturity
-    /// to ensure that we don't redeem tokens from other maturities
-    function _getSettlementState(uint256 maturity, uint256 strategyTokensToRedeem) 
-        internal view returns (SettlementState memory) {
-        SettlementState memory state = VaultUtils._getSettlementState(maturity);
-        if (!state.isInitialized) {
-            uint256 totalInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
-            require(totalInMaturity <= type(uint80).max);
-            state.totalStrategyTokensInMaturity = uint80(totalInMaturity);
-        }
-        // Make sure we have enough tokens in the current maturity to satisfy the
-        // redemption request
-        require(strategyTokensToRedeem <= state.totalStrategyTokensInMaturity);
-        return state;
-    }
 
     /// @notice Validates settlement parameters, including that the settlement is
     /// past a specified cool down period and that the slippage passed in by the caller
@@ -178,7 +159,7 @@ library SettlementUtils {
         maxUnderlyingSurplus = settings.maxUnderlyingSurplus;
     }
 
-    function _executeEmergencySettlement(
+    function _executeSettlement(
         uint256 maturity,
         uint256 bptToSettle,
         int256 expectedUnderlyingRedeemed,
@@ -214,11 +195,5 @@ library SettlementUtils {
 
         // prettier-ignore
         Constants.NOTIONAL.redeemStrategyTokensToCash(maturity, redeemStrategyTokenAmount, data);
-
-        emit EmergencyVaultSettlement(
-            maturity,
-            bptToSettle,
-            redeemStrategyTokenAmount
-        );
     }
 }

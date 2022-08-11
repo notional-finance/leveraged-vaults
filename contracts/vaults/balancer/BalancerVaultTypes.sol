@@ -24,7 +24,6 @@ struct DeploymentParams {
 
 struct AuraDeploymentParams {
     uint16 primaryBorrowCurrencyId;
-    uint16 secondaryBorrowCurrencyId;
     IAuraRewardPool auraRewardPool;
     DeploymentParams baseParams;
 }
@@ -37,9 +36,6 @@ struct InitParams {
 
 struct DepositParams {
     uint256 minBPT;
-    uint256 secondaryfCashAmount;
-    uint32 secondaryBorrowLimit;
-    uint32 secondaryRollLendLimit;
     bytes tradeData;
 }
 
@@ -135,7 +131,6 @@ struct ThreeTokenPoolContext {
 
 struct StrategyContext {
     uint256 totalBPTHeld;
-    uint16 secondaryBorrowCurrencyId;
     uint32 settlementPeriodInSeconds;
     ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
@@ -171,14 +166,9 @@ struct TwoTokenAuraSettlementContext {
 }
 
 struct NormalSettlementData {
-    uint16 secondaryBorrowCurrencyId;
     uint256 maxUnderlyingSurplus;
     uint256 redeemStrategyTokenAmount;
     int256 underlyingCashRequiredToSettle;
-    uint256 debtSharesToRepay;
-    /// @notice Amount of secondary fCash borrowed in external precision
-    uint256 borrowedSecondaryfCashAmountExternal;
-    SettlementState state;
 }
 
 struct BoostedSettlementData {
@@ -186,7 +176,6 @@ struct BoostedSettlementData {
     uint256 primarySettlementBalance;
     uint256 redeemStrategyTokenAmount;
     int256 underlyingCashRequiredToSettle;
-    SettlementState state;
 }
 
 struct Balanced2TokenRewardTradeParams {
@@ -229,12 +218,4 @@ struct StrategyVaultState {
     uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
     uint32 lastPostMaturitySettlementTimestamp;
-}
-
-struct SettlementState {
-    uint88 primarySettlementBalance;
-    uint88 secondarySettlementBalance;
-    uint80 totalStrategyTokensInMaturity;
-    uint80 unredeemedStrategyTokenAmount;
-    bool isInitialized;
 }

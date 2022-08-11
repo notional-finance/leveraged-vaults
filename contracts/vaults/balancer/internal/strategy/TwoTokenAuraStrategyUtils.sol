@@ -12,8 +12,7 @@ import {
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState,
-    OracleContext,
-    SettlementState
+    OracleContext
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {Constants} from "../../../../global/Constants.sol";
@@ -26,7 +25,6 @@ import {SettlementUtils} from "../settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
-import {SecondaryBorrowUtils} from "../SecondaryBorrowUtils.sol";
 import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library TwoTokenAuraStrategyUtils {
@@ -86,9 +84,9 @@ library TwoTokenAuraStrategyUtils {
         AuraStakingContext memory stakingContext,
         TwoTokenPoolContext memory poolContext,
         uint256 deposit,
-        uint256 borrowedSecondaryAmount,
         DepositParams memory params
     ) internal returns (uint256 strategyTokensMinted) {
+        uint256 secondaryAmount;
         if (params.tradeData.length != 0) {
             (uint256 primarySold, uint256 secondaryBought) = _tradePrimaryForSecondary({
                 strategyContext: strategyContext,
@@ -96,14 +94,14 @@ library TwoTokenAuraStrategyUtils {
                 data: params.tradeData
             });
             deposit -= primarySold;
-            borrowedSecondaryAmount += secondaryBought;
+            secondaryAmount = secondaryBought;
         }
 
         uint256 bptMinted = strategyContext._joinPoolAndStake({
             stakingContext: stakingContext,
             poolContext: poolContext,
             primaryAmount: deposit,
-            secondaryAmount: borrowedSecondaryAmount,
+            secondaryAmount: secondaryAmount,
             minBPT: params.minBPT
         });
 
@@ -133,32 +131,14 @@ library TwoTokenAuraStrategyUtils {
             = TwoTokenAuraStrategyUtils._unstakeAndExitPoolExactBPTIn(
                 stakingContext, poolContext, bptClaim, params.minPrimary, params.minSecondary
             );
-
-        if (strategyContext.secondaryBorrowCurrencyId != 0) {
-            // Returns the amount of secondary debt shares that need to be repaid
-            (uint256 debtSharesToRepay, /*  */) = SecondaryBorrowUtils._getAccountDebtSharesToRepay({
-                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId, 
-                account: account, 
-                maturity: maturity, 
-                strategyTokenAmount: strategyTokens
-            });
-
-            finalPrimaryBalance = SecondaryBorrowUtils._repaySecondaryBorrow({
-                secondaryBorrowCurrencyId: strategyContext.secondaryBorrowCurrencyId,
-                account: account,
-                maturity: maturity,
-                debtSharesToRepay: debtSharesToRepay,
-                params: params,
-                secondaryBalance: secondaryBalance,
-                primaryBalance: primaryBalance
-            });
-        } else if (secondaryBalance > 0) {
+            
+        if (secondaryBalance > 0) {
             // If there is no secondary debt, we still need to sell the secondary balance
             // back to the primary token here.
             (SecondaryTradeParams memory tradeParams) = abi.decode(
                 params.secondaryTradeParams, (SecondaryTradeParams)
             );
-            uint256 primaryPurchased = SecondaryBorrowUtils._sellSecondaryBalance({
+            uint256 primaryPurchased = StrategyUtils._sellSecondaryBalance({
                 params: tradeParams,
                 tradingModule: strategyContext.tradingModule,
                 primaryToken: poolContext.primaryToken,
@@ -235,35 +215,9 @@ library TwoTokenAuraStrategyUtils {
         uint256 bptClaim 
             = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
 
-        uint256 primaryBalance = poolContext._getTimeWeightedPrimaryBalance(
-            oracleContext, bptClaim
-        );
+        uint256 primaryBalance 
+            = poolContext._getTimeWeightedPrimaryBalance(oracleContext, bptClaim);
 
-        if (strategyContext.secondaryBorrowCurrencyId == 0) return primaryBalance.toInt();
-
-        // Oracle price for the pair in 18 decimals
-        uint256 oraclePairPrice = poolContext._getOraclePairPrice(
-            oracleContext, strategyContext.tradingModule
-        );
-
-        uint256 borrowedSecondaryfCashAmount = strategyContext._getSecondaryBorrowAmount(
-            account, maturity, strategyTokenAmount
-        );
-
-        // Do not discount secondary fCash amount to present value so that we do not introduce
-        // interest rate risk in this calculation. fCash is always in 8 decimal precision, the
-        // oraclePairPrice is always in 18 decimal precision and we want our result denominated
-        // in the primary token precision.
-        // primaryTokenValue = (fCash * rateDecimals * primaryDecimals) / (rate * 1e8)
-        uint256 primaryPrecision = 10**poolContext.primaryDecimals;
-
-        uint256 secondaryBorrowedDenominatedInPrimary = (borrowedSecondaryfCashAmount *
-                BalancerUtils.BALANCER_PRECISION *
-                primaryPrecision) /
-                (oraclePairPrice * uint256(Constants.INTERNAL_TOKEN_PRECISION));
-
-        return
-            primaryBalance.toInt() -
-            secondaryBorrowedDenominatedInPrimary.toInt();
+        return primaryBalance.toInt();
     }
 }

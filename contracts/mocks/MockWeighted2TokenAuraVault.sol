@@ -26,14 +26,12 @@ contract MockWeighted2TokenAuraVault is MockTwoTokenVaultBase {
     WeightedOracleContext private oracleContext;
     AuraStakingContext private stakingContext;
     ITradingModule private tradingModule;
-    uint16 private secondaryBorrowCurrencyId;
     uint32 private settlementPeriodInSeconds;
 
     constructor(Weighted2TokenAuraStrategyContext memory context) 
         MockTwoTokenVaultBase(context.poolContext, context.oracleContext.baseOracle) {
         oracleContext = context.oracleContext;
         stakingContext = context.stakingContext;
-        secondaryBorrowCurrencyId = context.baseStrategy.secondaryBorrowCurrencyId;
         settlementPeriodInSeconds = context.baseStrategy.settlementPeriodInSeconds;
         tradingModule = context.baseStrategy.tradingModule;
         context.baseStrategy.vaultSettings._setStrategyVaultSettings(
@@ -54,10 +52,6 @@ contract MockWeighted2TokenAuraVault is MockTwoTokenVaultBase {
         return oracleContext._getSpotPrice(poolContext, tokenIndex);
     }
 
-    function getOptimalSecondaryBorrowAmount(uint256 primaryAmount) external view returns (uint256) {
-        return oracleContext._getOptimalSecondaryBorrowAmount(poolContext, primaryAmount);
-    }
-
     function getStrategyContext() public view returns (Weighted2TokenAuraStrategyContext memory) {
         return Weighted2TokenAuraStrategyContext({
             poolContext: poolContext,
@@ -65,7 +59,6 @@ contract MockWeighted2TokenAuraVault is MockTwoTokenVaultBase {
             stakingContext: stakingContext,
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
-                secondaryBorrowCurrencyId: secondaryBorrowCurrencyId,
                 settlementPeriodInSeconds: settlementPeriodInSeconds,
                 tradingModule: tradingModule,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),

@@ -4,7 +4,6 @@ pragma solidity 0.8.15;
 import {
     Boosted3TokenAuraStrategyContext, 
     StrategyContext,
-    SettlementState,
     RedeemParams,
     StrategyVaultSettings,
     StrategyVaultState
@@ -30,7 +29,6 @@ library Boosted3TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
         SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastSettlementTimestamp,
             context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
@@ -38,14 +36,25 @@ library Boosted3TokenAuraSettlementHelper {
             data
         );
 
-        context._executeNormalSettlement({
-            state: state,
+        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
+            oracleContext: context.oracleContext,
+            poolContext: context.poolContext,
+            strategyTokenAmount: strategyTokensToRedeem
+        });
+
+        SettlementUtils._executeSettlement({
             maturity: maturity,
-            strategyTokensToRedeem: strategyTokensToRedeem
+            bptToSettle: bptToSettle,
+            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            maxUnderlyingSurplus: maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: strategyTokensToRedeem,
+            data: data
         });
 
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
         context.baseStrategy.vaultState._setStrategyVaultState();
+
+        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultPostMaturity(
@@ -54,7 +63,6 @@ library Boosted3TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
         SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
             context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
@@ -62,14 +70,25 @@ library Boosted3TokenAuraSettlementHelper {
             data
         );
 
-        context._executeNormalSettlement({
-            state: state,
+        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
+            oracleContext: context.oracleContext,
+            poolContext: context.poolContext,
+            strategyTokenAmount: redeemStrategyTokenAmount
+        });
+
+        SettlementUtils._executeSettlement({
             maturity: maturity,
-            strategyTokensToRedeem: strategyTokensToRedeem
+            bptToSettle: bptToSettle,
+            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            maxUnderlyingSurplus: maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            data: data
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
         context.baseStrategy.vaultState._setStrategyVaultState();  
+
+        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 
     function settleVaultEmergency(
@@ -91,13 +110,15 @@ library Boosted3TokenAuraSettlementHelper {
             strategyTokenAmount: redeemStrategyTokenAmount
         });
 
-        SettlementUtils._executeEmergencySettlement({
+        SettlementUtils._executeSettlement({
             maturity: maturity,
             bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
             maxUnderlyingSurplus: maxUnderlyingSurplus,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             data: data
-        });       
+        });
+
+        emit SettlementUtils.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 }

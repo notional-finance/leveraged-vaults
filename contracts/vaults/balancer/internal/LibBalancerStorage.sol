@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {StrategyVaultSettings, StrategyVaultState, SettlementState} from "../BalancerVaultTypes.sol";
+import {StrategyVaultSettings, StrategyVaultState} from "../BalancerVaultTypes.sol";
 
 library LibBalancerStorage {
 
@@ -15,8 +15,7 @@ library LibBalancerStorage {
     enum StorageId {
         Unused,
         StrategyVaultSettings,
-        StrategyVaultState,
-        SettlementState
+        StrategyVaultState
     }
 
     /// @dev 
@@ -31,13 +30,6 @@ library LibBalancerStorage {
         mapping(uint256 => StrategyVaultState) storage store
     ) {
         uint256 slot = _getStorageSlot(StorageId.StrategyVaultState);
-        assembly { store.slot := slot }
-    }
-
-    function getSettlementState() internal pure returns (
-        mapping(uint256 => SettlementState) storage store
-    ) {
-        uint256 slot = _getStorageSlot(StorageId.SettlementState);
         assembly { store.slot := slot }
     }
 

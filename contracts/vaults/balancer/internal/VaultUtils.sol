@@ -2,11 +2,7 @@
 pragma solidity 0.8.15;
 
 import {LibBalancerStorage} from "./LibBalancerStorage.sol";
-import {
-    StrategyVaultSettings, 
-    StrategyVaultState, 
-    SettlementState
-} from "../BalancerVaultTypes.sol";
+import {StrategyVaultSettings, StrategyVaultState} from "../BalancerVaultTypes.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {Constants} from "../../../global/Constants.sol";
 
@@ -44,16 +40,6 @@ library VaultUtils {
     function _setStrategyVaultState(StrategyVaultState memory state) internal {
         mapping(uint256 => StrategyVaultState) storage store = LibBalancerStorage.getStrategyVaultState();
         store[0] = state;
-    }
-
-    function _getSettlementState(uint256 maturity) internal view returns (SettlementState memory) {
-        mapping(uint256 => SettlementState) storage store = LibBalancerStorage.getSettlementState();
-        return store[maturity];
-    }
-
-    function _setSettlementState(SettlementState memory state, uint256 maturity) internal {
-        mapping(uint256 => SettlementState) storage store = LibBalancerStorage.getSettlementState();
-        store[maturity] = state;
     }
 
     function _getBPTHeldInMaturity(

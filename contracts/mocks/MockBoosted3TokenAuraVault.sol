@@ -65,7 +65,6 @@ contract MockBoosted3TokenAuraVault {
             stakingContext: stakingContext,
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
-                secondaryBorrowCurrencyId: 0, // This strategy does not support secondary borrow
                 settlementPeriodInSeconds: settlementPeriodInSeconds,
                 tradingModule: tradingModule,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),

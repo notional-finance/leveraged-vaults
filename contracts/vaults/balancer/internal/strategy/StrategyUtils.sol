@@ -1,57 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {StrategyContext, StrategyVaultState, SettlementState} from "../../BalancerVaultTypes.sol";
+import {
+    StrategyContext, 
+    StrategyVaultState,
+    SecondaryTradeParams
+} from "../../BalancerVaultTypes.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {SettlementUtils} from "../settlement/SettlementUtils.sol";
-import {SecondaryBorrowUtils} from "../SecondaryBorrowUtils.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {VaultUtils} from "../VaultUtils.sol";
+import {IERC20} from "../../../../../interfaces/IERC20.sol";
+import {ITradingModule, Trade, TradeType} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library StrategyUtils {
     using VaultUtils for StrategyVaultState;
-
-    function _getSecondaryBorrowAmount(
-        StrategyContext memory context,
-        address account,
-        uint256 maturity,
-        uint256 strategyTokenAmount
-    ) internal view returns (uint256 borrowedSecondaryfCashAmount) {
-        if (context.secondaryBorrowCurrencyId > 0) {
-            if (account == address(this)) {
-                uint256 totalSupplyInMaturity;
-                
-                if (maturity - context.settlementPeriodInSeconds <= block.timestamp) {
-                    // In settlement
-                    SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokenAmount);
-                    totalSupplyInMaturity = state.totalStrategyTokensInMaturity;
-                } else {
-                    totalSupplyInMaturity = NotionalUtils._totalSupplyInMaturity(maturity);
-                }
-
-                // prettier-ignore
-                (
-                    /* uint256 debtShares */,
-                    borrowedSecondaryfCashAmount
-                ) = SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
-                    secondaryBorrowCurrencyId: context.secondaryBorrowCurrencyId,
-                    maturity: maturity
-                });
-            } else {
-                // prettier-ignore
-                (
-                    /* uint256 debtShares */,
-                    borrowedSecondaryfCashAmount
-                ) = SecondaryBorrowUtils._getAccountDebtSharesToRepay({
-                    secondaryBorrowCurrencyId: context.secondaryBorrowCurrencyId, 
-                    account: account,
-                    maturity: maturity, 
-                    strategyTokenAmount: strategyTokenAmount
-                });
-            }
-        }
-    }
 
     /// @notice Converts strategy tokens to BPT
     function _convertStrategyTokensToBPTClaim(StrategyContext memory context, uint256 strategyTokenAmount)
@@ -75,5 +39,85 @@ library StrategyUtils {
         // is the tokens minted that will give the account a corresponding share of the new bpt balance held.
         // The precision here will be the same as strategy token supply.
         strategyTokenAmount = (bptClaim * context.vaultState.totalStrategyTokenGlobal) / context.totalBPTHeld;
+    }
+
+    function _sellSecondaryBalance(
+        SecondaryTradeParams memory params,
+        ITradingModule tradingModule,
+        address primaryToken,
+        address secondaryToken,
+        uint256 secondaryBalance
+    ) internal returns (uint256 primaryPurchased) {
+        require(
+            params.tradeType == TradeType.EXACT_IN_SINGLE || params.tradeType == TradeType.EXACT_IN_BATCH
+        );
+
+        // Unwrap wstETH if necessary to get better liquididty
+        address sellToken = secondaryToken;
+        if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
+            sellToken = Constants.WRAPPED_STETH.stETH();
+            uint256 unwrappedAmount = IERC20(sellToken).balanceOf(address(this));
+            /// @notice the amount returned by unwrap is not always accurate for some reason
+            Constants.WRAPPED_STETH.unwrap(secondaryBalance);
+            secondaryBalance = IERC20(sellToken).balanceOf(address(this)) - unwrappedAmount;
+        }
+
+        // Sell residual secondary balance
+        Trade memory trade = Trade(
+            params.tradeType,
+            sellToken,
+            primaryToken,
+            secondaryBalance,
+            0,
+            block.timestamp, // deadline
+            params.exchangeData
+        );
+
+        (/* */, primaryPurchased) = trade._executeTradeWithDynamicSlippage(
+            params.dexId, tradingModule, params.oracleSlippagePercent
+        );
+    }
+
+    function _sellPrimaryBalance(
+        SecondaryTradeParams memory params,
+        ITradingModule tradingModule,
+        address primaryToken,
+        address secondaryToken,
+        uint256 secondaryShortfall
+    ) internal returns (uint256 secondaryPurchased) {
+        require(
+            params.tradeType == TradeType.EXACT_OUT_SINGLE || params.tradeType == TradeType.EXACT_OUT_BATCH
+        );
+
+        // Trade using stETH instead of wstETH if requested
+        address buyToken = secondaryToken;
+        if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
+            buyToken = Constants.WRAPPED_STETH.stETH();
+            secondaryShortfall = Constants.WRAPPED_STETH.getStETHByWstETH(secondaryShortfall);
+        }
+
+        Trade memory trade = Trade(
+            params.tradeType,
+            primaryToken,
+            buyToken,
+            secondaryShortfall,
+            0,
+            block.timestamp, // deadline
+            params.exchangeData
+        );
+
+        (
+            /* uint256 amountSold */, 
+            secondaryPurchased
+        ) = trade._executeTradeWithDynamicSlippage(params.dexId, tradingModule, params.oracleSlippagePercent);
+
+        // Wrap stETH if necessary
+        if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
+            IERC20(buyToken).checkApprove(address(Constants.WRAPPED_STETH), secondaryPurchased);
+            uint256 wrappedAmount = Constants.WRAPPED_STETH.balanceOf(address(this));
+            /// @notice the amount returned by wrap is not always accurate for some reason
+            Constants.WRAPPED_STETH.wrap(secondaryPurchased);
+            secondaryPurchased = Constants.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
+        }    
     }
 }

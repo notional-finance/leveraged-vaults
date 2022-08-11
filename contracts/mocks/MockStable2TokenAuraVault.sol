@@ -26,14 +26,12 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
     StableOracleContext private oracleContext;
     AuraStakingContext private stakingContext;
     ITradingModule private tradingModule;
-    uint16 private secondaryBorrowCurrencyId;
     uint32 private settlementPeriodInSeconds;
 
     constructor(MetaStable2TokenAuraStrategyContext memory context) 
         MockTwoTokenVaultBase(context.poolContext, context.oracleContext.baseOracle) {
         oracleContext = context.oracleContext;
         stakingContext = context.stakingContext;
-        secondaryBorrowCurrencyId = context.baseStrategy.secondaryBorrowCurrencyId;
         settlementPeriodInSeconds = context.baseStrategy.settlementPeriodInSeconds;
         tradingModule = context.baseStrategy.tradingModule;
         context.baseStrategy.vaultSettings._setStrategyVaultSettings(
@@ -57,7 +55,6 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
             stakingContext: stakingContext,
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
-                secondaryBorrowCurrencyId: secondaryBorrowCurrencyId,
                 settlementPeriodInSeconds: settlementPeriodInSeconds,
                 tradingModule: tradingModule,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
@@ -69,10 +66,6 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
     function getSpotPrice(uint256 tokenIndex) external view returns (uint256 spotPrice) {
         return oracleContext._getSpotPrice(poolContext, tokenIndex);
     }
-
-    function getOptimalSecondaryBorrowAmount(uint256 primaryAmount) external view returns (uint256) {
-        return oracleContext._getOptimalSecondaryBorrowAmount(poolContext, primaryAmount);
-    }  
 
     /// @dev Gets the total BPT held by the aura reward pool
     function _bptHeld() internal view returns (uint256) {

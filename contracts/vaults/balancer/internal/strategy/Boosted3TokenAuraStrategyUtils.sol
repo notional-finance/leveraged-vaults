@@ -10,8 +10,7 @@ import {
     BoostedOracleContext,
     AuraStakingContext,
     StrategyVaultSettings,
-    StrategyVaultState,
-    SettlementState
+    StrategyVaultState
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";

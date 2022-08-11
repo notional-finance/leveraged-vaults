@@ -11,12 +11,8 @@ abstract contract Weighted2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracleM
     uint256 internal immutable PRIMARY_WEIGHT;
     uint256 internal immutable SECONDARY_WEIGHT;
         
-    constructor(
-        uint16 primaryBorrowCurrencyId, 
-        bytes32 balancerPoolId,
-        uint16 secondaryBorrowCurrencyId
-    ) 
-        TwoTokenPoolMixin(primaryBorrowCurrencyId, balancerPoolId, secondaryBorrowCurrencyId) 
+    constructor(uint16 primaryBorrowCurrencyId, bytes32 balancerPoolId) 
+        TwoTokenPoolMixin(primaryBorrowCurrencyId, balancerPoolId) 
         BalancerOracleMixin(balancerPoolId) 
     {
         // The oracle is required for the vault to behave properly

@@ -27,7 +27,6 @@ import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenAuraStrategyUtils} from "./balancer/internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
-import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {Boosted3TokenAuraVaultHelper} from "./balancer/external/Boosted3TokenAuraVaultHelper.sol";
 import {Boosted3TokenAuraSettlementHelper} from "./balancer/external/Boosted3TokenAuraSettlementHelper.sol";
 import {Boosted3TokenAuraRewardHelper} from "./balancer/external/Boosted3TokenAuraRewardHelper.sol";
@@ -189,7 +188,6 @@ contract Boosted3TokenAuraVault is
             stakingContext: _auraStakingContext(),
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
-                secondaryBorrowCurrencyId: 0, // This strategy does not support secondary borrow
                 settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
                 tradingModule: TRADING_MODULE,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),

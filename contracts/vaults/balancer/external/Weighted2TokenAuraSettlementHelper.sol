@@ -6,7 +6,6 @@ import {
     TwoTokenAuraSettlementContext, 
     WeightedOracleContext,
     StrategyContext,
-    SettlementState,
     RedeemParams,
     StrategyVaultSettings,
     StrategyVaultState
@@ -15,7 +14,6 @@ import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {TwoTokenAuraSettlementUtils} from "../internal/settlement/TwoTokenAuraSettlementUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
-import {SecondaryBorrowUtils} from "../internal/SecondaryBorrowUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {Weighted2TokenOracleMath} from "../internal/math/Weighted2TokenOracleMath.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
@@ -34,7 +32,6 @@ library Weighted2TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastSettlementTimestamp,
             context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
@@ -49,21 +46,25 @@ library Weighted2TokenAuraSettlementHelper {
             secondaryAmount: params.minSecondary
         });
 
-        TwoTokenAuraSettlementUtils._executeNormalSettlement({
-            context: TwoTokenAuraSettlementContext({
-                strategyContext: context.baseStrategy,
-                oracleContext: context.oracleContext.baseOracle,
-                poolContext: context.poolContext,
-                stakingContext: context.stakingContext
-            }),
-            state: state,
+        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
+            oracleContext: context.oracleContext,
+            poolContext: context.poolContext,
+            strategyTokenAmount: redeemStrategyTokenAmount
+        });
+
+        SettlementUtils._executeSettlement({
             maturity: maturity,
-            strategyTokensToRedeem: strategyTokensToRedeem,
-            params: params
+            bptToSettle: bptToSettle,
+            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            maxUnderlyingSurplus: maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            data: data
         });
 
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
         context.baseStrategy.vaultState._setStrategyVaultState();
+
+        emit SettlementUtils.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 
     function settleVaultPostMaturity(
@@ -72,7 +73,6 @@ library Weighted2TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
             context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
@@ -87,21 +87,25 @@ library Weighted2TokenAuraSettlementHelper {
             secondaryAmount: params.minSecondary
         });
 
-        TwoTokenAuraSettlementUtils._executeNormalSettlement({
-            context: TwoTokenAuraSettlementContext({
-                strategyContext: context.baseStrategy,
-                oracleContext: context.oracleContext.baseOracle,
-                poolContext: context.poolContext,
-                stakingContext: context.stakingContext
-            }),
-            state: state,
+        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
+            oracleContext: context.oracleContext,
+            poolContext: context.poolContext,
+            strategyTokenAmount: redeemStrategyTokenAmount
+        });
+
+        SettlementUtils._executeSettlement({
             maturity: maturity,
-            strategyTokensToRedeem: strategyTokensToRedeem,
-            params: params
+            bptToSettle: bptToSettle,
+            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            maxUnderlyingSurplus: maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            data: data
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
         context.baseStrategy.vaultState._setStrategyVaultState();  
+
+        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 
     function settleVaultEmergency(
@@ -125,7 +129,7 @@ library Weighted2TokenAuraSettlementHelper {
             strategyTokenAmount: redeemStrategyTokenAmount
         });
 
-        SettlementUtils._executeEmergencySettlement({
+        SettlementUtils._executeSettlement({
             maturity: maturity,
             bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
@@ -133,5 +137,7 @@ library Weighted2TokenAuraSettlementHelper {
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             data: data
         });       
+
+        emit SettlementUtils.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 }

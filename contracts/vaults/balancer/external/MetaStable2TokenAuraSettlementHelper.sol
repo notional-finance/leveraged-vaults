@@ -6,7 +6,6 @@ import {
     TwoTokenAuraSettlementContext, 
     StableOracleContext,
     StrategyContext,
-    SettlementState,
     RedeemParams,
     StrategyVaultSettings,
     StrategyVaultState
@@ -15,7 +14,6 @@ import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {TwoTokenAuraSettlementUtils} from "../internal/settlement/TwoTokenAuraSettlementUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
-import {SecondaryBorrowUtils} from "../internal/SecondaryBorrowUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
@@ -34,7 +32,6 @@ library MetaStable2TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastSettlementTimestamp,
             context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
@@ -72,7 +69,6 @@ library MetaStable2TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokensToRedeem);
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
             context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
@@ -125,13 +121,15 @@ library MetaStable2TokenAuraSettlementHelper {
             strategyTokenAmount: redeemStrategyTokenAmount
         });
 
-        SettlementUtils._executeEmergencySettlement({
+        SettlementUtils._executeSettlement({
             maturity: maturity,
             bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
             maxUnderlyingSurplus: maxUnderlyingSurplus,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             data: data
-        });       
+        });
+
+        emit SettlementUtils.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 }

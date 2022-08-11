@@ -17,8 +17,7 @@ import {
     StableOracleContext,
     MetaStable2TokenAuraStrategyContext,
     StrategyContext,
-    TwoTokenAuraSettlementContext,
-    SettlementState
+    TwoTokenAuraSettlementContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
@@ -31,7 +30,6 @@ import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.so
 import {TwoTokenAuraStrategyUtils} from "./balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
-import {SecondaryBorrowUtils} from "./balancer/internal/SecondaryBorrowUtils.sol";
 import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
 import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
 import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
@@ -53,8 +51,7 @@ contract MetaStable2TokenAuraVault is
         BaseVaultStorage(notional_, params.baseParams) 
         MetaStable2TokenVaultMixin(
             params.primaryBorrowCurrencyId,
-            params.baseParams.balancerPoolId,
-            params.secondaryBorrowCurrencyId
+            params.baseParams.balancerPoolId
         )
         AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool)
     {}
@@ -108,23 +105,6 @@ contract MetaStable2TokenAuraVault is
                 _strategyContext(), account, strategyTokens, maturity, data
             );
         }
-    }
-
-    function _repaySecondaryBorrowCallback(
-        address, /* secondaryToken */
-        uint256 underlyingRequired,
-        bytes calldata data
-    ) internal override returns (bytes memory returnData) {
-        require(SECONDARY_BORROW_CURRENCY_ID != 0); /// @dev invalid secondary currency
-
-        returnData = SecondaryBorrowUtils._handleSecondaryBorrowCallback({
-            secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID, 
-            tradingModule: TRADING_MODULE,
-            primaryToken: address(_underlyingToken()),
-            secondaryToken: address(SECONDARY_TOKEN),
-            underlyingRequired: underlyingRequired, 
-            data: data
-        });
     }
 
     function convertStrategyToUnderlying(
@@ -208,7 +188,6 @@ contract MetaStable2TokenAuraVault is
             stakingContext: _auraStakingContext(),
             baseStrategy: StrategyContext({
                 totalBPTHeld: _bptHeld(),
-                secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
                 settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
                 tradingModule: TRADING_MODULE,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
@@ -219,33 +198,6 @@ contract MetaStable2TokenAuraVault is
     
     function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory) {
         return _strategyContext();
-    }
-
-    function getAccountDebtSharesToRepay(
-        address account, 
-        uint256 maturity, 
-        uint256 strategyTokenAmount
-    ) external view returns (uint256 debtSharesToRepay, uint256 borrowedSecondaryfCashAmount) {
-        if (SECONDARY_BORROW_CURRENCY_ID == 0) return (0, 0);
-        require(account != address(this));
-        return SecondaryBorrowUtils._getAccountDebtSharesToRepay({
-            secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID, 
-            account: account, 
-            maturity: maturity, 
-            strategyTokenAmount: strategyTokenAmount
-        });
-    }
-
-    function getSettlementDebtSharesToRepay(
-        uint256 maturity, 
-        uint256 strategyTokenAmount        
-    ) external view returns (uint256 debtSharesToRepay, uint256 borrowedSecondaryfCashAmount) {
-        if (SECONDARY_BORROW_CURRENCY_ID == 0) return (0, 0);
-        SettlementState memory state = SettlementUtils._getSettlementState(maturity, strategyTokenAmount);
-        return SecondaryBorrowUtils._getSettlementDebtSharesToRepay({
-            secondaryBorrowCurrencyId: SECONDARY_BORROW_CURRENCY_ID,
-            maturity: maturity
-        });        
     }
     
     function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
