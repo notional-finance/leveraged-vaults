@@ -93,7 +93,7 @@ library TwoTokenAuraSettlementUtils {
                 (SecondaryTradeParams memory tradeParams) = abi.decode(
                     params.secondaryTradeParams, (SecondaryTradeParams)
                 );
-                SecondaryBorrowUtils._sellSecondaryBalance({
+                uint256 primaryPurchased = SecondaryBorrowUtils._sellSecondaryBalance({
                     params: tradeParams,
                     tradingModule: context.strategyContext.tradingModule,
                     primaryToken: context.poolContext.primaryToken,
@@ -101,6 +101,7 @@ library TwoTokenAuraSettlementUtils {
                     secondaryBalance: secondaryBalance
                 });
 
+                primaryBalance += primaryPurchased;
                 secondaryBalance = 0;
             }
 
@@ -108,7 +109,7 @@ library TwoTokenAuraSettlementUtils {
             (completedSettlement, primaryBalance) = SettlementUtils._repayPrimaryDebt({
                 underlyingCashRequiredToSettle: data.underlyingCashRequiredToSettle,
                 maxUnderlyingSurplus: data.maxUnderlyingSurplus,
-                redeemStrategyTokenAmount: data.redeemStrategyTokenAmount,
+                redeemStrategyTokenAmount: data.state.unredeemedStrategyTokenAmount + data.redeemStrategyTokenAmount,
                 maturity: maturity,
                 primaryBalance: primaryBalance.toInt()
             });
@@ -164,11 +165,16 @@ library TwoTokenAuraSettlementUtils {
         require(primaryBalance <= type(uint88).max); /// @dev primaryBalance overflow
         require(secondaryBalance <= type(uint88).max); /// @dev secondaryBalance overflow
 
+        // Keep track of unredeemed strategy tokens (settlement strategy token amount not reported to Notional)
+        state.unredeemedStrategyTokenAmount = 
+            completedSettlement ? 0 : state.unredeemedStrategyTokenAmount + uint80(strategyTokensToRedeem);
+
         // Update settlement balances and strategy tokens redeemed
         SettlementState({
             primarySettlementBalance: uint88(primaryBalance), 
             secondarySettlementBalance: uint88(secondaryBalance), 
             totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity - uint80(strategyTokensToRedeem),
+            unredeemedStrategyTokenAmount: state.unredeemedStrategyTokenAmount,
             isInitialized: true
         })._setSettlementState(maturity);
 

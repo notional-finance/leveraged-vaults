@@ -79,11 +79,16 @@ library Boosted3TokenAuraSettlementUtils {
 
         require(primaryBalance <= type(uint88).max); /// @dev primaryBalance overflow
 
+        // Keep track of unredeemed strategy tokens (settlement strategy token amount not reported to Notional)
+        state.unredeemedStrategyTokenAmount = 
+            completedSettlement ? 0 : state.unredeemedStrategyTokenAmount + uint80(strategyTokensToRedeem);
+
         // Update settlement balances and strategy tokens redeemed
         SettlementState({
             primarySettlementBalance: uint88(primaryBalance), 
             secondarySettlementBalance: 0, 
             totalStrategyTokensInMaturity: state.totalStrategyTokensInMaturity - uint80(strategyTokensToRedeem),
+            unredeemedStrategyTokenAmount: state.unredeemedStrategyTokenAmount,
             isInitialized: true
         })._setSettlementState(maturity);
 
@@ -114,7 +119,7 @@ library Boosted3TokenAuraSettlementUtils {
             (completedSettlement, primaryBalance) = SettlementUtils._repayPrimaryDebt({
                 underlyingCashRequiredToSettle: data.underlyingCashRequiredToSettle,
                 maxUnderlyingSurplus: data.maxUnderlyingSurplus,
-                redeemStrategyTokenAmount: data.redeemStrategyTokenAmount,
+                redeemStrategyTokenAmount: data.state.unredeemedStrategyTokenAmount + data.redeemStrategyTokenAmount,
                 maturity: maturity,
                 primaryBalance: primaryBalance.toInt()
             });
@@ -144,7 +149,8 @@ library Boosted3TokenAuraSettlementUtils {
             maxUnderlyingSurplus: strategyContext.vaultSettings.maxUnderlyingSurplus,
             primarySettlementBalance: state.primarySettlementBalance,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-            underlyingCashRequiredToSettle: underlyingCashRequiredToSettle
+            underlyingCashRequiredToSettle: underlyingCashRequiredToSettle,
+            state: state
         });
     }
 }

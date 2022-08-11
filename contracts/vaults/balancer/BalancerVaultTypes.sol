@@ -186,6 +186,7 @@ struct BoostedSettlementData {
     uint256 primarySettlementBalance;
     uint256 redeemStrategyTokenAmount;
     int256 underlyingCashRequiredToSettle;
+    SettlementState state;
 }
 
 struct Balanced2TokenRewardTradeParams {
@@ -234,5 +235,6 @@ struct SettlementState {
     uint88 primarySettlementBalance;
     uint88 secondarySettlementBalance;
     uint80 totalStrategyTokensInMaturity;
+    uint80 unredeemedStrategyTokenAmount;
     bool isInitialized;
 }
