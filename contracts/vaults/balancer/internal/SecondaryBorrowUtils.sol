@@ -164,7 +164,10 @@ library SecondaryBorrowUtils {
         address sellToken = secondaryToken;
         if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
             sellToken = Constants.WRAPPED_STETH.stETH();
-            secondaryBalance = Constants.WRAPPED_STETH.unwrap(secondaryBalance);
+            uint256 unwrappedAmount = IERC20(sellToken).balanceOf(address(this));
+            /// @notice the amount returned by unwrap is not always accurate for some reason
+            Constants.WRAPPED_STETH.unwrap(secondaryBalance);
+            secondaryBalance = IERC20(sellToken).balanceOf(address(this)) - unwrappedAmount;
         }
 
         // Sell residual secondary balance
@@ -219,7 +222,10 @@ library SecondaryBorrowUtils {
         // Wrap stETH if necessary
         if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
             IERC20(buyToken).checkApprove(address(Constants.WRAPPED_STETH), secondaryPurchased);
-            secondaryPurchased = Constants.WRAPPED_STETH.wrap(secondaryPurchased);
+            uint256 wrappedAmount = Constants.WRAPPED_STETH.balanceOf(address(this));
+            /// @notice the amount returned by wrap is not always accurate for some reason
+            Constants.WRAPPED_STETH.wrap(secondaryPurchased);
+            secondaryPurchased = Constants.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
         }    
     }
 

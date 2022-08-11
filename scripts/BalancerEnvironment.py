@@ -10,9 +10,10 @@ from brownie import (
     AuraRewardHelperExternal,
     MetaStable2TokenAuraRewardHelper,
     MetaStable2TokenAuraVaultHelper,
+    MetaStable2TokenAuraSettlementHelper,
     Weighted2TokenAuraRewardHelper,
     Weighted2TokenAuraVaultHelper,
-    TwoTokenAuraSettlementHelper,
+    Weighted2TokenAuraSettlementHelper,
     Boosted3TokenAuraVaultHelper,
     MockWeighted2TokenAuraVault,
     MockStable2TokenAuraVault,
@@ -103,7 +104,34 @@ StrategyConfig = {
             "liquidityGauge": "0x68d019f64a7aa97e2d4e7363aee42251d08124fb",
             "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 100e18, # 10 ETH
+            "maxUnderlyingSurplus": 10000e18, # 10000 DAI
+            "oracleWindowInSeconds": 0,
+            "maxBalancerPoolShare": 2e3, # 20%
+            "settlementSlippageLimit": 5e6, # 5%
+            "postMaturitySettlementSlippageLimit": 10e6, # 10%
+            "balancerOracleWeight": 0,
+            "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
+            "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
+            "feePercentage": 1e2, # 1%
+            "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
+        },
+        "StratBoostedPoolUSDCPrimary": {
+            "vaultConfig": get_vault_config(
+                flags=set_flags(0, ENABLED=True),
+                currencyId=3,
+                minAccountBorrowSize=1,
+                maxBorrowMarketIndex=3,
+                secondaryBorrowCurrencies=[0,0]
+            ),
+            "secondaryBorrowCurrency": None,
+            "maxPrimaryBorrowCapacity": 100_000_000e8,
+            "name": "Balancer Boosted Pool Strategy",
+            "primaryCurrency": 3, # USDC
+            "poolId": "0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb20000000000000000000000fe",
+            "liquidityGauge": "0x68d019f64a7aa97e2d4e7363aee42251d08124fb",
+            "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
+            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
+            "maxUnderlyingSurplus": 10000e6, # 10000 USDC
             "oracleWindowInSeconds": 0,
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimit": 5e6, # 5%
@@ -127,9 +155,10 @@ class BalancerEnvironment(Environment):
         AuraRewardHelperExternal.deploy({"from": self.deployer})
         MetaStable2TokenAuraRewardHelper.deploy({"from": self.deployer})
         MetaStable2TokenAuraVaultHelper.deploy({"from": self.deployer})
+        MetaStable2TokenAuraSettlementHelper.deploy({"from": self.deployer})
         Weighted2TokenAuraRewardHelper.deploy({"from": self.deployer})
         Weighted2TokenAuraVaultHelper.deploy({"from": self.deployer})
-        TwoTokenAuraSettlementHelper.deploy({"from": self.deployer})
+        Weighted2TokenAuraSettlementHelper.deploy({"from": self.deployer})
         Boosted3TokenAuraVaultHelper.deploy({"from": self.deployer})
         Boosted3TokenAuraSettlementHelper.deploy({"from": self.deployer})
         Boosted3TokenAuraRewardHelper.deploy({"from": self.deployer})
@@ -243,40 +272,6 @@ def main():
     stableStrategyContext = stableVault.getStrategyContext()
     weightedStrategyContext = weightedVault.getStrategyContext()
     
-    vaultAccount = env.notional.getVaultAccount(env.whales["ETH"], weightedVault.address)
-    vaultShares = vaultAccount["vaultShares"]
-    bptAmount = weightedVault.convertStrategyTokensToBPTClaim(vaultShares, maturity)
-    spotBalances = env.mockTwoTokenPoolUtils.getSpotBalances(weightedStrategyContext["poolContext"], bptAmount)
-    env.notional.exitVault(
-        env.whales["ETH"],
-        weightedVault.address,
-        env.whales["ETH"],
-        vaultShares,
-        5e8,
-        0,
-        eth_abi.encode_abi(
-            ['(uint32,uint256,uint256,bytes)'],
-            [[
-                0,
-                Wei(spotBalances["primaryBalance"] * 0.98),
-                Wei(spotBalances["secondaryBalance"] * 0.98),
-                eth_abi.encode_abi(
-                    ['(uint16,uint8,uint32,bytes)'],
-                    [[
-                        1,
-                        0,
-                        Wei(5e6),
-                        eth_abi.encode_abi(
-                            ['(uint24)'],
-                            [[3000]]
-                        )
-                    ]]
-                )
-            ]]
-        ),
-        {"from": env.whales["ETH"]}
-    )
-
     chain.undo()
 
     settings = weightedStrategyContext["baseStrategy"]["vaultSettings"]

@@ -74,7 +74,10 @@ library TwoTokenAuraStrategyUtils {
             secondaryBought > 0
         ) {
             IERC20(buyToken).checkApprove(address(Constants.WRAPPED_STETH), secondaryBought);
-            secondaryBought = Constants.WRAPPED_STETH.wrap(secondaryBought);
+            uint256 wrappedAmount = Constants.WRAPPED_STETH.balanceOf(address(this));
+            /// @notice the amount returned by wrap is not always accurate for some reason
+            Constants.WRAPPED_STETH.wrap(secondaryBought);
+            secondaryBought = Constants.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
         }
     }
 

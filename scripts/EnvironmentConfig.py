@@ -169,6 +169,12 @@ class Environment:
             "0xcfe54b5cd566ab89272946f602d76ea879cab4a8",
             {"from": self.notional.owner()}
         )
+        # wstETH/USD oracle
+        self.tradingModule.setPriceOracle(
+            self.tokens["wstETH"].address,
+            "0x54bd2a9e54532ff28cdb9208578f63788549b127",
+            {"from": self.notional.owner()}
+        )
 
 def getEnvironment(network = "mainnet"):
     return Environment(network)

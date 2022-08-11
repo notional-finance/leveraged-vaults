@@ -119,6 +119,18 @@ def get_deposit_trade_params(dexId, tradeType, amount, slippage, unwrap, exchang
         ]]
     )
 
+def get_secondary_trade_params(dexId, tradeType, slippage, unwrap, exchangeData):
+    return eth_abi.encode_abi(
+        ['(uint16,uint8,uint32,bool,bytes)'],
+        [[
+            dexId,
+            tradeType,
+            Wei(slippage),
+            unwrap,
+            exchangeData
+        ]]
+    )
+
 def get_deposit_params(minBPT=0, secondaryBorrow=0, trade=bytes(0)):
     return eth_abi.encode_abi(
         ['(uint256,uint256,uint32,uint32,bytes)'],
