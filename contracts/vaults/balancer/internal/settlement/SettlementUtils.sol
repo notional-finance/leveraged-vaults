@@ -13,18 +13,19 @@ import {Errors} from "../../../../global/Errors.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
+import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {VaultUtils} from "../VaultUtils.sol";
 import {IERC20} from "../../../../../interfaces/IERC20.sol";
 
 library SettlementUtils {
     using SafeInt256 for uint256;
     using SafeInt256 for int256;
+    using StrategyUtils for StrategyContext;
     using VaultUtils for StrategyVaultSettings;
     using VaultUtils for StrategyVaultState;
 
     event VaultSettlement(
         uint256 maturity,
-        uint256 bptSettled,
         uint256 strategyTokensRedeemed
     );
 
@@ -160,10 +161,9 @@ library SettlementUtils {
     }
 
     function _executeSettlement(
+        StrategyContext memory context,
         uint256 maturity,
-        uint256 bptToSettle,
         int256 expectedUnderlyingRedeemed,
-        uint256 maxUnderlyingSurplus,
         uint256 redeemStrategyTokenAmount,
         bytes calldata data
     ) internal {
@@ -186,7 +186,7 @@ library SettlementUtils {
 
         // Make sure we not redeeming too much to underlying
         // This allows BPT to be accrued as the profit token.
-        if (surplus > maxUnderlyingSurplus.toInt()) {
+        if (surplus > context.vaultSettings.maxUnderlyingSurplus.toInt()) {
             revert Errors.RedeemingTooMuch(
                 expectedUnderlyingRedeemed,
                 underlyingCashRequiredToSettle

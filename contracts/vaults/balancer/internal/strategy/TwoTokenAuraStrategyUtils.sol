@@ -213,9 +213,7 @@ library TwoTokenAuraStrategyUtils {
         uint256 bptClaim 
             = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
 
-        uint256 primaryBalance 
-            = poolContext._getTimeWeightedPrimaryBalance(oracleContext, bptClaim);
-
-        return primaryBalance.toInt();
+        underlyingValue 
+            = poolContext._getTimeWeightedPrimaryBalance(oracleContext, bptClaim).toInt();
     }
 }

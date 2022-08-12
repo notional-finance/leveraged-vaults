@@ -92,18 +92,11 @@ contract Boosted3TokenAuraVault is
     ) internal override returns (uint256 finalPrimaryBalance) {
         require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
 
-        if (account == address(this) && data.length == 32) {
-            // Check if this is called from one of the settlement functions
-            // data = primaryAmountToRepay (uint256) in this case
-            // Token transfers are handled in the base strategy
-            (finalPrimaryBalance) = abi.decode(data, (uint256));
-        } else {
-            // Exiting the vault is not allowed within the settlement window
-            _revertInSettlementWindow(maturity);
-            finalPrimaryBalance = Boosted3TokenAuraVaultHelper.redeemFromNotional(
-                _strategyContext(), strategyTokens, maturity, data
-            );
-        }
+        // Exiting the vault is not allowed within the settlement window
+        _revertInSettlementWindow(maturity);
+        finalPrimaryBalance = Boosted3TokenAuraVaultHelper.redeemFromNotional(
+            _strategyContext(), strategyTokens, maturity, data
+        );
     }
 
     function settleVaultNormal(

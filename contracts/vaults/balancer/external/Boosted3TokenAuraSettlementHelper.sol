@@ -9,14 +9,12 @@ import {
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
-import {Boosted3TokenAuraSettlementUtils} from "../internal/settlement/Boosted3TokenAuraSettlementUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenAuraStrategyUtils} from "../internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
 
 library Boosted3TokenAuraSettlementHelper {
-    using Boosted3TokenAuraSettlementUtils for Boosted3TokenAuraStrategyContext;
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
@@ -42,13 +40,9 @@ library Boosted3TokenAuraSettlementHelper {
             strategyTokenAmount: strategyTokensToRedeem
         });
 
-        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
-
-        SettlementUtils._executeSettlement({
+        context.baseStrategy._executeSettlement({
             maturity: maturity,
-            bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: context.baseStrategy.vaultSettings.maxUnderlyingSurplus,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
             data: data
         });
@@ -56,7 +50,7 @@ library Boosted3TokenAuraSettlementHelper {
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
         context.baseStrategy.vaultState._setStrategyVaultState();
 
-        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
+        emit SettlementUtils.VaultSettlement(maturity, strategyTokensToRedeem);
     }
 
     function settleVaultPostMaturity(
@@ -78,13 +72,9 @@ library Boosted3TokenAuraSettlementHelper {
             strategyTokenAmount: strategyTokensToRedeem
         });
 
-        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
-
-        SettlementUtils._executeSettlement({
+        context.baseStrategy._executeSettlement({
             maturity: maturity,
-            bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: context.baseStrategy.vaultSettings.maxUnderlyingSurplus,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
             data: data
         });
@@ -92,7 +82,7 @@ library Boosted3TokenAuraSettlementHelper {
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
         context.baseStrategy.vaultState._setStrategyVaultState();  
 
-        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
+        emit SettlementUtils.VaultSettlement(maturity, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
@@ -114,11 +104,9 @@ library Boosted3TokenAuraSettlementHelper {
             strategyTokenAmount: redeemStrategyTokenAmount
         });
 
-        SettlementUtils._executeSettlement({
+        context.baseStrategy._executeSettlement({
             maturity: maturity,
-            bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: maxUnderlyingSurplus,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             data: data
         });
