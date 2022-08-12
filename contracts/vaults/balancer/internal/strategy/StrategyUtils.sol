@@ -7,15 +7,18 @@ import {
     SecondaryTradeParams
 } from "../../BalancerVaultTypes.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
+import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
+import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {SettlementUtils} from "../settlement/SettlementUtils.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {VaultUtils} from "../VaultUtils.sol";
-import {IERC20} from "../../../../../interfaces/IERC20.sol";
 import {ITradingModule, Trade, TradeType} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library StrategyUtils {
     using VaultUtils for StrategyVaultState;
+    using TradeHandler for Trade;
+    using TokenUtils for IERC20;
 
     /// @notice Converts strategy tokens to BPT
     function _convertStrategyTokensToBPTClaim(StrategyContext memory context, uint256 strategyTokenAmount)

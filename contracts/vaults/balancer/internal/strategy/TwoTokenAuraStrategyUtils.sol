@@ -207,8 +207,6 @@ library TwoTokenAuraStrategyUtils {
         StrategyContext memory strategyContext,
         OracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
-        address account,
-        uint256 maturity,
         uint256 strategyTokenAmount
     ) internal view returns (int256 underlyingValue) {
         

@@ -116,8 +116,6 @@ contract MetaStable2TokenAuraVault is
         underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
-            account: account,
-            maturity: maturity,
             strategyTokenAmount: strategyTokenAmount
         });
     }

@@ -47,24 +47,26 @@ library Weighted2TokenAuraSettlementHelper {
         });
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
-            oracleContext: context.oracleContext,
+            oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
-            strategyTokenAmount: redeemStrategyTokenAmount
+            strategyTokenAmount: strategyTokensToRedeem
         });
+
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
 
         SettlementUtils._executeSettlement({
             maturity: maturity,
             bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: maxUnderlyingSurplus,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            maxUnderlyingSurplus: context.baseStrategy.vaultSettings.maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: strategyTokensToRedeem,
             data: data
         });
 
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
         context.baseStrategy.vaultState._setStrategyVaultState();
 
-        emit SettlementUtils.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+        emit SettlementUtils.EmergencyVaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultPostMaturity(
@@ -88,24 +90,26 @@ library Weighted2TokenAuraSettlementHelper {
         });
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
-            oracleContext: context.oracleContext,
+            oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
-            strategyTokenAmount: redeemStrategyTokenAmount
+            strategyTokenAmount: strategyTokensToRedeem
         });
+
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
 
         SettlementUtils._executeSettlement({
             maturity: maturity,
             bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: maxUnderlyingSurplus,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            maxUnderlyingSurplus: context.baseStrategy.vaultSettings.maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: strategyTokensToRedeem,
             data: data
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
         context.baseStrategy.vaultState._setStrategyVaultState();  
 
-        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
@@ -124,8 +128,6 @@ library Weighted2TokenAuraSettlementHelper {
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
-            account: address(this),
-            maturity: maturity,
             strategyTokenAmount: redeemStrategyTokenAmount
         });
 
@@ -133,7 +135,7 @@ library Weighted2TokenAuraSettlementHelper {
             maturity: maturity,
             bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: maxUnderlyingSurplus,
+            maxUnderlyingSurplus: context.baseStrategy.vaultSettings.maxUnderlyingSurplus,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             data: data
         });       

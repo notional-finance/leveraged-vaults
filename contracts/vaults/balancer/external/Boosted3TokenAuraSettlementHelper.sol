@@ -42,11 +42,13 @@ library Boosted3TokenAuraSettlementHelper {
             strategyTokenAmount: strategyTokensToRedeem
         });
 
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
+
         SettlementUtils._executeSettlement({
             maturity: maturity,
             bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: maxUnderlyingSurplus,
+            maxUnderlyingSurplus: context.baseStrategy.vaultSettings.maxUnderlyingSurplus,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
             data: data
         });
@@ -73,22 +75,24 @@ library Boosted3TokenAuraSettlementHelper {
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
-            strategyTokenAmount: redeemStrategyTokenAmount
+            strategyTokenAmount: strategyTokensToRedeem
         });
+
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
 
         SettlementUtils._executeSettlement({
             maturity: maturity,
             bptToSettle: bptToSettle,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            maxUnderlyingSurplus: maxUnderlyingSurplus,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            maxUnderlyingSurplus: context.baseStrategy.vaultSettings.maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: strategyTokensToRedeem,
             data: data
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
         context.baseStrategy.vaultState._setStrategyVaultState();  
 
-        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(

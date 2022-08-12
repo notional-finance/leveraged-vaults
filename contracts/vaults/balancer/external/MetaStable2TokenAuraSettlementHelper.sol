@@ -46,21 +46,27 @@ library MetaStable2TokenAuraSettlementHelper {
             secondaryAmount: params.minSecondary
         });
         
-        TwoTokenAuraSettlementUtils._executeNormalSettlement({
-            context: TwoTokenAuraSettlementContext({
-                strategyContext: context.baseStrategy,
-                oracleContext: context.oracleContext.baseOracle,
-                poolContext: context.poolContext,
-                stakingContext: context.stakingContext
-            }),
-            state: state,
+        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
+            oracleContext: context.oracleContext.baseOracle,
+            poolContext: context.poolContext,
+            strategyTokenAmount: strategyTokensToRedeem
+        });
+
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
+
+        SettlementUtils._executeSettlement({
             maturity: maturity,
-            strategyTokensToRedeem: strategyTokensToRedeem,
-            params: params
+            bptToSettle: bptToSettle,
+            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            maxUnderlyingSurplus: context.baseStrategy.vaultSettings.maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: strategyTokensToRedeem,
+            data: data
         });
 
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
         context.baseStrategy.vaultState._setStrategyVaultState();
+
+        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultPostMaturity(
@@ -83,21 +89,27 @@ library MetaStable2TokenAuraSettlementHelper {
             secondaryAmount: params.minSecondary
         });
 
-        TwoTokenAuraSettlementUtils._executeNormalSettlement({
-            context: TwoTokenAuraSettlementContext({
-                strategyContext: context.baseStrategy,
-                oracleContext: context.oracleContext.baseOracle,
-                poolContext: context.poolContext,
-                stakingContext: context.stakingContext
-            }),
-            state: state,
+        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
+            oracleContext: context.oracleContext.baseOracle,
+            poolContext: context.poolContext,
+            strategyTokenAmount: strategyTokensToRedeem
+        });
+
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
+
+        SettlementUtils._executeSettlement({
             maturity: maturity,
-            strategyTokensToRedeem: strategyTokensToRedeem,
-            params: params
+            bptToSettle: bptToSettle,
+            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            maxUnderlyingSurplus: context.baseStrategy.vaultSettings.maxUnderlyingSurplus,
+            redeemStrategyTokenAmount: strategyTokensToRedeem,
+            data: data
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
         context.baseStrategy.vaultState._setStrategyVaultState();  
+
+        emit SettlementUtils.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
@@ -116,8 +128,6 @@ library MetaStable2TokenAuraSettlementHelper {
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext.baseOracle,
             poolContext: context.poolContext,
-            account: address(this),
-            maturity: maturity,
             strategyTokenAmount: redeemStrategyTokenAmount
         });
 
