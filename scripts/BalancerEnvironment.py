@@ -2,7 +2,6 @@ import eth_abi
 from brownie import (
     network, 
     nProxy,
-    Weighted2TokenAuraVault,
     MetaStable2TokenAuraVault,
     Boosted3TokenAuraVault,
     Boosted3TokenAuraSettlementHelper,
@@ -11,11 +10,7 @@ from brownie import (
     MetaStable2TokenAuraRewardHelper,
     MetaStable2TokenAuraVaultHelper,
     MetaStable2TokenAuraSettlementHelper,
-    Weighted2TokenAuraRewardHelper,
-    Weighted2TokenAuraVaultHelper,
-    Weighted2TokenAuraSettlementHelper,
     Boosted3TokenAuraVaultHelper,
-    MockWeighted2TokenAuraVault,
     MockStable2TokenAuraVault,
     MockBoosted3TokenAuraVault
 )
@@ -31,36 +26,6 @@ ETH_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 StrategyConfig = {
     "balancer2TokenStrats": {
-        "Strat50ETH50USDC": {
-            "vaultConfig": get_vault_config(
-                flags=set_flags(0, ENABLED=True),
-                currencyId=1,
-                minAccountBorrowSize=1,
-                maxBorrowMarketIndex=3,
-                secondaryBorrowCurrencies=[3,0] # USDC
-            ),
-            "secondaryBorrowCurrency": {
-                "currencyId": 3, # USDC
-                "maxCapacity": 100_000_000e8
-            },
-            "maxPrimaryBorrowCapacity": 100_000_000e8,
-            "name": "Balancer 50ETH-50USDC Strategy",
-            "primaryCurrency": 1, # ETH
-            "poolId": "0x96646936b91d6b9d7d0c47c496afbf3d6ec7b6f8000200000000000000000019",
-            "liquidityGauge": "0x9ab7b0c7b154f626451c9e8a68dc04f58fb6e5ce",
-            "auraRewardPool": "0x71c8ea7395999aa2007ca860ce66dafa8d5c44fb",
-            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 100e18, # 10 ETH
-            "oracleWindowInSeconds": 3600,
-            "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimit": 5e6, # 5%
-            "postMaturitySettlementSlippageLimit": 10e6, # 10%
-            "balancerOracleWeight": 0.6e4, # 60%
-            "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
-            "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
-            "feePercentage": 1e2, # 1%
-            "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-        },
         "StratStableETHstETH": {
             "vaultConfig": get_vault_config(
                 flags=set_flags(0, ENABLED=True),
@@ -156,21 +121,14 @@ class BalancerEnvironment(Environment):
         MetaStable2TokenAuraRewardHelper.deploy({"from": self.deployer})
         MetaStable2TokenAuraVaultHelper.deploy({"from": self.deployer})
         MetaStable2TokenAuraSettlementHelper.deploy({"from": self.deployer})
-        Weighted2TokenAuraRewardHelper.deploy({"from": self.deployer})
-        Weighted2TokenAuraVaultHelper.deploy({"from": self.deployer})
-        Weighted2TokenAuraSettlementHelper.deploy({"from": self.deployer})
         Boosted3TokenAuraVaultHelper.deploy({"from": self.deployer})
         Boosted3TokenAuraSettlementHelper.deploy({"from": self.deployer})
         Boosted3TokenAuraRewardHelper.deploy({"from": self.deployer})
 
-        secondaryCurrencyId = 0
-        if stratConfig["secondaryBorrowCurrency"] != None:
-            secondaryCurrencyId = stratConfig["secondaryBorrowCurrency"]["currencyId"]
         impl = vaultContract.deploy(
             self.addresses["notional"],
             [
                 stratConfig["primaryCurrency"],
-                secondaryCurrencyId,
                 stratConfig["auraRewardPool"],
                 [
                     stratConfig["poolId"],
@@ -233,12 +191,6 @@ def main():
         networkName = "mainnet"
     env = BalancerEnvironment(networkName)
     maturity = env.notional.getActiveMarkets(1)[0][1]
-
-    weightedVault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
-    env.mockWeighted2TokenAuraVault = MockWeighted2TokenAuraVault.deploy(
-        weightedVault.getStrategyContext(),
-        {"from": env.deployer}
-    )
 
     stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
     env.mockStable2TokenAuraVault = MockStable2TokenAuraVault.deploy(

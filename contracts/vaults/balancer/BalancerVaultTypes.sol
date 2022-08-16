@@ -22,7 +22,7 @@ struct DeploymentParams {
     address feeReceiver;
 }
 
-struct AuraDeploymentParams {
+struct AuraVaultDeploymentParams {
     uint16 primaryBorrowCurrencyId;
     IAuraRewardPool auraRewardPool;
     DeploymentParams baseParams;

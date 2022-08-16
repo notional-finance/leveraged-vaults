@@ -7,7 +7,7 @@ import {Errors} from "../global/Errors.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
 import {NotionalUtils} from "../utils/NotionalUtils.sol";
 import {
-    AuraDeploymentParams,
+    AuraVaultDeploymentParams,
     InitParams,
     ReinvestRewardParams,
     StrategyVaultSettings,
@@ -47,7 +47,7 @@ contract MetaStable2TokenAuraVault is
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     
-    constructor(NotionalProxy notional_, AuraDeploymentParams memory params) 
+    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         BaseVaultStorage(notional_, params.baseParams) 
         MetaStable2TokenVaultMixin(
             params.primaryBorrowCurrencyId,

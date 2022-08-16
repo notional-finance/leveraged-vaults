@@ -19,14 +19,7 @@ def run_around_tests():
     chain.snapshot()
     yield
     chain.revert()
-
-@pytest.fixture()
-def Strat50ETH50USDC():
-    env = getEnvironment(network.show_active())
-    vault = env.deployBalancerVault("Strat50ETH50USDC", Weighted2TokenAuraVault)
-    mock = MockWeighted2TokenAuraVault.deploy(vault.getStrategyContext(), {"from": env.deployer})
-    return (env, vault, mock)
-
+    
 @pytest.fixture()
 def StratStableETHstETH():
     env = getEnvironment(network.show_active())

@@ -85,6 +85,20 @@ library Stable2TokenOracleMath {
         uint256 primaryAmount, 
         uint256 secondaryAmount
     ) internal view {
-        // TODO: implement this
+        (
+            int256 answer, int256 decimals
+        ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
+
+        require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
+
+        uint256 oraclePairPrice = answer.toUint();
+
+        uint256 lowerLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
+        if (spotPrice < lowerLimit || upperLimit < spotPrice) {
+            revert Errors.InvalidSpotPrice(oraclePairPrice, spotPrice);
+        }
+
+        _validatePairPrice(oracleContext, poolContext, tradingModule, primaryAmount, secondaryAmount);
     }
 }

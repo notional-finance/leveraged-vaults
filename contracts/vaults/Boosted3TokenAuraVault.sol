@@ -7,7 +7,7 @@ import {Errors} from "../global/Errors.sol";
 import {SafeInt256} from "../global/SafeInt256.sol";
 import {NotionalUtils} from "../utils/NotionalUtils.sol";
 import {
-    AuraDeploymentParams,
+    AuraVaultDeploymentParams,
     InitParams,
     ReinvestRewardParams,
     StrategyVaultSettings,
@@ -42,7 +42,7 @@ contract Boosted3TokenAuraVault is
     using StrategyUtils for StrategyContext;
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
 
-    constructor(NotionalProxy notional_, AuraDeploymentParams memory params) 
+    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         BaseVaultStorage(notional_, params.baseParams) 
         Boosted3TokenPoolMixin(
             params.primaryBorrowCurrencyId,

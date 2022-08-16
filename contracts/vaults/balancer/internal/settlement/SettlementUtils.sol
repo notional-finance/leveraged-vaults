@@ -24,17 +24,6 @@ library SettlementUtils {
     using VaultUtils for StrategyVaultSettings;
     using VaultUtils for StrategyVaultState;
 
-    event VaultSettlement(
-        uint256 maturity,
-        uint256 strategyTokensRedeemed
-    );
-
-    event EmergencyVaultSettlement(
-        uint256 maturity,
-        uint256 bptToSettle,
-        uint256 redeemStrategyTokenAmount
-    );
-
     /// @notice Validates settlement parameters, including that the settlement is
     /// past a specified cool down period and that the slippage passed in by the caller
     /// does not exceed the designated threshold.
