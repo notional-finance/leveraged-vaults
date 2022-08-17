@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 import {
     PoolParams,
     DepositParams,
-    SecondaryTradeParams,
+    DynamicTradeParams,
     DepositTradeParams,
     RedeemParams,
     TwoTokenPoolContext,
@@ -46,37 +46,13 @@ library TwoTokenAuraStrategyUtils {
     ) private returns (uint256 primarySold, uint256 secondaryBought) {
         (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
 
-        // stETH generally has deeper liquidity than wstETH, setting wrapAfterTrading
-        // lets the contract trade for stETH instead of wstETH
-        address buyToken = poolContext.secondaryToken;
-        if (params.tradeUnwrapped && poolContext.secondaryToken == address(Constants.WRAPPED_STETH)) {
-            buyToken = Constants.WRAPPED_STETH.stETH();
-        }
-
-        Trade memory trade = Trade(
-            params.tradeType,
-            poolContext.primaryToken,
-            buyToken,
-            params.tradeAmount,
-            0,
-            block.timestamp, // deadline
-            params.exchangeData
-        );
-
-        (primarySold, secondaryBought) = 
-            trade._executeTradeWithDynamicSlippage(params.dexId, strategyContext.tradingModule, params.oracleSlippagePercent);
-
-        if (
-            params.tradeUnwrapped && 
-            poolContext.secondaryToken == address(Constants.WRAPPED_STETH) && 
-            secondaryBought > 0
-        ) {
-            IERC20(buyToken).checkApprove(address(Constants.WRAPPED_STETH), secondaryBought);
-            uint256 wrappedAmount = Constants.WRAPPED_STETH.balanceOf(address(this));
-            /// @notice the amount returned by wrap is not always accurate for some reason
-            Constants.WRAPPED_STETH.wrap(secondaryBought);
-            secondaryBought = Constants.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
-        }
+        (primarySold, secondaryBought) = StrategyUtils._executeDynamicTradeExactIn({
+            params: params.tradeParams, 
+            tradingModule: strategyContext.tradingModule, 
+            sellToken: poolContext.primaryToken, 
+            buyToken: poolContext.secondaryToken, 
+            amount: params.tradeAmount
+        });
     }
 
     function _deposit(
@@ -135,16 +111,18 @@ library TwoTokenAuraStrategyUtils {
         if (secondaryBalance > 0) {
             // If there is no secondary debt, we still need to sell the secondary balance
             // back to the primary token here.
-            (SecondaryTradeParams memory tradeParams) = abi.decode(
-                params.secondaryTradeParams, (SecondaryTradeParams)
+            (DynamicTradeParams memory tradeParams) = abi.decode(
+                params.secondaryTradeParams, (DynamicTradeParams)
             );
-            uint256 primaryPurchased = StrategyUtils._sellSecondaryBalance({
-                params: tradeParams,
-                tradingModule: strategyContext.tradingModule,
-                primaryToken: poolContext.primaryToken,
-                secondaryToken: poolContext.secondaryToken,
-                secondaryBalance: secondaryBalance
-            });
+    
+            ( /*uint256 amountSold */, uint256 primaryPurchased) = 
+                StrategyUtils._executeDynamicTradeExactIn({
+                    params: tradeParams,
+                    tradingModule: strategyContext.tradingModule,
+                    sellToken: poolContext.secondaryToken,
+                    buyToken: poolContext.primaryToken,
+                    amount: secondaryBalance
+                });
 
             finalPrimaryBalance = primaryBalance + primaryPurchased;
         }

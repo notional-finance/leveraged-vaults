@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 import {
     RedeemParams, 
-    SecondaryTradeParams,
+    DynamicTradeParams,
     StrategyContext,
     PoolContext,
     StrategyVaultSettings,
@@ -44,54 +44,12 @@ library SettlementUtils {
             revert Errors.InSettlementCoolDown(lastSettlementTimestamp, coolDownInMinutes);
 
         params = abi.decode(data, (RedeemParams));
-        SecondaryTradeParams memory callbackData = abi.decode(
-            params.secondaryTradeParams, (SecondaryTradeParams)
+        DynamicTradeParams memory callbackData = abi.decode(
+            params.secondaryTradeParams, (DynamicTradeParams)
         );
 
         if (callbackData.oracleSlippagePercent > slippageLimitPercent) {
             revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercent, slippageLimitPercent);
-        }
-    }
-
-    function _repayPrimaryDebt(
-        int256 underlyingCashRequiredToSettle,
-        uint256 maxUnderlyingSurplus,
-        uint256 redeemStrategyTokenAmount,
-        uint256 maturity,
-        int256 primaryBalance
-    ) internal returns (bool settled, uint256 primaryBalancePostSettlement) {
-        // Check if we have enough to pay the primary debt off
-        if (primaryBalance < underlyingCashRequiredToSettle) {
-            // Not enough to repay, let the balance acumulate in this contract
-            // settled = false
-            primaryBalancePostSettlement = primaryBalance.toUint();
-        } else {
-            if (primaryBalance > 0) {
-                // Calculate the amount of surplus cash after primary repayment
-                // If underlyingCashRequiredToSettle < 0, that means there is excess
-                // cash in the system. We add it to the surplus with the subtraction.
-                int256 surplus = primaryBalance - underlyingCashRequiredToSettle;
-    
-                // Make sure we are not settling too much because we want
-                // to preserve as much BPT as possible
-                if (surplus > maxUnderlyingSurplus.toInt()) {
-                    revert Errors.RedeemingTooMuch(
-                        primaryBalance,
-                        underlyingCashRequiredToSettle
-                    );
-                }
-
-                // Call redeemStrategyTokensToCash with a special payload
-                // to handle primary repayment
-                Constants.NOTIONAL.redeemStrategyTokensToCash(
-                    maturity, 
-                    redeemStrategyTokenAmount,
-                    abi.encode(primaryBalance.toUint())
-                );
-            }
-
-            // primaryBalancePostSettlement = 0
-            settled = true;
         }
     }
 

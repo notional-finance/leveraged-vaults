@@ -72,6 +72,13 @@ def test_multiple_maturities_high_leverage_success(StratStableETHstETH):
     maturity2 = enterMaturity(env, vault, 1, 1, depositAmount, primaryBorrowAmount, accounts[1])
 
 def test_multiple_accounts_in_each_maturity_success(StratStableETHstETH):
+    (env, vault, mock) = StratStableETHstETH
+    primaryBorrowAmount = 40e8
+    depositAmount = 10e18
+    maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
+    maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[1])
+    maturity2 = enterMaturity(env, vault, 1, 1, depositAmount, primaryBorrowAmount, accounts[2])
+    maturity2 = enterMaturity(env, vault, 1, 1, depositAmount, primaryBorrowAmount, accounts[3])
     pass
 
 def test_secondary_currency_trading_success(StratStableETHstETH):

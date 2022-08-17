@@ -7,7 +7,7 @@ from tests.fixtures import *
 from tests.balancer.helpers import enterMaturity
 from scripts.common import (
     get_deposit_params, 
-    get_secondary_trade_params,
+    get_dynamic_trade_params,
     DEX_ID,
     TRADE_TYPE
 )
@@ -29,7 +29,7 @@ def test_single_maturity_full_redemption_success(StratStableETHstETH):
         vaultShares,
         primaryBorrowAmount,
         0,
-        get_redeem_params(0, 0, get_secondary_trade_params(
+        get_redeem_params(0, 0, get_dynamic_trade_params(
             DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
         )),
         {"from": env.whales["ETH"]}
@@ -56,7 +56,7 @@ def test_single_maturity_partial_redemption_success(StratStableETHstETH):
         vaultShares / 2,
         primaryBorrowAmount / 2,
         0,
-        get_redeem_params(0, 0, get_secondary_trade_params(
+        get_redeem_params(0, 0, get_dynamic_trade_params(
             DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
         )),
         {"from": env.whales["ETH"]}
@@ -76,7 +76,7 @@ def test_single_maturity_partial_redemption_success(StratStableETHstETH):
         vaultShares,
         -fcashDebt,
         0,
-        get_redeem_params(0, 0, get_secondary_trade_params(
+        get_redeem_params(0, 0, get_dynamic_trade_params(
             DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
         )),
         {"from": env.whales["ETH"]}
@@ -106,7 +106,7 @@ def test_multiple_maturities_full_redemption_success(StratStableETHstETH):
         vaultShares1,
         primaryBorrowAmount,
         0,
-        get_redeem_params(0, 0, get_secondary_trade_params(
+        get_redeem_params(0, 0, get_dynamic_trade_params(
             DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
         )),
         {"from": env.whales["ETH"]}
@@ -118,7 +118,7 @@ def test_multiple_maturities_full_redemption_success(StratStableETHstETH):
         vaultShares2,
         primaryBorrowAmount,
         0,
-        get_redeem_params(0, 0, get_secondary_trade_params(
+        get_redeem_params(0, 0, get_dynamic_trade_params(
             DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
         )),
         {"from": accounts[0]}

@@ -7,7 +7,7 @@ from tests.fixtures import *
 from tests.balancer.helpers import enterMaturity
 from scripts.common import (
     get_deposit_params, 
-    get_secondary_trade_params,
+    get_dynamic_trade_params,
     DEX_ID,
     TRADE_TYPE
 )

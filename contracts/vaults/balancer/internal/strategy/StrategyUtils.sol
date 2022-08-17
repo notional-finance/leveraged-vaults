@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 import {
     StrategyContext, 
     StrategyVaultState,
-    SecondaryTradeParams
+    DynamicTradeParams
 } from "../../BalancerVaultTypes.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
@@ -44,83 +44,55 @@ library StrategyUtils {
         strategyTokenAmount = (bptClaim * context.vaultState.totalStrategyTokenGlobal) / context.totalBPTHeld;
     }
 
-    function _sellSecondaryBalance(
-        SecondaryTradeParams memory params,
+    function _executeDynamicTradeExactIn(
+        DynamicTradeParams memory params,
         ITradingModule tradingModule,
-        address primaryToken,
-        address secondaryToken,
-        uint256 secondaryBalance
-    ) internal returns (uint256 primaryPurchased) {
+        address sellToken,
+        address buyToken,
+        uint256 amount
+    ) internal returns (uint256 amountSold, uint256 amountBought) {
         require(
             params.tradeType == TradeType.EXACT_IN_SINGLE || params.tradeType == TradeType.EXACT_IN_BATCH
         );
 
-        // Unwrap wstETH if necessary to get better liquididty
-        address sellToken = secondaryToken;
-        if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
+        // stETH generally has deeper liquidity than wstETH, setting tradeUnwrapped
+        // to lets the contract trade in stETH instead of wstETH
+        if (params.tradeUnwrapped && sellToken == address(Constants.WRAPPED_STETH)) {
             sellToken = Constants.WRAPPED_STETH.stETH();
             uint256 unwrappedAmount = IERC20(sellToken).balanceOf(address(this));
             /// @notice the amount returned by unwrap is not always accurate for some reason
-            Constants.WRAPPED_STETH.unwrap(secondaryBalance);
-            secondaryBalance = IERC20(sellToken).balanceOf(address(this)) - unwrappedAmount;
+            Constants.WRAPPED_STETH.unwrap(amount);
+            amount = IERC20(sellToken).balanceOf(address(this)) - unwrappedAmount;
+        }
+        if (params.tradeUnwrapped && buyToken == address(Constants.WRAPPED_STETH)) {
+            buyToken = Constants.WRAPPED_STETH.stETH();
         }
 
         // Sell residual secondary balance
         Trade memory trade = Trade(
             params.tradeType,
             sellToken,
-            primaryToken,
-            secondaryBalance,
+            buyToken,
+            amount,
             0,
             block.timestamp, // deadline
             params.exchangeData
         );
 
-        (/* */, primaryPurchased) = trade._executeTradeWithDynamicSlippage(
+        (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
             params.dexId, tradingModule, params.oracleSlippagePercent
         );
-    }
 
-    function _sellPrimaryBalance(
-        SecondaryTradeParams memory params,
-        ITradingModule tradingModule,
-        address primaryToken,
-        address secondaryToken,
-        uint256 secondaryShortfall
-    ) internal returns (uint256 secondaryPurchased) {
-        require(
-            params.tradeType == TradeType.EXACT_OUT_SINGLE || params.tradeType == TradeType.EXACT_OUT_BATCH
-        );
-
-        // Trade using stETH instead of wstETH if requested
-        address buyToken = secondaryToken;
-        if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
-            buyToken = Constants.WRAPPED_STETH.stETH();
-            secondaryShortfall = Constants.WRAPPED_STETH.getStETHByWstETH(secondaryShortfall);
-        }
-
-        Trade memory trade = Trade(
-            params.tradeType,
-            primaryToken,
-            buyToken,
-            secondaryShortfall,
-            0,
-            block.timestamp, // deadline
-            params.exchangeData
-        );
-
-        (
-            /* uint256 amountSold */, 
-            secondaryPurchased
-        ) = trade._executeTradeWithDynamicSlippage(params.dexId, tradingModule, params.oracleSlippagePercent);
-
-        // Wrap stETH if necessary
-        if (params.tradeUnwrapped && secondaryToken == address(Constants.WRAPPED_STETH)) {
-            IERC20(buyToken).checkApprove(address(Constants.WRAPPED_STETH), secondaryPurchased);
+        if (
+            params.tradeUnwrapped && 
+            buyToken == address(Constants.WRAPPED_STETH) && 
+            amountBought > 0
+        ) {
+            IERC20(buyToken).checkApprove(address(Constants.WRAPPED_STETH), amountBought);
             uint256 wrappedAmount = Constants.WRAPPED_STETH.balanceOf(address(this));
             /// @notice the amount returned by wrap is not always accurate for some reason
-            Constants.WRAPPED_STETH.wrap(secondaryPurchased);
-            secondaryPurchased = Constants.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
-        }    
+            Constants.WRAPPED_STETH.wrap(amountBought);
+            amountBought = Constants.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
+        }
     }
 }

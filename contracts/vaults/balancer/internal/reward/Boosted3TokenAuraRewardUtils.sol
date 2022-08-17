@@ -11,28 +11,27 @@ import {
 import {Events} from "../../../../global/Events.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {Constants} from "../../../../global/Constants.sol";
-import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
+import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StableMath} from "../math/StableMath.sol";
-import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library Boosted3TokenAuraRewardUtils {
-    using TradeHandler for Trade;
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
 
-    function _validateTrades(
+    function _validateTrade(
         AuraStakingContext memory context,
-        Trade memory trade,
+        SingleSidedRewardTradeParams memory params,
         address primaryToken
     ) private pure {
         // Validate trades
-        if (!context._isValidRewardToken(trade.sellToken)) {
-            revert Errors.InvalidRewardToken(trade.sellToken);
+        if (!context._isValidRewardToken(params.sellToken)) {
+            revert Errors.InvalidRewardToken(params.sellToken);
         }
-        if (trade.buyToken != primaryToken) {
-            revert Errors.InvalidRewardToken(trade.buyToken);
+        if (params.buyToken != primaryToken) {
+            revert Errors.InvalidRewardToken(params.buyToken);
         }
     }
 
@@ -46,18 +45,19 @@ library Boosted3TokenAuraRewardUtils {
             data,
             (SingleSidedRewardTradeParams)
         );
+        require(params.tradeParams.oracleSlippagePercent <= Constants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
 
-        _validateTrades(
-            stakingContext,
-            params.trade,
-            poolContext.basePool.primaryToken
-        );
+        _validateTrade(stakingContext, params, poolContext.basePool.primaryToken);
 
-        (/*uint256 amountSold*/, primaryAmount) = params.trade._executeTradeWithDynamicSlippage(
-            params.dexId, tradingModule, Constants.REWARD_TRADE_SLIPPAGE_PERCENT
-        );
+        (/*uint256 amountSold*/, primaryAmount) = StrategyUtils._executeDynamicTradeExactIn({
+            params: params.tradeParams,
+            tradingModule: tradingModule,
+            sellToken: params.sellToken,
+            buyToken: params.buyToken,
+            amount: params.amount
+        });
 
-        rewardToken = params.trade.sellToken;
+        rewardToken = params.sellToken;
     }
 
     function _reinvestReward(

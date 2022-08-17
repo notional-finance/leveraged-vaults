@@ -7,7 +7,7 @@ import {
     RedeemParams,
     StrategyContext,
     StableOracleContext,
-    SecondaryTradeParams
+    DynamicTradeParams
 } from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";

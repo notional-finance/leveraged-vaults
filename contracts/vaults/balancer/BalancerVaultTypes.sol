@@ -40,12 +40,8 @@ struct DepositParams {
 }
 
 struct DepositTradeParams {
-    uint16 dexId;
-    TradeType tradeType;
     uint256 tradeAmount;
-    uint32 oracleSlippagePercent;
-    bool tradeUnwrapped;
-    bytes exchangeData;
+    DynamicTradeParams tradeParams;
 }
 
 struct RedeemParams {
@@ -55,7 +51,7 @@ struct RedeemParams {
     bytes secondaryTradeParams;
 }
 
-struct SecondaryTradeParams {
+struct DynamicTradeParams {
     uint16 dexId;
     TradeType tradeType;
     uint32 oracleSlippagePercent;
@@ -179,15 +175,15 @@ struct BoostedSettlementData {
 }
 
 struct Balanced2TokenRewardTradeParams {
-    uint16 primaryTradeDexId;
-    Trade primaryTrade;
-    uint16 secondaryTradeDexId;
-    Trade secondaryTrade;
+    SingleSidedRewardTradeParams primaryTrade;
+    SingleSidedRewardTradeParams secondaryTrade;
 }
 
 struct SingleSidedRewardTradeParams {
-    uint16 dexId;
-    Trade trade;
+    address sellToken;
+    address buyToken;
+    uint256 amount;
+    DynamicTradeParams tradeParams;
 }
 
 struct ReinvestRewardParams {

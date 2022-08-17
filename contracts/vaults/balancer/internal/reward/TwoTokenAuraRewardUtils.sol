@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import {
     Balanced2TokenRewardTradeParams,
+    SingleSidedRewardTradeParams,
     ReinvestRewardParams,
     PoolContext,
     WeightedOracleContext,
@@ -13,20 +14,19 @@ import {Errors} from "../../../../global/Errors.sol";
 import {Events} from "../../../../global/Events.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
-import {TradeHandler} from "../../../../trading/TradeHandler.sol";
-import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
+import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 
 library TwoTokenAuraRewardUtils {
-    using TradeHandler for Trade;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
 
     function _validateTrades(
         AuraStakingContext memory context,
-        Trade memory primaryTrade,
-        Trade memory secondaryTrade,
+        SingleSidedRewardTradeParams memory primaryTrade,
+        SingleSidedRewardTradeParams memory secondaryTrade,
         address primaryToken,
         address secondaryToken
     ) private pure {
@@ -34,13 +34,14 @@ library TwoTokenAuraRewardUtils {
         if (!context._isValidRewardToken(primaryTrade.sellToken)) {
             revert Errors.InvalidRewardToken(primaryTrade.sellToken);
         }
-        if (primaryTrade.sellToken != secondaryTrade.sellToken) {
+        if (!context._isValidRewardToken(secondaryTrade.sellToken) && 
+            secondaryTrade.sellToken == primaryTrade.buyToken) {
             revert Errors.InvalidRewardToken(secondaryTrade.sellToken);
         }
-        if (primaryTrade.buyToken != primaryToken) {
+        if (primaryTrade.buyToken == primaryToken) {
             revert Errors.InvalidRewardToken(primaryTrade.buyToken);
         }
-        if (secondaryTrade.buyToken != secondaryToken) {
+        if (secondaryTrade.buyToken == secondaryToken) {
             revert Errors.InvalidRewardToken(secondaryTrade.buyToken);
         }
     }
@@ -64,13 +65,21 @@ library TwoTokenAuraRewardUtils {
             poolContext.secondaryToken
         );
 
-        (/*uint256 amountSold*/, primaryAmount) = params.primaryTrade._executeTradeWithDynamicSlippage(
-            params.primaryTradeDexId, tradingModule, Constants.REWARD_TRADE_SLIPPAGE_PERCENT
-        );
+        (/*uint256 amountSold*/, primaryAmount) = StrategyUtils._executeDynamicTradeExactIn({
+            params: params.primaryTrade.tradeParams,
+            tradingModule: tradingModule,
+            sellToken: params.primaryTrade.sellToken,
+            buyToken: params.primaryTrade.buyToken,
+            amount: params.primaryTrade.amount
+        });
 
-        (/*uint256 amountSold*/, secondaryAmount) = params.secondaryTrade._executeTradeWithDynamicSlippage(
-            params.secondaryTradeDexId, tradingModule, Constants.REWARD_TRADE_SLIPPAGE_PERCENT
-        );
+        (/*uint256 amountSold*/, secondaryAmount) = StrategyUtils._executeDynamicTradeExactIn({
+            params: params.secondaryTrade.tradeParams,
+            tradingModule: tradingModule,
+            sellToken: params.secondaryTrade.sellToken,
+            buyToken: params.secondaryTrade.buyToken,
+            amount: params.secondaryTrade.amount
+        });
 
         rewardToken = params.primaryTrade.sellToken;
     }
