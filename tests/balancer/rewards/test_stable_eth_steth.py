@@ -1,9 +1,12 @@
 import pytest
-from brownie import ETH_ADDRESS, Wei
+from brownie import ZERO_ADDRESS, Wei
 from tests.fixtures import *
+from tests.balancer.helpers import get_metastable_amounts
 from scripts.common import (
     DEX_ID,
-    TRADE_TYPE
+    TRADE_TYPE,
+    get_univ3_single_data,
+    get_univ3_batch_data
 )
 
 chain = Chain()
@@ -13,35 +16,41 @@ def test_claim_rewards_success(StratStableETHstETH):
 
 def test_reinvest_rewards_success(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
-    env.tokens["BAL"].transfer(vault.address, 50e18, {"from": env.whales["BAL"]})
+    rewardAmount = Wei(50e18)
+    env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
 
-    packedEncoder = eth_abi.codec.ABIEncoder(eth_abi.registry.registry_packed)
+    dynamicTradeParams = "(uint16,uint8,uint32,bool,bytes)"
+    singleSidedRewardTradeParams = "(address,address,uint256,{})".format(dynamicTradeParams)
+    balanced2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
+    (primaryAmount, secondaryAmount) = get_metastable_amounts(vault.getStrategyContext()["poolContext"], rewardAmount)
     vault.reinvestReward([eth_abi.encode_abi(
-        ['''(uint16,
-            (uint8,address,address,uint256,uint256,uint256,bytes),
-            uint16,
-            (uint8,address,address,uint256,uint256,uint256,bytes))
-         '''],
+        [balanced2TokenRewardTradeParams],
         [[
-            DEX_ID["CURVE"],
             [
-                TRADE_TYPE["EXACT_IN_SINGLE"],
                 env.tokens["BAL"].address,
-                ETH_ADDRESS,
-                Wei(50e18),
-                0,
-                chain.time() + 10000,
-                bytes(0)             
+                ZERO_ADDRESS,
+                primaryAmount,
+                [
+                    DEX_ID["UNISWAP_V3"],
+                    TRADE_TYPE["EXACT_IN_SINGLE"],
+                    Wei(5e6),
+                    False,
+                    get_univ3_single_data(3000)
+                ]
             ],
-            DEX_ID["CURVE"],
             [
-                TRADE_TYPE["EXACT_IN_SINGLE"],
-                ETH_ADDRESS,
+                env.tokens["BAL"].address,
                 env.tokens["wstETH"].address,
-                Wei(10e18),
-                0,
-                chain.time() + 10000,
-                bytes(0)       
+                secondaryAmount,
+                [
+                    DEX_ID["UNISWAP_V3"],
+                    TRADE_TYPE["EXACT_IN_BATCH"],
+                    Wei(5e6),
+                    False,
+                    get_univ3_batch_data([
+                        env.tokens["BAL"].address, 3000, env.tokens["WETH"].address, 500, env.tokens["wstETH"].address
+                    ])
+                ]
             ]
         ]]
     ), 0],

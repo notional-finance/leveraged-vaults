@@ -51,6 +51,7 @@ struct RedeemParams {
     bytes secondaryTradeParams;
 }
 
+/// @notice Parameters for dynamic slippage trades
 struct DynamicTradeParams {
     uint16 dexId;
     TradeType tradeType;

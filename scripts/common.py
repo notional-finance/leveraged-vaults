@@ -104,22 +104,34 @@ def get_univ3_single_data(fee):
     return eth_abi.encode_abi(['(uint24)'], [[fee]])
 
 def get_univ3_batch_data(path):
-    return eth_abi.encode_abi(['(bytes)'], [[path]])
+    pathTypes = []
+    for idx in range(len(path)):
+        if idx % 2 == 0:
+            pathTypes.append('address')
+        else:
+            pathTypes.append('uint24')
+    packedEncoder = eth_abi.codec.ABIEncoder(eth_abi.registry.registry_packed)
+    return eth_abi.encode_abi(['(bytes)'], [[packedEncoder.encode_abi(
+        pathTypes,
+        path,
+    )]])
 
 def get_deposit_trade_params(dexId, tradeType, amount, slippage, unwrap, exchangeData):
     return eth_abi.encode_abi(
-        ['(uint16,uint8,uint256,uint32,bool,bytes)'],
+        ['(uint256,(uint16,uint8,uint32,bool,bytes))'],
         [[
-            dexId,
-            tradeType,
             Wei(amount),
-            Wei(slippage),
-            unwrap,
-            exchangeData
+            [
+                dexId,
+                tradeType,
+                Wei(slippage),
+                unwrap,
+                exchangeData
+            ]
         ]]
     )
 
-def get_secondary_trade_params(dexId, tradeType, slippage, unwrap, exchangeData):
+def get_dynamic_trade_params(dexId, tradeType, slippage, unwrap, exchangeData):
     return eth_abi.encode_abi(
         ['(uint16,uint8,uint32,bool,bytes)'],
         [[

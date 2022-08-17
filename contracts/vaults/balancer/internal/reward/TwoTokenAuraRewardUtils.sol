@@ -34,16 +34,19 @@ library TwoTokenAuraRewardUtils {
         if (!context._isValidRewardToken(primaryTrade.sellToken)) {
             revert Errors.InvalidRewardToken(primaryTrade.sellToken);
         }
-        if (!context._isValidRewardToken(secondaryTrade.sellToken) && 
-            secondaryTrade.sellToken == primaryTrade.buyToken) {
+        if (secondaryTrade.sellToken != primaryTrade.sellToken) {
             revert Errors.InvalidRewardToken(secondaryTrade.sellToken);
         }
-        if (primaryTrade.buyToken == primaryToken) {
+        if (primaryTrade.buyToken != primaryToken) {
             revert Errors.InvalidRewardToken(primaryTrade.buyToken);
         }
-        if (secondaryTrade.buyToken == secondaryToken) {
+        if (secondaryTrade.buyToken != secondaryToken) {
             revert Errors.InvalidRewardToken(secondaryTrade.buyToken);
         }
+
+        // TODO: maybe make MAX_REWARD_TRADE_SLIPPAGE_PERCENT configurable?
+        require(primaryTrade.tradeParams.oracleSlippagePercent <= Constants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
+        require(secondaryTrade.tradeParams.oracleSlippagePercent <= Constants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
     }
 
     function _executeRewardTrades(

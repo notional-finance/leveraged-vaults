@@ -33,6 +33,8 @@ library Boosted3TokenAuraRewardUtils {
         if (params.buyToken != primaryToken) {
             revert Errors.InvalidRewardToken(params.buyToken);
         }
+
+        require(params.tradeParams.oracleSlippagePercent <= Constants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
     }
 
     function _executeRewardTrades(
@@ -45,7 +47,6 @@ library Boosted3TokenAuraRewardUtils {
             data,
             (SingleSidedRewardTradeParams)
         );
-        require(params.tradeParams.oracleSlippagePercent <= Constants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
 
         _validateTrade(stakingContext, params, poolContext.basePool.primaryToken);
 
