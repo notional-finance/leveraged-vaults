@@ -119,6 +119,9 @@ library Constants {
     int256 internal constant DEPOSIT_PERCENT_BASIS = 1e8;
     uint32 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
 
+    /// @notice Max oracle staleness in seconds (1 day)
+    uint256 internal constant MAX_ORACLE_STALENESS_IN_SECONDS = 3600 * 24;
+
     /// @notice Precision for all percentages used by the vault
     /// 1e4 = 100% (i.e. maxBalancerPoolShare)
     uint16 internal constant VAULT_PERCENT_BASIS = 1e4;

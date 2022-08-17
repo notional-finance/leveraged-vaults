@@ -176,11 +176,13 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
 
         int256 baseDecimals = int256(10**baseOracle.rateDecimals);
         int256 quoteDecimals = int256(10**quoteOracle.rateDecimals);
-
-        (/* */, int256 basePrice, /* */, /* */, /* */) = baseOracle.oracle.latestRoundData();
+        
+        (/* */, int256 basePrice, /* */, uint256 bpUpdatedAt, /* */) = baseOracle.oracle.latestRoundData();
+        require(block.timestamp - bpUpdatedAt <= Constants.MAX_ORACLE_STALENESS_IN_SECONDS);
         require(basePrice > 0); /// @dev: Chainlink Rate Error
 
-        (/* */, int256 quotePrice, /* */, /* */, /* */) = quoteOracle.oracle.latestRoundData();
+        (/* */, int256 quotePrice, /* */, uint256 qpUpdatedAt, /* */) = quoteOracle.oracle.latestRoundData();
+        require(block.timestamp - qpUpdatedAt <= Constants.MAX_ORACLE_STALENESS_IN_SECONDS);
         require(quotePrice > 0); /// @dev: Chainlink Rate Error
 
         answer = (basePrice * quoteDecimals * RATE_DECIMALS) / (quotePrice * baseDecimals);

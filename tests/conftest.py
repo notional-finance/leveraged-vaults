@@ -1,11 +1,9 @@
 import pytest
 import eth_abi
 from brownie import (
-    Weighted2TokenAuraVault, 
     MetaStable2TokenAuraVault,
     Boosted3TokenAuraVault,
     MockStable2TokenAuraVault,
-    MockWeighted2TokenAuraVault, 
     MockBoosted3TokenAuraVault
 )
 from brownie.network import Chain
