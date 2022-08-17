@@ -182,7 +182,8 @@ contract MetaStable2TokenAuraVault is
                 settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
                 tradingModule: TRADING_MODULE,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
-                vaultState: VaultUtils._getStrategyVaultState()
+                vaultState: VaultUtils._getStrategyVaultState(),
+                feeReceiver: FEE_RECEIVER
             })
         });
     }

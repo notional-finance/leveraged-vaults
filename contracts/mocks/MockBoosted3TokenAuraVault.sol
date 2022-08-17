@@ -30,12 +30,14 @@ contract MockBoosted3TokenAuraVault {
     AuraStakingContext private stakingContext;
     ITradingModule private tradingModule;
     uint32 private settlementPeriodInSeconds;
+    address private feeReceiver;
 
     constructor(Boosted3TokenAuraStrategyContext memory context) {
         poolContext = context.poolContext;
         oracleContext = context.oracleContext;
         stakingContext = context.stakingContext;
         tradingModule = context.baseStrategy.tradingModule;
+        feeReceiver = context.baseStrategy.feeReceiver;
         settlementPeriodInSeconds = context.baseStrategy.settlementPeriodInSeconds;
         context.baseStrategy.vaultSettings._setStrategyVaultSettings(
             context.baseStrategy.vaultSettings.oracleWindowInSeconds,
@@ -68,7 +70,8 @@ contract MockBoosted3TokenAuraVault {
                 settlementPeriodInSeconds: settlementPeriodInSeconds,
                 tradingModule: tradingModule,
                 vaultSettings: VaultUtils._getStrategyVaultSettings(),
-                vaultState: VaultUtils._getStrategyVaultState()
+                vaultState: VaultUtils._getStrategyVaultState(),
+                feeReceiver: feeReceiver
             })
         });
     }

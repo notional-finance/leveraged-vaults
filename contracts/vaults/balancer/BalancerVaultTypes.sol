@@ -132,6 +132,7 @@ struct StrategyContext {
     ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
+    address feeReceiver;
 }
 
 struct Weighted2TokenAuraStrategyContext {
