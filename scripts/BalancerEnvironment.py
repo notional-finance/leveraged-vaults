@@ -28,7 +28,7 @@ StrategyConfig = {
     "balancer2TokenStrats": {
         "StratStableETHstETH": {
             "vaultConfig": get_vault_config(
-                flags=set_flags(0, ENABLED=True),
+                flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
                 currencyId=1,
                 minAccountBorrowSize=1,
                 maxBorrowMarketIndex=3,
@@ -55,7 +55,7 @@ StrategyConfig = {
         },
         "StratBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
-                flags=set_flags(0, ENABLED=True),
+                flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
                 currencyId=2,
                 minAccountBorrowSize=1,
                 maxBorrowMarketIndex=3,
@@ -82,7 +82,7 @@ StrategyConfig = {
         },
         "StratBoostedPoolUSDCPrimary": {
             "vaultConfig": get_vault_config(
-                flags=set_flags(0, ENABLED=True),
+                flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
                 currencyId=3,
                 minAccountBorrowSize=1,
                 maxBorrowMarketIndex=3,

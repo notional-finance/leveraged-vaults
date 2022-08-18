@@ -44,3 +44,4 @@ def test_reinvest_rewards_success(StratBoostedPoolUSDCPrimary):
     ), 0],
         {"from": accounts[1]}
     )
+    assert pytest.approx(vault.getStrategyContext()["baseStrategy"]["totalBPTHeld"], rel=1e-2) == 268600968840832362667

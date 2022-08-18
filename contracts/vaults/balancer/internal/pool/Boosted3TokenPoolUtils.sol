@@ -177,10 +177,10 @@ library Boosted3TokenPoolUtils {
         primaryAmount = primaryAmount * primaryPrecision / BalancerUtils.BALANCER_PRECISION;
     }
 
-    function _getVirtualSupplyAndBalances(
+    function _getVirtualSupply(
         ThreeTokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext
-    ) internal pure returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
+    ) internal pure returns (uint256 virtualSupply) {
         // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
         // vault. So the virtualSupply (the actual supply in circulation) is defined as:
         // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
@@ -188,7 +188,15 @@ library Boosted3TokenPoolUtils {
         // However, since this Pool never mints or burns BPT outside of the initial supply (except in the event of an
         // emergency pause), we can simply use `_MAX_TOKEN_BALANCE` instead of `totalSupply()` and save
         // gas.
-        virtualSupply = _MAX_TOKEN_BALANCE - oracleContext.bptBalance + oracleContext.dueProtocolFeeBptAmount;
+        virtualSupply = _MAX_TOKEN_BALANCE - oracleContext.bptBalance + oracleContext.dueProtocolFeeBptAmount;        
+    }
+
+    function _getVirtualSupplyAndBalances(
+        ThreeTokenPoolContext memory poolContext, 
+        BoostedOracleContext memory oracleContext
+    ) internal pure returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
+
+        virtualSupply = _getVirtualSupply(poolContext, oracleContext);
 
         amountsWithoutBpt = new uint256[](3);
         amountsWithoutBpt[0] = poolContext.basePool.primaryBalance;

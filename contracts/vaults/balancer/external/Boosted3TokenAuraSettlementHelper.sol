@@ -116,9 +116,11 @@ library Boosted3TokenAuraSettlementHelper {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = 
-            context.baseStrategy._getEmergencySettlementParams(
-                context.poolContext.basePool.basePool, maturity
-            );
+            context.baseStrategy._getEmergencySettlementParams({
+                poolContext: context.poolContext.basePool.basePool, 
+                maturity: maturity, 
+                totalBPTSupply: context.poolContext._getVirtualSupply(context.oracleContext)
+            });
 
         // Calculate minPrimary using Chainlink oracle data
         params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(

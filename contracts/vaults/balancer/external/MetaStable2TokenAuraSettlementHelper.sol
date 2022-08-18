@@ -17,6 +17,7 @@ import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
+import {IERC20} from "../../../../interfaces/IERC20.sol";
 
 library MetaStable2TokenAuraSettlementHelper {
     using TwoTokenAuraStrategyUtils for StrategyContext;
@@ -128,9 +129,11 @@ library MetaStable2TokenAuraSettlementHelper {
         });
 
         (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = 
-            context.baseStrategy._getEmergencySettlementParams(
-                context.poolContext.basePool, maturity
-            );
+            context.baseStrategy._getEmergencySettlementParams({
+                poolContext: context.poolContext.basePool, 
+                maturity: maturity, 
+                totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
+            });
 
         uint256 redeemStrategyTokenAmount = 
             context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);

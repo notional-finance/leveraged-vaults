@@ -81,13 +81,13 @@ library SettlementUtils {
     function _getEmergencySettlementParams(
         StrategyContext memory strategyContext,
         PoolContext memory poolContext,
-        uint256 maturity
+        uint256 maturity,
+        uint256 totalBPTSupply
     )  internal view returns(uint256 bptToSettle, uint256 maxUnderlyingSurplus) {
         StrategyVaultSettings memory settings = strategyContext.vaultSettings;
         StrategyVaultState memory state = strategyContext.vaultState;
 
         // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
-        uint256 totalBPTSupply = IERC20(poolContext.pool).totalSupply();
         uint256 emergencyBPTWithdrawThreshold = settings._bptThreshold(totalBPTSupply);
 
         if (strategyContext.totalBPTHeld <= emergencyBPTWithdrawThreshold)
