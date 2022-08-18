@@ -19,15 +19,33 @@ chain = Chain()
 
 def test_normal_single_maturity_success(StratBoostedPoolDAIPrimary):
     (env, vault, mock) = StratBoostedPoolDAIPrimary
-
-def test_normal_single_maturity_incremental_success(StratBoostedPoolDAIPrimary):
-    (env, vault, mock) = StratBoostedPoolDAIPrimary
+    primaryBorrowAmount = 5000e8
+    depositAmount = 10000e18
+    env.tokens["DAI"].approve(env.notional, 2 ** 256 - 1, {"from": env.whales["DAI_EOA"]})
+    maturity = enterMaturity(env, vault, 2, 0, depositAmount, primaryBorrowAmount, env.whales["DAI_EOA"])
+    chain.sleep(maturity - 3600 * 24 * 6 - chain.time())
+    chain.mine()
+    # Disable oracle freshness check
+    env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
+    redeemParams = get_redeem_params(
+        0, # minPrimary is calculated internally for boosted pools 
+        0, 
+        get_dynamic_trade_params(
+            DEX_ID["UNISWAP_V3"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, get_univ3_single_data(3000)
+        )
+    )
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    vault.settleVaultNormal(
+        maturity,
+        vaultState["totalStrategyTokens"] * 0.5,
+        redeemParams,
+        {"from": accounts[1]}
+    )
 
 def test_post_maturity_single_maturity_success(StratBoostedPoolDAIPrimary):
     (env, vault, mock) = StratBoostedPoolDAIPrimary
 
 def test_emergency_single_maturity_success(StratBoostedPoolDAIPrimary):
-    (env, vault, mock) = StratBoostedPoolDAIPrimary
     (env, vault, mock) = StratBoostedPoolDAIPrimary
     primaryBorrowAmount = 5000e8
     depositAmount = 10000e18

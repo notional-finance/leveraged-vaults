@@ -23,6 +23,7 @@ def test_normal_single_maturity_success(StratStableETHstETH):
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     chain.sleep(maturity - 3600 * 24 * 6 - chain.time())
     chain.mine()
+    # Disable oracle freshness check
     env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
     strategyContext = vault.getStrategyContext()
     spotBalances = mock.getSpotBalances(strategyContext["baseStrategy"]["totalBPTHeld"])

@@ -16,6 +16,7 @@ import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StableMath} from "../math/StableMath.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 
 library Boosted3TokenAuraRewardUtils {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
@@ -25,12 +26,12 @@ library Boosted3TokenAuraRewardUtils {
         AuraStakingContext memory context,
         SingleSidedRewardTradeParams memory params,
         address primaryToken
-    ) private pure {
+    ) private view {
         // Validate trades
         if (!context._isValidRewardToken(params.sellToken)) {
             revert Errors.InvalidRewardToken(params.sellToken);
         }
-        if (params.buyToken != primaryToken) {
+        if (params.buyToken != IBoostedPool(primaryToken).getMainToken()) {
             revert Errors.InvalidRewardToken(params.buyToken);
         }
 

@@ -354,7 +354,7 @@ library StableMath {
         uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = divDownFixed(balances[i], sumBalances);
-            balanceRatiosWithFee[i] = balances[i] + divDownFixed(amountsIn[i], balances[i]);
+            balanceRatiosWithFee[i] =  divDownFixed(balances[i] + amountsIn[i], balances[i]);
             invariantRatioWithFees = invariantRatioWithFees + mulDownFixed(balanceRatiosWithFee[i], currentWeight);
         }
 

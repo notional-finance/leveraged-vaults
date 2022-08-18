@@ -89,6 +89,6 @@ def test_reinvest_rewards_success(StratStableETHstETH):
             ]
         ]]
     ), 0],
-        {"from": env.whales["USDC"]}
+        {"from": accounts[1]}
     )
     assert pytest.approx(vault.getStrategyContext()["baseStrategy"]["totalBPTHeld"], rel=1e-2) == 173784412923241944
