@@ -107,7 +107,8 @@ library TwoTokenAuraStrategyUtils {
             = TwoTokenAuraStrategyUtils._unstakeAndExitPoolExactBPTIn(
                 stakingContext, poolContext, bptClaim, params.minPrimary, params.minSecondary
             );
-            
+        
+        finalPrimaryBalance = primaryBalance;
         if (secondaryBalance > 0) {
             // If there is no secondary debt, we still need to sell the secondary balance
             // back to the primary token here.
@@ -124,7 +125,7 @@ library TwoTokenAuraStrategyUtils {
                     amount: secondaryBalance
                 });
 
-            finalPrimaryBalance = primaryBalance + primaryPurchased;
+            finalPrimaryBalance += primaryPurchased;
         }
 
         // Update global strategy token balance

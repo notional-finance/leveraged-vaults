@@ -226,46 +226,6 @@ def main():
     
     chain.undo()
 
-    settings = weightedStrategyContext["baseStrategy"]["vaultSettings"]
-    weightedVault.setStrategyVaultSettings(
-        [
-            settings["maxUnderlyingSurplus"], 
-            settings["oracleWindowInSeconds"], 
-            settings["settlementSlippageLimitPercent"], 
-            settings["postMaturitySettlementSlippageLimitPercent"], 
-            0, 
-            settings["balancerOracleWeight"], 
-            settings["settlementCoolDownInMinutes"], 
-            settings["postMaturitySettlementCoolDownInMinutes"], 
-            settings["feePercentage"]
-        ], 
-        {"from": env.notional.owner()}
-    )
-
-    weightedVault.settleVaultEmergency(
-        maturity,
-        eth_abi.encode_abi(
-            ['(uint32,uint256,uint256,bytes)'],
-            [[
-                0,
-                Wei(spotBalances["primaryBalance"] * 0.98),
-                Wei(spotBalances["secondaryBalance"] * 0.98),
-                eth_abi.encode_abi(
-                    ['(uint16,uint8,uint32,bytes)'],
-                    [[
-                        1,
-                        0,
-                        Wei(5e6),
-                        eth_abi.encode_abi(
-                            ['(uint24)'],
-                            [[3000]]
-                        )
-                    ]]
-                )
-            ]]
-        ),
-        {"from": env.notional.owner()}
-    )
 
     chain.undo()
     chain.sleep(maturity - 3600 * 24 * 6 - chain.time())

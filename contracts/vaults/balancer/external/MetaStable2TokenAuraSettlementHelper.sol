@@ -39,6 +39,9 @@ library MetaStable2TokenAuraSettlementHelper {
             data
         );
 
+        // These min primary and min secondary amounts must be within some configured
+        // delta of the current oracle price
+        // This check is only necessary during settlement
         context.oracleContext._validatePairPrice({
             poolContext: context.poolContext,
             tradingModule: context.baseStrategy.tradingModule,
@@ -78,6 +81,9 @@ library MetaStable2TokenAuraSettlementHelper {
             data
         );
 
+        // These min primary and min secondary amounts must be within some configured
+        // delta of the current oracle price
+        // This check is only necessary during settlement
         context.oracleContext._validatePairPrice({
             poolContext: context.poolContext,
             tradingModule: context.baseStrategy.tradingModule,

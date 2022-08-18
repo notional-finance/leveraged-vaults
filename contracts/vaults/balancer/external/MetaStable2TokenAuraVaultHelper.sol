@@ -43,18 +43,6 @@ library MetaStable2TokenAuraVaultHelper {
     ) external returns (uint256 finalPrimaryBalance) {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
-        // These min primary and min secondary amounts must be within some configured
-        // delta of the current oracle price
-        // This check is only necessary during settlement
-        if (account == address(this)) {
-            context.oracleContext._validatePairPrice({
-                poolContext: context.poolContext,
-                tradingModule: context.baseStrategy.tradingModule,
-                primaryAmount: params.minPrimary,
-                secondaryAmount: params.minSecondary
-            });
-        }
-
         finalPrimaryBalance = context.baseStrategy._redeem({
             stakingContext: context.stakingContext,
             poolContext: context.poolContext,
