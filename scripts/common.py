@@ -154,3 +154,14 @@ def get_deposit_params(minBPT=0, secondaryBorrow=0, trade=bytes(0)):
             trade
         ]]
     )
+
+def get_redeem_params(minPrimary, minSecondary, trade):
+    return eth_abi.encode_abi(
+        ['(uint32,uint256,uint256,bytes)'],
+        [[
+            0,
+            Wei(minPrimary * 0.98),
+            Wei(minSecondary * 0.98),
+            trade
+        ]]
+    )

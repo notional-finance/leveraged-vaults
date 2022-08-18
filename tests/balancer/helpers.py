@@ -38,3 +38,18 @@ def enterMaturity(
         {"from": account, "value": value}
     )
     return maturity
+
+def exitVaultPercent(env, vault, account, percent, redeemParams):
+    vaultAccount = env.notional.getVaultAccount(account, vault.address)
+    vaultShares = vaultAccount["vaultShares"]
+    primaryBorrowAmount = vaultAccount["fCash"]
+    env.notional.exitVault(
+        account,
+        vault.address,
+        account,
+        vaultShares * percent,
+        -primaryBorrowAmount * percent,
+        0,
+        redeemParams,
+        {"from": account}
+    )

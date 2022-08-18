@@ -13,4 +13,8 @@ def test_single_maturity_low_leverage_success(StratBoostedPoolDAIPrimary):
     maturity = enterMaturity(env, vault, 2, 0, depositAmount, primaryBorrowAmount, env.whales["DAI_EOA"])
 
 def test_single_maturity_high_leverage_success(StratBoostedPoolDAIPrimary):
-    pass
+    (env, vault, mock) = StratBoostedPoolDAIPrimary
+    primaryBorrowAmount = 40000e8
+    depositAmount = 10000e18
+    env.tokens["DAI"].approve(env.notional, 2 ** 256 - 1, {"from": env.whales["DAI_EOA"]})
+    maturity = enterMaturity(env, vault, 2, 0, depositAmount, primaryBorrowAmount, env.whales["DAI_EOA"])
