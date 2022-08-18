@@ -96,8 +96,8 @@ library Boosted3TokenAuraRewardUtils {
             currentInvariant: invariant
         });
 
-        // TODO: make this nicer, reduce minBPT by 5%
-        minBPT = minBPT * 95 / 100;
+        minBPT = minBPT * Constants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+            uint256(Constants.PERCENTAGE_DECIMALS);
 
         uint256 bptAmount = poolContext._joinPoolExactTokensIn(primaryAmount, minBPT);
 

@@ -112,7 +112,7 @@ library SettlementUtils {
         uint256 maturity,
         int256 expectedUnderlyingRedeemed,
         uint256 redeemStrategyTokenAmount,
-        bytes calldata data
+        RedeemParams memory params
     ) internal {
         // prettier-ignore
         (
@@ -140,7 +140,8 @@ library SettlementUtils {
             );
         }
 
-        // prettier-ignore
-        Constants.NOTIONAL.redeemStrategyTokensToCash(maturity, redeemStrategyTokenAmount, data);
+        Constants.NOTIONAL.redeemStrategyTokensToCash(
+            maturity, redeemStrategyTokenAmount, abi.encode(params)
+        );
     }
 }

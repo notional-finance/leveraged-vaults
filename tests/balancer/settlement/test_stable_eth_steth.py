@@ -31,9 +31,6 @@ def test_emergency_single_maturity_success(StratStableETHstETH):
     depositAmount = 10e18
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     primaryAmountBefore = accounts[0].balance()
-    redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
-        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
-    ))
     strategyContext = vault.getStrategyContext()
     settings = dict(strategyContext["baseStrategy"]["vaultSettings"].dict())
     settings["maxBalancerPoolShare"] = 0

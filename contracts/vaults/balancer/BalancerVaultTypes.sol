@@ -72,11 +72,6 @@ struct OracleContext {
     uint256 balancerOracleWeight;
 }
 
-struct WeightedOracleContext {
-    uint256[] weights;
-    OracleContext baseOracle;
-}
-
 struct StableOracleContext {
     /// @notice Amplification parameter
     uint256 ampParam;
@@ -133,13 +128,6 @@ struct StrategyContext {
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
     address feeReceiver;
-}
-
-struct Weighted2TokenAuraStrategyContext {
-    TwoTokenPoolContext poolContext;
-    WeightedOracleContext oracleContext;
-    AuraStakingContext stakingContext;
-    StrategyContext baseStrategy;
 }
 
 struct MetaStable2TokenAuraStrategyContext {

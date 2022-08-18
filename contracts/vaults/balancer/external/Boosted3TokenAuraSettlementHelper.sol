@@ -5,18 +5,22 @@ import {
     Boosted3TokenAuraStrategyContext, 
     StrategyContext,
     RedeemParams,
+    ThreeTokenPoolContext,
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
+import {Constants} from "../../../global/Constants.sol";
 import {Events} from "../../../global/Events.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
+import {Boosted3TokenPoolUtils} from "../internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraStrategyUtils} from "../internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {VaultUtils} from "../internal/VaultUtils.sol";
 
 library Boosted3TokenAuraSettlementHelper {
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
+    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
     using VaultUtils for StrategyVaultSettings;
@@ -28,12 +32,21 @@ library Boosted3TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementUtils._decodeParamsAndValidate(
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastSettlementTimestamp,
             context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
             context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
             data
         );
+
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
+
+        // Calculate minPrimary using Chainlink oracle data
+        params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
+            context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
+        );
+        params.minPrimary = params.minPrimary * Constants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+            uint256(Constants.PERCENTAGE_DECIMALS);
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
@@ -45,7 +58,7 @@ library Boosted3TokenAuraSettlementHelper {
             maturity: maturity,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
-            data: data
+            params: params
         });
 
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
@@ -60,12 +73,21 @@ library Boosted3TokenAuraSettlementHelper {
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
-        SettlementUtils._decodeParamsAndValidate(
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
             context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
             context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
             data
         );
+
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
+
+        // Calculate minPrimary using Chainlink oracle data
+        params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
+            context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
+        );
+        params.minPrimary = params.minPrimary * Constants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+            uint256(Constants.PERCENTAGE_DECIMALS);
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
@@ -77,7 +99,7 @@ library Boosted3TokenAuraSettlementHelper {
             maturity: maturity,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
-            data: data
+            params: params
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
@@ -91,10 +113,19 @@ library Boosted3TokenAuraSettlementHelper {
         uint256 maturity, 
         bytes calldata data
     ) external {
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+
         (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = 
             context.baseStrategy._getEmergencySettlementParams(
                 context.poolContext.basePool.basePool, maturity
             );
+
+        // Calculate minPrimary using Chainlink oracle data
+        params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
+            context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
+        );
+        params.minPrimary = params.minPrimary * Constants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+            uint256(Constants.PERCENTAGE_DECIMALS);
 
         uint256 redeemStrategyTokenAmount 
             = context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);
@@ -109,7 +140,7 @@ library Boosted3TokenAuraSettlementHelper {
             maturity: maturity,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-            data: data
+            params: params
         });
 
         emit Events.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);

@@ -59,7 +59,7 @@ library MetaStable2TokenAuraSettlementHelper {
             maturity: maturity,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
-            data: data
+            params: params
         });
 
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
@@ -101,7 +101,7 @@ library MetaStable2TokenAuraSettlementHelper {
             maturity: maturity,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
-            data: data
+            params: params
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
@@ -115,6 +115,18 @@ library MetaStable2TokenAuraSettlementHelper {
         uint256 maturity, 
         bytes calldata data
     ) external {
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+
+        // These min primary and min secondary amounts must be within some configured
+        // delta of the current oracle price
+        // This check is only necessary during settlement
+        context.oracleContext._validatePairPrice({
+            poolContext: context.poolContext,
+            tradingModule: context.baseStrategy.tradingModule,
+            primaryAmount: params.minPrimary,
+            secondaryAmount: params.minSecondary
+        });
+
         (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = 
             context.baseStrategy._getEmergencySettlementParams(
                 context.poolContext.basePool, maturity
@@ -133,7 +145,7 @@ library MetaStable2TokenAuraSettlementHelper {
             maturity: maturity,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-            data: data
+            params: params
         });
 
         emit Events.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
