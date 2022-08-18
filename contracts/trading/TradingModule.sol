@@ -35,10 +35,12 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
 
     int256 internal constant RATE_DECIMALS = 1e18;
     mapping(address => PriceOracle) public priceOracles;
+    uint32 public maxOracleFreshnessInSeconds;
 
     event PriceOracleUpdated(address token, address oracle);
+    event MaxOracleFreshnessUpdated(uint32 currentValue, uint32 newValue);
 
-    constructor(NotionalProxy notional_, ITradingModule proxy_) { 
+    constructor(NotionalProxy notional_, ITradingModule proxy_) initializer { 
         NOTIONAL = notional_;
         PROXY = proxy_;
     }
@@ -49,6 +51,15 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     function _authorizeUpgrade(address /* newImplementation */) internal override onlyNotionalOwner { }
+
+    function initialize(uint32 maxOracleFreshnessInSeconds_) external initializer onlyNotionalOwner {
+        maxOracleFreshnessInSeconds = maxOracleFreshnessInSeconds_;
+    }
+
+    function setMaxOracleFreshness(uint32 newMaxOracleFreshnessInSeconds) external onlyNotionalOwner {
+        emit MaxOracleFreshnessUpdated(maxOracleFreshnessInSeconds, newMaxOracleFreshnessInSeconds);
+        maxOracleFreshnessInSeconds = newMaxOracleFreshnessInSeconds;
+    }
 
     function setPriceOracle(address token, AggregatorV2V3Interface oracle) external override onlyNotionalOwner {
         PriceOracle storage oracleStorage = priceOracles[token];
@@ -178,11 +189,11 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         int256 quoteDecimals = int256(10**quoteOracle.rateDecimals);
         
         (/* */, int256 basePrice, /* */, uint256 bpUpdatedAt, /* */) = baseOracle.oracle.latestRoundData();
-        require(block.timestamp - bpUpdatedAt <= Constants.MAX_ORACLE_STALENESS_IN_SECONDS);
+        require(block.timestamp - bpUpdatedAt <= maxOracleFreshnessInSeconds);
         require(basePrice > 0); /// @dev: Chainlink Rate Error
 
         (/* */, int256 quotePrice, /* */, uint256 qpUpdatedAt, /* */) = quoteOracle.oracle.latestRoundData();
-        require(block.timestamp - qpUpdatedAt <= Constants.MAX_ORACLE_STALENESS_IN_SECONDS);
+        require(block.timestamp - qpUpdatedAt <= maxOracleFreshnessInSeconds);
         require(quotePrice > 0); /// @dev: Chainlink Rate Error
 
         answer = (basePrice * quoteDecimals * RATE_DECIMALS) / (quotePrice * baseDecimals);

@@ -6,7 +6,7 @@ from brownie import (
     TradingModule,
     nProxy,
     EmptyProxy,
-    wstETHChainlinkOracle
+    WstETHChainlinkOracle
 )
 from brownie.network.contract import Contract
 from brownie.network.state import Chain
@@ -121,6 +121,8 @@ class Environment:
 
         self.tradingModule = Contract.from_abi("TradingModule", self.proxy.address, TradingModule.abi)
 
+        self.tradingModule.initialize(3600 * 24, {"from": self.notional.owner()})
+
         # ETH/USD oracle
         self.tradingModule.setPriceOracle(
             ZERO_ADDRESS, 
@@ -171,7 +173,7 @@ class Environment:
             {"from": self.notional.owner()}
         )
         # wstETH/USD oracle
-        wstETHAdapater = wstETHChainlinkOracle.deploy(
+        wstETHAdapater = WstETHChainlinkOracle.deploy(
             "0xcfe54b5cd566ab89272946f602d76ea879cab4a8",
             self.tokens["wstETH"].address,
             {"from": self.notional.owner()}

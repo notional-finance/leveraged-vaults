@@ -93,7 +93,9 @@ contract Boosted3TokenAuraVault is
         require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
 
         // Exiting the vault is not allowed within the settlement window
-        _revertInSettlementWindow(maturity);
+        if (account != address(this)) {
+            _revertInSettlementWindow(maturity);
+        }
         finalPrimaryBalance = Boosted3TokenAuraVaultHelper.redeemFromNotional(
             _strategyContext(), strategyTokens, maturity, data
         );

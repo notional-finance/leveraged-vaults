@@ -5,7 +5,7 @@ import {AggregatorV2V3Interface} from "../../../../interfaces/chainlink/Aggregat
 import {IWstETH} from "../../../../interfaces/IWstETH.sol";
 import {SafeInt256} from "../../../global/SafeInt256.sol";
 
-contract wstETHChainlinkOracle is AggregatorV2V3Interface {
+contract WstETHChainlinkOracle is AggregatorV2V3Interface {
     using SafeInt256 for uint256;
 
     uint8 public override constant decimals = 18;

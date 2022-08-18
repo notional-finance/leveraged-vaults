@@ -18,9 +18,33 @@ chain = Chain()
 
 def test_normal_single_maturity_success(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
-
-def test_normal_single_maturity_incremental_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    primaryBorrowAmount = 5e8
+    depositAmount = 10e18
+    maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
+    chain.sleep(maturity - 3600 * 24 * 6 - chain.time())
+    chain.mine()
+    env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
+    strategyContext = vault.getStrategyContext()
+    spotBalances = mock.getSpotBalances(strategyContext["baseStrategy"]["totalBPTHeld"])
+    redeemParams = get_redeem_params(
+        spotBalances["primaryBalance"] * 0.5 * 0.98, 
+        spotBalances["secondaryBalance"] * 0.5 * 0.98, 
+        get_dynamic_trade_params(
+            DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
+        )
+    )
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    assert vaultState["totalAssetCash"] == 0
+    assert vaultState["totalStrategyTokens"] == vaultState["totalVaultShares"]
+    vault.settleVaultNormal(
+        maturity,
+        vaultState["totalStrategyTokens"] * 0.5,
+        redeemParams,
+        {"from": accounts[1]}
+    )
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    assert pytest.approx(vaultState["totalAssetCash"], rel=1e-2) == 37256494853
+    assert vaultState["totalStrategyTokens"] == vaultState["totalVaultShares"] * 0.5
 
 def test_post_maturity_single_maturity_success(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
@@ -30,7 +54,6 @@ def test_emergency_single_maturity_success(StratStableETHstETH):
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
-    primaryAmountBefore = accounts[0].balance()
     strategyContext = vault.getStrategyContext()
     settings = dict(strategyContext["baseStrategy"]["vaultSettings"].dict())
     settings["maxBalancerPoolShare"] = 0
@@ -49,7 +72,7 @@ def test_emergency_single_maturity_success(StratStableETHstETH):
     vault.settleVaultEmergency(
         maturity,
         redeemParams,
-        {"from": env.notional.owner()}
+        {"from": accounts[1]}
     )
     vaultState = env.notional.getVaultState(vault.address, maturity)
     assert vaultState["totalStrategyTokens"] == 0
