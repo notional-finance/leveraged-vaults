@@ -5,24 +5,28 @@ import {
     Boosted3TokenAuraStrategyContext,
     DepositParams,
     RedeemParams,
-    PoolParams,
+    ReinvestRewardParams,
     StrategyContext,
-    ThreeTokenPoolContext,
-    TwoTokenPoolContext,
-    PoolContext
+    ThreeTokenPoolContext
 } from "../BalancerVaultTypes.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
 import {Boosted3TokenAuraStrategyUtils} from "../internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
-import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
-import {Boosted3TokenPoolUtils} from "../internal/pool/Boosted3TokenPoolUtils.sol";
-import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
-import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
+import {Boosted3TokenAuraRewardUtils} from "../internal/reward/Boosted3TokenAuraRewardUtils.sol";
 
 library Boosted3TokenAuraVaultHelper {
+    using Boosted3TokenAuraRewardUtils for ThreeTokenPoolContext;
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
-    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
-    using TokenUtils for IERC20;
+
+    function reinvestReward(
+        Boosted3TokenAuraStrategyContext memory context,
+        ReinvestRewardParams memory params
+    ) external {        
+        context.poolContext._reinvestReward({
+            oracleContext: context.oracleContext,
+            stakingContext: context.stakingContext,
+            tradingModule: context.baseStrategy.tradingModule,
+            params: params
+        });
+    }
 
     function depositFromNotional(
         Boosted3TokenAuraStrategyContext memory context,

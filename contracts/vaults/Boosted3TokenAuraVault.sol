@@ -29,7 +29,6 @@ import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPool
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {Boosted3TokenAuraVaultHelper} from "./balancer/external/Boosted3TokenAuraVaultHelper.sol";
 import {Boosted3TokenAuraSettlementHelper} from "./balancer/external/Boosted3TokenAuraSettlementHelper.sol";
-import {Boosted3TokenAuraRewardHelper} from "./balancer/external/Boosted3TokenAuraRewardHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
 contract Boosted3TokenAuraVault is
@@ -146,7 +145,7 @@ contract Boosted3TokenAuraVault is
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) external {
-        Boosted3TokenAuraRewardHelper.reinvestReward(_strategyContext(), params);
+        Boosted3TokenAuraVaultHelper.reinvestReward(_strategyContext(), params);
     }
 
     function convertStrategyToUnderlying(

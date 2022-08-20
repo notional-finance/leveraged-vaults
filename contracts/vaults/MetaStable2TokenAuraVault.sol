@@ -32,7 +32,6 @@ import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol"
 import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
 import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
-import {MetaStable2TokenAuraRewardHelper} from "./balancer/external/MetaStable2TokenAuraRewardHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
 contract MetaStable2TokenAuraVault is
@@ -160,7 +159,7 @@ contract MetaStable2TokenAuraVault is
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) external {
-        MetaStable2TokenAuraRewardHelper.reinvestReward(_strategyContext(), params);
+        MetaStable2TokenAuraVaultHelper.reinvestReward(_strategyContext(), params);
     }
 
     /// @notice Updates the vault settings

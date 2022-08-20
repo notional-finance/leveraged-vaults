@@ -5,9 +5,7 @@ from brownie import (
     MetaStable2TokenAuraVault,
     Boosted3TokenAuraVault,
     Boosted3TokenAuraSettlementHelper,
-    Boosted3TokenAuraRewardHelper,
     AuraRewardHelperExternal,
-    MetaStable2TokenAuraRewardHelper,
     MetaStable2TokenAuraVaultHelper,
     MetaStable2TokenAuraSettlementHelper,
     Boosted3TokenAuraVaultHelper,
@@ -118,12 +116,10 @@ class BalancerEnvironment(Environment):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
         # Deploy external libs
         AuraRewardHelperExternal.deploy({"from": self.deployer})
-        MetaStable2TokenAuraRewardHelper.deploy({"from": self.deployer})
         MetaStable2TokenAuraVaultHelper.deploy({"from": self.deployer})
         MetaStable2TokenAuraSettlementHelper.deploy({"from": self.deployer})
         Boosted3TokenAuraVaultHelper.deploy({"from": self.deployer})
         Boosted3TokenAuraSettlementHelper.deploy({"from": self.deployer})
-        Boosted3TokenAuraRewardHelper.deploy({"from": self.deployer})
 
         impl = vaultContract.deploy(
             self.addresses["notional"],
