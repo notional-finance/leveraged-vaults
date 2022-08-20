@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 import "../chainlink/AggregatorV2V3Interface.sol";
 
 enum DexId {
+    _UNUSED,
     UNISWAP_V2,
     UNISWAP_V3,
     ZERO_EX,

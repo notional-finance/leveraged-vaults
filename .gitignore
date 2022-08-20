@@ -7,3 +7,4 @@ reports/
 node_modules/
 cache/
 venv
+artifacts

@@ -3,8 +3,8 @@ pragma solidity 0.8.15;
 
 import {Token, TokenType} from "../global/Types.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
-import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
+import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
