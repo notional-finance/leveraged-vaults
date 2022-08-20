@@ -1,5 +1,13 @@
 {
     "notional": "0xD8229B55bD73c61D840d339491219ec6Fa667B0a",
+    "tradingModule": "0x87d7dcd126938188d9c94a534b70da61de936546",
+    "vaults": {
+        "CrossCurrencyfCash": {
+            "implementation": "0x1b2247E2b4A94bde3DFFa01C52c3b178BFAE2C2b",
+            "USDC/DAI": "0x8771d21A2cc656F7da0f342313F1e157f8Fcd354",
+            "DAI/USDC": "0xF8EE1Fd40853E4962253aB947A3Df4406982dff9"
+        }
+    },
     "tokens": {
         "DAI": {
             "address": "0x84e90bdDFf9a0e124F1AB7F4D1D33a7C748c1A16",

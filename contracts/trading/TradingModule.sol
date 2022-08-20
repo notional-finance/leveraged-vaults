@@ -22,7 +22,7 @@ import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 /// exchange tokens via multiple DEXes as well as receive price oracle information
 contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     NotionalProxy public immutable NOTIONAL;
-    // Used to get the proxy address inside delegate call contexts 
+    // Used to get the proxy address inside delegate call contexts
     ITradingModule internal immutable PROXY;
 
     error SellTokenEqualsBuyToken();
@@ -50,7 +50,9 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         _;
     }
 
-    function _authorizeUpgrade(address /* newImplementation */) internal override onlyNotionalOwner { }
+    function _authorizeUpgrade(
+        address /* newImplementation */
+    ) internal override onlyNotionalOwner {}
 
     function initialize(uint32 maxOracleFreshnessInSeconds_) external initializer onlyNotionalOwner {
         maxOracleFreshnessInSeconds = maxOracleFreshnessInSeconds_;
@@ -83,12 +85,17 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint16 dexId,
         address from,
         Trade calldata trade
-    ) external view override returns (
-        address spender,
-        address target,
-        uint256 msgValue,
-        bytes memory executionCallData
-    ) {
+    )
+        external
+        view
+        override
+        returns (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionCallData
+        )
+    {
         return _getExecutionData(dexId, from, trade);
     }
 
@@ -109,7 +116,11 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         // This method calls back into the implementation via the proxy so that it has proper
         // access to storage.
         trade.limit = PROXY.getLimitAmount(
-            trade.tradeType, trade.sellToken, trade.buyToken, trade.amount, dynamicSlippageLimit
+            trade.tradeType,
+            trade.sellToken,
+            trade.buyToken,
+            trade.amount,
+            dynamicSlippageLimit
         );
 
         (
@@ -119,9 +130,15 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             bytes memory executionData
         ) = PROXY.getExecutionData(dexId, address(this), trade);
 
-        return TradeHandler._executeInternal(
-            trade, dexId, spender, target, msgValue, executionData
-        );
+        return
+            TradeHandler._executeInternal(
+                trade,
+                dexId,
+                spender,
+                target,
+                msgValue,
+                executionData
+            );
     }
 
     /// @notice Should be called via delegate call to execute a trade on behalf of the caller.
@@ -129,10 +146,11 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     /// @param trade trade object
     /// @return amountSold amount of tokens sold
     /// @return amountBought amount of tokens purchased
-    function executeTrade(
-        uint16 dexId,
-        Trade calldata trade
-    ) external override returns (uint256 amountSold, uint256 amountBought) {
+    function executeTrade(uint16 dexId, Trade calldata trade)
+        external
+        override
+        returns (uint256 amountSold, uint256 amountBought)
+    {
         (
             address spender,
             address target,
@@ -140,21 +158,31 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             bytes memory executionData
         ) = _getExecutionData(dexId, address(this), trade);
 
-        return TradeHandler._executeInternal(
-            trade, dexId, spender, target, msgValue, executionData
-        );
+        return
+            TradeHandler._executeInternal(
+                trade,
+                dexId,
+                spender,
+                target,
+                msgValue,
+                executionData
+            );
     }
 
     function _getExecutionData(
         uint16 dexId,
         address from,
         Trade calldata trade
-    ) internal view returns (
-        address spender,
-        address target,
-        uint256 msgValue,
-        bytes memory executionCallData
-    ) {
+    )
+        internal
+        view
+        returns (
+            address spender,
+            address target,
+            uint256 msgValue,
+            bytes memory executionCallData
+        )
+    {
         if (trade.buyToken == trade.sellToken) revert SellTokenEqualsBuyToken();
 
         if (DexId(dexId) == DexId.UNISWAP_V2) {
@@ -180,14 +208,17 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     /// @return answer exchange rate in rate decimals
     /// @return decimals number of decimals in the rate, currently hardcoded to 1e18
     function getOraclePrice(address baseToken, address quoteToken)
-        public view override returns (int256 answer, int256 decimals)
+        public
+        view
+        override
+        returns (int256 answer, int256 decimals)
     {
         PriceOracle memory baseOracle = priceOracles[baseToken];
         PriceOracle memory quoteOracle = priceOracles[quoteToken];
 
         int256 baseDecimals = int256(10**baseOracle.rateDecimals);
         int256 quoteDecimals = int256(10**quoteOracle.rateDecimals);
-        
+
         (/* */, int256 basePrice, /* */, uint256 bpUpdatedAt, /* */) = baseOracle.oracle.latestRoundData();
         require(block.timestamp - bpUpdatedAt <= maxOracleFreshnessInSeconds);
         require(basePrice > 0); /// @dev: Chainlink Rate Error
@@ -196,7 +227,9 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         require(block.timestamp - qpUpdatedAt <= maxOracleFreshnessInSeconds);
         require(quotePrice > 0); /// @dev: Chainlink Rate Error
 
-        answer = (basePrice * quoteDecimals * RATE_DECIMALS) / (quotePrice * baseDecimals);
+        answer =
+            (basePrice * quoteDecimals * RATE_DECIMALS) /
+            (quotePrice * baseDecimals);
         decimals = RATE_DECIMALS;
     }
 
@@ -208,7 +241,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         address buyToken,
         uint256 amount,
         uint32 slippageLimit
-    ) external override view returns (uint256 limitAmount) {
+    ) external view override returns (uint256 limitAmount) {
         // prettier-ignore
         (int256 oraclePrice, int256 oracleDecimals) = getOraclePrice(sellToken, buyToken);
 
@@ -216,9 +249,17 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         require(oracleDecimals >= 0); /// @dev Chainlink decimals error
 
         uint256 sellTokenDecimals = 10 **
-            (sellToken == Constants.ETH_ADDRESS ? 18 : IERC20(sellToken).decimals());
+            (
+                sellToken == Constants.ETH_ADDRESS
+                    ? 18
+                    : IERC20(sellToken).decimals()
+            );
         uint256 buyTokenDecimals = 10 **
-            (buyToken == Constants.ETH_ADDRESS ? 18 : IERC20(buyToken).decimals());
+            (
+                buyToken == Constants.ETH_ADDRESS
+                    ? 18
+                    : IERC20(buyToken).decimals()
+            );
 
         if (tradeType == TradeType.EXACT_OUT_SINGLE || tradeType == TradeType.EXACT_OUT_BATCH) {
             // 0 means no slippage limit
@@ -258,5 +299,4 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             limitAmount = (limitAmount * buyTokenDecimals) / sellTokenDecimals;
         }
     }
-
 }
