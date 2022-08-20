@@ -160,18 +160,21 @@ library Boosted3TokenPoolUtils {
         ) = _getValidatedPoolData(poolContext, oracleContext, tradingModule);
 
         // NOTE: For Boosted 3 token pools, the LP token (BPT) is just another
-        // token in the pool. So, we use _calcTokenOutGivenExactBptIn
-        // to value it in terms of the primary currency
+        // token in the pool. So, we first use _calcTokenOutGivenExactBptIn
+        // to calculate the value of 1 BPT. Then, we scale it to the BPT
+        // amount to get the value in terms of the primary currency.
         // Use virtual total supply and zero swap fees for joins
         primaryAmount = StableMath._calcTokenOutGivenExactBptIn({
             amp: oracleContext.ampParam, 
             balances: balances, 
             tokenIndex: 0, 
-            bptAmountIn: bptAmount, 
+            bptAmountIn: BalancerUtils.BALANCER_PRECISION, // 1 BPT 
             bptTotalSupply: virtualSupply, 
             swapFeePercentage: 0, 
             currentInvariant: invariant
         });
+
+        primaryAmount *= bptAmount / BalancerUtils.BALANCER_PRECISION;
 
         uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
         primaryAmount = primaryAmount * primaryPrecision / BalancerUtils.BALANCER_PRECISION;
