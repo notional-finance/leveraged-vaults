@@ -11,7 +11,6 @@ import {StableMath} from "./StableMath.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library Stable2TokenOracleMath {
-    using SafeInt256 for uint256;
     using SafeInt256 for int256;
     using Stable2TokenOracleMath for StableOracleContext;
 
@@ -51,6 +50,8 @@ library Stable2TokenOracleMath {
         uint256 primaryAmount,
         uint256 secondaryAmount
     ) internal view {
+        // @audit in the method above, the primary and secondary amounts are sorted by tokenIndex,
+        // in this they are specified by parameter. is that correct?
         uint256 invariant = StableMath._calculateInvariant(
             oracleContext.ampParam, StableMath._balances(primaryAmount, secondaryAmount), true // round up
         );
@@ -66,10 +67,11 @@ library Stable2TokenOracleMath {
             int256 answer, int256 decimals
         ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
 
-        require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
+        require(decimals == int256(BalancerUtils.BALANCER_PRECISION));
 
         uint256 oraclePairPrice = answer.toUint();
 
+        // @audit Denominator should be a constant
         uint256 lowerLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
         uint256 upperLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
         if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
@@ -81,15 +83,16 @@ library Stable2TokenOracleMath {
         StableOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         ITradingModule tradingModule,
-        uint256 spotPrice,
+        uint256 spotPrice, // @audit why not call _getSpotPrice inside here?
         uint256 primaryAmount, 
         uint256 secondaryAmount
     ) internal view {
+        // @audit this oracle price validation is duplicated code above
         (
             int256 answer, int256 decimals
         ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
 
-        require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
+        require(decimals == int256(BalancerUtils.BALANCER_PRECISION));
 
         uint256 oraclePairPrice = answer.toUint();
 

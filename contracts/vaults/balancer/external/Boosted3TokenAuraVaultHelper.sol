@@ -29,6 +29,7 @@ library Boosted3TokenAuraVaultHelper {
     }
 
     function depositFromNotional(
+        // @audit switch to calldata
         Boosted3TokenAuraStrategyContext memory context,
         uint256 deposit,
         uint256 maturity,
@@ -44,6 +45,7 @@ library Boosted3TokenAuraVaultHelper {
     }
 
     function redeemFromNotional(
+        // @audit switch to calldata
         Boosted3TokenAuraStrategyContext memory context,
         uint256 strategyTokens,
         uint256 maturity,

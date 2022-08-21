@@ -18,8 +18,8 @@ library LibBalancerStorage {
         StrategyVaultState
     }
 
-    /// @dev 
     function getStrategyVaultSettings() internal pure returns (
+        // @audit Does this need to be a mapping?
         mapping(uint256 => StrategyVaultSettings) storage store
     ) {
         uint256 slot = _getStorageSlot(StorageId.StrategyVaultSettings);

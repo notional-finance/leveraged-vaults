@@ -16,16 +16,13 @@ import {
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {Constants} from "../../../../global/Constants.sol";
-import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {VaultUtils} from "../VaultUtils.sol";
-import {SettlementUtils} from "../settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
-import {BalancerUtils} from "../pool/BalancerUtils.sol";
-import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library TwoTokenAuraStrategyUtils {
     using TradeHandler for Trade;
@@ -64,6 +61,7 @@ library TwoTokenAuraStrategyUtils {
     ) internal returns (uint256 strategyTokensMinted) {
         uint256 secondaryAmount;
         if (params.tradeData.length != 0) {
+            // Allows users to trade on a different DEX instead of Balancer when joining
             (uint256 primarySold, uint256 secondaryBought) = _tradePrimaryForSecondary({
                 strategyContext: strategyContext,
                 poolContext: poolContext,
@@ -133,6 +131,7 @@ library TwoTokenAuraStrategyUtils {
         // and emergency settlement. For normal and post-maturity settlement
         // scenarios (account == address(this) && data.length == 32), we
         // update totalStrategyTokenGlobal before this function is called.
+        // @audit overflow not checked, switch this to a .toUint80 instead of a direct cast
         strategyContext.vaultState.totalStrategyTokenGlobal -= uint80(strategyTokens);
         strategyContext.vaultState._setStrategyVaultState(); 
     }

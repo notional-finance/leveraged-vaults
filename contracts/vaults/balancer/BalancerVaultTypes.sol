@@ -144,12 +144,12 @@ struct Boosted3TokenAuraStrategyContext {
     StrategyContext baseStrategy;
 }
 
-struct TwoTokenAuraSettlementContext {
-    StrategyContext strategyContext;
-    OracleContext oracleContext;
-    TwoTokenPoolContext poolContext;
-    AuraStakingContext stakingContext;
-}
+// struct TwoTokenAuraSettlementContext {
+//     StrategyContext strategyContext;
+//     OracleContext oracleContext;
+//     TwoTokenPoolContext poolContext;
+//     AuraStakingContext stakingContext;
+// }
 
 struct NormalSettlementData {
     uint256 maxUnderlyingSurplus;

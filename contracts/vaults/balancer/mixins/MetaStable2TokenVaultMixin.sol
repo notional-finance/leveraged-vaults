@@ -2,11 +2,9 @@
 pragma solidity 0.8.15;
 
 import {IMetaStablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
-import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {StableOracleContext} from "../BalancerVaultTypes.sol";
 import {BalancerOracleMixin} from "./BalancerOracleMixin.sol";
 import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
-import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 
 abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracleMixin {
     constructor(uint16 primaryBorrowCurrencyId, bytes32 balancerPoolId)

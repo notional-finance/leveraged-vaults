@@ -2,10 +2,8 @@
 pragma solidity 0.8.15;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {Constants} from "../global/Constants.sol";
+import {BalancerConstants} from "../global/BalancerConstants.sol";
 import {Errors} from "../global/Errors.sol";
-import {SafeInt256} from "../global/SafeInt256.sol";
-import {NotionalUtils} from "../utils/NotionalUtils.sol";
 import {
     AuraVaultDeploymentParams,
     InitParams,
@@ -16,20 +14,16 @@ import {
     TwoTokenPoolContext,
     StableOracleContext,
     MetaStable2TokenAuraStrategyContext,
-    StrategyContext,
-    TwoTokenAuraSettlementContext
+    StrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {BalancerUtils} from "./balancer/internal/pool/BalancerUtils.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
-import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "./balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
-import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
 import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
@@ -40,7 +34,6 @@ contract MetaStable2TokenAuraVault is
     MetaStable2TokenVaultMixin,
     AuraStakingMixin
 {
-    using SafeInt256 for uint256;
     using VaultUtils for StrategyVaultSettings;
     using StrategyUtils for StrategyContext;
     using TwoTokenAuraStrategyUtils for StrategyContext;
@@ -66,7 +59,7 @@ contract MetaStable2TokenAuraVault is
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         VaultUtils._setStrategyVaultSettings(
-            params.settings, uint32(MAX_ORACLE_QUERY_WINDOW), Constants.VAULT_PERCENT_BASIS
+            params.settings, uint32(MAX_ORACLE_QUERY_WINDOW), BalancerConstants.VAULT_PERCENT_BASIS
         );
         _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
@@ -78,6 +71,7 @@ contract MetaStable2TokenAuraVault is
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
         // Entering the vault is not allowed within the settlement window
+        // @audit This is enforced by notional
         _revertInSettlementWindow(maturity);
         strategyTokensMinted = MetaStable2TokenAuraVaultHelper.depositFromNotional(
             _strategyContext(), account, deposit, maturity, data
@@ -92,6 +86,7 @@ contract MetaStable2TokenAuraVault is
     ) internal override returns (uint256 finalPrimaryBalance) {        
         require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
 
+        // @audit This is ok now that we are not borrowing in secondary
         // Exiting the vault is not allowed within the settlement window
         if (account != address(this)) {
             _revertInSettlementWindow(maturity);            
@@ -151,6 +146,7 @@ contract MetaStable2TokenAuraVault is
         );
     }
 
+    // @audit duplicated code between vaults
     function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
         StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
         claimedBalances = AuraRewardHelperExternal.claimRewardTokens(
@@ -169,7 +165,7 @@ contract MetaStable2TokenAuraVault is
         onlyNotionalOwner
     {
         VaultUtils._setStrategyVaultSettings(
-            settings, uint32(MAX_ORACLE_QUERY_WINDOW), Constants.VAULT_PERCENT_BASIS
+            settings, uint32(MAX_ORACLE_QUERY_WINDOW), BalancerConstants.VAULT_PERCENT_BASIS
         );
     }
 
@@ -193,6 +189,7 @@ contract MetaStable2TokenAuraVault is
         return _strategyContext();
     }
     
+    // @audit consolidate some of this into the pool mixin
     function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
         external view returns (uint256 strategyTokenAmount) {
         return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(bptClaim);

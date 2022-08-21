@@ -2,10 +2,7 @@
 pragma solidity 0.8.15;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {Constants} from "../global/Constants.sol";
 import {Errors} from "../global/Errors.sol";
-import {SafeInt256} from "../global/SafeInt256.sol";
-import {NotionalUtils} from "../utils/NotionalUtils.sol";
 import {
     AuraVaultDeploymentParams,
     InitParams,
@@ -21,12 +18,10 @@ import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
 import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {BalancerUtils} from "./balancer/internal/pool/BalancerUtils.sol";
 import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenAuraStrategyUtils} from "./balancer/internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
-import {LibBalancerStorage} from "./balancer/internal/LibBalancerStorage.sol";
 import {Boosted3TokenAuraVaultHelper} from "./balancer/external/Boosted3TokenAuraVaultHelper.sol";
 import {Boosted3TokenAuraSettlementHelper} from "./balancer/external/Boosted3TokenAuraSettlementHelper.sol";
 import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
@@ -67,6 +62,7 @@ contract Boosted3TokenAuraVault is
             0  // Balancer oracle weight
         );
 
+        // @audit why does the auraBooster need approval for all the bal tokens?
         _threeTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
@@ -77,7 +73,9 @@ contract Boosted3TokenAuraVault is
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
         // Entering the vault is not allowed within the settlement window
+        // @audit this is true, but is enforced by the Notional side, not necessary here
         _revertInSettlementWindow(maturity);
+        // @audit can we bring this back into this contract?
         strategyTokensMinted = Boosted3TokenAuraVaultHelper.depositFromNotional(
             _strategyContext(), deposit, maturity, data
         );
@@ -91,10 +89,12 @@ contract Boosted3TokenAuraVault is
     ) internal override returns (uint256 finalPrimaryBalance) {
         require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
 
+        // @audit This is no longer the case with non-secondary token vaults
         // Exiting the vault is not allowed within the settlement window
         if (account != address(this)) {
             _revertInSettlementWindow(maturity);
         }
+        // @audit can we bring this back into this contract?
         finalPrimaryBalance = Boosted3TokenAuraVaultHelper.redeemFromNotional(
             _strategyContext(), strategyTokens, maturity, data
         );
@@ -137,8 +137,10 @@ contract Boosted3TokenAuraVault is
         );
     }
 
+    // @audit duplicated code between vaults, maybe move to the AuraStakingMixin?
     function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
         StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
+        // @audit This should be logged in an event
         claimedBalances = AuraRewardHelperExternal.claimRewardTokens(
             _auraStakingContext(), strategyVaultSettings.feePercentage, FEE_RECEIVER
         );
@@ -195,17 +197,22 @@ contract Boosted3TokenAuraVault is
         return _strategyContext();
     }
     
+    // @audit these methods can move to the pool mixin perhaps? you don't need
+    // to get the full _strategyContext() since both of these methods just sit on StrategyUtils
     function convertBPTClaimToStrategyTokens(uint256 bptClaim)
         external view returns (uint256 strategyTokenAmount) {
         return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(bptClaim);
     }
 
-   /// @notice Converts strategy tokens to BPT
+    // @audit these methods can move to the pool mixin perhaps? you don't need
+    // to get the full _strategyContext() since both of these methods just sit on StrategyUtils
+    /// @notice Converts strategy tokens to BPT
     function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount) 
         external view returns (uint256 bptClaim) {
         return _strategyContext().baseStrategy._convertStrategyTokensToBPTClaim(strategyTokenAmount);
     }
 
+    // @audit move into the aura mixin
     /// @dev Gets the total BPT held by the aura reward pool
     function _bptHeld() internal view returns (uint256) {
         return AURA_REWARD_POOL.balanceOf(address(this));

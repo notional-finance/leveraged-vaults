@@ -5,6 +5,7 @@ import {AggregatorV2V3Interface} from "../../../../interfaces/chainlink/Aggregat
 import {IWstETH} from "../../../../interfaces/IWstETH.sol";
 import {SafeInt256} from "../../../global/SafeInt256.sol";
 
+// @audit move this to the trading module?
 contract WstETHChainlinkOracle is AggregatorV2V3Interface {
     using SafeInt256 for uint256;
 

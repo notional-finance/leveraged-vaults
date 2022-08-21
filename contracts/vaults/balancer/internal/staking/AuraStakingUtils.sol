@@ -2,15 +2,15 @@
 pragma solidity 0.8.15;
 
 import {AuraStakingContext, PoolContext, PoolParams} from "../../BalancerVaultTypes.sol";
-import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
-import {TokenUtils} from "../../../../utils/TokenUtils.sol";
 
 library AuraStakingUtils {
+    // @audit move this to the error lib?
     error BalancerPoolShareTooHigh(uint256 totalBPTHeld, uint256 bptThreshold);
 
     function _isValidRewardToken(AuraStakingContext memory context, address token)
         internal pure returns (bool) {
+        // @audit cache array length
         for (uint256 i; i < context.rewardTokens.length; i++) {
             if (address(context.rewardTokens[i]) == token) return true;
         }

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import {PoolContext, OracleContext, PoolParams} from "../../BalancerVaultTypes.sol";
+import {PoolContext, PoolParams} from "../../BalancerVaultTypes.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
-import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {WETH9} from "../../../../../interfaces/WETH9.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
@@ -12,6 +11,7 @@ import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 library BalancerUtils {
     using TokenUtils for IERC20;
 
+    // @audit move these to BalancerConstants
     WETH9 internal constant WETH =
         WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IBalancerVault internal constant BALANCER_VAULT =
@@ -103,6 +103,7 @@ library BalancerUtils {
     ) internal returns (uint256[] memory exitBalances) {
         exitBalances = new uint256[](params.assets.length);
 
+        // @audit cache length and iter
         for (uint256 i; i < params.assets.length; i++) {
             exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i]));
         }
@@ -122,6 +123,7 @@ library BalancerUtils {
             )
         );
 
+        // @audit cache length and iter
         for (uint256 i; i < params.assets.length; i++) {
             exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i])) - exitBalances[i];
         }

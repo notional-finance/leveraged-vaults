@@ -5,6 +5,7 @@ import {BaseStrategyVault} from "../BaseStrategyVault.sol";
 import {DeploymentParams} from "./BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 
+// @audit this should be called BalancerStrategyStorage
 abstract contract BaseVaultStorage is BaseStrategyVault {
 
     /** Immutables */

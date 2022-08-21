@@ -11,7 +11,6 @@ import {
 } from "../BalancerVaultTypes.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {Events} from "../../../global/Events.sol";
-import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "../internal/pool/Boosted3TokenPoolUtils.sol";
@@ -26,12 +25,14 @@ library Boosted3TokenAuraSettlementHelper {
     using VaultUtils for StrategyVaultSettings;
     using VaultUtils for StrategyVaultState;
 
+    // @audit switch to calldata
     function settleVaultNormal(
         Boosted3TokenAuraStrategyContext memory context,
         uint256 maturity,
         uint256 strategyTokensToRedeem,
         bytes calldata data
     ) external {
+        // @audit is there anything different about this method versus settleVaultPostMaturity?
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultState.lastSettlementTimestamp,
             context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
@@ -42,10 +43,11 @@ library Boosted3TokenAuraSettlementHelper {
         uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
 
         // Calculate minPrimary using Chainlink oracle data
+        // @audit why not just use a stack variable here instead of updating a memory object?
         params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
-        params.minPrimary = params.minPrimary * Constants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+        params.minPrimary = params.minPrimary * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
             uint256(Constants.PERCENTAGE_DECIMALS);
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
@@ -105,6 +107,7 @@ library Boosted3TokenAuraSettlementHelper {
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
         context.baseStrategy.vaultState._setStrategyVaultState();  
 
+        // @audit why not emit inside executeSettlement?
         emit Events.VaultSettlement(maturity, strategyTokensToRedeem);
     }
 
@@ -115,6 +118,7 @@ library Boosted3TokenAuraSettlementHelper {
     ) external {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
+        // @audit maxUnderlyingSurplus is never used?
         (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = 
             context.baseStrategy._getEmergencySettlementParams({
                 poolContext: context.poolContext.basePool.basePool, 
@@ -123,6 +127,7 @@ library Boosted3TokenAuraSettlementHelper {
             });
 
         // Calculate minPrimary using Chainlink oracle data
+        // @audit why not just use a stack variable here instead of updating a memory object?
         params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
@@ -132,6 +137,7 @@ library Boosted3TokenAuraSettlementHelper {
         uint256 redeemStrategyTokenAmount 
             = context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);
 
+        // @audit reduce code duplication here
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
             poolContext: context.poolContext,
@@ -145,6 +151,7 @@ library Boosted3TokenAuraSettlementHelper {
             params: params
         });
 
+        // @audit why not emit inside executeSettlement?
         emit Events.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 }

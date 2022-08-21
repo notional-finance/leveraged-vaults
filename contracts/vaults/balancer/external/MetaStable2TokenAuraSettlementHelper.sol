@@ -3,7 +3,6 @@ pragma solidity 0.8.15;
 
 import {
     MetaStable2TokenAuraStrategyContext,
-    TwoTokenAuraSettlementContext, 
     StableOracleContext,
     StrategyContext,
     RedeemParams,

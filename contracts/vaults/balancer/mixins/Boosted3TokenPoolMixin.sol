@@ -9,7 +9,6 @@ import {
 } from "../BalancerVaultTypes.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
-import {Constants} from "../../../global/Constants.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {PoolMixin} from "./PoolMixin.sol";
@@ -105,6 +104,8 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             /* uint256 precision */
         ) = pool.getAmplificationParameter();
         
+        // @audit this is fairly minor but you call this method twice, not sure
+        // if we weould be able to save a call when we get the threeTokenPoolContext
         (
             /* address[] memory tokens */,
             uint256[] memory balances,

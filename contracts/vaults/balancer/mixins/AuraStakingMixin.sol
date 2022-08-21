@@ -9,6 +9,7 @@ import {IAuraStakingProxy} from "../../../../interfaces/aura/IAuraStakingProxy.s
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
 abstract contract AuraStakingMixin {
+    // @audit maybe some documentation about what each of these contracts do?
     ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
     IAuraBooster internal immutable AURA_BOOSTER;
     IAuraRewardPool internal immutable AURA_REWARD_POOL;

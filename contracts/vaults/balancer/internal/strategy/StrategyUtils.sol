@@ -1,22 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {
-    StrategyContext, 
-    StrategyVaultState,
-    DynamicTradeParams
-} from "../../BalancerVaultTypes.sol";
-import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
+import { StrategyContext, DynamicTradeParams } from "../../BalancerVaultTypes.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
-import {SettlementUtils} from "../settlement/SettlementUtils.sol";
 import {Constants} from "../../../../global/Constants.sol";
-import {VaultUtils} from "../VaultUtils.sol";
 import {ITradingModule, Trade, TradeType} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library StrategyUtils {
-    using VaultUtils for StrategyVaultState;
     using TradeHandler for Trade;
     using TokenUtils for IERC20;
 
@@ -24,7 +16,7 @@ library StrategyUtils {
     function _convertStrategyTokensToBPTClaim(StrategyContext memory context, uint256 strategyTokenAmount)
         internal pure returns (uint256 bptClaim) {
         require(strategyTokenAmount <= context.vaultState.totalStrategyTokenGlobal);
-        if (context.vaultState.totalStrategyTokenGlobal > 0) {            
+        if (context.vaultState.totalStrategyTokenGlobal > 0) {
             bptClaim = (strategyTokenAmount * context.totalBPTHeld) / context.vaultState.totalStrategyTokenGlobal;
         }
     }
@@ -35,7 +27,7 @@ library StrategyUtils {
         if (context.totalBPTHeld == 0) {
             // Strategy tokens are in 8 decimal precision, BPT is in 18. Scale the minted amount down.
             return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
-                BalancerUtils.BALANCER_PRECISION;
+                BalancerConstants.BALANCER_PRECISION;
         }
 
         // BPT held in maturity is calculated before the new BPT tokens are minted, so this calculation
@@ -60,7 +52,7 @@ library StrategyUtils {
         if (params.tradeUnwrapped && sellToken == address(Constants.WRAPPED_STETH)) {
             sellToken = Constants.WRAPPED_STETH.stETH();
             uint256 unwrappedAmount = IERC20(sellToken).balanceOf(address(this));
-            /// @notice the amount returned by unwrap is not always accurate for some reason
+            // NOTE: the amount returned by unwrap is not always accurate for some reason
             Constants.WRAPPED_STETH.unwrap(amount);
             amount = IERC20(sellToken).balanceOf(address(this)) - unwrappedAmount;
         }
@@ -79,6 +71,9 @@ library StrategyUtils {
             params.exchangeData
         );
 
+        // @audit this compiles the full code size of the TradeHandler into all
+        // the vaults, would be advantageous to use BaseStrategyVault's internal method
+        // instead. We can 
         (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
             params.dexId, tradingModule, params.oracleSlippagePercent
         );

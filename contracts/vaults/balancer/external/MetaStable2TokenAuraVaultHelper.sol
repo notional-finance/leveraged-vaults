@@ -10,7 +10,6 @@ import {
     StrategyContext,
     StableOracleContext
 } from "../BalancerVaultTypes.sol";
-import {Constants} from "../../../global/Constants.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {TwoTokenAuraRewardUtils} from "../internal/reward/TwoTokenAuraRewardUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
@@ -20,6 +19,7 @@ library MetaStable2TokenAuraVaultHelper {
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using Stable2TokenOracleMath for StableOracleContext;
 
+    // @audit move this into the vault code itself.
     function depositFromNotional(
         MetaStable2TokenAuraStrategyContext memory context,
         address account,
@@ -74,6 +74,7 @@ library MetaStable2TokenAuraVaultHelper {
         context.oracleContext._validateSpotPriceAndPairPrice({
             poolContext: context.poolContext,
             tradingModule: context.baseStrategy.tradingModule,
+            // @audit move this _getSpotPrice call into the method itself
             spotPrice: context.oracleContext._getSpotPrice(context.poolContext, 0),
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount

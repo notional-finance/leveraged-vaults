@@ -5,12 +5,10 @@ import {
     ThreeTokenPoolContext, 
     TwoTokenPoolContext, 
     BoostedOracleContext, 
-    PoolParams
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {Errors} from "../../../../global/Errors.sol";
-import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
@@ -30,6 +28,26 @@ library Boosted3TokenPoolUtils {
     // actually owned by some entity) instead.
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
+    function _getSpotPrice(
+        uint256 ampParam,
+        uint256 invariant,
+        uint256[] memory balances, 
+        uint8 tokenIndexIn, 
+        uint8 tokenIndexOut
+    ) private pure returns (uint256 spotPrice) {
+        // Trade 1 unit of tokenIn for tokenOut to get the spot price
+        uint256 amountIn = BalancerUtils.BALANCER_PRECISION;
+        uint256 amountOut = StableMath._calcOutGivenIn({
+            amplificationParameter: ampParam,
+            balances: balances,
+            tokenIndexIn: tokenIndexIn,
+            tokenIndexOut: tokenIndexOut,
+            tokenAmountIn: amountIn,
+            invariant: invariant
+        });
+        spotPrice = amountOut;
+    }
+
     function _validateSpotPrice(
         ITradingModule tradingModule,
         address tokenIn,
@@ -41,7 +59,7 @@ library Boosted3TokenPoolUtils {
         uint256 invariant
     ) private view {
         (int256 answer, int256 decimals) = tradingModule.getOraclePrice(tokenOut, tokenIn);
-        require(decimals == BalancerUtils.BALANCER_PRECISION.toInt());
+        require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
         
         uint256 spotPrice = _getSpotPrice({
             ampParam: ampParam,
@@ -52,10 +70,10 @@ library Boosted3TokenPoolUtils {
         });
 
         uint256 oraclePrice = answer.toUint();
-        uint256 lowerLimit = (oraclePrice * Constants.STABLE_SPOT_PRICE_LOWER_LIMIT) / 
-            Constants.VAULT_PERCENT_BASIS;
-        uint256 upperLimit = (oraclePrice * Constants.STABLE_SPOT_PRICE_UPPER_LIMIT) / 
-            Constants.VAULT_PERCENT_BASIS;
+        uint256 lowerLimit = (oraclePrice * BalancerConstants.STABLE_SPOT_PRICE_LOWER_LIMIT) / 
+            BalancerConstants.VAULT_PERCENT_BASIS;
+        uint256 upperLimit = (oraclePrice * BalancerConstants.STABLE_SPOT_PRICE_UPPER_LIMIT) / 
+            BalancerConstants.VAULT_PERCENT_BASIS;
 
         // Check spot price against oracle price to make sure it hasn't been manipulated
         if (spotPrice < lowerLimit || upperLimit < spotPrice) {
@@ -97,32 +115,39 @@ library Boosted3TokenPoolUtils {
         });
     }
 
-    function _getSpotPrice(
-        uint256 ampParam,
-        uint256 invariant,
-        uint256[] memory balances, 
-        uint8 tokenIndexIn, 
-        uint8 tokenIndexOut
-    ) private pure returns (uint256 spotPrice) {
-        // Trade 1 unit of tokenIn for tokenOut to get the spot price
-        uint256 amountIn = BalancerUtils.BALANCER_PRECISION;
-        uint256 amountOut = StableMath._calcOutGivenIn({
-            amplificationParameter: ampParam,
-            balances: balances,
-            tokenIndexIn: tokenIndexIn,
-            tokenIndexOut: tokenIndexOut,
-            tokenAmountIn: amountIn,
-            invariant: invariant
-        });
-        spotPrice = amountOut;
+    function _getVirtualSupply(
+        ThreeTokenPoolContext memory poolContext, 
+        BoostedOracleContext memory oracleContext
+    ) internal pure returns (uint256 virtualSupply) {
+        // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
+        // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+        // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
+        //
+        // However, since this Pool never mints or burns BPT outside of the initial supply (except in the event of an
+        // emergency pause), we can simply use `_MAX_TOKEN_BALANCE` instead of `totalSupply()` and save
+        // gas.
+        virtualSupply = _MAX_TOKEN_BALANCE - oracleContext.bptBalance + oracleContext.dueProtocolFeeBptAmount;
     }
 
+    // @audit private, combine into validated pool data?
+    function _getVirtualSupplyAndBalances(
+        ThreeTokenPoolContext memory poolContext, 
+        BoostedOracleContext memory oracleContext
+    ) internal pure returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
+        virtualSupply = _getVirtualSupply(poolContext, oracleContext);
+
+        amountsWithoutBpt = new uint256[](3);
+        amountsWithoutBpt[0] = poolContext.basePool.primaryBalance;
+        amountsWithoutBpt[1] = poolContext.basePool.secondaryBalance;
+        amountsWithoutBpt[2] = poolContext.tertiaryBalance;
+    }
+
+    // @audit called
     function _getValidatedPoolData(
         ThreeTokenPoolContext memory poolContext,
         BoostedOracleContext memory oracleContext,
         ITradingModule tradingModule
     ) internal view returns (uint256 virtualSupply, uint256[] memory balances, uint256 invariant) {
-
         (virtualSupply, balances) = 
             _getVirtualSupplyAndBalances(poolContext, oracleContext);
 
@@ -174,41 +199,17 @@ library Boosted3TokenPoolUtils {
             currentInvariant: invariant
         });
 
+        // @audit re-arrange to (primaryAmount * bptAmount * primaryPrecision) / BalancerPrecisionSquared
         primaryAmount *= bptAmount / BalancerUtils.BALANCER_PRECISION;
 
         uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
         primaryAmount = primaryAmount * primaryPrecision / BalancerUtils.BALANCER_PRECISION;
     }
 
-    function _getVirtualSupply(
-        ThreeTokenPoolContext memory poolContext, 
-        BoostedOracleContext memory oracleContext
-    ) internal pure returns (uint256 virtualSupply) {
-        // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
-        // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-        // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
-        //
-        // However, since this Pool never mints or burns BPT outside of the initial supply (except in the event of an
-        // emergency pause), we can simply use `_MAX_TOKEN_BALANCE` instead of `totalSupply()` and save
-        // gas.
-        virtualSupply = _MAX_TOKEN_BALANCE - oracleContext.bptBalance + oracleContext.dueProtocolFeeBptAmount;        
-    }
-
-    function _getVirtualSupplyAndBalances(
-        ThreeTokenPoolContext memory poolContext, 
-        BoostedOracleContext memory oracleContext
-    ) internal pure returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
-
-        virtualSupply = _getVirtualSupply(poolContext, oracleContext);
-
-        amountsWithoutBpt = new uint256[](3);
-        amountsWithoutBpt[0] = poolContext.basePool.primaryBalance;
-        amountsWithoutBpt[1] = poolContext.basePool.secondaryBalance;
-        amountsWithoutBpt[2] = poolContext.tertiaryBalance;
-    }
-
     function _approveBalancerTokens(ThreeTokenPoolContext memory poolContext, address bptSpender) internal {
+        // @audit why does the auraBooster need approval for these two tokens?
         poolContext.basePool._approveBalancerTokens(bptSpender);
+
         IERC20(poolContext.tertiaryToken).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
 
         // For boosted pools, the tokens inside pool context are AaveLinearPool tokens.
@@ -220,6 +221,7 @@ library Boosted3TokenPoolUtils {
 
     function _joinPoolExactTokensIn(ThreeTokenPoolContext memory context, uint256 primaryAmount, uint256 minBPT)
         internal returns (uint256 bptAmount) {
+        // @audit why not move the staking into this method?
         IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
 
         // Swap underlyingToken for LinearPool BPT
@@ -238,11 +240,12 @@ library Boosted3TokenPoolUtils {
             tokenOut: address(context.basePool.basePool.pool), // Boosted pool
             amountIn: linearPoolBPT,
             limit: minBPT
-        });        
+        });
     }
 
     function _exitPoolExactBPTIn(ThreeTokenPoolContext memory context, uint256 bptExitAmount, uint256 minPrimary)
         internal returns (uint256 primaryBalance) {
+        // @audit why not move the unstaking into this method?
         IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
 
         // Swap Boosted BPT for LinearPool BPT

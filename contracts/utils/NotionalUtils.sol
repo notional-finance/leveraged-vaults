@@ -5,6 +5,7 @@ import {Token, TokenType} from "../global/Types.sol";
 import {Constants} from "../global/Constants.sol";
 import {VaultState} from "../global/Types.sol";
 
+// @audit is this really required?
 library NotionalUtils {
     function _getNotionalUnderlyingToken(uint16 currencyId) internal view returns (address) {
         (Token memory assetToken, Token memory underlyingToken) = Constants.NOTIONAL.getCurrency(currencyId);

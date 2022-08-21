@@ -15,7 +15,6 @@ import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {VaultUtils} from "../VaultUtils.sol";
-import {IERC20} from "../../../../../interfaces/IERC20.sol";
 
 library SettlementUtils {
     using SafeInt256 for uint256;
@@ -54,6 +53,7 @@ library SettlementUtils {
     }
 
     /// @notice Calculates the amount of BPT availTable for emergency settlement
+    // @audit make private
     function _getEmergencySettlementBPTAmount(
         uint256 bptTotalSupply,
         uint16 maxBalancerPoolShare,
@@ -104,6 +104,7 @@ library SettlementUtils {
             totalBPTHeld: strategyContext.totalBPTHeld,
             bptHeldInMaturity: bptHeldInMaturity
         });
+        // @audit this parameter is never used, _executeSettlement just reads it off the heap
         maxUnderlyingSurplus = settings.maxUnderlyingSurplus;
     }
 
@@ -143,5 +144,9 @@ library SettlementUtils {
         Constants.NOTIONAL.redeemStrategyTokensToCash(
             maturity, redeemStrategyTokenAmount, abi.encode(params)
         );
+
+        // @audit if the underlyingCashRequiredToSettle at this point is negative
+        // and we are past maturity, call settleVault on notional to finalize the
+        // vault settlement
     }
 }

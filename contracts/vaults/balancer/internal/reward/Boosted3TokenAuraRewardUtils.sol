@@ -23,6 +23,7 @@ library Boosted3TokenAuraRewardUtils {
     using AuraStakingUtils for AuraStakingContext;
 
     function _validateTrade(
+        // @audit these can all be switched to calldata
         AuraStakingContext memory context,
         SingleSidedRewardTradeParams memory params,
         address primaryToken
@@ -35,10 +36,11 @@ library Boosted3TokenAuraRewardUtils {
             revert Errors.InvalidRewardToken(params.buyToken);
         }
 
-        require(params.tradeParams.oracleSlippagePercent <= Constants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
+        require(params.tradeParams.oracleSlippagePercent <= BalancerConstants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
     }
 
     function _executeRewardTrades(
+        // @audit these can all be switched to calldata
         ThreeTokenPoolContext memory poolContext,
         AuraStakingContext memory stakingContext,
         ITradingModule tradingModule,
@@ -63,6 +65,7 @@ library Boosted3TokenAuraRewardUtils {
     }
 
     function _reinvestReward(
+        // @audit these can all be switched to calldata
         ThreeTokenPoolContext memory poolContext,
         BoostedOracleContext memory oracleContext,
         AuraStakingContext memory stakingContext,
@@ -86,6 +89,7 @@ library Boosted3TokenAuraRewardUtils {
         );
 
         uint256[] memory amountsIn = new uint256[](3);
+        // @audit is the zero index the proper place here?
         amountsIn[0] = primaryAmount;
 
         uint256 minBPT = StableMath._calcBptOutGivenExactTokensIn({
@@ -97,8 +101,9 @@ library Boosted3TokenAuraRewardUtils {
             currentInvariant: invariant
         });
 
-        minBPT = minBPT * Constants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
-            uint256(Constants.PERCENTAGE_DECIMALS);
+        minBPT = minBPT * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+            // @audit is this the right decimals?
+            uint256(BalancerConstants.PERCENTAGE_DECIMALS);
 
         uint256 bptAmount = poolContext._joinPoolExactTokensIn(primaryAmount, minBPT);
 

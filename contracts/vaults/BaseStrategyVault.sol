@@ -118,6 +118,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         Trade memory trade,
         uint32 dynamicSlippageLimit
     ) internal returns (uint256 amountSold, uint256 amountBought) {
+        // @audit is this method required since the TradeHandler has it as well?
         (bool success, bytes memory result) = nProxy(payable(address(TRADING_MODULE))).getImplementation()
             .delegatecall(abi.encodeWithSelector(
                 ITradingModule.executeTradeWithDynamicSlippage.selector,
