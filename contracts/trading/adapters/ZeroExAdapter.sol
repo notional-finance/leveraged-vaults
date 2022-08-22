@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-
 import {Deployments} from "../../global/Deployments.sol";
 import "../../../interfaces/trading/ITradingModule.sol";
 
 library ZeroExAdapter {
-    address constant ZERO_EX = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
 
     struct BatchFillData {
         address inputToken;
@@ -234,8 +232,8 @@ library ZeroExAdapter {
     {
         _validateExchangeData(from, trade);
 
-        spender = ZERO_EX;
-        target = ZERO_EX;
+        spender = Deployments.ZERO_EX;
+        target = Deployments.ZERO_EX;
         // msgValue is always zero
         executionCallData = trade.exchangeData;
     }

@@ -3,9 +3,9 @@ pragma solidity 0.8.15;
 
 import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/uniswap/v2/IUniV2Router2.sol";
+import {Deployments} from "../../global/Deployments.sol";
 
 library UniV2Adapter {
-    IUniV2Router2 public constant ROUTER = IUniV2Router2(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     struct UniV2Data { address[] path; }
 
@@ -20,8 +20,8 @@ library UniV2Adapter {
         TradeType tradeType = trade.tradeType;
         UniV2Data memory data = abi.decode(trade.exchangeData, (UniV2Data));
 
-        spender = address(ROUTER);
-        target = address(ROUTER);
+        spender = address(Deployments.UNIV2_ROUTER);
+        target = address(Deployments.UNIV2_ROUTER);
         // msgValue is always zero for uniswap
 
         if (

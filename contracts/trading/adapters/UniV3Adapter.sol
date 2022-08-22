@@ -7,7 +7,6 @@ import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/uniswap/v3/ISwapRouter.sol";
 
 library UniV3Adapter {
-    ISwapRouter public constant ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     struct UniV3SingleData { uint24 fee; }
 
@@ -73,8 +72,8 @@ library UniV3Adapter {
             bytes memory executionCallData
         )
     {
-        spender = address(ROUTER);
-        target = address(ROUTER);
+        spender = address(Deployments.UNIV3_ROUTER);
+        target = address(Deployments.UNIV3_ROUTER);
         // msgValue is always zero for uniswap
 
         if (trade.tradeType == TradeType.EXACT_IN_SINGLE) {
