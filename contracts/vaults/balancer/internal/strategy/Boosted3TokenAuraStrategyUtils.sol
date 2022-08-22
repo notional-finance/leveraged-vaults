@@ -8,7 +8,7 @@ import {
     AuraStakingContext,
     StrategyVaultState
 } from "../../BalancerVaultTypes.sol";
-import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
@@ -18,7 +18,7 @@ import {BalancerUtils} from "../pool/BalancerUtils.sol";
 // @audit I think it's unlikely that we move away from Aura in the short run, so maybe this
 // can be merged into Boosted3TokenPoolUtils instead.
 library Boosted3TokenAuraStrategyUtils {
-    using SafeInt256 for uint256;
+    using TypeConvert for uint256;
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
@@ -39,12 +39,11 @@ library Boosted3TokenAuraStrategyUtils {
         stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
-        require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
 
         // Update global supply count
         // @audit Can we calculate this value instead of storing it? That will be less error prone, it would
         // require us looping over all the active vault states.
-        strategyContext.vaultState.totalStrategyTokenGlobal += uint80(strategyTokensMinted);
+        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState._setStrategyVaultState(); 
     }
 
@@ -71,7 +70,7 @@ library Boosted3TokenAuraStrategyUtils {
         // and emergency settlement. For normal and post-maturity settlement
         // scenarios (account == address(this) && data.length == 32), we
         // update totalStrategyTokenGlobal before this function is called.
-        strategyContext.vaultState.totalStrategyTokenGlobal -= uint80(strategyTokens);
+        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState._setStrategyVaultState(); 
         
         return primaryBalance;

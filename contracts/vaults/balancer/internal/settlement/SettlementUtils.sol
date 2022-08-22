@@ -13,14 +13,14 @@ import {Errors} from "../../../../global/Errors.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
-import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {VaultUtils} from "../VaultUtils.sol";
 
 library SettlementUtils {
-    using SafeInt256 for uint256;
-    using SafeInt256 for int256;
+    using TypeConvert for uint256;
+    using TypeConvert for int256;
     using StrategyUtils for StrategyContext;
     using VaultUtils for StrategyVaultSettings;
     using VaultUtils for StrategyVaultState;

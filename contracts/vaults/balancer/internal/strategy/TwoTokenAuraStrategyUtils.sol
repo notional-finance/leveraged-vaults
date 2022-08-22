@@ -14,7 +14,7 @@ import {
     StrategyVaultState,
     OracleContext
 } from "../../BalancerVaultTypes.sol";
-import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
@@ -27,7 +27,7 @@ import {Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 library TwoTokenAuraStrategyUtils {
     using TradeHandler for Trade;
     using TokenUtils for IERC20;
-    using SafeInt256 for uint256;
+    using TypeConvert for uint256;
     using StrategyUtils for StrategyContext;
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
@@ -80,10 +80,9 @@ library TwoTokenAuraStrategyUtils {
         });
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
-        require(strategyTokensMinted <= type(uint80).max); /// @dev strategyTokensMinted overflow
 
         // Update global supply count
-        strategyContext.vaultState.totalStrategyTokenGlobal += uint80(strategyTokensMinted);
+        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState._setStrategyVaultState(); 
     }
 
@@ -131,8 +130,7 @@ library TwoTokenAuraStrategyUtils {
         // and emergency settlement. For normal and post-maturity settlement
         // scenarios (account == address(this) && data.length == 32), we
         // update totalStrategyTokenGlobal before this function is called.
-        // @audit overflow not checked, switch this to a .toUint80 instead of a direct cast
-        strategyContext.vaultState.totalStrategyTokenGlobal -= uint80(strategyTokens);
+        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState._setStrategyVaultState(); 
     }
 

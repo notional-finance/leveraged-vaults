@@ -3,10 +3,10 @@ pragma solidity 0.8.15;
 
 import {AggregatorV2V3Interface} from "../../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 import {IWstETH} from "../../../interfaces/IWstETH.sol";
-import {SafeInt256} from "../../global/SafeInt256.sol";
+import {TypeConvert} from "../../global/TypeConvert.sol";
 
 contract WstETHChainlinkOracle is AggregatorV2V3Interface {
-    using SafeInt256 for uint256;
+    using TypeConvert for uint256;
 
     uint8 public override constant decimals = 18;
     uint256 public override constant version = 1;

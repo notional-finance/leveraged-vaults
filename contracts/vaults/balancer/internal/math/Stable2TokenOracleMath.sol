@@ -4,13 +4,13 @@ pragma solidity 0.8.15;
 import {StableOracleContext, TwoTokenPoolContext} from "../../BalancerVaultTypes.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
-import {SafeInt256} from "../../../../global/SafeInt256.sol";
+import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {StableMath} from "./StableMath.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library Stable2TokenOracleMath {
-    using SafeInt256 for int256;
+    using TypeConvert for int256;
     using Stable2TokenOracleMath for StableOracleContext;
 
     function _getSpotPrice(

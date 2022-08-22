@@ -20,7 +20,7 @@ import {
 } from "../global/Types.sol";
 import {Constants} from "../global/Constants.sol";
 import {DateTime} from "../global/DateTime.sol";
-import {SafeInt256} from "../global/SafeInt256.sol";
+import {TypeConvert} from "../global/TypeConvert.sol";
 import {ITradingModule, DexId, TradeType, Trade} from "../../interfaces/trading/ITradingModule.sol";
 import {TradeHandler} from "../trading/TradeHandler.sol";
 
@@ -30,8 +30,8 @@ import {TradeHandler} from "../trading/TradeHandler.sol";
  * that lends and borrows in the opposite direction.
  */
 contract CrossCurrencyfCashVault is BaseStrategyVault {
-    using SafeInt256 for uint256;
-    using SafeInt256 for int256;
+    using TypeConvert for uint256;
+    using TypeConvert for int256;
 
     uint256 public constant SETTLEMENT_SLIPPAGE_PRECISION = 1e18;
 
