@@ -78,7 +78,7 @@ library Boosted3TokenPoolUtils {
 
         // Check spot price against oracle price to make sure it hasn't been manipulated
         if (spotPrice < lowerLimit || upperLimit < spotPrice) {
-            revert Errors.InvalidSpotPrice(oraclePrice, spotPrice);
+            revert Errors.InvalidPrice(oraclePrice, spotPrice);
         }
     }
 

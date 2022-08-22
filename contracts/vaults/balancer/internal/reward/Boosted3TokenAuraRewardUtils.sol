@@ -81,7 +81,8 @@ library Boosted3TokenAuraRewardUtils {
         ) = poolContext._getValidatedPoolData(oracleContext, tradingModule);
 
         uint256[] memory amountsIn = new uint256[](3);
-        // @audit is the zero index the proper place here?
+        // _getValidatedPoolData rearranges the balances so that primary is always in the
+        // zero index spot
         amountsIn[0] = primaryAmount;
 
         uint256 minBPT = StableMath._calcBptOutGivenExactTokensIn({
@@ -102,6 +103,8 @@ library Boosted3TokenAuraRewardUtils {
         stakingContext.auraBooster.deposit(
             stakingContext.auraPoolId, bptAmount, true // stake = true
         );
+
+        // @audit we miss the threshold check here as well
 
         emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
     }  

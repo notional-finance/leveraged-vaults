@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6;
 
 library Errors {
-    error InvalidSpotPrice(uint256 oraclePrice, uint256 spotPrice);
+    error InvalidPrice(uint256 oraclePrice, uint256 poolPrice);
     error NotInSettlementWindow();
     error InvalidEmergencySettlement();
     error HasNotMatured();
@@ -17,10 +17,4 @@ library Errors {
     error SettlementNotRequired();
     error InvalidRewardToken(address token);
     error InvalidJoinAmounts(uint256 oraclePrice, uint256 maxPrimary, uint256 maxSecondary);
-    error InvalidPairPrice(
-        uint256 oraclePairPrice, 
-        uint256 calculatedPairPrice, 
-        uint256 primaryAmount, 
-        uint256 secondaryAmount
-    );
 }

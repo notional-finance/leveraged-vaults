@@ -37,8 +37,6 @@ library MetaStable2TokenAuraVaultHelper {
         context.oracleContext._validateSpotPriceAndPairPrice({
             poolContext: context.poolContext,
             tradingModule: context.baseStrategy.tradingModule,
-            // @audit is this token index correct?
-            tokenIndex: 0,
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount
         });

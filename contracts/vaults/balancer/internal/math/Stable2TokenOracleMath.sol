@@ -40,6 +40,26 @@ library Stable2TokenOracleMath {
         });
     }
 
+    function _checkPriceLimit(
+        ITradingModule tradingModule,
+        TwoTokenPoolContext memory poolContext,
+        uint256 poolPrice
+    ) private view returns (bool) {
+        (
+            int256 answer, int256 decimals
+        ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
+
+        require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
+
+        uint256 oraclePairPrice = answer.toUint();
+        uint256 lowerLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
+
+        if (poolPrice < lowerLimit || upperLimit < poolPrice) {
+            revert Errors.InvalidPrice(oraclePairPrice, poolPrice);
+        }
+    }
+
     /// @notice Validates the Balancer join/exit amounts against the price oracle.
     /// These values are passed in as parameters. So, we must validate them.
     function _validatePairPrice(
@@ -49,8 +69,7 @@ library Stable2TokenOracleMath {
         uint256 primaryAmount,
         uint256 secondaryAmount
     ) internal view {
-        // @audit in the method above, the primary and secondary amounts are sorted by tokenIndex,
-        // in this they are specified by parameter. is that correct?
+        // We always validate in terms of the primary here so it is the first value in the _balances array
         uint256 invariant = StableMath._calculateInvariant(
             oracleContext.ampParam, StableMath._balances(primaryAmount, secondaryAmount), true // round up
         );
@@ -62,47 +81,19 @@ library Stable2TokenOracleMath {
             balanceY: secondaryAmount
         });
 
-        (
-            int256 answer, int256 decimals
-        ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
-
-        require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
-
-        uint256 oraclePairPrice = answer.toUint();
-
-        // @audit Denominator should be a constant
-        uint256 lowerLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
-        if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
-            revert Errors.InvalidPairPrice(oraclePairPrice, calculatedPairPrice, primaryAmount, secondaryAmount);
-        }
+        _checkPriceLimit(tradingModule, poolContext, calculatedPairPrice);
     }
 
     function _validateSpotPriceAndPairPrice(
         StableOracleContext calldata oracleContext,
         TwoTokenPoolContext calldata poolContext,
         ITradingModule tradingModule,
-        uint256 tokenIndex,
         uint256 primaryAmount, 
         uint256 secondaryAmount
     ) internal view {
-        uint256 spotPrice = _getSpotPrice(oracleContext, poolContext, tokenIndex);
-
-        // @audit this oracle price validation is duplicated code above
-        (
-            int256 answer, int256 decimals
-        ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
-
-        require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
-
-        uint256 oraclePairPrice = answer.toUint();
-
-        uint256 lowerLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
-        if (spotPrice < lowerLimit || upperLimit < spotPrice) {
-            revert Errors.InvalidSpotPrice(oraclePairPrice, spotPrice);
-        }
-
+        // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
+        uint256 spotPrice = _getSpotPrice(oracleContext, poolContext, 0);
+        _checkPriceLimit(tradingModule, poolContext, spotPrice);
         _validatePairPrice(oracleContext, poolContext, tradingModule, primaryAmount, secondaryAmount);
     }
 }

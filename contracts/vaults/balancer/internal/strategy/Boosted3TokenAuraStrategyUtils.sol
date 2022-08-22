@@ -41,8 +41,6 @@ library Boosted3TokenAuraStrategyUtils {
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
         // Update global supply count
-        // @audit Can we calculate this value instead of storing it? That will be less error prone, it would
-        // require us looping over all the active vault states.
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
@@ -64,12 +62,6 @@ library Boosted3TokenAuraStrategyUtils {
 
         uint256 primaryBalance = poolContext._exitPoolExactBPTIn(bptClaim, minPrimary);
 
-        // @audit is this comment still correct? there is no if block around this statement
-        // Update global strategy token balance
-        // This only needs to be updated for normal redemption
-        // and emergency settlement. For normal and post-maturity settlement
-        // scenarios (account == address(this) && data.length == 32), we
-        // update totalStrategyTokenGlobal before this function is called.
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
         
