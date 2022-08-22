@@ -19,7 +19,7 @@ import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
+import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol";
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "./balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
@@ -31,7 +31,7 @@ contract MetaStable2TokenAuraVault is
     MetaStable2TokenVaultMixin,
     AuraStakingMixin
 {
-    using VaultUtils for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultSettings;
     using StrategyUtils for StrategyContext;
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
@@ -55,7 +55,7 @@ contract MetaStable2TokenAuraVault is
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        VaultUtils.setStrategyVaultSettings(
+        BalancerVaultStorage.setStrategyVaultSettings(
             params.settings, uint32(MAX_ORACLE_QUERY_WINDOW), BalancerConstants.VAULT_PERCENT_BASIS
         );
         _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
@@ -153,7 +153,7 @@ contract MetaStable2TokenAuraVault is
         external
         onlyNotionalOwner
     {
-        VaultUtils.setStrategyVaultSettings(
+        BalancerVaultStorage.setStrategyVaultSettings(
             settings, uint32(MAX_ORACLE_QUERY_WINDOW), BalancerConstants.VAULT_PERCENT_BASIS
         );
     }
@@ -167,8 +167,8 @@ contract MetaStable2TokenAuraVault is
                 totalBPTHeld: _bptHeld(),
                 settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
                 tradingModule: TRADING_MODULE,
-                vaultSettings: VaultUtils.getStrategyVaultSettings(),
-                vaultState: VaultUtils.getStrategyVaultState(),
+                vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
+                vaultState: BalancerVaultStorage.getStrategyVaultState(),
                 feeReceiver: FEE_RECEIVER
             })
         });

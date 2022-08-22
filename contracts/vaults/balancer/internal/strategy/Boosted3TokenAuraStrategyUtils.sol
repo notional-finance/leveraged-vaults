@@ -12,7 +12,7 @@ import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
-import {VaultUtils} from "../VaultUtils.sol";
+import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 
 // @audit I think it's unlikely that we move away from Aura in the short run, so maybe this
@@ -23,7 +23,7 @@ library Boosted3TokenAuraStrategyUtils {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
     using StrategyUtils for StrategyContext;
-    using VaultUtils for StrategyVaultState;
+    using BalancerVaultStorage for StrategyVaultState;
 
     function _deposit(
         StrategyContext memory strategyContext,

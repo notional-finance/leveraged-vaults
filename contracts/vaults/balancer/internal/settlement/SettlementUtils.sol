@@ -16,13 +16,13 @@ import {BalancerConstants} from "../BalancerConstants.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
-import {VaultUtils} from "../VaultUtils.sol";
+import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
 
 library SettlementUtils {
     using TypeConvert for uint256;
     using TypeConvert for int256;
     using StrategyUtils for StrategyContext;
-    using VaultUtils for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultSettings;
 
     /// @notice Validates settlement parameters, including that the settlement is
     /// past a specified cool down period and that the slippage passed in by the caller

@@ -16,14 +16,14 @@ import {Boosted3TokenAuraStrategyUtils} from "../vaults/balancer/internal/strate
 import {Boosted3TokenPoolUtils} from "../vaults/balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {BalancerUtils} from "../vaults/balancer/internal/pool/BalancerUtils.sol";
 import {StrategyUtils} from "../vaults/balancer/internal/strategy/StrategyUtils.sol";
-import {VaultUtils} from "../vaults/balancer/internal/VaultUtils.sol";
+import {BalancerVaultStorage} from "../vaults/balancer/internal/BalancerVaultStorage.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 
 contract MockBoosted3TokenAuraVault {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
     using StrategyUtils for StrategyContext;
-    using VaultUtils for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultSettings;
 
     ThreeTokenPoolContext private poolContext;
     BoostedOracleContext private oracleContext;
@@ -69,8 +69,8 @@ contract MockBoosted3TokenAuraVault {
                 totalBPTHeld: _bptHeld(),
                 settlementPeriodInSeconds: settlementPeriodInSeconds,
                 tradingModule: tradingModule,
-                vaultSettings: VaultUtils.getStrategyVaultSettings(),
-                vaultState: VaultUtils.getStrategyVaultState(),
+                vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
+                vaultState: BalancerVaultStorage.getStrategyVaultState(),
                 feeReceiver: feeReceiver
             })
         });

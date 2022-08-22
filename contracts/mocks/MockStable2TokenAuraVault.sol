@@ -12,7 +12,7 @@ import {
 } from "../vaults/balancer/BalancerVaultTypes.sol";
 import {TwoTokenAuraStrategyUtils} from "../vaults/balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {Stable2TokenOracleMath} from "../vaults/balancer/internal/math/Stable2TokenOracleMath.sol";
-import {VaultUtils} from "../vaults/balancer/internal/VaultUtils.sol";
+import {BalancerVaultStorage} from "../vaults/balancer/internal/BalancerVaultStorage.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import {TwoTokenPoolUtils} from "../vaults/balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {MockTwoTokenVaultBase} from "./MockTwoTokenVaultBase.sol";
@@ -21,7 +21,7 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
     using Stable2TokenOracleMath for StableOracleContext;
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
-    using VaultUtils for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultSettings;
 
     StableOracleContext private oracleContext;
     AuraStakingContext private stakingContext;
@@ -59,8 +59,8 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
                 totalBPTHeld: _bptHeld(),
                 settlementPeriodInSeconds: settlementPeriodInSeconds,
                 tradingModule: tradingModule,
-                vaultSettings: VaultUtils.getStrategyVaultSettings(),
-                vaultState: VaultUtils.getStrategyVaultState(),
+                vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
+                vaultState: BalancerVaultStorage.getStrategyVaultState(),
                 feeReceiver: feeReceiver
             })
         });        

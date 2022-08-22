@@ -19,7 +19,7 @@ import {Constants} from "../../../../global/Constants.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
-import {VaultUtils} from "../VaultUtils.sol";
+import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
 import {Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
@@ -32,8 +32,8 @@ library TwoTokenAuraStrategyUtils {
     using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
-    using VaultUtils for StrategyVaultSettings;
-    using VaultUtils for StrategyVaultState;
+    using BalancerVaultStorage for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultState;
 
     /// @notice Trade primary currency for secondary if the trade is specified
     function _tradePrimaryForSecondary(

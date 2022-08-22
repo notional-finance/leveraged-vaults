@@ -5,7 +5,7 @@ import {StrategyVaultSettings, StrategyVaultState} from "../BalancerVaultTypes.s
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {BalancerConstants} from "./BalancerConstants.sol";
 
-library VaultUtils {
+library BalancerVaultStorage {
     uint256 private constant STRATEGY_VAULT_SETTINGS_SLOT = 1000001;
     uint256 private constant STRATEGY_VAULT_STATE_SLOT    = 1000002;
 

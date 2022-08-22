@@ -15,7 +15,7 @@ import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
-import {VaultUtils} from "../internal/VaultUtils.sol";
+import {BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
 library MetaStable2TokenAuraSettlementHelper {
@@ -23,8 +23,8 @@ library MetaStable2TokenAuraSettlementHelper {
     using Stable2TokenOracleMath for StableOracleContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
-    using VaultUtils for StrategyVaultSettings;
-    using VaultUtils for StrategyVaultState;
+    using BalancerVaultStorage for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultState;
 
     function settleVaultNormal(
         MetaStable2TokenAuraStrategyContext memory context,

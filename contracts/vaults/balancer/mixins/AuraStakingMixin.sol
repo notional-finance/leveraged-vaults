@@ -7,7 +7,7 @@ import {IAuraBooster} from "../../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../../interfaces/aura/IAuraRewardPool.sol";
 import {IAuraStakingProxy} from "../../../../interfaces/aura/IAuraStakingProxy.sol";
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
-import {StrategyVaultSettings, VaultUtils} from "../internal/VaultUtils.sol";
+import {StrategyVaultSettings, BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
 
@@ -56,7 +56,7 @@ abstract contract AuraStakingMixin {
     }
 
     function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
-        uint16 feePercentage = VaultUtils.getStrategyVaultSettings().feePercentage;
+        uint16 feePercentage = BalancerVaultStorage.getStrategyVaultSettings().feePercentage;
         IERC20[] memory rewardTokens = _rewardTokens();
 
         uint256 numRewardTokens = rewardTokens.length;

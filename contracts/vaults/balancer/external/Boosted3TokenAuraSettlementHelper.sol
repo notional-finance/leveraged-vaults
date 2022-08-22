@@ -15,15 +15,15 @@ import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "../internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraStrategyUtils} from "../internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
-import {VaultUtils} from "../internal/VaultUtils.sol";
+import {BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
 
 library Boosted3TokenAuraSettlementHelper {
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
-    using VaultUtils for StrategyVaultSettings;
-    using VaultUtils for StrategyVaultState;
+    using BalancerVaultStorage for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultState;
 
     // @audit switch to calldata
     function settleVaultNormal(

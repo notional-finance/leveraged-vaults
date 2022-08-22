@@ -17,7 +17,7 @@ import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {VaultUtils} from "./balancer/internal/VaultUtils.sol";
+import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol";
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenAuraStrategyUtils} from "./balancer/internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
@@ -53,7 +53,7 @@ contract Boosted3TokenAuraVault is
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         // 3 token vaults do not use the Balancer oracle
-        VaultUtils.setStrategyVaultSettings(
+        BalancerVaultStorage.setStrategyVaultSettings(
             params.settings, 
             0, // Max Balancer oracle window size
             0  // Balancer oracle weight
@@ -158,7 +158,7 @@ contract Boosted3TokenAuraVault is
         onlyNotionalOwner
     {
         // 3 token vaults do not use the Balancer oracle
-        VaultUtils.setStrategyVaultSettings(
+        BalancerVaultStorage.setStrategyVaultSettings(
             settings, 
             0, // Max Balancer oracle window size
             0  // Balancer oracle weight
@@ -174,8 +174,8 @@ contract Boosted3TokenAuraVault is
                 totalBPTHeld: _bptHeld(),
                 settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
                 tradingModule: TRADING_MODULE,
-                vaultSettings: VaultUtils.getStrategyVaultSettings(),
-                vaultState: VaultUtils.getStrategyVaultState(),
+                vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
+                vaultState: BalancerVaultStorage.getStrategyVaultState(),
                 feeReceiver: FEE_RECEIVER
             })
         });
