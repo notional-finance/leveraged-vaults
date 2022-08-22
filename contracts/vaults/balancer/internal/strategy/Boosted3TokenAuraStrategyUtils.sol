@@ -44,7 +44,7 @@ library Boosted3TokenAuraStrategyUtils {
         // @audit Can we calculate this value instead of storing it? That will be less error prone, it would
         // require us looping over all the active vault states.
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
-        strategyContext.vaultState._setStrategyVaultState(); 
+        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _redeem(
@@ -71,7 +71,7 @@ library Boosted3TokenAuraStrategyUtils {
         // scenarios (account == address(this) && data.length == 32), we
         // update totalStrategyTokenGlobal before this function is called.
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
-        strategyContext.vaultState._setStrategyVaultState(); 
+        strategyContext.vaultState.setStrategyVaultState(); 
         
         return primaryBalance;
     }

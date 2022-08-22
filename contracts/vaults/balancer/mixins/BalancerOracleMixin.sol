@@ -3,8 +3,8 @@ pragma solidity 0.8.15;
 
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {StrategyVaultSettings, OracleContext} from "../BalancerVaultTypes.sol";
-import {LibBalancerStorage} from "../internal/LibBalancerStorage.sol";
 import {Deployments} from "../../../global/Deployments.sol";
+import {VaultUtils} from "../internal/VaultUtils.sol";
 
 abstract contract BalancerOracleMixin {
     uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;
@@ -18,8 +18,7 @@ abstract contract BalancerOracleMixin {
     }
 
     function _oracleContext() internal view returns (OracleContext memory) {
-        mapping(uint256 => StrategyVaultSettings) storage store = LibBalancerStorage.getStrategyVaultSettings();
-        StrategyVaultSettings memory settings = store[0];
+        StrategyVaultSettings memory settings = VaultUtils.getStrategyVaultSettings();
         return OracleContext({
             oracleWindowInSeconds: settings.oracleWindowInSeconds,
             balancerOracleWeight: settings.balancerOracleWeight

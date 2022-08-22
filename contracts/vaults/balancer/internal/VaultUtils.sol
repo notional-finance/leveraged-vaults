@@ -1,19 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {LibBalancerStorage} from "./LibBalancerStorage.sol";
 import {StrategyVaultSettings, StrategyVaultState} from "../BalancerVaultTypes.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {BalancerConstants} from "./BalancerConstants.sol";
 
 library VaultUtils {
+    uint256 private constant STRATEGY_VAULT_SETTINGS_SLOT = 1000001;
+    uint256 private constant STRATEGY_VAULT_STATE_SLOT    = 1000002;
 
-    function _getStrategyVaultSettings() internal view returns (StrategyVaultSettings memory) {
-        mapping(uint256 => StrategyVaultSettings) storage store = LibBalancerStorage.getStrategyVaultSettings();
-        return store[0];
+    function _settings() private pure returns (mapping(uint256 => StrategyVaultSettings) storage store) {
+        assembly { store.slot := STRATEGY_VAULT_SETTINGS_SLOT }
     }
 
-    function _setStrategyVaultSettings(
+    function _state() private pure returns (mapping(uint256 => StrategyVaultState) storage store) {
+        assembly { store.slot := STRATEGY_VAULT_STATE_SLOT }
+    }
+
+    function getStrategyVaultSettings() internal view returns (StrategyVaultSettings memory) {
+        // Hardcode to the zero slot
+        return _settings()[0];
+    }
+
+    function setStrategyVaultSettings(
         StrategyVaultSettings memory settings, 
         uint32 maxOracleQueryWindow,
         uint16 balancerOracleWeight
@@ -27,31 +36,23 @@ library VaultUtils {
         require(settings.postMaturitySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.feePercentage <= BalancerConstants.VAULT_PERCENT_BASIS);
 
-        mapping(uint256 => StrategyVaultSettings) storage store = LibBalancerStorage.getStrategyVaultSettings();
+        mapping(uint256 => StrategyVaultSettings) storage store = _settings();
+        // Hardcode to the zero slot
         store[0] = settings;
     }
 
-    function _getStrategyVaultState() internal view returns (StrategyVaultState memory) {
-        mapping(uint256 => StrategyVaultState) storage store = LibBalancerStorage.getStrategyVaultState();
-        return store[0];
+    function getStrategyVaultState() internal view returns (StrategyVaultState memory) {
+        // Hardcode to the zero slot
+        return _state()[0];
     }
 
-    function _setStrategyVaultState(StrategyVaultState memory state) internal {
-        mapping(uint256 => StrategyVaultState) storage store = LibBalancerStorage.getStrategyVaultState();
+    function setStrategyVaultState(StrategyVaultState memory state) internal {
+        mapping(uint256 => StrategyVaultState) storage store = _state();
+        // Hardcode to the zero slot
         store[0] = state;
     }
 
-    function _getBPTHeldInMaturity(
-        StrategyVaultState memory strategyVaultState, 
-        uint256 totalSupplyInMaturity,
-        uint256 totalBPTHeld
-    ) internal pure returns (uint256 bptHeldInMaturity) {
-        if (strategyVaultState.totalStrategyTokenGlobal == 0) return 0;
-        bptHeldInMaturity =
-            (totalBPTHeld * totalSupplyInMaturity) /
-            strategyVaultState.totalStrategyTokenGlobal;
-    }
-
+    // @audit threshold is not checked in all the correct locations
     function _bptThreshold(StrategyVaultSettings memory strategyVaultSettings, uint256 totalBPTSupply) 
         internal pure returns (uint256) {
         return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / BalancerConstants.VAULT_PERCENT_BASIS;

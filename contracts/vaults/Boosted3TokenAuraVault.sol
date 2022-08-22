@@ -53,7 +53,7 @@ contract Boosted3TokenAuraVault is
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         // 3 token vaults do not use the Balancer oracle
-        VaultUtils._setStrategyVaultSettings(
+        VaultUtils.setStrategyVaultSettings(
             params.settings, 
             0, // Max Balancer oracle window size
             0  // Balancer oracle weight
@@ -158,7 +158,7 @@ contract Boosted3TokenAuraVault is
         onlyNotionalOwner
     {
         // 3 token vaults do not use the Balancer oracle
-        VaultUtils._setStrategyVaultSettings(
+        VaultUtils.setStrategyVaultSettings(
             settings, 
             0, // Max Balancer oracle window size
             0  // Balancer oracle weight
@@ -174,8 +174,8 @@ contract Boosted3TokenAuraVault is
                 totalBPTHeld: _bptHeld(),
                 settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
                 tradingModule: TRADING_MODULE,
-                vaultSettings: VaultUtils._getStrategyVaultSettings(),
-                vaultState: VaultUtils._getStrategyVaultState(),
+                vaultSettings: VaultUtils.getStrategyVaultSettings(),
+                vaultState: VaultUtils.getStrategyVaultState(),
                 feeReceiver: FEE_RECEIVER
             })
         });

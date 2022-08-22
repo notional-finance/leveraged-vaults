@@ -242,6 +242,8 @@ library Boosted3TokenPoolUtils {
             amountIn: linearPoolBPT,
             limit: minBPT
         });
+
+        // @audit threshold is not checked here...
     }
 
     function _exitPoolExactBPTIn(ThreeTokenPoolContext memory context, uint256 bptExitAmount, uint256 minPrimary)

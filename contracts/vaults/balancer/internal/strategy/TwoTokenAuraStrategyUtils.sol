@@ -83,7 +83,7 @@ library TwoTokenAuraStrategyUtils {
 
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
-        strategyContext.vaultState._setStrategyVaultState(); 
+        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _redeem(
@@ -131,7 +131,7 @@ library TwoTokenAuraStrategyUtils {
         // scenarios (account == address(this) && data.length == 32), we
         // update totalStrategyTokenGlobal before this function is called.
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
-        strategyContext.vaultState._setStrategyVaultState(); 
+        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _joinPoolAndStake(

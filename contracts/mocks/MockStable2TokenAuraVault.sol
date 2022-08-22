@@ -36,7 +36,7 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
         settlementPeriodInSeconds = context.baseStrategy.settlementPeriodInSeconds;
         tradingModule = context.baseStrategy.tradingModule;
         feeReceiver = context.baseStrategy.feeReceiver;
-        context.baseStrategy.vaultSettings._setStrategyVaultSettings(
+        context.baseStrategy.vaultSettings.setStrategyVaultSettings(
             context.baseStrategy.vaultSettings.oracleWindowInSeconds,
             context.baseStrategy.vaultSettings.balancerOracleWeight
         );    
@@ -59,8 +59,8 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
                 totalBPTHeld: _bptHeld(),
                 settlementPeriodInSeconds: settlementPeriodInSeconds,
                 tradingModule: tradingModule,
-                vaultSettings: VaultUtils._getStrategyVaultSettings(),
-                vaultState: VaultUtils._getStrategyVaultState(),
+                vaultSettings: VaultUtils.getStrategyVaultSettings(),
+                vaultState: VaultUtils.getStrategyVaultState(),
                 feeReceiver: feeReceiver
             })
         });        

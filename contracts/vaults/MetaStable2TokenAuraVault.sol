@@ -55,7 +55,7 @@ contract MetaStable2TokenAuraVault is
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        VaultUtils._setStrategyVaultSettings(
+        VaultUtils.setStrategyVaultSettings(
             params.settings, uint32(MAX_ORACLE_QUERY_WINDOW), BalancerConstants.VAULT_PERCENT_BASIS
         );
         _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
@@ -153,7 +153,7 @@ contract MetaStable2TokenAuraVault is
         external
         onlyNotionalOwner
     {
-        VaultUtils._setStrategyVaultSettings(
+        VaultUtils.setStrategyVaultSettings(
             settings, uint32(MAX_ORACLE_QUERY_WINDOW), BalancerConstants.VAULT_PERCENT_BASIS
         );
     }
@@ -167,8 +167,8 @@ contract MetaStable2TokenAuraVault is
                 totalBPTHeld: _bptHeld(),
                 settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
                 tradingModule: TRADING_MODULE,
-                vaultSettings: VaultUtils._getStrategyVaultSettings(),
-                vaultState: VaultUtils._getStrategyVaultState(),
+                vaultSettings: VaultUtils.getStrategyVaultSettings(),
+                vaultState: VaultUtils.getStrategyVaultState(),
                 feeReceiver: FEE_RECEIVER
             })
         });

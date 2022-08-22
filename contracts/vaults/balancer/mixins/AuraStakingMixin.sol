@@ -56,7 +56,7 @@ abstract contract AuraStakingMixin {
     }
 
     function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
-        uint16 feePercentage = VaultUtils._getStrategyVaultSettings().feePercentage;
+        uint16 feePercentage = VaultUtils.getStrategyVaultSettings().feePercentage;
         IERC20[] memory rewardTokens = _rewardTokens();
 
         uint256 numRewardTokens = rewardTokens.length;

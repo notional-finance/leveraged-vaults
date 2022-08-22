@@ -23,7 +23,6 @@ library SettlementUtils {
     using TypeConvert for int256;
     using StrategyUtils for StrategyContext;
     using VaultUtils for StrategyVaultSettings;
-    using VaultUtils for StrategyVaultState;
 
     /// @notice Validates settlement parameters, including that the settlement is
     /// past a specified cool down period and that the slippage passed in by the caller
@@ -95,7 +94,8 @@ library SettlementUtils {
         if (strategyContext.totalBPTHeld <= emergencyBPTWithdrawThreshold)
             revert Errors.InvalidEmergencySettlement();
 
-        uint256 bptHeldInMaturity = state._getBPTHeldInMaturity(
+        uint256 bptHeldInMaturity = _getBPTHeldInMaturity(
+            state,
             NotionalUtils._totalSupplyInMaturity(maturity),
             strategyContext.totalBPTHeld
         );
@@ -151,4 +151,16 @@ library SettlementUtils {
         // and we are past maturity, call settleVault on notional to finalize the
         // vault settlement
     }
+
+    function _getBPTHeldInMaturity(
+        StrategyVaultState memory strategyVaultState, 
+        uint256 totalSupplyInMaturity,
+        uint256 totalBPTHeld
+    ) private pure returns (uint256 bptHeldInMaturity) {
+        if (strategyVaultState.totalStrategyTokenGlobal == 0) return 0;
+        bptHeldInMaturity =
+            (totalBPTHeld * totalSupplyInMaturity) /
+            strategyVaultState.totalStrategyTokenGlobal;
+    }
+
 }

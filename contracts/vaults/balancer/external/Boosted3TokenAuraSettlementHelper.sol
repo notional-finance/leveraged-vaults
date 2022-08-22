@@ -64,7 +64,7 @@ library Boosted3TokenAuraSettlementHelper {
         });
 
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
-        context.baseStrategy.vaultState._setStrategyVaultState();
+        context.baseStrategy.vaultState.setStrategyVaultState();
 
         emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);
     }
@@ -105,7 +105,7 @@ library Boosted3TokenAuraSettlementHelper {
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
-        context.baseStrategy.vaultState._setStrategyVaultState();  
+        context.baseStrategy.vaultState.setStrategyVaultState();  
 
         // @audit why not emit inside executeSettlement?
         emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);

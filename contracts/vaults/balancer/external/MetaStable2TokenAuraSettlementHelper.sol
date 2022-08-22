@@ -63,7 +63,7 @@ library MetaStable2TokenAuraSettlementHelper {
         });
 
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
-        context.baseStrategy.vaultState._setStrategyVaultState();
+        context.baseStrategy.vaultState.setStrategyVaultState();
 
         emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);
     }
@@ -105,7 +105,7 @@ library MetaStable2TokenAuraSettlementHelper {
         });
 
         context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
-        context.baseStrategy.vaultState._setStrategyVaultState();  
+        context.baseStrategy.vaultState.setStrategyVaultState();  
 
         emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);
     }

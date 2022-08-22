@@ -39,7 +39,7 @@ contract MockBoosted3TokenAuraVault {
         tradingModule = context.baseStrategy.tradingModule;
         feeReceiver = context.baseStrategy.feeReceiver;
         settlementPeriodInSeconds = context.baseStrategy.settlementPeriodInSeconds;
-        context.baseStrategy.vaultSettings._setStrategyVaultSettings(
+        context.baseStrategy.vaultSettings.setStrategyVaultSettings(
             context.baseStrategy.vaultSettings.oracleWindowInSeconds,
             context.baseStrategy.vaultSettings.balancerOracleWeight
         );
@@ -69,8 +69,8 @@ contract MockBoosted3TokenAuraVault {
                 totalBPTHeld: _bptHeld(),
                 settlementPeriodInSeconds: settlementPeriodInSeconds,
                 tradingModule: tradingModule,
-                vaultSettings: VaultUtils._getStrategyVaultSettings(),
-                vaultState: VaultUtils._getStrategyVaultState(),
+                vaultSettings: VaultUtils.getStrategyVaultSettings(),
+                vaultState: VaultUtils.getStrategyVaultState(),
                 feeReceiver: feeReceiver
             })
         });
