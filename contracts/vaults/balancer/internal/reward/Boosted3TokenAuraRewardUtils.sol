@@ -8,7 +8,7 @@ import {
     AuraStakingContext,
     BoostedOracleContext
 } from "../../BalancerVaultTypes.sol";
-import {Events} from "../../../../global/Events.sol";
+import {BalancerEvents} from "../../BalancerEvents.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
@@ -111,6 +111,6 @@ library Boosted3TokenAuraRewardUtils {
             stakingContext.auraPoolId, bptAmount, true // stake = true
         );
 
-        emit Events.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
+        emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
     }  
 }

@@ -7,7 +7,6 @@ import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {BalancerConstants} from "./BalancerConstants.sol";
 
 library VaultUtils {
-    event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
     function _getStrategyVaultSettings() internal view returns (StrategyVaultSettings memory) {
         mapping(uint256 => StrategyVaultSettings) storage store = LibBalancerStorage.getStrategyVaultSettings();

@@ -38,9 +38,6 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     mapping(address => PriceOracle) public priceOracles;
     uint32 public maxOracleFreshnessInSeconds;
 
-    event PriceOracleUpdated(address token, address oracle);
-    event MaxOracleFreshnessUpdated(uint32 currentValue, uint32 newValue);
-
     constructor(NotionalProxy notional_, ITradingModule proxy_) initializer { 
         NOTIONAL = notional_;
         PROXY = proxy_;

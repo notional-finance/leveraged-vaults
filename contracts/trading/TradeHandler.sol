@@ -9,6 +9,7 @@ import {nProxy} from "../proxy/nProxy.sol";
 
 /// @notice TradeHandler is an internal library to be compiled into StrategyVaults to interact
 /// with the TradeModule and execute trades
+// @audit is this still the case? refactor if not
 library TradeHandler {
     using TradeHandler for Trade;
     using TokenUtils for IERC20;

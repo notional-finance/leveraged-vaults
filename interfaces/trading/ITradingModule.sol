@@ -34,6 +34,16 @@ struct Trade {
 error InvalidTrade();
 
 interface ITradingModule {
+    event TradeExecuted(
+        address indexed sellToken,
+        address indexed buyToken,
+        uint256 sellAmount,
+        uint256 buyAmount
+    );
+
+    event PriceOracleUpdated(address token, address oracle);
+    event MaxOracleFreshnessUpdated(uint32 currentValue, uint32 newValue);
+
     function getExecutionData(uint16 dexId, address from, Trade calldata trade)
         external view returns (
             address spender,

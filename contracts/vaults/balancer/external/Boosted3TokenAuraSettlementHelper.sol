@@ -10,7 +10,7 @@ import {
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
-import {Events} from "../../../global/Events.sol";
+import {BalancerEvents} from "../BalancerEvents.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "../internal/pool/Boosted3TokenPoolUtils.sol";
@@ -66,7 +66,7 @@ library Boosted3TokenAuraSettlementHelper {
         context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
         context.baseStrategy.vaultState._setStrategyVaultState();
 
-        emit Events.VaultSettlement(maturity, strategyTokensToRedeem);
+        emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);
     }
 
     function settleVaultPostMaturity(
@@ -108,7 +108,7 @@ library Boosted3TokenAuraSettlementHelper {
         context.baseStrategy.vaultState._setStrategyVaultState();  
 
         // @audit why not emit inside executeSettlement?
-        emit Events.VaultSettlement(maturity, strategyTokensToRedeem);
+        emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
@@ -152,6 +152,6 @@ library Boosted3TokenAuraSettlementHelper {
         });
 
         // @audit why not emit inside executeSettlement?
-        emit Events.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+        emit BalancerEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 }

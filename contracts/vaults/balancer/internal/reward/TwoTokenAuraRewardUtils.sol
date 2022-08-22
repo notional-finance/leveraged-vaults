@@ -10,7 +10,7 @@ import {
     TwoTokenPoolContext
 } from "../../BalancerVaultTypes.sol";
 import {Errors} from "../../../../global/Errors.sol";
-import {Events} from "../../../../global/Events.sol";
+import {BalancerEvents} from "../../BalancerEvents.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
@@ -116,6 +116,6 @@ library TwoTokenAuraRewardUtils {
             stakingContext.auraPoolId, bptAmount, true // stake = true
         );
 
-        emit Events.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
+        emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
     }
 }
