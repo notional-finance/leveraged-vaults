@@ -1,29 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {PoolContext, PoolParams} from "../../BalancerVaultTypes.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
-import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {Constants} from "../../../../global/Constants.sol";
-import {WETH9} from "../../../../../interfaces/WETH9.sol";
+import {BalancerConstants} from "../BalancerConstants.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 
 library BalancerUtils {
     using TokenUtils for IERC20;
 
-    // @audit move these to BalancerConstants
-    WETH9 internal constant WETH =
-        WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    IBalancerVault internal constant BALANCER_VAULT =
-        IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-    uint256 internal constant BALANCER_PRECISION = 1e18;
-    uint256 internal constant BALANCER_PRECISION_SQUARED = 1e36;
-    uint256 internal constant BALANCER_ORACLE_WEIGHT_PRECISION = 1e8;
-
     /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
     /// and Balancer uses WETH
     function getTokenAddress(address token) internal pure returns (address) {
-        return token == Constants.ETH_ADDRESS ? address(WETH) : address(token);
+        return token == Constants.ETH_ADDRESS ? address(BalancerConstants.WETH) : address(token);
     }
 
     function _getTimeWeightedOraclePrice(
@@ -77,7 +68,7 @@ library BalancerUtils {
         uint256 minBPT
     ) internal returns (uint256 bptAmount) {
         bptAmount = IERC20(address(context.pool)).balanceOf(address(this));
-        BALANCER_VAULT.joinPool{value: params.msgValue}(
+        BalancerConstants.BALANCER_VAULT.joinPool{value: params.msgValue}(
             context.poolId,
             address(this),
             address(this),
@@ -108,7 +99,7 @@ library BalancerUtils {
             exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i]));
         }
 
-        BALANCER_VAULT.exitPool(
+        BalancerConstants.BALANCER_VAULT.exitPool(
             context.poolId,
             address(this),
             payable(address(this)), // Vault will receive the underlying assets
@@ -137,7 +128,7 @@ library BalancerUtils {
         uint256 limit
     ) internal returns (uint256 amountOut) {
         amountOut = IERC20(tokenOut).balanceOf(address(this));
-        BALANCER_VAULT.swap({
+        BalancerConstants.BALANCER_VAULT.swap({
             singleSwap: IBalancerVault.SingleSwap({
                 poolId: poolId,
                 kind: IBalancerVault.SwapKind.GIVEN_IN,

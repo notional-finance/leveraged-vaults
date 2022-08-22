@@ -2,12 +2,12 @@
 pragma solidity 0.8.15;
 
 import {
-    ThreeTokenPoolContext, 
-    TwoTokenPoolContext, 
-    BoostedOracleContext, 
+    ThreeTokenPoolContext,
+    TwoTokenPoolContext,
+    BoostedOracleContext
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
-import {Constants} from "../../../../global/Constants.sol";
+import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
@@ -36,7 +36,7 @@ library Boosted3TokenPoolUtils {
         uint8 tokenIndexOut
     ) private pure returns (uint256 spotPrice) {
         // Trade 1 unit of tokenIn for tokenOut to get the spot price
-        uint256 amountIn = BalancerUtils.BALANCER_PRECISION;
+        uint256 amountIn = BalancerConstants.BALANCER_PRECISION;
         uint256 amountOut = StableMath._calcOutGivenIn({
             amplificationParameter: ampParam,
             balances: balances,
@@ -193,30 +193,30 @@ library Boosted3TokenPoolUtils {
             amp: oracleContext.ampParam, 
             balances: balances, 
             tokenIndex: 0, 
-            bptAmountIn: BalancerUtils.BALANCER_PRECISION, // 1 BPT 
+            bptAmountIn: BalancerConstants.BALANCER_PRECISION, // 1 BPT 
             bptTotalSupply: virtualSupply, 
             swapFeePercentage: 0, 
             currentInvariant: invariant
         });
 
         // @audit re-arrange to (primaryAmount * bptAmount * primaryPrecision) / BalancerPrecisionSquared
-        primaryAmount *= bptAmount / BalancerUtils.BALANCER_PRECISION;
+        primaryAmount *= bptAmount / BalancerConstants.BALANCER_PRECISION;
 
         uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
-        primaryAmount = primaryAmount * primaryPrecision / BalancerUtils.BALANCER_PRECISION;
+        primaryAmount = primaryAmount * primaryPrecision / BalancerConstants.BALANCER_PRECISION;
     }
 
     function _approveBalancerTokens(ThreeTokenPoolContext memory poolContext, address bptSpender) internal {
         // @audit why does the auraBooster need approval for these two tokens?
         poolContext.basePool._approveBalancerTokens(bptSpender);
 
-        IERC20(poolContext.tertiaryToken).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
+        IERC20(poolContext.tertiaryToken).checkApprove(address(BalancerConstants.BALANCER_VAULT), type(uint256).max);
 
         // For boosted pools, the tokens inside pool context are AaveLinearPool tokens.
         // So, we need to approve the _underlyingToken (primary borrow currency) for trading.
         IBoostedPool underlyingPool = IBoostedPool(poolContext.basePool.primaryToken);
         address primaryUnderlyingAddress = BalancerUtils.getTokenAddress(underlyingPool.getMainToken());
-        IERC20(primaryUnderlyingAddress).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
+        IERC20(primaryUnderlyingAddress).checkApprove(address(BalancerConstants.BALANCER_VAULT), type(uint256).max);
     }
 
     function _joinPoolExactTokensIn(ThreeTokenPoolContext memory context, uint256 primaryAmount, uint256 minBPT)

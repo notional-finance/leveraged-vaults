@@ -9,7 +9,7 @@ import {
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
-import {Constants} from "../../../global/Constants.sol";
+import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {Events} from "../../../global/Events.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
@@ -48,7 +48,7 @@ library Boosted3TokenAuraSettlementHelper {
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
         params.minPrimary = params.minPrimary * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
-            uint256(Constants.PERCENTAGE_DECIMALS);
+            uint256(BalancerConstants.PERCENTAGE_DECIMALS);
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
@@ -88,8 +88,8 @@ library Boosted3TokenAuraSettlementHelper {
         params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
-        params.minPrimary = params.minPrimary * Constants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
-            uint256(Constants.PERCENTAGE_DECIMALS);
+        params.minPrimary = params.minPrimary * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+            uint256(BalancerConstants.PERCENTAGE_DECIMALS);
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
@@ -131,8 +131,8 @@ library Boosted3TokenAuraSettlementHelper {
         params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
-        params.minPrimary = params.minPrimary * Constants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
-            uint256(Constants.PERCENTAGE_DECIMALS);
+        params.minPrimary = params.minPrimary * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+            uint256(BalancerConstants.PERCENTAGE_DECIMALS);
 
         uint256 redeemStrategyTokenAmount 
             = context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);

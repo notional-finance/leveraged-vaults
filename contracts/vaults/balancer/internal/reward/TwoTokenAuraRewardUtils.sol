@@ -11,7 +11,7 @@ import {
 } from "../../BalancerVaultTypes.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {Events} from "../../../../global/Events.sol";
-import {Constants} from "../../../../global/Constants.sol";
+import {BalancerConstants} from "../BalancerConstants.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
@@ -46,8 +46,8 @@ library TwoTokenAuraRewardUtils {
 
         // @audit this might be required or else some reward boosting might not be able to occur
         // TODO: maybe make MAX_REWARD_TRADE_SLIPPAGE_PERCENT configurable?
-        require(primaryTrade.tradeParams.oracleSlippagePercent <= Constants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
-        require(secondaryTrade.tradeParams.oracleSlippagePercent <= Constants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
+        require(primaryTrade.tradeParams.oracleSlippagePercent <= BalancerConstants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
+        require(secondaryTrade.tradeParams.oracleSlippagePercent <= BalancerConstants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
     }
 
     function _executeRewardTrades(

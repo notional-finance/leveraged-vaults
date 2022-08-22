@@ -5,6 +5,7 @@ import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {Constants} from "../../../global/Constants.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
+import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {PoolMixin} from "./PoolMixin.sol";
 
@@ -31,7 +32,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             address[] memory tokens,
             /* uint256[] memory balances */,
             /* uint256 lastChangeBlock */
-        ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(balancerPoolId);
+        ) = BalancerConstants.BALANCER_VAULT.getPoolTokens(balancerPoolId);
 
         // Balancer tokens are sorted by address, so we need to figure out
         // the correct index for the primary token
@@ -70,7 +71,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             /* address[] memory tokens */,
             uint256[] memory balances,
             /* uint256 lastChangeBlock */
-        ) = BalancerUtils.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+        ) = BalancerConstants.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
         return TwoTokenPoolContext({
             primaryToken: address(PRIMARY_TOKEN),

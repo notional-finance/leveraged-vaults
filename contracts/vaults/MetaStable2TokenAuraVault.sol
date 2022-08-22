@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {BalancerConstants} from "../global/BalancerConstants.sol";
+import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {Errors} from "../global/Errors.sol";
 import {
     AuraVaultDeploymentParams,

@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 import {LibBalancerStorage} from "./LibBalancerStorage.sol";
 import {StrategyVaultSettings, StrategyVaultState} from "../BalancerVaultTypes.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
-import {Constants} from "../../../global/Constants.sol";
+import {BalancerConstants} from "./BalancerConstants.sol";
 
 library VaultUtils {
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
@@ -20,13 +20,13 @@ library VaultUtils {
         uint16 balancerOracleWeight
     ) internal {
         require(settings.oracleWindowInSeconds <= maxOracleQueryWindow);
-        require(settings.settlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
-        require(settings.postMaturitySettlementCoolDownInMinutes <= Constants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
+        require(settings.settlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
+        require(settings.postMaturitySettlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
         require(settings.balancerOracleWeight <= balancerOracleWeight);
-        require(settings.maxBalancerPoolShare <= Constants.VAULT_PERCENT_BASIS);
-        require(settings.settlementSlippageLimitPercent <= Constants.SLIPPAGE_LIMIT_PRECISION);
-        require(settings.postMaturitySettlementSlippageLimitPercent <= Constants.SLIPPAGE_LIMIT_PRECISION);
-        require(settings.feePercentage <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.maxBalancerPoolShare <= BalancerConstants.VAULT_PERCENT_BASIS);
+        require(settings.settlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
+        require(settings.postMaturitySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
+        require(settings.feePercentage <= BalancerConstants.VAULT_PERCENT_BASIS);
 
         mapping(uint256 => StrategyVaultSettings) storage store = LibBalancerStorage.getStrategyVaultSettings();
         store[0] = settings;
@@ -55,6 +55,6 @@ library VaultUtils {
 
     function _bptThreshold(StrategyVaultSettings memory strategyVaultSettings, uint256 totalBPTSupply) 
         internal pure returns (uint256) {
-        return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / Constants.VAULT_PERCENT_BASIS;
+        return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / BalancerConstants.VAULT_PERCENT_BASIS;
     }
 }

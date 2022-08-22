@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import {TwoTokenPoolContext, OracleContext, PoolParams} from "../../BalancerVaultTypes.sol";
 import {Constants} from "../../../../global/Constants.sol";
+import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
@@ -60,31 +61,31 @@ library TwoTokenPoolUtils {
             if (poolContext.primaryIndex == 1) {
                 // If the primary index is the second token, we need to invert
                 // the balancer price.
-                balancerPrice = BalancerUtils.BALANCER_PRECISION_SQUARED / balancerPrice;
+                balancerPrice = BalancerConstants.BALANCER_PRECISION_SQUARED / balancerPrice;
             }
 
             balancerWeightedPrice = balancerPrice * oracleContext.balancerOracleWeight;
         }
 
         uint256 chainlinkWeightedPrice;
-        if (oracleContext.balancerOracleWeight < BalancerUtils.BALANCER_ORACLE_WEIGHT_PRECISION) {
+        if (oracleContext.balancerOracleWeight < BalancerConstants.BALANCER_ORACLE_WEIGHT_PRECISION) {
             (int256 rate, int256 decimals) = tradingModule.getOraclePrice(
                 poolContext.primaryToken, poolContext.secondaryToken
             );
             require(rate > 0);
             require(decimals >= 0);
 
-            if (uint256(decimals) != BalancerUtils.BALANCER_PRECISION) {
-                rate = (rate * int256(BalancerUtils.BALANCER_PRECISION)) / decimals;
+            if (uint256(decimals) != BalancerConstants.BALANCER_PRECISION) {
+                rate = (rate * int256(BalancerConstants.BALANCER_PRECISION)) / decimals;
             }
 
             // No overflow in rate conversion, checked above
             chainlinkWeightedPrice = uint256(rate) * 
-                (BalancerUtils.BALANCER_ORACLE_WEIGHT_PRECISION - oracleContext.balancerOracleWeight);
+                (BalancerConstants.BALANCER_ORACLE_WEIGHT_PRECISION - oracleContext.balancerOracleWeight);
         }
 
         oraclePairPrice = (balancerWeightedPrice + chainlinkWeightedPrice) / 
-            BalancerUtils.BALANCER_ORACLE_WEIGHT_PRECISION;
+            BalancerConstants.BALANCER_ORACLE_WEIGHT_PRECISION;
     }
 
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
@@ -120,12 +121,12 @@ library TwoTokenPoolUtils {
             // this back to the primary token's native precision.
             // underlyingValue = (bptPrice * bptAmount * primaryPrecision) / (1e18 * 1e18)
             primaryAmount = (bptPrice * bptAmount * primaryPrecision) / 
-                BalancerUtils.BALANCER_PRECISION_SQUARED;
+                BalancerConstants.BALANCER_PRECISION_SQUARED;
         } else {
             // The second token in the BPT pool is the price that we want to get. In this case, we need to
             // convert secondaryTokenValue to underlyingValue using the pairPrice.
             // Both bptPrice and bptAmount are in 1e18
-            uint256 secondaryAmount = (bptPrice * bptAmount) / BalancerUtils.BALANCER_PRECISION;
+            uint256 secondaryAmount = (bptPrice * bptAmount) / BalancerConstants.BALANCER_PRECISION;
 
             // And then normalizing to primary token precision we add:
             // PrimaryAmount = (SecondaryAmount * primaryPrecision) / PairPrice
@@ -134,8 +135,8 @@ library TwoTokenPoolUtils {
     }
 
     function _approveBalancerTokens(TwoTokenPoolContext memory poolContext, address bptSpender) internal {
-        IERC20(poolContext.primaryToken).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
-        IERC20(poolContext.secondaryToken).checkApprove(address(BalancerUtils.BALANCER_VAULT), type(uint256).max);
+        IERC20(poolContext.primaryToken).checkApprove(address(BalancerConstants.BALANCER_VAULT), type(uint256).max);
+        IERC20(poolContext.secondaryToken).checkApprove(address(BalancerConstants.BALANCER_VAULT), type(uint256).max);
         // Allow BPT spender to pull BALANCER_POOL_TOKEN
         IERC20(address(poolContext.basePool.pool)).checkApprove(bptSpender, type(uint256).max);
     }

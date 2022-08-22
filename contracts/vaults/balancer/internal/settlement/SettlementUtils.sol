@@ -11,6 +11,7 @@ import {
 } from "../../BalancerVaultTypes.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {Constants} from "../../../../global/Constants.sol";
+import {BalancerConstants} from "../BalancerConstants.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
@@ -62,10 +63,10 @@ library SettlementUtils {
     ) internal pure returns (uint256 bptToSettle) {
         // desiredPoolShare = maxPoolShare * bufferPercentage
         uint256 desiredPoolShare = (maxBalancerPoolShare *
-            Constants.BALANCER_POOL_SHARE_BUFFER) /
-            Constants.VAULT_PERCENT_BASIS;
+            BalancerConstants.BALANCER_POOL_SHARE_BUFFER) /
+            BalancerConstants.VAULT_PERCENT_BASIS;
         uint256 desiredBPTAmount = (bptTotalSupply * desiredPoolShare) /
-            Constants.VAULT_PERCENT_BASIS;
+            BalancerConstants.VAULT_PERCENT_BASIS;
         
         bptToSettle = totalBPTHeld - desiredBPTAmount;
 

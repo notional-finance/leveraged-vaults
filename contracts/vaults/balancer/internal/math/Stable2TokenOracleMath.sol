@@ -2,10 +2,9 @@
 pragma solidity 0.8.15;
 
 import {StableOracleContext, TwoTokenPoolContext} from "../../BalancerVaultTypes.sol";
-import {Constants} from "../../../../global/Constants.sol";
+import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
-import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {StableMath} from "./StableMath.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
@@ -67,13 +66,13 @@ library Stable2TokenOracleMath {
             int256 answer, int256 decimals
         ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
 
-        require(decimals == int256(BalancerUtils.BALANCER_PRECISION));
+        require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
 
         uint256 oraclePairPrice = answer.toUint();
 
         // @audit Denominator should be a constant
-        uint256 lowerLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
+        uint256 lowerLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
         if (calculatedPairPrice < lowerLimit || upperLimit < calculatedPairPrice) {
             revert Errors.InvalidPairPrice(oraclePairPrice, calculatedPairPrice, primaryAmount, secondaryAmount);
         }
@@ -92,12 +91,12 @@ library Stable2TokenOracleMath {
             int256 answer, int256 decimals
         ) = tradingModule.getOraclePrice(poolContext.secondaryToken, poolContext.primaryToken);
 
-        require(decimals == int256(BalancerUtils.BALANCER_PRECISION));
+        require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
 
         uint256 oraclePairPrice = answer.toUint();
 
-        uint256 lowerLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (oraclePairPrice * Constants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
+        uint256 lowerLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
+        uint256 upperLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
         if (spotPrice < lowerLimit || upperLimit < spotPrice) {
             revert Errors.InvalidSpotPrice(oraclePairPrice, spotPrice);
         }

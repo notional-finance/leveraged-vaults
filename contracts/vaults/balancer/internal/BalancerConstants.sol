@@ -1,7 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity =0.8.15;
 
+import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
+import {WETH9} from "../../../../../interfaces/WETH9.sol";
+
 library BalancerConstants {
+    // @audit move these to BalancerConstants
+    WETH9 internal constant WETH =
+        WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IBalancerVault internal constant BALANCER_VAULT =
+        IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
+    uint256 internal constant BALANCER_PRECISION = 1e18;
+    uint256 internal constant BALANCER_PRECISION_SQUARED = 1e36;
+    uint256 internal constant BALANCER_ORACLE_WEIGHT_PRECISION = 1e8;
+    uint32 internal constant PERCENTAGE_DECIMALS = 1e8;
+    uint32 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
+
     /// @notice Max slippage for boosted pools (5%)
     // @audit this does not use the vault percentage basis, either do many of the other constants
     uint256 internal constant MAX_BOOSTED_POOL_SLIPPAGE_PERCENT = 95;

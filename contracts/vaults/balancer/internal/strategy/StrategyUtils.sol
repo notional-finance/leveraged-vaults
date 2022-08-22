@@ -6,6 +6,7 @@ import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {Constants} from "../../../../global/Constants.sol";
+import {BalancerConstants} from "../BalancerConstants.sol";
 import {ITradingModule, Trade, TradeType} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library StrategyUtils {
