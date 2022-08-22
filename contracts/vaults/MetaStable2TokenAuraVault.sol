@@ -4,6 +4,8 @@ pragma solidity 0.8.15;
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {Errors} from "../global/Errors.sol";
 import {
+    DepositParams,
+    RedeemParams,
     AuraVaultDeploymentParams,
     InitParams,
     ReinvestRewardParams,
@@ -67,12 +69,15 @@ contract MetaStable2TokenAuraVault is
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
-        // Entering the vault is not allowed within the settlement window
-        // @audit This is enforced by notional
-        _revertInSettlementWindow(maturity);
-        strategyTokensMinted = MetaStable2TokenAuraVaultHelper.depositFromNotional(
-            _strategyContext(), account, deposit, maturity, data
-        );
+        DepositParams memory params = abi.decode(data, (DepositParams));
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+
+        strategyTokensMinted = context.baseStrategy._deposit({
+            stakingContext: context.stakingContext, 
+            poolContext: context.poolContext,
+            deposit: deposit,
+            params: params
+        });
     }
 
     function _redeemFromNotional(
@@ -81,16 +86,17 @@ contract MetaStable2TokenAuraVault is
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {        
-        require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
 
-        // @audit This is ok now that we are not borrowing in secondary
-        // Exiting the vault is not allowed within the settlement window
-        if (account != address(this)) {
-            _revertInSettlementWindow(maturity);            
-        }
-        finalPrimaryBalance = MetaStable2TokenAuraVaultHelper.redeemFromNotional(
-            _strategyContext(), account, strategyTokens, maturity, data
-        );
+        finalPrimaryBalance = context.baseStrategy._redeem({
+            stakingContext: context.stakingContext,
+            poolContext: context.poolContext,
+            account: account,
+            strategyTokens: strategyTokens,
+            maturity: maturity,
+            params: params
+        });
     }
 
     function convertStrategyToUnderlying(

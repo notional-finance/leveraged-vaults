@@ -27,36 +27,4 @@ library Boosted3TokenAuraVaultHelper {
             params: params
         });
     }
-
-    function depositFromNotional(
-        // @audit switch to calldata
-        Boosted3TokenAuraStrategyContext memory context,
-        uint256 deposit,
-        uint256 maturity,
-        bytes calldata data
-    ) external returns (uint256 strategyTokensMinted) {
-        DepositParams memory params = abi.decode(data, (DepositParams));
-        strategyTokensMinted = context.baseStrategy._deposit({
-            stakingContext: context.stakingContext, 
-            poolContext: context.poolContext,
-            deposit: deposit,
-            minBPT: params.minBPT
-        });
-    }
-
-    function redeemFromNotional(
-        // @audit switch to calldata
-        Boosted3TokenAuraStrategyContext memory context,
-        uint256 strategyTokens,
-        uint256 maturity,
-        bytes calldata data
-    ) external returns (uint256 finalPrimaryBalance) {
-        RedeemParams memory params = abi.decode(data, (RedeemParams));
-        finalPrimaryBalance = context.baseStrategy._redeem({
-            stakingContext: context.stakingContext,
-            poolContext: context.poolContext,
-            strategyTokens: strategyTokens,
-            minPrimary: params.minPrimary
-        });
-    }
 }

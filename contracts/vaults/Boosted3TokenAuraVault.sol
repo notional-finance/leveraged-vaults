@@ -3,6 +3,8 @@ pragma solidity 0.8.15;
 
 import {Errors} from "../global/Errors.sol";
 import {
+    DepositParams,
+    RedeemParams,
     AuraVaultDeploymentParams,
     InitParams,
     ReinvestRewardParams,
@@ -59,7 +61,6 @@ contract Boosted3TokenAuraVault is
             0  // Balancer oracle weight
         );
 
-        // @audit why does the auraBooster need approval for all the bal tokens?
         _threeTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
@@ -70,12 +71,15 @@ contract Boosted3TokenAuraVault is
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
         // Entering the vault is not allowed within the settlement window
-        // @audit this is true, but is enforced by the Notional side, not necessary here
-        _revertInSettlementWindow(maturity);
-        // @audit can we bring this back into this contract?
-        strategyTokensMinted = Boosted3TokenAuraVaultHelper.depositFromNotional(
-            _strategyContext(), deposit, maturity, data
-        );
+        DepositParams memory params = abi.decode(data, (DepositParams));
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+
+        strategyTokensMinted = context.baseStrategy._deposit({
+            stakingContext: context.stakingContext, 
+            poolContext: context.poolContext,
+            deposit: deposit,
+            minBPT: params.minBPT
+        });
     }
 
     function _redeemFromNotional(
@@ -84,17 +88,15 @@ contract Boosted3TokenAuraVault is
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
-        require(strategyTokens <= type(uint80).max); /// @dev strategyTokens overflow
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
 
-        // @audit This is no longer the case with non-secondary token vaults
-        // Exiting the vault is not allowed within the settlement window
-        if (account != address(this)) {
-            _revertInSettlementWindow(maturity);
-        }
-        // @audit can we bring this back into this contract?
-        finalPrimaryBalance = Boosted3TokenAuraVaultHelper.redeemFromNotional(
-            _strategyContext(), strategyTokens, maturity, data
-        );
+        finalPrimaryBalance = context.baseStrategy._redeem({
+            stakingContext: context.stakingContext,
+            poolContext: context.poolContext,
+            strategyTokens: strategyTokens,
+            minPrimary: params.minPrimary
+        });
     }
 
     function settleVaultNormal(
