@@ -8,6 +8,7 @@ import {
 } from "../../BalancerVaultTypes.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
+import {Deployments} from "../../../../global/Deployments.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
@@ -210,13 +211,13 @@ library Boosted3TokenPoolUtils {
         // @audit why does the auraBooster need approval for these two tokens?
         poolContext.basePool._approveBalancerTokens(bptSpender);
 
-        IERC20(poolContext.tertiaryToken).checkApprove(address(BalancerConstants.BALANCER_VAULT), type(uint256).max);
+        IERC20(poolContext.tertiaryToken).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
 
         // For boosted pools, the tokens inside pool context are AaveLinearPool tokens.
         // So, we need to approve the _underlyingToken (primary borrow currency) for trading.
         IBoostedPool underlyingPool = IBoostedPool(poolContext.basePool.primaryToken);
         address primaryUnderlyingAddress = BalancerUtils.getTokenAddress(underlyingPool.getMainToken());
-        IERC20(primaryUnderlyingAddress).checkApprove(address(BalancerConstants.BALANCER_VAULT), type(uint256).max);
+        IERC20(primaryUnderlyingAddress).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
     }
 
     function _joinPoolExactTokensIn(ThreeTokenPoolContext memory context, uint256 primaryAmount, uint256 minBPT)

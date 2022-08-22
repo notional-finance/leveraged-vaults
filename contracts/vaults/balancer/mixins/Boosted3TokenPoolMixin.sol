@@ -11,7 +11,7 @@ import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
-import {BalancerConstants} from "../internal/BalancerConstants.sol";
+import {Deployments} from "../../../global/Deployments.sol";
 import {PoolMixin} from "./PoolMixin.sol";
 
 abstract contract Boosted3TokenPoolMixin is PoolMixin {
@@ -40,7 +40,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             address[] memory tokens,
             /* uint256[] memory balances */,
             /* uint256 lastChangeBlock */
-        ) = BalancerConstants.BALANCER_VAULT.getPoolTokens(balancerPoolId);
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(balancerPoolId);
 
         // Boosted pools contain 4 tokens (3 LinearPool LP tokens + 1 BoostedPool LP token)
         require(tokens.length == 4);
@@ -111,7 +111,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             /* address[] memory tokens */,
             uint256[] memory balances,
             /* uint256 lastChangeBlock */
-        ) = BalancerConstants.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
         return BoostedOracleContext({
             ampParam: value,
@@ -125,7 +125,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             /* address[] memory tokens */,
             uint256[] memory balances,
             /* uint256 lastChangeBlock */
-        ) = BalancerConstants.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
         return ThreeTokenPoolContext({
             tertiaryToken: address(TERTIARY_TOKEN),

@@ -5,6 +5,7 @@ import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalanc
 import {PoolContext, PoolParams} from "../../BalancerVaultTypes.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {Constants} from "../../../../global/Constants.sol";
+import {Deployments} from "../../../../global/Deployments.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 
@@ -14,7 +15,7 @@ library BalancerUtils {
     /// @notice Special handling for ETH because UNDERLYING_TOKEN == address(0)
     /// and Balancer uses WETH
     function getTokenAddress(address token) internal pure returns (address) {
-        return token == Constants.ETH_ADDRESS ? address(BalancerConstants.WETH) : address(token);
+        return token == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : address(token);
     }
 
     function _getTimeWeightedOraclePrice(
@@ -68,7 +69,7 @@ library BalancerUtils {
         uint256 minBPT
     ) internal returns (uint256 bptAmount) {
         bptAmount = IERC20(address(context.pool)).balanceOf(address(this));
-        BalancerConstants.BALANCER_VAULT.joinPool{value: params.msgValue}(
+        Deployments.BALANCER_VAULT.joinPool{value: params.msgValue}(
             context.poolId,
             address(this),
             address(this),
@@ -99,7 +100,7 @@ library BalancerUtils {
             exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i]));
         }
 
-        BalancerConstants.BALANCER_VAULT.exitPool(
+        Deployments.BALANCER_VAULT.exitPool(
             context.poolId,
             address(this),
             payable(address(this)), // Vault will receive the underlying assets
@@ -128,7 +129,7 @@ library BalancerUtils {
         uint256 limit
     ) internal returns (uint256 amountOut) {
         amountOut = IERC20(tokenOut).balanceOf(address(this));
-        BalancerConstants.BALANCER_VAULT.swap({
+        Deployments.BALANCER_VAULT.swap({
             singleSwap: IBalancerVault.SingleSwap({
                 poolId: poolId,
                 kind: IBalancerVault.SwapKind.GIVEN_IN,

@@ -10,6 +10,7 @@ import {
     StrategyVaultState
 } from "../../BalancerVaultTypes.sol";
 import {Errors} from "../../../../global/Errors.sol";
+import {Deployments} from "../../../../global/Deployments.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {SafeInt256} from "../../../../global/SafeInt256.sol";
@@ -120,7 +121,7 @@ library SettlementUtils {
         (
             /* int256 assetCashRequiredToSettle */,
             int256 underlyingCashRequiredToSettle
-        ) = Constants.NOTIONAL.getCashRequiredToSettle(address(this), maturity);
+        ) = Deployments.NOTIONAL.getCashRequiredToSettle(address(this), maturity);
 
         // A negative surplus here means the account is insolvent
         // (either expectedUnderlyingRedeemed is negative or
@@ -142,7 +143,7 @@ library SettlementUtils {
             );
         }
 
-        Constants.NOTIONAL.redeemStrategyTokensToCash(
+        Deployments.NOTIONAL.redeemStrategyTokensToCash(
             maturity, redeemStrategyTokenAmount, abi.encode(params)
         );
 

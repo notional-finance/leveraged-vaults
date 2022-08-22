@@ -4,13 +4,13 @@ pragma solidity 0.8.15;
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {StrategyVaultSettings, OracleContext} from "../BalancerVaultTypes.sol";
 import {LibBalancerStorage} from "../internal/LibBalancerStorage.sol";
-import {BalancerConstants} from "../internal/BalancerConstants.sol";
+import {Deployments} from "../../../global/Deployments.sol";
 
 abstract contract BalancerOracleMixin {
     uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;
 
     constructor(bytes32 balancerPoolId) {
-        (address pool, /* */) = BalancerConstants.BALANCER_VAULT.getPool(balancerPoolId);
+        (address pool, /* */) = Deployments.BALANCER_VAULT.getPool(balancerPoolId);
 
         MAX_ORACLE_QUERY_WINDOW = IPriceOracle(pool).getLargestSafeQueryWindow();
         // @audit should this also be greater than zero?

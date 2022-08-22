@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {Constants} from "../../../global/Constants.sol";
+import {Deployments} from "../../../global/Deployments.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
@@ -32,7 +32,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             address[] memory tokens,
             /* uint256[] memory balances */,
             /* uint256 lastChangeBlock */
-        ) = BalancerConstants.BALANCER_VAULT.getPoolTokens(balancerPoolId);
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(balancerPoolId);
 
         // Balancer tokens are sorted by address, so we need to figure out
         // the correct index for the primary token
@@ -59,7 +59,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
         PRIMARY_DECIMALS = uint8(primaryDecimals);
 
         uint256 secondaryDecimals = address(SECONDARY_TOKEN) ==
-            Constants.ETH_ADDRESS
+            Deployments.ETH_ADDRESS
             ? 18
             : SECONDARY_TOKEN.decimals();
         require(primaryDecimals <= 18);
@@ -71,7 +71,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             /* address[] memory tokens */,
             uint256[] memory balances,
             /* uint256 lastChangeBlock */
-        ) = BalancerConstants.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
         return TwoTokenPoolContext({
             primaryToken: address(PRIMARY_TOKEN),

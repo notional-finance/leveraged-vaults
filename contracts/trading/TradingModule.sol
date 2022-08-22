@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
+import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
 import {CurveAdapter} from "./adapters/CurveAdapter.sol";
@@ -250,13 +251,13 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
 
         uint256 sellTokenDecimals = 10 **
             (
-                sellToken == Constants.ETH_ADDRESS
+                sellToken == Deployments.ETH_ADDRESS
                     ? 18
                     : IERC20(sellToken).decimals()
             );
         uint256 buyTokenDecimals = 10 **
             (
-                buyToken == Constants.ETH_ADDRESS
+                buyToken == Deployments.ETH_ADDRESS
                     ? 18
                     : IERC20(buyToken).decimals()
             );

@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import {TwoTokenPoolContext, OracleContext, PoolParams} from "../../BalancerVaultTypes.sol";
-import {Constants} from "../../../../global/Constants.sol";
+import {Deployments} from "../../../../global/Deployments.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
@@ -31,7 +31,7 @@ library TwoTokenPoolUtils {
         amounts[context.secondaryIndex] = secondaryAmount;
 
         uint256 msgValue;
-        if (isJoin && assets[context.primaryIndex] == IAsset(Constants.ETH_ADDRESS)) {
+        if (isJoin && assets[context.primaryIndex] == IAsset(Deployments.ETH_ADDRESS)) {
             msgValue = amounts[context.primaryIndex];
         }
 
@@ -135,8 +135,8 @@ library TwoTokenPoolUtils {
     }
 
     function _approveBalancerTokens(TwoTokenPoolContext memory poolContext, address bptSpender) internal {
-        IERC20(poolContext.primaryToken).checkApprove(address(BalancerConstants.BALANCER_VAULT), type(uint256).max);
-        IERC20(poolContext.secondaryToken).checkApprove(address(BalancerConstants.BALANCER_VAULT), type(uint256).max);
+        IERC20(poolContext.primaryToken).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
+        IERC20(poolContext.secondaryToken).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
         // Allow BPT spender to pull BALANCER_POOL_TOKEN
         IERC20(address(poolContext.basePool.pool)).checkApprove(bptSpender, type(uint256).max);
     }

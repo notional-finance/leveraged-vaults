@@ -5,6 +5,7 @@ import { StrategyContext, DynamicTradeParams } from "../../BalancerVaultTypes.so
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {Deployments} from "../../../../global/Deployments.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {ITradingModule, Trade, TradeType} from "../../../../../interfaces/trading/ITradingModule.sol";
@@ -50,15 +51,15 @@ library StrategyUtils {
 
         // stETH generally has deeper liquidity than wstETH, setting tradeUnwrapped
         // to lets the contract trade in stETH instead of wstETH
-        if (params.tradeUnwrapped && sellToken == address(Constants.WRAPPED_STETH)) {
-            sellToken = Constants.WRAPPED_STETH.stETH();
+        if (params.tradeUnwrapped && sellToken == address(Deployments.WRAPPED_STETH)) {
+            sellToken = Deployments.WRAPPED_STETH.stETH();
             uint256 unwrappedAmount = IERC20(sellToken).balanceOf(address(this));
             // NOTE: the amount returned by unwrap is not always accurate for some reason
-            Constants.WRAPPED_STETH.unwrap(amount);
+            Deployments.WRAPPED_STETH.unwrap(amount);
             amount = IERC20(sellToken).balanceOf(address(this)) - unwrappedAmount;
         }
-        if (params.tradeUnwrapped && buyToken == address(Constants.WRAPPED_STETH)) {
-            buyToken = Constants.WRAPPED_STETH.stETH();
+        if (params.tradeUnwrapped && buyToken == address(Deployments.WRAPPED_STETH)) {
+            buyToken = Deployments.WRAPPED_STETH.stETH();
         }
 
         // Sell residual secondary balance
@@ -81,14 +82,14 @@ library StrategyUtils {
 
         if (
             params.tradeUnwrapped && 
-            buyToken == address(Constants.WRAPPED_STETH) && 
+            buyToken == address(Deployments.WRAPPED_STETH) && 
             amountBought > 0
         ) {
-            IERC20(buyToken).checkApprove(address(Constants.WRAPPED_STETH), amountBought);
-            uint256 wrappedAmount = Constants.WRAPPED_STETH.balanceOf(address(this));
+            IERC20(buyToken).checkApprove(address(Deployments.WRAPPED_STETH), amountBought);
+            uint256 wrappedAmount = Deployments.WRAPPED_STETH.balanceOf(address(this));
             /// @notice the amount returned by wrap is not always accurate for some reason
-            Constants.WRAPPED_STETH.wrap(amountBought);
-            amountBought = Constants.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
+            Deployments.WRAPPED_STETH.wrap(amountBought);
+            amountBought = Deployments.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
         }
     }
 }

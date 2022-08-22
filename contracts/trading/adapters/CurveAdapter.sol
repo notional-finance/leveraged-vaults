@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 
-import "../../global/Constants.sol";
+import {Deployments} from "../../global/Deployments.sol";
 import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/WETH9.sol";
 import "../../../interfaces/curve/ICurvePool.sol";
@@ -23,7 +23,7 @@ library CurveAdapter {
     }
 
     function _getTokenAddress(address token) internal view returns (address) {
-        return (token == Constants.ETH_ADDRESS || token == address(WETH)) ? CURVE_ETH_ADDRESS : token;
+        return (token == Deployments.ETH_ADDRESS || token == address(WETH)) ? CURVE_ETH_ADDRESS : token;
     }
 
     function _exactInBatch(Trade memory trade) internal view returns (bytes memory executionCallData) {
@@ -88,7 +88,7 @@ library CurveAdapter {
             revert InvalidTrade();
         }
 
-        if (trade.sellToken == address(WETH) || trade.sellToken == Constants.ETH_ADDRESS) {
+        if (trade.sellToken == address(WETH) || trade.sellToken == Deployments.ETH_ADDRESS) {
             // Curve does not support WETH as an input
             spender = address(0);
             msgValue = trade.amount;

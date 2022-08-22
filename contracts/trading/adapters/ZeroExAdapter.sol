@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 
-import "../../global/Constants.sol";
+import {Deployments} from "../../global/Deployments.sol";
 import "../../../interfaces/trading/ITradingModule.sol";
 
 library ZeroExAdapter {
@@ -181,7 +181,7 @@ library ZeroExAdapter {
         }
 
         require(
-            inputToken != Constants.ETH_ADDRESS && outputToken != Constants.ETH_ADDRESS,
+            inputToken != Deployments.ETH_ADDRESS && outputToken != Deployments.ETH_ADDRESS,
             "ETH not supported"
         );
         require(inputToken == trade.sellToken, "Mismatched input token");

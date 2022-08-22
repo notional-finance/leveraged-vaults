@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.7.6;
 
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {IWstETH} from "../../interfaces/IWstETH.sol";
-
 /// @title All shared constants for the Notional system should be declared here.
 library Constants {
-    NotionalProxy internal constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
-    IWstETH internal constant WRAPPED_STETH = IWstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
     uint8 internal constant CETH_DECIMAL_PLACES = 8;
 
     // Token precision used for all internal balances, TokenHandler library ensures that we
@@ -117,5 +112,5 @@ library Constants {
 
     // Equal to 100% of all deposit amounts for nToken liquidity across fCash markets.
     int256 internal constant DEPOSIT_PERCENT_BASIS = 1e8;
-
+    uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
 }

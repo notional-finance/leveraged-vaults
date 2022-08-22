@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {PoolContext} from "../BalancerVaultTypes.sol";
-import {BalancerConstants} from "../internal/BalancerConstants.sol";
+import {Deployments} from "../../../global/Deployments.sol";
 
 abstract contract PoolMixin {
     bytes32 internal immutable BALANCER_POOL_ID;
@@ -11,7 +11,7 @@ abstract contract PoolMixin {
 
     constructor(bytes32 balancerPoolId) {
         BALANCER_POOL_ID = balancerPoolId;
-        (address pool, /* */) = BalancerConstants.BALANCER_VAULT.getPool(balancerPoolId);
+        (address pool, /* */) = Deployments.BALANCER_VAULT.getPool(balancerPoolId);
         BALANCER_POOL_TOKEN = IERC20(pool);
     }
 

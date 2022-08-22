@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import {Constants} from "../../global/Constants.sol";
+import {Deployments} from "../../global/Deployments.sol";
 import {TradeHandler} from "../TradeHandler.sol";
 import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/uniswap/v3/ISwapRouter.sol";
@@ -19,8 +19,8 @@ library UniV3Adapter {
         UniV3SingleData memory data = abi.decode(trade.exchangeData, (UniV3SingleData));
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(
-            trade.sellToken == Constants.ETH_ADDRESS ? address(TradeHandler.WETH) : trade.sellToken, 
-            trade.buyToken == Constants.ETH_ADDRESS ? address(TradeHandler.WETH) : trade.buyToken, 
+            trade.sellToken == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : trade.sellToken, 
+            trade.buyToken == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : trade.buyToken, 
             data.fee, from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
         );
 
@@ -33,8 +33,8 @@ library UniV3Adapter {
         UniV3SingleData memory data = abi.decode(trade.exchangeData, (UniV3SingleData));
 
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams(
-            trade.sellToken == Constants.ETH_ADDRESS ? address(TradeHandler.WETH) : trade.sellToken, 
-            trade.buyToken == Constants.ETH_ADDRESS ? address(TradeHandler.WETH) : trade.buyToken, 
+            trade.sellToken == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : trade.sellToken, 
+            trade.buyToken == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : trade.buyToken, 
             data.fee, from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
         );
 
