@@ -42,7 +42,7 @@ contract Boosted3TokenAuraVault is
             params.primaryBorrowCurrencyId,
             params.baseParams.balancerPoolId
         )
-        AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool)
+        AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool, params.baseParams.feeReceiver)
     {}
 
     function strategy() external override view returns (bytes4) {
@@ -134,15 +134,6 @@ contract Boosted3TokenAuraVault is
         _revertInSettlementWindow(maturity);
         Boosted3TokenAuraSettlementHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
-        );
-    }
-
-    // @audit duplicated code between vaults, maybe move to the AuraStakingMixin?
-    function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
-        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        // @audit This should be logged in an event
-        claimedBalances = AuraRewardHelperExternal.claimRewardTokens(
-            _auraStakingContext(), strategyVaultSettings.feePercentage, FEE_RECEIVER
         );
     }
 

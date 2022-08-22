@@ -10,13 +10,11 @@ abstract contract BaseVaultStorage is BaseStrategyVault {
 
     /** Immutables */
     uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
-    address internal immutable FEE_RECEIVER;
 
     constructor(NotionalProxy notional_, DeploymentParams memory params) 
         BaseStrategyVault(notional_, params.tradingModule)
     {
         SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
-        FEE_RECEIVER = params.feeReceiver;
     }
 
     function _revertInSettlementWindow(uint256 maturity) internal view {

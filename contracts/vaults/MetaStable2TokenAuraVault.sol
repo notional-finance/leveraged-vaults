@@ -26,7 +26,6 @@ import {TwoTokenAuraStrategyUtils} from "./balancer/internal/strategy/TwoTokenAu
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
 import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
-import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
 contract MetaStable2TokenAuraVault is
     UUPSUpgradeable,
@@ -45,7 +44,7 @@ contract MetaStable2TokenAuraVault is
             params.primaryBorrowCurrencyId,
             params.baseParams.balancerPoolId
         )
-        AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool)
+        AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool, params.baseParams.feeReceiver)
     {}
 
     function strategy() external override view returns (bytes4) {
@@ -143,14 +142,6 @@ contract MetaStable2TokenAuraVault is
         _revertInSettlementWindow(maturity);
         MetaStable2TokenAuraSettlementHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
-        );
-    }
-
-    // @audit duplicated code between vaults
-    function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
-        StrategyVaultSettings memory strategyVaultSettings = VaultUtils._getStrategyVaultSettings();
-        claimedBalances = AuraRewardHelperExternal.claimRewardTokens(
-            _auraStakingContext(), strategyVaultSettings.feePercentage, FEE_RECEIVER
         );
     }
 
