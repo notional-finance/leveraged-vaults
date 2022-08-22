@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {Errors} from "../global/Errors.sol";
 import {
@@ -16,7 +15,7 @@ import {
     MetaStable2TokenAuraStrategyContext,
     StrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
-import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
+import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -28,8 +27,7 @@ import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2To
 import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
 
 contract MetaStable2TokenAuraVault is
-    UUPSUpgradeable,
-    BaseVaultStorage,
+    BalancerStrategyBase,
     MetaStable2TokenVaultMixin,
     AuraStakingMixin
 {
@@ -39,7 +37,7 @@ contract MetaStable2TokenAuraVault is
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        BaseVaultStorage(notional_, params.baseParams) 
+        BalancerStrategyBase(notional_, params.baseParams) 
         MetaStable2TokenVaultMixin(
             params.primaryBorrowCurrencyId,
             params.baseParams.balancerPoolId
@@ -197,7 +195,4 @@ contract MetaStable2TokenAuraVault is
         return AURA_REWARD_POOL.balanceOf(address(this));
     }
 
-    function _authorizeUpgrade(
-        address /* newImplementation */
-    ) internal override onlyNotionalOwner {}
 }

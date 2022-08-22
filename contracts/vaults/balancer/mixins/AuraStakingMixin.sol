@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {AuraRewardHelperExternal} from "../external/AuraRewardHelperExternal.sol";
 import {AuraStakingContext} from "../BalancerVaultTypes.sol";
 import {ILiquidityGauge} from "../../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IAuraBooster} from "../../../../interfaces/aura/IAuraBooster.sol";
@@ -14,6 +13,7 @@ import {BalancerEvents} from "../BalancerEvents.sol";
 
 abstract contract AuraStakingMixin {
     using TokenUtils for IERC20;
+
     // @audit maybe some documentation about what each of these contracts do?
     ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
     IAuraBooster internal immutable AURA_BOOSTER;

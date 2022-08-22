@@ -73,9 +73,6 @@ library StrategyUtils {
             params.exchangeData
         );
 
-        // @audit this compiles the full code size of the TradeHandler into all
-        // the vaults, would be advantageous to use BaseStrategyVault's internal method
-        // instead. We can 
         (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
             params.dexId, tradingModule, params.oracleSlippagePercent
         );

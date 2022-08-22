@@ -4,9 +4,9 @@ pragma solidity 0.8.15;
 import {BaseStrategyVault} from "../BaseStrategyVault.sol";
 import {DeploymentParams} from "./BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-// @audit this should be called BalancerStrategyStorage
-abstract contract BaseVaultStorage is BaseStrategyVault {
+abstract contract BalancerStrategyBase is BaseStrategyVault, UUPSUpgradeable {
 
     /** Immutables */
     uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
@@ -22,6 +22,10 @@ abstract contract BaseVaultStorage is BaseStrategyVault {
             revert();
         }
     }
+
+    function _authorizeUpgrade(
+        address /* newImplementation */
+    ) internal override onlyNotionalOwner {}
     
     // Storage gap for future potential upgrades
     uint256[100] private __gap;

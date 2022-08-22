@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Errors} from "../global/Errors.sol";
 import {
     AuraVaultDeploymentParams,
@@ -14,7 +13,7 @@ import {
     Boosted3TokenAuraStrategyContext,
     StrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
-import {BaseVaultStorage} from "./balancer/BaseVaultStorage.sol";
+import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -24,11 +23,9 @@ import {Boosted3TokenAuraStrategyUtils} from "./balancer/internal/strategy/Boost
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraVaultHelper} from "./balancer/external/Boosted3TokenAuraVaultHelper.sol";
 import {Boosted3TokenAuraSettlementHelper} from "./balancer/external/Boosted3TokenAuraSettlementHelper.sol";
-import {AuraRewardHelperExternal} from "./balancer/external/AuraRewardHelperExternal.sol";
 
 contract Boosted3TokenAuraVault is
-    UUPSUpgradeable,
-    BaseVaultStorage,
+    BalancerStrategyBase,
     Boosted3TokenPoolMixin,
     AuraStakingMixin
 {
@@ -37,7 +34,7 @@ contract Boosted3TokenAuraVault is
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        BaseVaultStorage(notional_, params.baseParams) 
+        BalancerStrategyBase(notional_, params.baseParams) 
         Boosted3TokenPoolMixin(
             params.primaryBorrowCurrencyId,
             params.baseParams.balancerPoolId
@@ -188,28 +185,20 @@ contract Boosted3TokenAuraVault is
         return _strategyContext();
     }
     
-    // @audit these methods can move to the pool mixin perhaps? you don't need
     // to get the full _strategyContext() since both of these methods just sit on StrategyUtils
     function convertBPTClaimToStrategyTokens(uint256 bptClaim)
         external view returns (uint256 strategyTokenAmount) {
         return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(bptClaim);
     }
 
-    // @audit these methods can move to the pool mixin perhaps? you don't need
-    // to get the full _strategyContext() since both of these methods just sit on StrategyUtils
     /// @notice Converts strategy tokens to BPT
     function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount) 
         external view returns (uint256 bptClaim) {
         return _strategyContext().baseStrategy._convertStrategyTokensToBPTClaim(strategyTokenAmount);
     }
 
-    // @audit move into the aura mixin
     /// @dev Gets the total BPT held by the aura reward pool
     function _bptHeld() internal view returns (uint256) {
         return AURA_REWARD_POOL.balanceOf(address(this));
     }
-
-    function _authorizeUpgrade(
-        address /* newImplementation */
-    ) internal override onlyNotionalOwner {}
 }
