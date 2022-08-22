@@ -130,11 +130,10 @@ library Boosted3TokenPoolUtils {
         virtualSupply = _MAX_TOKEN_BALANCE - oracleContext.bptBalance + oracleContext.dueProtocolFeeBptAmount;
     }
 
-    // @audit private, combine into validated pool data?
     function _getVirtualSupplyAndBalances(
         ThreeTokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext
-    ) internal pure returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
+    ) private pure returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
         virtualSupply = _getVirtualSupply(poolContext, oracleContext);
 
         amountsWithoutBpt = new uint256[](3);
@@ -143,7 +142,6 @@ library Boosted3TokenPoolUtils {
         amountsWithoutBpt[2] = poolContext.tertiaryBalance;
     }
 
-    // @audit called
     function _getValidatedPoolData(
         ThreeTokenPoolContext memory poolContext,
         BoostedOracleContext memory oracleContext,
@@ -200,15 +198,11 @@ library Boosted3TokenPoolUtils {
             currentInvariant: invariant
         });
 
-        // @audit re-arrange to (primaryAmount * bptAmount * primaryPrecision) / BalancerPrecisionSquared
-        primaryAmount *= bptAmount / BalancerConstants.BALANCER_PRECISION;
-
         uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
-        primaryAmount = primaryAmount * primaryPrecision / BalancerConstants.BALANCER_PRECISION;
+        primaryAmount = (primaryAmount * bptAmount * primaryPrecision) / BalancerConstants.BALANCER_PRECISION_SQUARED;
     }
 
     function _approveBalancerTokens(ThreeTokenPoolContext memory poolContext, address bptSpender) internal {
-        // @audit why does the auraBooster need approval for these two tokens?
         poolContext.basePool._approveBalancerTokens(bptSpender);
 
         IERC20(poolContext.tertiaryToken).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);

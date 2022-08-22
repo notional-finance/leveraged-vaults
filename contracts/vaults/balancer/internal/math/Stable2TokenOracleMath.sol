@@ -79,13 +79,15 @@ library Stable2TokenOracleMath {
     }
 
     function _validateSpotPriceAndPairPrice(
-        StableOracleContext memory oracleContext,
-        TwoTokenPoolContext memory poolContext,
+        StableOracleContext calldata oracleContext,
+        TwoTokenPoolContext calldata poolContext,
         ITradingModule tradingModule,
-        uint256 spotPrice, // @audit why not call _getSpotPrice inside here?
+        uint256 tokenIndex,
         uint256 primaryAmount, 
         uint256 secondaryAmount
     ) internal view {
+        uint256 spotPrice = _getSpotPrice(oracleContext, poolContext, tokenIndex);
+
         // @audit this oracle price validation is duplicated code above
         (
             int256 answer, int256 decimals

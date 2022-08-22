@@ -21,10 +21,9 @@ import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 library TwoTokenAuraRewardUtils {
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
-    // @audit think everything can be made calldata
 
     function _validateTrades(
-        AuraStakingContext memory context,
+        AuraStakingContext calldata context,
         SingleSidedRewardTradeParams memory primaryTrade,
         SingleSidedRewardTradeParams memory secondaryTrade,
         address primaryToken,
@@ -51,10 +50,10 @@ library TwoTokenAuraRewardUtils {
     }
 
     function _executeRewardTrades(
-        TwoTokenPoolContext memory poolContext,
-        AuraStakingContext memory stakingContext,
+        TwoTokenPoolContext calldata poolContext,
+        AuraStakingContext calldata stakingContext,
         ITradingModule tradingModule,
-        bytes memory data
+        bytes calldata data
     ) internal returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
         Balanced2TokenRewardTradeParams memory params = abi.decode(
             data,
@@ -85,14 +84,13 @@ library TwoTokenAuraRewardUtils {
             amount: params.secondaryTrade.amount
         });
 
-        // @audit-ok sell token must be equal in both trades 
         rewardToken = params.primaryTrade.sellToken;
     }
 
     function _reinvestReward(
-        TwoTokenPoolContext memory poolContext,
-        AuraStakingContext memory stakingContext,
-        ReinvestRewardParams memory params,
+        TwoTokenPoolContext calldata poolContext,
+        AuraStakingContext calldata stakingContext,
+        ReinvestRewardParams calldata params,
         address rewardToken,
         uint256 primaryAmount,
         uint256 secondaryAmount

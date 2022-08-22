@@ -23,8 +23,7 @@ library Boosted3TokenAuraRewardUtils {
     using AuraStakingUtils for AuraStakingContext;
 
     function _validateTrade(
-        // @audit these can all be switched to calldata
-        AuraStakingContext memory context,
+        AuraStakingContext calldata context,
         SingleSidedRewardTradeParams memory params,
         address primaryToken
     ) private view {
@@ -40,16 +39,12 @@ library Boosted3TokenAuraRewardUtils {
     }
 
     function _executeRewardTrades(
-        // @audit these can all be switched to calldata
-        ThreeTokenPoolContext memory poolContext,
-        AuraStakingContext memory stakingContext,
+        ThreeTokenPoolContext calldata poolContext,
+        AuraStakingContext calldata stakingContext,
         ITradingModule tradingModule,
-        bytes memory data
+        bytes calldata data
     ) private returns (address rewardToken, uint256 primaryAmount) {
-        SingleSidedRewardTradeParams memory params = abi.decode(
-            data,
-            (SingleSidedRewardTradeParams)
-        );
+        SingleSidedRewardTradeParams memory params = abi.decode(data, (SingleSidedRewardTradeParams));
 
         _validateTrade(stakingContext, params, poolContext.basePool.primaryToken);
 
@@ -65,12 +60,11 @@ library Boosted3TokenAuraRewardUtils {
     }
 
     function _reinvestReward(
-        // @audit these can all be switched to calldata
-        ThreeTokenPoolContext memory poolContext,
-        BoostedOracleContext memory oracleContext,
-        AuraStakingContext memory stakingContext,
+        ThreeTokenPoolContext calldata poolContext,
+        BoostedOracleContext calldata oracleContext,
+        AuraStakingContext calldata stakingContext,
         ITradingModule tradingModule,
-        ReinvestRewardParams memory params
+        ReinvestRewardParams calldata params
     ) internal {
         (address rewardToken, uint256 primaryAmount) = _executeRewardTrades(
             poolContext,
@@ -84,9 +78,7 @@ library Boosted3TokenAuraRewardUtils {
            uint256 virtualSupply, 
            uint256[] memory balances, 
            uint256 invariant
-        ) = poolContext._getValidatedPoolData(
-            oracleContext, tradingModule
-        );
+        ) = poolContext._getValidatedPoolData(oracleContext, tradingModule);
 
         uint256[] memory amountsIn = new uint256[](3);
         // @audit is the zero index the proper place here?

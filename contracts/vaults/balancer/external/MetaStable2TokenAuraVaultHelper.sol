@@ -20,8 +20,8 @@ library MetaStable2TokenAuraVaultHelper {
     using Stable2TokenOracleMath for StableOracleContext;
 
     function reinvestReward(
-        MetaStable2TokenAuraStrategyContext memory context,
-        ReinvestRewardParams memory params
+        MetaStable2TokenAuraStrategyContext calldata context,
+        ReinvestRewardParams calldata params
     ) external {
         (
             address rewardToken, 
@@ -37,8 +37,8 @@ library MetaStable2TokenAuraVaultHelper {
         context.oracleContext._validateSpotPriceAndPairPrice({
             poolContext: context.poolContext,
             tradingModule: context.baseStrategy.tradingModule,
-            // @audit move this _getSpotPrice call into the method itself
-            spotPrice: context.oracleContext._getSpotPrice(context.poolContext, 0),
+            // @audit is this token index correct?
+            tokenIndex: 0,
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount
         });

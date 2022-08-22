@@ -17,8 +17,8 @@ library Boosted3TokenAuraVaultHelper {
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
 
     function reinvestReward(
-        Boosted3TokenAuraStrategyContext memory context,
-        ReinvestRewardParams memory params
+        Boosted3TokenAuraStrategyContext calldata context,
+        ReinvestRewardParams calldata params
     ) external {        
         context.poolContext._reinvestReward({
             oracleContext: context.oracleContext,

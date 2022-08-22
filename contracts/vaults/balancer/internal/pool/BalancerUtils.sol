@@ -45,7 +45,7 @@ library BalancerUtils {
             normalizedPrimary = primaryBalance;
         } else {
             uint256 decimalAdjust;
-            unchecked { 
+            unchecked {
                 decimalAdjust = 10**(18 - primaryDecimals);
             }
             normalizedPrimary = primaryBalance * decimalAdjust;
@@ -55,7 +55,7 @@ library BalancerUtils {
             normalizedSecondary = secondaryBalance;
         } else {
             uint256 decimalAdjust;
-            unchecked { 
+            unchecked {
                 decimalAdjust = 10**(18 - secondaryDecimals);
             }
             normalizedSecondary = secondaryBalance * decimalAdjust;
@@ -84,7 +84,9 @@ library BalancerUtils {
                 false // Don't use internal balances
             )
         );
-        bptAmount = IERC20(address(context.pool)).balanceOf(address(this)) - bptAmount;
+        bptAmount =
+            IERC20(address(context.pool)).balanceOf(address(this)) -
+            bptAmount;
     }
 
     /// @notice Exits a balancer pool using exact BPT in
@@ -93,10 +95,10 @@ library BalancerUtils {
         PoolParams memory params,
         uint256 bptExitAmount
     ) internal returns (uint256[] memory exitBalances) {
-        exitBalances = new uint256[](params.assets.length);
+        uint256 numAssets = params.assets.length;
+        exitBalances = new uint256[](numAssets);
 
-        // @audit cache length and iter
-        for (uint256 i; i < params.assets.length; i++) {
+        for (uint256 i; i < numAssets; i++) {
             exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i]));
         }
 
@@ -115,16 +117,15 @@ library BalancerUtils {
             )
         );
 
-        // @audit cache length and iter
-        for (uint256 i; i < params.assets.length; i++) {
+        for (uint256 i; i < numAssets; i++) {
             exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i])) - exitBalances[i];
         }
     }
 
     function _swapGivenIn(
-        bytes32 poolId, 
-        address tokenIn, 
-        address tokenOut, 
+        bytes32 poolId,
+        address tokenIn,
+        address tokenOut,
         uint256 amountIn,
         uint256 limit
     ) internal returns (uint256 amountOut) {
