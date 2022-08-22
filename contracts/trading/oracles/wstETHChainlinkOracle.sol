@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {AggregatorV2V3Interface} from "../../../../interfaces/chainlink/AggregatorV2V3Interface.sol";
-import {IWstETH} from "../../../../interfaces/IWstETH.sol";
-import {SafeInt256} from "../../../global/SafeInt256.sol";
+import {AggregatorV2V3Interface} from "../../../interfaces/chainlink/AggregatorV2V3Interface.sol";
+import {IWstETH} from "../../../interfaces/IWstETH.sol";
+import {SafeInt256} from "../../global/SafeInt256.sol";
 
-// @audit move this to the trading module?
 contract WstETHChainlinkOracle is AggregatorV2V3Interface {
     using SafeInt256 for uint256;
 
