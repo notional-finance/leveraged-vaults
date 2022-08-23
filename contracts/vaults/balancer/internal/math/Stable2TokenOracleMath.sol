@@ -52,8 +52,10 @@ library Stable2TokenOracleMath {
         require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
 
         uint256 oraclePairPrice = answer.toUint();
-        uint256 lowerLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 100;
-        uint256 upperLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 100;
+        uint256 lowerLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 
+            BalancerConstants.VAULT_PERCENT_BASIS;
+        uint256 upperLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 
+            BalancerConstants.VAULT_PERCENT_BASIS;
 
         if (poolPrice < lowerLimit || upperLimit < poolPrice) {
             revert Errors.InvalidPrice(oraclePairPrice, poolPrice);

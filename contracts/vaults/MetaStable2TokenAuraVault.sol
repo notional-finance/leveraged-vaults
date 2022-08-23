@@ -25,8 +25,7 @@ import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "./balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
-import {MetaStable2TokenAuraVaultHelper} from "./balancer/external/MetaStable2TokenAuraVaultHelper.sol";
-import {MetaStable2TokenAuraSettlementHelper} from "./balancer/external/MetaStable2TokenAuraSettlementHelper.sol";
+import {MetaStable2TokenAuraHelper} from "./balancer/external/MetaStable2TokenAuraHelper.sol";
 
 contract MetaStable2TokenAuraVault is
     BalancerStrategyBase,
@@ -123,7 +122,7 @@ contract MetaStable2TokenAuraVault is
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert Errors.NotInSettlementWindow();
         }
-        MetaStable2TokenAuraSettlementHelper.settleVaultNormal(
+        MetaStable2TokenAuraHelper.settleVaultNormal(
             _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
@@ -136,7 +135,7 @@ contract MetaStable2TokenAuraVault is
         if (block.timestamp < maturity) {
             revert Errors.HasNotMatured();
         }
-        MetaStable2TokenAuraSettlementHelper.settleVaultPostMaturity(
+        MetaStable2TokenAuraHelper.settleVaultPostMaturity(
             _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
@@ -144,13 +143,13 @@ contract MetaStable2TokenAuraVault is
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
-        MetaStable2TokenAuraSettlementHelper.settleVaultEmergency(
+        MetaStable2TokenAuraHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) external {
-        MetaStable2TokenAuraVaultHelper.reinvestReward(_strategyContext(), params);
+        MetaStable2TokenAuraHelper.reinvestReward(_strategyContext(), params);
     }
 
     /// @notice Updates the vault settings

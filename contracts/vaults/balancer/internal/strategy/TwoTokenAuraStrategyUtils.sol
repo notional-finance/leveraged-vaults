@@ -16,12 +16,14 @@ import {
 } from "../../BalancerVaultTypes.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {Constants} from "../../../../global/Constants.sol";
+import {Errors} from "../../../../global/Errors.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
+import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 
 library TwoTokenAuraStrategyUtils {
@@ -149,16 +151,23 @@ library TwoTokenAuraStrategyUtils {
             true // isJoin
         );
 
-        // Join the balancer pool and stake the tokens for boosting
-        bptMinted = stakingContext._joinPoolAndStake({
-            poolContext: poolContext.basePool,
-            poolParams: poolParams,
-            totalBPTHeld: strategyContext.totalBPTHeld,
-            bptThreshold: strategyContext.vaultSettings._bptThreshold(
-                poolContext.basePool.pool.totalSupply()
-            ),
+        bptMinted = BalancerUtils._joinPoolExactTokensIn({
+            context: poolContext.basePool,
+            params: poolParams,
             minBPT: minBPT
         });
+
+        // Check BPT threshold to make sure our share of the pool is
+        // below maxBalancerPoolShare
+        uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
+            poolContext.basePool.pool.totalSupply()
+        );
+        uint256 bptHeldAfterJoin = strategyContext.totalBPTHeld + bptMinted;
+        if (bptHeldAfterJoin > bptThreshold)
+            revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
+
+        // Transfer token to Aura protocol for boosted staking
+        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
     }
 
     function _unstakeAndExitPoolExactBPTIn(
@@ -168,13 +177,15 @@ library TwoTokenAuraStrategyUtils {
         uint256 minPrimary,
         uint256 minSecondary
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
-        uint256[] memory exitBalances = AuraStakingUtils._unstakeAndExitPoolExactBPTIn({
-            stakingContext: stakingContext, 
-            poolContext: poolContext.basePool,
-            poolParams: poolContext._getPoolParams(minPrimary, minSecondary, false), // isJoin = false
+        // Withdraw BPT tokens back to the vault for redemption
+        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+
+        uint256[] memory exitBalances = BalancerUtils._exitPoolExactBPTIn({
+            context: poolContext.basePool,
+            params: poolContext._getPoolParams(minPrimary, minSecondary, false), // isJoin = false
             bptExitAmount: bptClaim
         });
-
+        
         (primaryBalance, secondaryBalance) 
             = (exitBalances[poolContext.primaryIndex], exitBalances[poolContext.secondaryIndex]);
     }

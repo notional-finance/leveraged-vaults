@@ -35,6 +35,7 @@ library BalancerVaultStorage {
         require(settings.settlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.postMaturitySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.feePercentage <= BalancerConstants.VAULT_PERCENT_BASIS);
+        require(settings.maxRewardTradeSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
 
         mapping(uint256 => StrategyVaultSettings) storage store = _settings();
         // Hardcode to the zero slot

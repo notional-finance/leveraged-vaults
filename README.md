@@ -8,10 +8,8 @@
 | Balancer   | BalancerEvents.sol                       |   17 |        2 |          24 |               0.0 |
 | Balancer   | BalancerStrategyBase.sol                 |   22 |        3 |          32 |               4.5 |
 | Balancer   | BalancerVaultTypes.sol                   |  159 |       21 |         207 |               0.0 |
-| External   | Boosted3TokenAuraSettlementHelper.sol    |  122 |       12 |         157 |               4.9 |
-| External   | Boosted3TokenAuraVaultHelper.sol         |   26 |        1 |          30 |               7.7 |
-| External   | MetaStable2TokenAuraSettlementHelper.sol |  124 |       10 |         155 |               4.8 |
-| External   | MetaStable2TokenAuraVaultHelper.sol      |   46 |        3 |          54 |               6.5 |
+| External   | Boosted3TokenAuraHelper.sol              |  122 |       12 |         157 |               4.9 |
+| External   | MetaStable2TokenAuraHelper.sol           |  124 |       10 |         155 |               4.8 |
 | Global     | Constants.sol                            |   63 |       36 |         116 |               0.0 |
 | Global     | DateTime.sol                             |   92 |       28 |         139 |              34.8 |
 | Global     | Deployments.sol                          |   24 |        2 |          30 |               0.0 |

@@ -23,8 +23,7 @@ import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenAuraStrategyUtils} from "./balancer/internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
-import {Boosted3TokenAuraVaultHelper} from "./balancer/external/Boosted3TokenAuraVaultHelper.sol";
-import {Boosted3TokenAuraSettlementHelper} from "./balancer/external/Boosted3TokenAuraSettlementHelper.sol";
+import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
 
 contract Boosted3TokenAuraVault is
     BalancerStrategyBase,
@@ -110,7 +109,7 @@ contract Boosted3TokenAuraVault is
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert Errors.NotInSettlementWindow();
         }
-        Boosted3TokenAuraSettlementHelper.settleVaultNormal(
+        Boosted3TokenAuraHelper.settleVaultNormal(
             _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
@@ -123,7 +122,7 @@ contract Boosted3TokenAuraVault is
         if (block.timestamp < maturity) {
             revert Errors.HasNotMatured();
         }
-        Boosted3TokenAuraSettlementHelper.settleVaultPostMaturity(
+        Boosted3TokenAuraHelper.settleVaultPostMaturity(
             _strategyContext(), maturity, strategyTokensToRedeem, data
         );
     }
@@ -131,13 +130,13 @@ contract Boosted3TokenAuraVault is
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
-        Boosted3TokenAuraSettlementHelper.settleVaultEmergency(
+        Boosted3TokenAuraHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) external {
-        Boosted3TokenAuraVaultHelper.reinvestReward(_strategyContext(), params);
+        Boosted3TokenAuraHelper.reinvestReward(_strategyContext(), params);
     }
 
     function convertStrategyToUnderlying(

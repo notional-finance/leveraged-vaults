@@ -11,7 +11,6 @@ import {
     StrategyVaultSettings
 } from "../vaults/balancer/BalancerVaultTypes.sol";
 import {NotionalUtils} from "../utils/NotionalUtils.sol";
-import {Boosted3TokenAuraVaultHelper} from "../vaults/balancer/external/Boosted3TokenAuraVaultHelper.sol";
 import {Boosted3TokenAuraStrategyUtils} from "../vaults/balancer/internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "../vaults/balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {BalancerUtils} from "../vaults/balancer/internal/pool/BalancerUtils.sol";

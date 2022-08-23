@@ -5,7 +5,11 @@ import {
     Boosted3TokenAuraStrategyContext, 
     StrategyContext,
     RedeemParams,
+    ReinvestRewardParams,
     ThreeTokenPoolContext,
+    StrategyContext,
+    AuraStakingContext,
+    BoostedOracleContext,
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
@@ -15,10 +19,13 @@ import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "../internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraStrategyUtils} from "../internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
+import {Boosted3TokenAuraRewardUtils} from "../internal/reward/Boosted3TokenAuraRewardUtils.sol";
 import {BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
+import {StableMath} from "../internal/math/StableMath.sol";
 
-library Boosted3TokenAuraSettlementHelper {
+library Boosted3TokenAuraHelper {
     using Boosted3TokenAuraStrategyUtils for StrategyContext;
+    using Boosted3TokenAuraRewardUtils for ThreeTokenPoolContext;
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
@@ -48,7 +55,7 @@ library Boosted3TokenAuraSettlementHelper {
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
         params.minPrimary = params.minPrimary * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
-            uint256(BalancerConstants.PERCENTAGE_DECIMALS);
+            uint256(BalancerConstants.VAULT_PERCENT_BASIS);
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
@@ -89,7 +96,7 @@ library Boosted3TokenAuraSettlementHelper {
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
         params.minPrimary = params.minPrimary * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
-            uint256(BalancerConstants.PERCENTAGE_DECIMALS);
+            uint256(BalancerConstants.VAULT_PERCENT_BASIS);
 
         int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
             oracleContext: context.oracleContext,
@@ -132,7 +139,7 @@ library Boosted3TokenAuraSettlementHelper {
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
         params.minPrimary = params.minPrimary * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
-            uint256(BalancerConstants.PERCENTAGE_DECIMALS);
+            uint256(BalancerConstants.VAULT_PERCENT_BASIS);
 
         uint256 redeemStrategyTokenAmount 
             = context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);
@@ -153,5 +160,55 @@ library Boosted3TokenAuraSettlementHelper {
 
         // @audit why not emit inside executeSettlement?
         emit BalancerEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+    }
+
+    function reinvestReward(
+        Boosted3TokenAuraStrategyContext calldata context,
+        ReinvestRewardParams calldata params
+    ) external {        
+        ThreeTokenPoolContext calldata poolContext = context.poolContext;
+        StrategyContext calldata strategyContext = context.baseStrategy;
+        BoostedOracleContext calldata oracleContext = context.oracleContext;
+        AuraStakingContext calldata stakingContext = context.stakingContext;
+
+        (address rewardToken, uint256 primaryAmount) = poolContext._executeRewardTrades({
+            stakingContext: stakingContext,
+            tradingModule: strategyContext.tradingModule,
+            data: params.tradeData,
+            slippageLimit: strategyContext.vaultSettings.maxRewardTradeSlippageLimitPercent
+        });
+
+        // Calculate minBPT to minimize slippage
+        (
+           uint256 virtualSupply, 
+           uint256[] memory balances, 
+           uint256 invariant
+        ) = poolContext._getValidatedPoolData(oracleContext, strategyContext.tradingModule);
+
+        uint256[] memory amountsIn = new uint256[](3);
+        // _getValidatedPoolData rearranges the balances so that primary is always in the
+        // zero index spot
+        amountsIn[0] = primaryAmount;
+
+        uint256 minBPT = StableMath._calcBptOutGivenExactTokensIn({
+            amp: oracleContext.ampParam,
+            balances: balances,
+            amountsIn: amountsIn,
+            bptTotalSupply: virtualSupply,
+            swapFeePercentage: 0,
+            currentInvariant: invariant
+        });
+
+        minBPT = minBPT * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+            uint256(BalancerConstants.VAULT_PERCENT_BASIS);
+
+        uint256 bptAmount = strategyContext._joinPoolAndStake({
+            stakingContext: stakingContext,
+            poolContext: poolContext,
+            deposit: primaryAmount,
+            minBPT: minBPT
+        });
+
+        emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
     }
 }

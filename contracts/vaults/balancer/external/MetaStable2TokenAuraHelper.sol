@@ -5,7 +5,9 @@ import {
     MetaStable2TokenAuraStrategyContext,
     StableOracleContext,
     StrategyContext,
+    TwoTokenPoolContext,
     RedeemParams,
+    ReinvestRewardParams,
     StrategyVaultSettings,
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
@@ -14,12 +16,14 @@ import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
 import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
+import {TwoTokenAuraRewardUtils} from "../internal/reward/TwoTokenAuraRewardUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 import {BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
-library MetaStable2TokenAuraSettlementHelper {
+library MetaStable2TokenAuraHelper {
     using TwoTokenAuraStrategyUtils for StrategyContext;
+    using TwoTokenAuraRewardUtils for TwoTokenPoolContext;
     using Stable2TokenOracleMath for StableOracleContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
@@ -151,5 +155,45 @@ library MetaStable2TokenAuraSettlementHelper {
         });
 
         emit BalancerEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+    }
+
+    function reinvestReward(
+        MetaStable2TokenAuraStrategyContext calldata context,
+        ReinvestRewardParams calldata params
+    ) external {
+        StrategyContext calldata strategyContext = context.baseStrategy;
+        TwoTokenPoolContext calldata poolContext = context.poolContext; 
+        StableOracleContext calldata oracleContext = context.oracleContext;
+
+        (
+            address rewardToken, 
+            uint256 primaryAmount, 
+            uint256 secondaryAmount
+        ) = poolContext._executeRewardTrades(
+            context.stakingContext,
+            strategyContext.tradingModule,
+            params.tradeData,
+            strategyContext.vaultSettings.maxRewardTradeSlippageLimitPercent
+        );
+
+        // Make sure we are joining with the right proportion to minimize slippage
+        oracleContext._validateSpotPriceAndPairPrice({
+            poolContext: poolContext,
+            tradingModule: strategyContext.tradingModule,
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount
+        });
+
+        uint256 bptAmount = strategyContext._joinPoolAndStake({
+            stakingContext: context.stakingContext,
+            poolContext: poolContext,
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount,
+            /// @notice minBPT is not required to be set by the caller because primaryAmount
+            /// and secondaryAmount are already validated
+            minBPT: params.minBPT        
+        });
+
+        emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
     }
 }

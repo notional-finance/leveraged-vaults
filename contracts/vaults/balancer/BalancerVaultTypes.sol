@@ -144,13 +144,6 @@ struct Boosted3TokenAuraStrategyContext {
     StrategyContext baseStrategy;
 }
 
-// struct TwoTokenAuraSettlementContext {
-//     StrategyContext strategyContext;
-//     OracleContext oracleContext;
-//     TwoTokenPoolContext poolContext;
-//     AuraStakingContext stakingContext;
-// }
-
 struct NormalSettlementData {
     uint256 maxUnderlyingSurplus;
     uint256 redeemStrategyTokenAmount;
@@ -197,6 +190,7 @@ struct StrategyVaultSettings {
     uint16 postMaturitySettlementCoolDownInMinutes;
     /// @notice Determines the amount of BAL transferred to FEE_RECEIVER
     uint16 feePercentage;
+    uint256 maxRewardTradeSlippageLimitPercent;
 }
 
 struct StrategyVaultState {

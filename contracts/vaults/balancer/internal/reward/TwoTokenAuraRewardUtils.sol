@@ -5,6 +5,7 @@ import {
     Balanced2TokenRewardTradeParams,
     SingleSidedRewardTradeParams,
     ReinvestRewardParams,
+    StrategyContext,
     PoolContext,
     AuraStakingContext,
     TwoTokenPoolContext
@@ -16,10 +17,12 @@ import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {TwoTokenAuraStrategyUtils} from "../strategy/TwoTokenAuraStrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 
 library TwoTokenAuraRewardUtils {
     using TwoTokenPoolUtils for TwoTokenPoolContext;
+    using TwoTokenAuraStrategyUtils for StrategyContext;
     using AuraStakingUtils for AuraStakingContext;
 
     function _validateTrades(
@@ -42,23 +45,22 @@ library TwoTokenAuraRewardUtils {
         if (secondaryTrade.buyToken != secondaryToken) {
             revert Errors.InvalidRewardToken(secondaryTrade.buyToken);
         }
-
-        // @audit this might be required or else some reward boosting might not be able to occur
-        // TODO: maybe make MAX_REWARD_TRADE_SLIPPAGE_PERCENT configurable?
-        require(primaryTrade.tradeParams.oracleSlippagePercent <= BalancerConstants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
-        require(secondaryTrade.tradeParams.oracleSlippagePercent <= BalancerConstants.MAX_REWARD_TRADE_SLIPPAGE_PERCENT);
     }
 
     function _executeRewardTrades(
         TwoTokenPoolContext calldata poolContext,
         AuraStakingContext calldata stakingContext,
         ITradingModule tradingModule,
-        bytes calldata data
+        bytes calldata data,
+        uint256 slippageLimit
     ) internal returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
         Balanced2TokenRewardTradeParams memory params = abi.decode(
             data,
             (Balanced2TokenRewardTradeParams)
         );
+
+        require(params.primaryTrade.tradeParams.oracleSlippagePercent <= slippageLimit);
+        require(params.secondaryTrade.tradeParams.oracleSlippagePercent <= slippageLimit);
 
         _validateTrades(
             stakingContext,
@@ -85,35 +87,5 @@ library TwoTokenAuraRewardUtils {
         });
 
         rewardToken = params.primaryTrade.sellToken;
-    }
-
-    function _reinvestReward(
-        TwoTokenPoolContext calldata poolContext,
-        AuraStakingContext calldata stakingContext,
-        ReinvestRewardParams calldata params,
-        address rewardToken,
-        uint256 primaryAmount,
-        uint256 secondaryAmount
-    ) internal {
-        // @audit Why don't you use _joinPoolAndStake here? This method skips
-        // the max threshold check
-        uint256 bptAmount = BalancerUtils._joinPoolExactTokensIn({
-            context: poolContext.basePool,
-            params: poolContext._getPoolParams(
-                primaryAmount, 
-                secondaryAmount, 
-                true // isJoin
-            ),
-            // @audit is this minBPT actually effective in this case since we don't
-            // validate it or anything, the primary and secondary amounts are validated
-            // in the parent methods. I think it is ok to leave here but maybe we make a note
-            minBPT: params.minBPT
-        });
-
-        stakingContext.auraBooster.deposit(
-            stakingContext.auraPoolId, bptAmount, true // stake = true
-        );
-
-        emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
     }
 }

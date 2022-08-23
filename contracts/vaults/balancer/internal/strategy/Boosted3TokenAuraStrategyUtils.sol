@@ -6,9 +6,11 @@ import {
     ThreeTokenPoolContext, 
     BoostedOracleContext,
     AuraStakingContext,
+    StrategyVaultSettings,
     StrategyVaultState
 } from "../../BalancerVaultTypes.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
+import {Errors} from "../../../../global/Errors.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
@@ -23,6 +25,7 @@ library Boosted3TokenAuraStrategyUtils {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
     using StrategyUtils for StrategyContext;
+    using BalancerVaultStorage for StrategyVaultSettings;
     using BalancerVaultStorage for StrategyVaultState;
 
     function _deposit(
@@ -32,11 +35,12 @@ library Boosted3TokenAuraStrategyUtils {
         uint256 deposit,
         uint256 minBPT
     ) internal returns (uint256 strategyTokensMinted) {
-        uint256 bptMinted = poolContext._joinPoolExactTokensIn(deposit, minBPT);
-
-        // Transfer token to Aura protocol for boosted staking
-        // @audit can we move this into _exitPoolExactBPTIn?
-        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+        uint256 bptMinted = strategyContext._joinPoolAndStake({
+            stakingContext: stakingContext,
+            poolContext: poolContext,
+            deposit: deposit,
+            minBPT: minBPT
+        });
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
@@ -56,16 +60,49 @@ library Boosted3TokenAuraStrategyUtils {
 
         if (bptClaim == 0) return 0;
 
-        // Withdraw BPT tokens back to the vault for redemption
-        // @audit can we move this into _exitPoolExactBPTIn?
-        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
-
-        uint256 primaryBalance = poolContext._exitPoolExactBPTIn(bptClaim, minPrimary);
+        finalPrimaryBalance = _unstakeAndExitPoolExactBPTIn({
+            stakingContext: stakingContext,
+            poolContext: poolContext,
+            bptClaim: bptClaim,
+            minPrimary: minPrimary
+        });
 
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
-        
-        return primaryBalance;
+    }
+
+    function _joinPoolAndStake(
+        StrategyContext memory strategyContext,
+        AuraStakingContext memory stakingContext,
+        ThreeTokenPoolContext memory poolContext,
+        uint256 deposit,
+        uint256 minBPT
+    ) internal returns (uint256 bptMinted) {
+        bptMinted = poolContext._joinPoolExactTokensIn(deposit, minBPT);
+
+        // Check BPT threshold to make sure our share of the pool is
+        // below maxBalancerPoolShare
+        uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
+            poolContext.basePool.basePool.pool.totalSupply()
+        );
+        uint256 bptHeldAfterJoin = strategyContext.totalBPTHeld + bptMinted;
+        if (bptHeldAfterJoin > bptThreshold)
+            revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
+
+        // Transfer token to Aura protocol for boosted staking
+        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+    }
+
+    function _unstakeAndExitPoolExactBPTIn(
+        AuraStakingContext memory stakingContext,
+        ThreeTokenPoolContext memory poolContext,
+        uint256 bptClaim,
+        uint256 minPrimary
+    ) internal returns (uint256 primaryBalance) {
+        // Withdraw BPT tokens back to the vault for redemption
+        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+
+        primaryBalance = poolContext._exitPoolExactBPTIn(bptClaim, minPrimary);    
     }
 
     // @audit this probably deserves more commentary, also would think this makes
