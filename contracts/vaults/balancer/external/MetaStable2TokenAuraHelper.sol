@@ -12,7 +12,6 @@ import {
     StrategyVaultState
 } from "../BalancerVaultTypes.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
-import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../internal/pool/TwoTokenPoolUtils.sol";

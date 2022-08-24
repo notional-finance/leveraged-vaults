@@ -264,9 +264,9 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             if (slippageLimit == 0) {
                 return type(uint256).max;
             }
-            // Invert oracle price
-            // @audit comment this formula and re-arrange such that division is pushed to the end
-            // to the extent possible
+            // For exact out trades, we need to invert the oracle price (1 / oraclePrice)
+            // We increase the precision before we divide because oraclePrice is in
+            // oracle decimals
             oraclePrice = (oracleDecimals * oracleDecimals) / oraclePrice;
             // For exact out trades, limitAmount is the max amount of sellToken the DEX can
             // pull from the contract

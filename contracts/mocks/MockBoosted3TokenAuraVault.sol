@@ -10,7 +10,6 @@ import {
     StrategyVaultState,
     StrategyVaultSettings
 } from "../vaults/balancer/BalancerVaultTypes.sol";
-import {NotionalUtils} from "../utils/NotionalUtils.sol";
 import {Boosted3TokenPoolUtils} from "../vaults/balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {BalancerUtils} from "../vaults/balancer/internal/pool/BalancerUtils.sol";
 import {StrategyUtils} from "../vaults/balancer/internal/strategy/StrategyUtils.sol";

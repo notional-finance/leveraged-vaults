@@ -38,8 +38,9 @@ contract MetaStable2TokenAuraVault is
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        BalancerStrategyBase(notional_, params.baseParams) 
         MetaStable2TokenVaultMixin(
+            notional_, 
+            params.baseParams,
             params.primaryBorrowCurrencyId,
             params.baseParams.balancerPoolId
         )

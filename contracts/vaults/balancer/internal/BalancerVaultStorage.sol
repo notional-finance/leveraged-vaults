@@ -3,7 +3,6 @@ pragma solidity 0.8.15;
 
 import {StrategyVaultSettings, StrategyVaultState} from "../BalancerVaultTypes.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
-import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {BalancerConstants} from "./BalancerConstants.sol";
 
 library BalancerVaultStorage {

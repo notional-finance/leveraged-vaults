@@ -351,9 +351,7 @@ library Boosted3TokenPoolUtils {
         primaryBalance = _exitPoolExactBPTIn(poolContext, bptClaim, minPrimary);    
     }
 
-    // @audit this probably deserves more commentary, also would think this makes
-    // more sense inside Boosted3TokenPoolUtils since Aura has nothing to do with the
-    // valuation
+    // @audit this probably deserves more commentary
     function _convertStrategyToUnderlying(
         ThreeTokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,

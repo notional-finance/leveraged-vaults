@@ -3,11 +3,12 @@ pragma solidity 0.8.15;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {Deployments} from "../../../global/Deployments.sol";
-import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {PoolMixin} from "./PoolMixin.sol";
+import {DeploymentParams} from "../BalancerVaultTypes.sol";
+import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 
 abstract contract TwoTokenPoolMixin is PoolMixin {
     error InvalidPrimaryToken(address token);
@@ -21,10 +22,12 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
     uint8 internal immutable SECONDARY_DECIMALS;
 
     constructor(
+        NotionalProxy notional_, 
+        DeploymentParams memory params,
         uint16 primaryBorrowCurrencyId, 
         bytes32 balancerPoolId
-    ) PoolMixin(balancerPoolId) {
-        PRIMARY_TOKEN = IERC20(NotionalUtils._getNotionalUnderlyingToken(primaryBorrowCurrencyId));
+    ) PoolMixin(notional_, params, balancerPoolId) {
+        PRIMARY_TOKEN = IERC20(_getNotionalUnderlyingToken(primaryBorrowCurrencyId));
         address primaryAddress = BalancerUtils.getTokenAddress(address(PRIMARY_TOKEN));
 
         // prettier-ignore

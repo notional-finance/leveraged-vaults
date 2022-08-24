@@ -9,10 +9,11 @@ import {
 } from "../BalancerVaultTypes.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
-import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {PoolMixin} from "./PoolMixin.sol";
+import {DeploymentParams} from "../BalancerVaultTypes.sol";
+import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 
 abstract contract Boosted3TokenPoolMixin is PoolMixin {
     error InvalidPrimaryToken(address token);
@@ -30,9 +31,14 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
     uint8 internal immutable SECONDARY_DECIMALS;
     uint8 internal immutable TERTIARY_DECIMALS;
 
-    constructor(uint16 primaryBorrowCurrencyId, bytes32 balancerPoolId) PoolMixin(balancerPoolId) {
+    constructor(
+        NotionalProxy notional_, 
+        DeploymentParams memory params,
+        uint16 primaryBorrowCurrencyId, 
+        bytes32 balancerPoolId
+    ) PoolMixin(notional_, params, balancerPoolId) {
         address primaryAddress = BalancerUtils.getTokenAddress(
-            NotionalUtils._getNotionalUnderlyingToken(primaryBorrowCurrencyId)
+            _getNotionalUnderlyingToken(primaryBorrowCurrencyId)
         );
         
         // prettier-ignore

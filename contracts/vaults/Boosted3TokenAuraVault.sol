@@ -26,7 +26,6 @@ import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPool
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
 
 contract Boosted3TokenAuraVault is
-    BalancerStrategyBase,
     Boosted3TokenPoolMixin,
     AuraStakingMixin
 {
@@ -35,8 +34,9 @@ contract Boosted3TokenAuraVault is
     using BalancerVaultStorage for StrategyVaultState;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        BalancerStrategyBase(notional_, params.baseParams) 
         Boosted3TokenPoolMixin(
+            notional_, 
+            params.baseParams,
             params.primaryBorrowCurrencyId,
             params.baseParams.balancerPoolId
         )
