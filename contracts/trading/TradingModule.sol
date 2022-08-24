@@ -231,8 +231,6 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         decimals = RATE_DECIMALS;
     }
 
-    // @audit there should be an internal and external version of this method, the external method should
-    // be exposed on the TradingModule directly
     function getLimitAmount(
         TradeType tradeType,
         address sellToken,
@@ -246,55 +244,14 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         require(oraclePrice >= 0); /// @dev Chainlink rate error
         require(oracleDecimals >= 0); /// @dev Chainlink decimals error
 
-        uint256 sellTokenDecimals = 10 **
-            (
-                sellToken == Deployments.ETH_ADDRESS
-                    ? 18
-                    : IERC20(sellToken).decimals()
-            );
-        uint256 buyTokenDecimals = 10 **
-            (
-                buyToken == Deployments.ETH_ADDRESS
-                    ? 18
-                    : IERC20(buyToken).decimals()
-            );
-
-        if (tradeType == TradeType.EXACT_OUT_SINGLE || tradeType == TradeType.EXACT_OUT_BATCH) {
-            // 0 means no slippage limit
-            if (slippageLimit == 0) {
-                return type(uint256).max;
-            }
-            // For exact out trades, we need to invert the oracle price (1 / oraclePrice)
-            // We increase the precision before we divide because oraclePrice is in
-            // oracle decimals
-            oraclePrice = (oracleDecimals * oracleDecimals) / oraclePrice;
-            // For exact out trades, limitAmount is the max amount of sellToken the DEX can
-            // pull from the contract
-            limitAmount =
-                ((uint256(oraclePrice) +
-                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
-                        Constants.SLIPPAGE_LIMIT_PRECISION)) * amount) /
-                uint256(oracleDecimals);
-
-            // limitAmount is in buyToken precision after the previous calculation,
-            // convert it to sellToken precision
-            limitAmount = (limitAmount * sellTokenDecimals) / buyTokenDecimals;
-        } else {
-            // 0 means no slippage limit
-            if (slippageLimit == 0) {
-                return 0;
-            }
-            // For exact in trades, limitAmount is the min amount of buyToken the contract
-            // expects from the DEX
-            limitAmount =
-                ((uint256(oraclePrice) -
-                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
-                        Constants.SLIPPAGE_LIMIT_PRECISION)) * amount) /
-                uint256(oracleDecimals);
-
-            // limitAmount is in sellToken precision after the previous calculation,
-            // convert it to buyToken precision
-            limitAmount = (limitAmount * buyTokenDecimals) / sellTokenDecimals;
-        }
+        limitAmount = TradeHandler._getLimitAmount({
+            tradeType: tradeType,
+            sellToken: sellToken,
+            buyToken: buyToken,
+            amount: amount,
+            slippageLimit: slippageLimit,
+            oraclePrice: uint256(oraclePrice),
+            oracleDecimals: uint256(oracleDecimals)
+        });
     }
 }

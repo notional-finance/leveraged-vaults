@@ -41,7 +41,7 @@ library Boosted3TokenAuraHelper {
         params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
-        params.minPrimary = params.minPrimary * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+        params.minPrimary = params.minPrimary * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT / 
             uint256(BalancerConstants.VAULT_PERCENT_BASIS);
 
         int256 expectedUnderlyingRedeemed = context.poolContext._convertStrategyToUnderlying({
@@ -77,7 +77,7 @@ library Boosted3TokenAuraHelper {
         params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
             context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
         );
-        params.minPrimary = params.minPrimary * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+        params.minPrimary = params.minPrimary * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT / 
             uint256(BalancerConstants.VAULT_PERCENT_BASIS);
 
         uint256 redeemStrategyTokenAmount 

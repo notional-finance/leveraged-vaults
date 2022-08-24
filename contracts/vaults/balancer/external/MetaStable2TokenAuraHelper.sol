@@ -34,14 +34,13 @@ library MetaStable2TokenAuraHelper {
         uint256 strategyTokensToRedeem,
         RedeemParams memory params
     ) external {
-        // These min primary and min secondary amounts must be within some configured
-        // delta of the current oracle price
-        // This check is only necessary during settlement
-        context.oracleContext._validatePairPrice({
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
+
+        /// @notice params.minPrimary and params.minSecondary are not required for this strategy vault
+        (params.minPrimary, params.minSecondary) = context.oracleContext._getMinExitAmounts({
             poolContext: context.poolContext,
             tradingModule: context.baseStrategy.tradingModule,
-            primaryAmount: params.minPrimary,
-            secondaryAmount: params.minSecondary
+            bptAmount: bptToSettle
         });
         
         int256 expectedUnderlyingRedeemed = context.poolContext._convertStrategyToUnderlying({
@@ -67,20 +66,16 @@ library MetaStable2TokenAuraHelper {
     ) external {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
-        // These min primary and min secondary amounts must be within some configured
-        // delta of the current oracle price
-        // This check is only necessary during settlement
-        context.oracleContext._validatePairPrice({
-            poolContext: context.poolContext,
-            tradingModule: context.baseStrategy.tradingModule,
-            primaryAmount: params.minPrimary,
-            secondaryAmount: params.minSecondary
-        });
-
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             poolContext: context.poolContext.basePool, 
             maturity: maturity, 
             totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
+        });
+
+        (params.minPrimary, params.minSecondary) = context.oracleContext._getMinExitAmounts({
+            poolContext: context.poolContext,
+            tradingModule: context.baseStrategy.tradingModule,
+            bptAmount: bptToSettle
         });
 
         uint256 redeemStrategyTokenAmount = 

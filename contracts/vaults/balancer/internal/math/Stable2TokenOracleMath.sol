@@ -52,9 +52,9 @@ library Stable2TokenOracleMath {
         require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
 
         uint256 oraclePairPrice = answer.toUint();
-        uint256 lowerLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_LOWER_LIMIT) / 
+        uint256 lowerLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PRICE_LOWER_LIMIT) / 
             BalancerConstants.VAULT_PERCENT_BASIS;
-        uint256 upperLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PAIR_PRICE_UPPER_LIMIT) / 
+        uint256 upperLimit = (oraclePairPrice * BalancerConstants.META_STABLE_PRICE_UPPER_LIMIT) / 
             BalancerConstants.VAULT_PERCENT_BASIS;
 
         if (poolPrice < lowerLimit || upperLimit < poolPrice) {
@@ -62,15 +62,37 @@ library Stable2TokenOracleMath {
         }
     }
 
-    /// @notice Validates the Balancer join/exit amounts against the price oracle.
-    /// These values are passed in as parameters. So, we must validate them.
-    function _validatePairPrice(
+    /// @notice calculates the expected min exit amounts for a given BPT amount
+    function _getMinExitAmounts(
         StableOracleContext memory oracleContext,
         TwoTokenPoolContext memory poolContext,
         ITradingModule tradingModule,
-        uint256 primaryAmount,
+        uint256 bptAmount
+    ) internal view returns (uint256 minPrimary, uint256 minSecondary) {
+        // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
+        // Validate the spot price to make sure the pool is not being manipulated
+        uint256 spotPrice = _getSpotPrice(oracleContext, poolContext, 0);
+        _checkPriceLimit(tradingModule, poolContext, spotPrice);
+
+        // min amounts are calculated based on the share of the Balancer pool with a small discount applied
+        uint256 totalBPTSupply = poolContext.basePool.pool.totalSupply();
+        minPrimary = (poolContext.primaryBalance * bptAmount * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT) / 
+            (totalBPTSupply * uint256(BalancerConstants.VAULT_PERCENT_BASIS));
+        minSecondary = (poolContext.secondaryBalance * bptAmount * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT) / 
+            (totalBPTSupply * uint256(BalancerConstants.VAULT_PERCENT_BASIS));
+    }
+
+    function _validateSpotPriceAndPairPrice(
+        StableOracleContext calldata oracleContext,
+        TwoTokenPoolContext calldata poolContext,
+        ITradingModule tradingModule,
+        uint256 primaryAmount, 
         uint256 secondaryAmount
     ) internal view {
+        // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
+        uint256 spotPrice = _getSpotPrice(oracleContext, poolContext, 0);
+        _checkPriceLimit(tradingModule, poolContext, spotPrice);
+
         // We always validate in terms of the primary here so it is the first value in the _balances array
         uint256 invariant = StableMath._calculateInvariant(
             oracleContext.ampParam, StableMath._balances(primaryAmount, secondaryAmount), true // round up
@@ -84,18 +106,5 @@ library Stable2TokenOracleMath {
         });
 
         _checkPriceLimit(tradingModule, poolContext, calculatedPairPrice);
-    }
-
-    function _validateSpotPriceAndPairPrice(
-        StableOracleContext calldata oracleContext,
-        TwoTokenPoolContext calldata poolContext,
-        ITradingModule tradingModule,
-        uint256 primaryAmount, 
-        uint256 secondaryAmount
-    ) internal view {
-        // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
-        uint256 spotPrice = _getSpotPrice(oracleContext, poolContext, 0);
-        _checkPriceLimit(tradingModule, poolContext, spotPrice);
-        _validatePairPrice(oracleContext, poolContext, tradingModule, primaryAmount, secondaryAmount);
     }
 }
