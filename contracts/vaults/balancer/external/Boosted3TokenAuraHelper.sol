@@ -37,27 +37,17 @@ library Boosted3TokenAuraHelper {
     ) external {
         uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
 
-        // Calculate minPrimary using Chainlink oracle data
-        params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
-            context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
-        );
-        params.minPrimary = params.minPrimary * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT / 
-            uint256(BalancerConstants.VAULT_PERCENT_BASIS);
-
-        int256 expectedUnderlyingRedeemed = context.poolContext._convertStrategyToUnderlying({
+        _executeSettlement({
             strategyContext: context.baseStrategy,
             oracleContext: context.oracleContext,
-            strategyTokenAmount: strategyTokensToRedeem
-        });
-
-        context.baseStrategy._executeSettlement({
+            poolContext: context.poolContext,
             maturity: maturity,
-            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            bptToSettle: bptToSettle,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
             params: params
         });
 
-        emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);
+        emit BalancerEvents.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
@@ -73,32 +63,50 @@ library Boosted3TokenAuraHelper {
             totalBPTSupply: context.poolContext._getVirtualSupply(context.oracleContext)
         });
 
+        uint256 redeemStrategyTokenAmount 
+            = context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);
+        
+        _executeSettlement({
+            strategyContext: context.baseStrategy,
+            oracleContext: context.oracleContext,
+            poolContext: context.poolContext,
+            maturity: maturity,
+            bptToSettle: bptToSettle,
+            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            params: params
+        });
+
+        emit BalancerEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+    }
+
+    function _executeSettlement(
+        StrategyContext memory strategyContext,
+        BoostedOracleContext memory oracleContext,
+        ThreeTokenPoolContext memory poolContext,
+        uint256 maturity,
+        uint256 bptToSettle,
+        uint256 redeemStrategyTokenAmount,
+        RedeemParams memory params
+    ) private {
         // Calculate minPrimary using Chainlink oracle data
-        params.minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
-            context.oracleContext, context.baseStrategy.tradingModule, bptToSettle
+        params.minPrimary = poolContext._getTimeWeightedPrimaryBalance(
+            oracleContext, strategyContext.tradingModule, bptToSettle
         );
         params.minPrimary = params.minPrimary * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT / 
             uint256(BalancerConstants.VAULT_PERCENT_BASIS);
 
-        uint256 redeemStrategyTokenAmount 
-            = context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);
-
-        // @audit reduce code duplication here
-        int256 expectedUnderlyingRedeemed = context.poolContext._convertStrategyToUnderlying({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
+        int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
+            strategyContext: strategyContext,
+            oracleContext: oracleContext,
             strategyTokenAmount: redeemStrategyTokenAmount
         });
 
-        context.baseStrategy._executeSettlement({
+        strategyContext._executeSettlement({
             maturity: maturity,
             expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             params: params
         });
-
-        // @audit why not emit inside executeSettlement?
-        emit BalancerEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 
     function reinvestReward(

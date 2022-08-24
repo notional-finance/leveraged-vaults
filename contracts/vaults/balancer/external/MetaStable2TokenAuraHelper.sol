@@ -35,28 +35,18 @@ library MetaStable2TokenAuraHelper {
         RedeemParams memory params
     ) external {
         uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
-
-        /// @notice params.minPrimary and params.minSecondary are not required for this strategy vault
-        (params.minPrimary, params.minSecondary) = context.oracleContext._getMinExitAmounts({
-            poolContext: context.poolContext,
-            tradingModule: context.baseStrategy.tradingModule,
-            bptAmount: bptToSettle
-        });
         
-        int256 expectedUnderlyingRedeemed = context.poolContext._convertStrategyToUnderlying({
+        _executeSettlement({
             strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext.baseOracle,
-            strategyTokenAmount: strategyTokensToRedeem
-        });
-
-        context.baseStrategy._executeSettlement({
+            oracleContext: context.oracleContext,
+            poolContext: context.poolContext,
             maturity: maturity,
-            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            bptToSettle: bptToSettle,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
             params: params
         });
 
-        emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);
+        emit BalancerEvents.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
@@ -72,29 +62,50 @@ library MetaStable2TokenAuraHelper {
             totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
         });
 
-        (params.minPrimary, params.minSecondary) = context.oracleContext._getMinExitAmounts({
-            poolContext: context.poolContext,
-            tradingModule: context.baseStrategy.tradingModule,
-            bptAmount: bptToSettle
-        });
-
         uint256 redeemStrategyTokenAmount = 
             context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);
 
-        int256 expectedUnderlyingRedeemed = context.poolContext._convertStrategyToUnderlying({
+        _executeSettlement({
             strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext.baseOracle,
-            strategyTokenAmount: redeemStrategyTokenAmount
-        });
-
-        context.baseStrategy._executeSettlement({
+            oracleContext: context.oracleContext,
+            poolContext: context.poolContext,
             maturity: maturity,
-            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            bptToSettle: bptToSettle,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             params: params
         });
 
         emit BalancerEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+    }
+
+    function _executeSettlement(
+        StrategyContext memory strategyContext,
+        StableOracleContext memory oracleContext,
+        TwoTokenPoolContext memory poolContext,
+        uint256 maturity,
+        uint256 bptToSettle,
+        uint256 redeemStrategyTokenAmount,
+        RedeemParams memory params
+    ) private {
+        /// @notice params.minPrimary and params.minSecondary are not required for this strategy vault
+        (params.minPrimary, params.minSecondary) = oracleContext._getMinExitAmounts({
+            poolContext: poolContext,
+            tradingModule: strategyContext.tradingModule,
+            bptAmount: bptToSettle
+        });
+
+        int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
+            strategyContext: strategyContext,
+            oracleContext: oracleContext.baseOracle,
+            strategyTokenAmount: redeemStrategyTokenAmount
+        });
+
+        strategyContext._executeSettlement({
+            maturity: maturity,
+            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            params: params
+        });
     }
 
     function reinvestReward(
