@@ -97,7 +97,8 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("balancerOracleWeight", settings["balancerOracleWeight"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("postMaturitySettlementCoolDownInMinutes", settings["postMaturitySettlementCoolDownInMinutes"]), 
-        kwargs.get("feePercentage", settings["feePercentage"])
+        kwargs.get("feePercentage", settings["feePercentage"]),
+        kwargs.get("maxRewardTradeSlippageLimitPercent", settings["maxRewardTradeSlippageLimitPercent"])
     ]
 
 def get_univ3_single_data(fee):

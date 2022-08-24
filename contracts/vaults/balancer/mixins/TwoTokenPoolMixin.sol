@@ -3,11 +3,10 @@ pragma solidity 0.8.15;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {Deployments} from "../../../global/Deployments.sol";
-import {TwoTokenPoolContext} from "../BalancerVaultTypes.sol";
+import {TwoTokenPoolContext, AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {PoolMixin} from "./PoolMixin.sol";
-import {DeploymentParams} from "../BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 
 abstract contract TwoTokenPoolMixin is PoolMixin {
@@ -23,11 +22,9 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
 
     constructor(
         NotionalProxy notional_, 
-        DeploymentParams memory params,
-        uint16 primaryBorrowCurrencyId, 
-        bytes32 balancerPoolId
-    ) PoolMixin(notional_, params, balancerPoolId) {
-        PRIMARY_TOKEN = IERC20(_getNotionalUnderlyingToken(primaryBorrowCurrencyId));
+        AuraVaultDeploymentParams memory params
+    ) PoolMixin(notional_, params) {
+        PRIMARY_TOKEN = IERC20(_getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId));
         address primaryAddress = BalancerUtils.getTokenAddress(address(PRIMARY_TOKEN));
 
         // prettier-ignore
@@ -35,7 +32,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             address[] memory tokens,
             /* uint256[] memory balances */,
             /* uint256 lastChangeBlock */
-        ) = Deployments.BALANCER_VAULT.getPoolTokens(balancerPoolId);
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(params.baseParams.balancerPoolId);
 
         // Balancer tokens are sorted by address, so we need to figure out
         // the correct index for the primary token

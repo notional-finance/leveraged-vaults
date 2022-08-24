@@ -119,11 +119,8 @@ library SettlementUtils {
         uint256 redeemStrategyTokenAmount,
         RedeemParams memory params
     ) internal {
-        // prettier-ignore
-        (
-            /* int256 assetCashRequiredToSettle */,
-            int256 underlyingCashRequiredToSettle
-        ) = Deployments.NOTIONAL.getCashRequiredToSettle(address(this), maturity);
+        ( /* int256 assetCashRequiredToSettle */, int256 underlyingCashRequiredToSettle) 
+            = Deployments.NOTIONAL.getCashRequiredToSettle(address(this), maturity);
 
         // A negative surplus here means the account is insolvent
         // (either expectedUnderlyingRedeemed is negative or
@@ -145,13 +142,10 @@ library SettlementUtils {
             );
         }
 
-        
-        (
-            /* int256 assetCashSurplus */,
-            int256 underlyingCashSurplus
-        ) = Deployments.NOTIONAL.redeemStrategyTokensToCash(
-            maturity, redeemStrategyTokenAmount, abi.encode(params)
-        );
+        ( /* int256 assetCashSurplus */, int256 underlyingCashSurplus) 
+            = Deployments.NOTIONAL.redeemStrategyTokensToCash(
+                maturity, redeemStrategyTokenAmount, abi.encode(params)
+            );
 
         if (underlyingCashSurplus <= 0 && maturity <= block.timestamp) {
             Deployments.NOTIONAL.settleVault(address(this), maturity);

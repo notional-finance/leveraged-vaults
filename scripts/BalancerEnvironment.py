@@ -4,11 +4,8 @@ from brownie import (
     nProxy,
     MetaStable2TokenAuraVault,
     Boosted3TokenAuraVault,
-    Boosted3TokenAuraSettlementHelper,
-    AuraRewardHelperExternal,
-    MetaStable2TokenAuraVaultHelper,
-    MetaStable2TokenAuraSettlementHelper,
-    Boosted3TokenAuraVaultHelper,
+    Boosted3TokenAuraHelper,
+    MetaStable2TokenAuraHelper,
     MockStable2TokenAuraVault,
     MockBoosted3TokenAuraVault
 )
@@ -50,6 +47,7 @@ StrategyConfig = {
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
+            "maxRewardTradeSlippageLimitPercent": 5e6
         },
         "StratBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
@@ -77,6 +75,7 @@ StrategyConfig = {
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
+            "maxRewardTradeSlippageLimitPercent": 5e6
         },
         "StratBoostedPoolUSDCPrimary": {
             "vaultConfig": get_vault_config(
@@ -104,6 +103,7 @@ StrategyConfig = {
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
+            "maxRewardTradeSlippageLimitPercent": 5e6
         }
     }
 }
@@ -115,18 +115,15 @@ class BalancerEnvironment(Environment):
     def deployBalancerVault(self, strat, vaultContract):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
         # Deploy external libs
-        AuraRewardHelperExternal.deploy({"from": self.deployer})
-        MetaStable2TokenAuraVaultHelper.deploy({"from": self.deployer})
-        MetaStable2TokenAuraSettlementHelper.deploy({"from": self.deployer})
-        Boosted3TokenAuraVaultHelper.deploy({"from": self.deployer})
-        Boosted3TokenAuraSettlementHelper.deploy({"from": self.deployer})
+        MetaStable2TokenAuraHelper.deploy({"from": self.deployer})
+        Boosted3TokenAuraHelper.deploy({"from": self.deployer})
 
         impl = vaultContract.deploy(
             self.addresses["notional"],
             [
-                stratConfig["primaryCurrency"],
                 stratConfig["auraRewardPool"],
                 [
+                    stratConfig["primaryCurrency"],
                     stratConfig["poolId"],
                     stratConfig["liquidityGauge"],
                     self.tradingModule.address,
@@ -153,7 +150,8 @@ class BalancerEnvironment(Environment):
                     stratConfig["balancerOracleWeight"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["postMaturitySettlementCoolDownInMinutes"],
-                    stratConfig["feePercentage"]
+                    stratConfig["feePercentage"],
+                    stratConfig["maxRewardTradeSlippageLimitPercent"]
                 ]
             ],
             {"from": self.notional.owner()}

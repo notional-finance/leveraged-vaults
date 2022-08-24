@@ -5,14 +5,14 @@ import {
     ThreeTokenPoolContext, 
     TwoTokenPoolContext, 
     BoostedOracleContext,
-    OracleContext
+    OracleContext,
+    AuraVaultDeploymentParams
 } from "../BalancerVaultTypes.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {PoolMixin} from "./PoolMixin.sol";
-import {DeploymentParams} from "../BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 
 abstract contract Boosted3TokenPoolMixin is PoolMixin {
@@ -33,12 +33,10 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
 
     constructor(
         NotionalProxy notional_, 
-        DeploymentParams memory params,
-        uint16 primaryBorrowCurrencyId, 
-        bytes32 balancerPoolId
-    ) PoolMixin(notional_, params, balancerPoolId) {
+        AuraVaultDeploymentParams memory params
+    ) PoolMixin(notional_, params) {
         address primaryAddress = BalancerUtils.getTokenAddress(
-            _getNotionalUnderlyingToken(primaryBorrowCurrencyId)
+            _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId)
         );
         
         // prettier-ignore
@@ -46,7 +44,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             address[] memory tokens,
             /* uint256[] memory balances */,
             /* uint256 lastChangeBlock */
-        ) = Deployments.BALANCER_VAULT.getPoolTokens(balancerPoolId);
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(params.baseParams.balancerPoolId);
 
         // Boosted pools contain 4 tokens (3 LinearPool LP tokens + 1 BoostedPool LP token)
         require(tokens.length == 4);
@@ -102,7 +100,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         TERTIARY_DECIMALS = uint8(tertiaryDecimals);
     }
 
-    function _boostedOracleContext() internal view returns (BoostedOracleContext memory) {
+    function _boostedOracleContext(uint256[] memory balances) internal view returns (BoostedOracleContext memory) {
         IBoostedPool pool = IBoostedPool(address(BALANCER_POOL_TOKEN));
 
         (
@@ -110,14 +108,6 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             /* bool isUpdating */,
             /* uint256 precision */
         ) = pool.getAmplificationParameter();
-        
-        // @audit this is fairly minor but you call this method twice, not sure
-        // if we weould be able to save a call when we get the threeTokenPoolContext
-        (
-            /* address[] memory tokens */,
-            uint256[] memory balances,
-            /* uint256 lastChangeBlock */
-        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
         return BoostedOracleContext({
             ampParam: value,
@@ -126,13 +116,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         });
     }
 
-    function _threeTokenPoolContext() internal view returns (ThreeTokenPoolContext memory) {
-        (
-            /* address[] memory tokens */,
-            uint256[] memory balances,
-            /* uint256 lastChangeBlock */
-        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
-
+    function _threeTokenPoolContext(uint256[] memory balances) internal view returns (ThreeTokenPoolContext memory) {
         return ThreeTokenPoolContext({
             tertiaryToken: address(TERTIARY_TOKEN),
             tertiaryIndex: TERTIARY_INDEX,

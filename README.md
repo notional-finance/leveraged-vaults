@@ -38,12 +38,10 @@
 | Settlement | SettlementUtils.sol                      |  112 |       34 |         166 |               9.8 |
 | Staking    | AuraStakingUtils.sol                     |   44 |        7 |          59 |               9.1 |
 | Strategy   | StrategyUtils.sol                        |   70 |       12 |          92 |              25.7 |
-| Strategy   | TwoTokenAuraStrategyUtils.sol            |  159 |       14 |         195 |               8.8 |
 | Trading    | TradeHandler.sol                         |  134 |       21 |         181 |              31.3 |
 | Trading    | TradingModule.sol                        |  213 |       53 |         300 |              13.1 |
 | Utils      | BoringOwnable.sol                        |   33 |       16 |          58 |              18.2 |
 | Utils      | EmptyProxy.sol                           |   11 |        3 |          18 |               9.1 |
-| Utils      | NotionalUtils.sol                        |   15 |        2 |          21 |               6.7 |
 | Utils      | TokenUtils.sol                           |   45 |        5 |          60 |              15.6 |
 | Vaults     | BaseStrategyVault.sol                    |  147 |       37 |         216 |              10.2 |
 | Vaults     | Boosted3TokenAuraVault.sol               |  175 |       10 |         206 |               3.4 |

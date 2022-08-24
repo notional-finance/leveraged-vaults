@@ -2,6 +2,7 @@
 pragma solidity 0.8.15;
 
 import {Errors} from "../global/Errors.sol";
+import {Deployments} from "../global/Deployments.sol";
 import {
     DepositParams,
     RedeemParams,
@@ -25,22 +26,13 @@ import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.so
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
 
-contract Boosted3TokenAuraVault is
-    Boosted3TokenPoolMixin,
-    AuraStakingMixin
-{
+contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultState;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        Boosted3TokenPoolMixin(
-            notional_, 
-            params.baseParams,
-            params.primaryBorrowCurrencyId,
-            params.baseParams.balancerPoolId
-        )
-        AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool, params.baseParams.feeReceiver)
+        Boosted3TokenPoolMixin(notional_, params)
     {}
 
     function strategy() external override view returns (bytes4) {
@@ -60,7 +52,13 @@ contract Boosted3TokenAuraVault is
             0  // Balancer oracle weight
         );
 
-        _threeTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
+        (
+            /* address[] memory tokens */,
+            uint256[] memory balances,
+            /* uint256 lastChangeBlock */
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+
+        _threeTokenPoolContext(balances)._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
     function _depositFromNotional(
@@ -185,39 +183,21 @@ contract Boosted3TokenAuraVault is
     }
 
     function _strategyContext() private view returns (Boosted3TokenAuraStrategyContext memory) {
+        (
+            /* address[] memory tokens */,
+            uint256[] memory balances,
+            /* uint256 lastChangeBlock */
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+
         return Boosted3TokenAuraStrategyContext({
-            poolContext: _threeTokenPoolContext(),
-            oracleContext: _boostedOracleContext(),
+            poolContext: _threeTokenPoolContext(balances),
+            oracleContext: _boostedOracleContext(balances),
             stakingContext: _auraStakingContext(),
-            baseStrategy: StrategyContext({
-                totalBPTHeld: _bptHeld(),
-                settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
-                tradingModule: TRADING_MODULE,
-                vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
-                vaultState: BalancerVaultStorage.getStrategyVaultState(),
-                feeReceiver: FEE_RECEIVER
-            })
+            baseStrategy: _baseStrategyContext()
         });
     }
     
     function getStrategyContext() external view returns (Boosted3TokenAuraStrategyContext memory) {
         return _strategyContext();
-    }
-    
-    // to get the full _strategyContext() since both of these methods just sit on StrategyUtils
-    function convertBPTClaimToStrategyTokens(uint256 bptClaim)
-        external view returns (uint256 strategyTokenAmount) {
-        return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(bptClaim);
-    }
-
-    /// @notice Converts strategy tokens to BPT
-    function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount) 
-        external view returns (uint256 bptClaim) {
-        return _strategyContext().baseStrategy._convertStrategyTokensToBPTClaim(strategyTokenAmount);
-    }
-
-    /// @dev Gets the total BPT held by the aura reward pool
-    function _bptHeld() internal view returns (uint256) {
-        return AURA_REWARD_POOL.balanceOf(address(this));
     }
 }

@@ -15,6 +15,7 @@ import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITra
 import {IERC20} from "../../../interfaces/IERC20.sol";
 
 struct DeploymentParams {
+    uint16 primaryBorrowCurrencyId;
     bytes32 balancerPoolId;
     ILiquidityGauge liquidityGauge;
     ITradingModule tradingModule;
@@ -23,7 +24,6 @@ struct DeploymentParams {
 }
 
 struct AuraVaultDeploymentParams {
-    uint16 primaryBorrowCurrencyId;
     IAuraRewardPool auraRewardPool;
     DeploymentParams baseParams;
 }

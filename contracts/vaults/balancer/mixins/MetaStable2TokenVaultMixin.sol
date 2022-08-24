@@ -5,18 +5,13 @@ import {IMetaStablePool} from "../../../../interfaces/balancer/IBalancerPool.sol
 import {StableOracleContext} from "../BalancerVaultTypes.sol";
 import {BalancerOracleMixin} from "./BalancerOracleMixin.sol";
 import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
-import {DeploymentParams} from "../BalancerVaultTypes.sol";
+import {AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 
 abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracleMixin {
-    constructor(
-        NotionalProxy notional_, 
-        DeploymentParams memory params,
-        uint16 primaryBorrowCurrencyId, 
-        bytes32 balancerPoolId
-    )
-        TwoTokenPoolMixin(notional_, params, primaryBorrowCurrencyId, balancerPoolId)
-        BalancerOracleMixin(balancerPoolId) 
+    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
+        TwoTokenPoolMixin(notional_, params)
+        BalancerOracleMixin(params.baseParams.balancerPoolId) 
     {
         // The oracle is required for the vault to behave properly
         (/* */, /* */, /* */, /* */, bool oracleEnabled) = 

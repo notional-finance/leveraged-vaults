@@ -27,24 +27,14 @@ import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.so
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {MetaStable2TokenAuraHelper} from "./balancer/external/MetaStable2TokenAuraHelper.sol";
 
-contract MetaStable2TokenAuraVault is
-    BalancerStrategyBase,
-    MetaStable2TokenVaultMixin,
-    AuraStakingMixin
-{
+contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     using BalancerVaultStorage for StrategyVaultSettings;
     using BalancerVaultStorage for StrategyVaultState;
     using StrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        MetaStable2TokenVaultMixin(
-            notional_, 
-            params.baseParams,
-            params.primaryBorrowCurrencyId,
-            params.baseParams.balancerPoolId
-        )
-        AuraStakingMixin(params.baseParams.liquidityGauge, params.auraRewardPool, params.baseParams.feeReceiver)
+        MetaStable2TokenVaultMixin(notional_, params)
     {}
 
     function strategy() external override view returns (bytes4) {
@@ -187,36 +177,11 @@ contract MetaStable2TokenAuraVault is
             poolContext: _twoTokenPoolContext(),
             oracleContext: _stableOracleContext(),
             stakingContext: _auraStakingContext(),
-            baseStrategy: StrategyContext({
-                totalBPTHeld: _bptHeld(),
-                settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
-                tradingModule: TRADING_MODULE,
-                vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
-                vaultState: BalancerVaultStorage.getStrategyVaultState(),
-                feeReceiver: FEE_RECEIVER
-            })
+            baseStrategy: _baseStrategyContext()
         });
     }
     
     function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory) {
         return _strategyContext();
     }
-    
-    // @audit consolidate some of this into the pool mixin
-    function convertBPTClaimToStrategyTokens(uint256 bptClaim, uint256 maturity)
-        external view returns (uint256 strategyTokenAmount) {
-        return _strategyContext().baseStrategy._convertBPTClaimToStrategyTokens(bptClaim);
-    }
-
-   /// @notice Converts strategy tokens to BPT
-    function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount, uint256 maturity) 
-        external view returns (uint256 bptClaim) {
-        return _strategyContext().baseStrategy._convertStrategyTokensToBPTClaim(strategyTokenAmount);
-    }
-
-    /// @dev Gets the total BPT held by the aura reward pool
-    function _bptHeld() internal view returns (uint256) {
-        return AURA_REWARD_POOL.balanceOf(address(this));
-    }
-
 }
