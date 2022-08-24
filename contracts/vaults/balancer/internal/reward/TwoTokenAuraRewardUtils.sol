@@ -17,12 +17,10 @@ import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
-import {TwoTokenAuraStrategyUtils} from "../strategy/TwoTokenAuraStrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 
 library TwoTokenAuraRewardUtils {
     using TwoTokenPoolUtils for TwoTokenPoolContext;
-    using TwoTokenAuraStrategyUtils for StrategyContext;
     using AuraStakingUtils for AuraStakingContext;
 
     function _validateTrades(

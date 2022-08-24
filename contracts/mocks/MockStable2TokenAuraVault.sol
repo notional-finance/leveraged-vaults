@@ -10,7 +10,6 @@ import {
     AuraStakingContext,
     StrategyVaultSettings
 } from "../vaults/balancer/BalancerVaultTypes.sol";
-import {TwoTokenAuraStrategyUtils} from "../vaults/balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
 import {Stable2TokenOracleMath} from "../vaults/balancer/internal/math/Stable2TokenOracleMath.sol";
 import {BalancerVaultStorage} from "../vaults/balancer/internal/BalancerVaultStorage.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
@@ -19,7 +18,6 @@ import {MockTwoTokenVaultBase} from "./MockTwoTokenVaultBase.sol";
 
 contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
     using Stable2TokenOracleMath for StableOracleContext;
-    using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using BalancerVaultStorage for StrategyVaultSettings;
 
@@ -45,9 +43,20 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
 
     function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 minBPT) 
         external returns (uint256 bptMinted) {
-        return getStrategyContext().baseStrategy._joinPoolAndStake(
-            stakingContext, poolContext, primaryAmount, secondaryAmount, minBPT
+        return poolContext._joinPoolAndStake(
+            _baseStrategyContext(), stakingContext, primaryAmount, secondaryAmount, minBPT
         );
+    }
+
+    function _baseStrategyContext() internal view returns (StrategyContext memory) {
+        return StrategyContext({
+            totalBPTHeld: _bptHeld(),
+            settlementPeriodInSeconds: settlementPeriodInSeconds,
+            tradingModule: tradingModule,
+            vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
+            vaultState: BalancerVaultStorage.getStrategyVaultState(),
+            feeReceiver: feeReceiver
+        });
     }
 
     function getStrategyContext() public view returns (MetaStable2TokenAuraStrategyContext memory) {
@@ -55,14 +64,7 @@ contract MockStable2TokenAuraVault is MockTwoTokenVaultBase {
             poolContext: poolContext,
             oracleContext: oracleContext,
             stakingContext: stakingContext,
-            baseStrategy: StrategyContext({
-                totalBPTHeld: _bptHeld(),
-                settlementPeriodInSeconds: settlementPeriodInSeconds,
-                tradingModule: tradingModule,
-                vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
-                vaultState: BalancerVaultStorage.getStrategyVaultState(),
-                feeReceiver: feeReceiver
-            })
+            baseStrategy: _baseStrategyContext()
         });        
     }
     

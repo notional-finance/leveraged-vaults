@@ -21,7 +21,7 @@ import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol";
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
-import {Boosted3TokenAuraStrategyUtils} from "./balancer/internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
+import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
 
@@ -32,7 +32,7 @@ contract Boosted3TokenAuraVault is
 {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
-    using Boosted3TokenAuraStrategyUtils for StrategyContext;
+    using BalancerVaultStorage for StrategyVaultState;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         BalancerStrategyBase(notional_, params.baseParams) 
@@ -73,9 +73,9 @@ contract Boosted3TokenAuraVault is
         DepositParams memory params = abi.decode(data, (DepositParams));
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
 
-        strategyTokensMinted = context.baseStrategy._deposit({
+        strategyTokensMinted = context.poolContext._deposit({
+            strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext, 
-            poolContext: context.poolContext,
             deposit: deposit,
             minBPT: params.minBPT
         });
@@ -90,9 +90,9 @@ contract Boosted3TokenAuraVault is
         RedeemParams memory params = abi.decode(data, (RedeemParams));
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
 
-        finalPrimaryBalance = context.baseStrategy._redeem({
+        finalPrimaryBalance = context.poolContext._redeem({
+            strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,
-            poolContext: context.poolContext,
             strategyTokens: strategyTokens,
             minPrimary: params.minPrimary
         });
@@ -109,9 +109,18 @@ contract Boosted3TokenAuraVault is
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert Errors.NotInSettlementWindow();
         }
-        Boosted3TokenAuraHelper.settleVaultNormal(
-            _strategyContext(), maturity, strategyTokensToRedeem, data
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultState.lastSettlementTimestamp,
+            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
+            data
         );
+        Boosted3TokenAuraHelper.settleVault(
+            context, maturity, strategyTokensToRedeem, params
+        );
+        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
+        context.baseStrategy.vaultState.setStrategyVaultState();
     }
 
     function settleVaultPostMaturity(
@@ -122,9 +131,18 @@ contract Boosted3TokenAuraVault is
         if (block.timestamp < maturity) {
             revert Errors.HasNotMatured();
         }
-        Boosted3TokenAuraHelper.settleVaultPostMaturity(
-            _strategyContext(), maturity, strategyTokensToRedeem, data
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
+            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
+            data
         );
+        Boosted3TokenAuraHelper.settleVault(
+            context, maturity, strategyTokensToRedeem, params
+        );
+        context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
+        context.baseStrategy.vaultState.setStrategyVaultState();  
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
@@ -145,9 +163,9 @@ contract Boosted3TokenAuraVault is
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
+        underlyingValue = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
             oracleContext: context.oracleContext,
-            poolContext: context.poolContext,
             strategyTokenAmount: strategyTokenAmount
         });
     }

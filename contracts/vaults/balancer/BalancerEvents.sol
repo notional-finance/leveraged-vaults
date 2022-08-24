@@ -17,7 +17,6 @@ library BalancerEvents {
         uint256 redeemStrategyTokenAmount
     );
 
-    // @audit this event is never fired
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
     event ClaimedRewardTokens(IERC20[] rewardTokens, uint256[] claimedBalances);

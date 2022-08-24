@@ -72,11 +72,8 @@ abstract contract AuraStakingMixin {
 
             if (claimedBalances[i] > 0 && feePercentage != 0 && FEE_RECEIVER != address(0)) {
                 uint256 feeAmount = claimedBalances[i] * feePercentage / BalancerConstants.VAULT_PERCENT_BASIS;
-                // @audit doesn't the claimedBalance need to decrease by the feeAmount?
-                // @audit-ok claimedBalances is only used for return values, but that should be noted here
-                // or we make this internal and enforce it. We don't want to run into a situation where
-                // the return value is used later and it is inaccurate.
                 rewardTokens[i].checkTransfer(FEE_RECEIVER, feeAmount);
+                claimedBalances[i] -= feeAmount;
             }
         }
 

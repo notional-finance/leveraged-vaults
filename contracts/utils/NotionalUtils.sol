@@ -13,9 +13,4 @@ library NotionalUtils {
         return assetToken.tokenType == TokenType.NonMintable ?
             assetToken.tokenAddress : underlyingToken.tokenAddress;
     }
-
-    function _totalSupplyInMaturity(uint256 maturity) internal view returns (uint256) {
-        VaultState memory vaultState = Deployments.NOTIONAL.getVaultState(address(this), maturity);
-        return vaultState.totalStrategyTokens;
-    }
 }

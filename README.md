@@ -37,7 +37,6 @@
 | Reward     | TwoTokenAuraRewardUtils.sol              |   98 |       11 |         121 |               9.2 |
 | Settlement | SettlementUtils.sol                      |  112 |       34 |         166 |               9.8 |
 | Staking    | AuraStakingUtils.sol                     |   44 |        7 |          59 |               9.1 |
-| Strategy   | Boosted3TokenAuraStrategyUtils.sol       |   63 |       19 |          96 |              12.7 |
 | Strategy   | StrategyUtils.sol                        |   70 |       12 |          92 |              25.7 |
 | Strategy   | TwoTokenAuraStrategyUtils.sol            |  159 |       14 |         195 |               8.8 |
 | Trading    | TradeHandler.sol                         |  134 |       21 |         181 |              31.3 |

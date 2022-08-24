@@ -2,6 +2,7 @@
 pragma solidity 0.8.15;
 
 import {StrategyVaultSettings, StrategyVaultState} from "../BalancerVaultTypes.sol";
+import {BalancerEvents} from "../BalancerEvents.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {BalancerConstants} from "./BalancerConstants.sol";
 
@@ -40,6 +41,8 @@ library BalancerVaultStorage {
         mapping(uint256 => StrategyVaultSettings) storage store = _settings();
         // Hardcode to the zero slot
         store[0] = settings;
+
+        emit BalancerEvents.StrategyVaultSettingsUpdated(settings);
     }
 
     function getStrategyVaultState() internal view returns (StrategyVaultState memory) {
@@ -53,7 +56,6 @@ library BalancerVaultStorage {
         store[0] = state;
     }
 
-    // @audit threshold is not checked in all the correct locations
     function _bptThreshold(StrategyVaultSettings memory strategyVaultSettings, uint256 totalBPTSupply) 
         internal pure returns (uint256) {
         return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / BalancerConstants.VAULT_PERCENT_BASIS;

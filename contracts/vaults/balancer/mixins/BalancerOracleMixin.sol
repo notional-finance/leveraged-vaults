@@ -7,14 +7,15 @@ import {Deployments} from "../../../global/Deployments.sol";
 import {BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
 
 abstract contract BalancerOracleMixin {
-    uint256 internal immutable MAX_ORACLE_QUERY_WINDOW;
+    uint32 internal immutable MAX_ORACLE_QUERY_WINDOW;
 
     constructor(bytes32 balancerPoolId) {
         (address pool, /* */) = Deployments.BALANCER_VAULT.getPool(balancerPoolId);
 
-        MAX_ORACLE_QUERY_WINDOW = IPriceOracle(pool).getLargestSafeQueryWindow();
-        // @audit should this also be greater than zero?
-        require(MAX_ORACLE_QUERY_WINDOW <= type(uint32).max); /// @dev largestQueryWindow overflow
+        uint256 maxOracleQueryWindow = IPriceOracle(pool).getLargestSafeQueryWindow();
+        /// @dev getLargestSafeQueryWindow overflow
+        require(maxOracleQueryWindow > 0 && maxOracleQueryWindow <= type(uint32).max); 
+        MAX_ORACLE_QUERY_WINDOW = uint32(maxOracleQueryWindow);
     }
 
     function _oracleContext() internal view returns (OracleContext memory) {

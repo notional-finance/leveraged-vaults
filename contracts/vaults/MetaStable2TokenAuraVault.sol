@@ -23,7 +23,7 @@ import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol";
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
-import {TwoTokenAuraStrategyUtils} from "./balancer/internal/strategy/TwoTokenAuraStrategyUtils.sol";
+import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {MetaStable2TokenAuraHelper} from "./balancer/external/MetaStable2TokenAuraHelper.sol";
 
@@ -33,8 +33,8 @@ contract MetaStable2TokenAuraVault is
     AuraStakingMixin
 {
     using BalancerVaultStorage for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultState;
     using StrategyUtils for StrategyContext;
-    using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
@@ -57,7 +57,7 @@ contract MetaStable2TokenAuraVault is
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         BalancerVaultStorage.setStrategyVaultSettings(
-            params.settings, uint32(MAX_ORACLE_QUERY_WINDOW), BalancerConstants.VAULT_PERCENT_BASIS
+            params.settings, MAX_ORACLE_QUERY_WINDOW, BalancerConstants.VAULT_PERCENT_BASIS
         );
         _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
@@ -71,9 +71,9 @@ contract MetaStable2TokenAuraVault is
         DepositParams memory params = abi.decode(data, (DepositParams));
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
 
-        strategyTokensMinted = context.baseStrategy._deposit({
-            stakingContext: context.stakingContext, 
-            poolContext: context.poolContext,
+        strategyTokensMinted = context.poolContext._deposit({
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
             deposit: deposit,
             params: params
         });
@@ -88,9 +88,9 @@ contract MetaStable2TokenAuraVault is
         RedeemParams memory params = abi.decode(data, (RedeemParams));
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
 
-        finalPrimaryBalance = context.baseStrategy._redeem({
+        finalPrimaryBalance = context.poolContext._redeem({
+            strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,
-            poolContext: context.poolContext,
             account: account,
             strategyTokens: strategyTokens,
             maturity: maturity,
@@ -104,9 +104,9 @@ contract MetaStable2TokenAuraVault is
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
+        underlyingValue = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
             oracleContext: context.oracleContext.baseOracle,
-            poolContext: context.poolContext,
             strategyTokenAmount: strategyTokenAmount
         });
     }
@@ -122,9 +122,18 @@ contract MetaStable2TokenAuraVault is
         if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
             revert Errors.NotInSettlementWindow();
         }
-        MetaStable2TokenAuraHelper.settleVaultNormal(
-            _strategyContext(), maturity, strategyTokensToRedeem, data
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultState.lastSettlementTimestamp,
+            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
+            data
         );
+        MetaStable2TokenAuraHelper.settleVault(
+            context, maturity, strategyTokensToRedeem, params
+        );
+        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
+        context.baseStrategy.vaultState.setStrategyVaultState();
     }
 
     function settleVaultPostMaturity(
@@ -135,9 +144,18 @@ contract MetaStable2TokenAuraVault is
         if (block.timestamp < maturity) {
             revert Errors.HasNotMatured();
         }
-        MetaStable2TokenAuraHelper.settleVaultPostMaturity(
-            _strategyContext(), maturity, strategyTokensToRedeem, data
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
+            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
+            data
         );
+        MetaStable2TokenAuraHelper.settleVault(
+            context, maturity, strategyTokensToRedeem, params
+        );
+        context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
+        context.baseStrategy.vaultState.setStrategyVaultState();  
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
@@ -159,7 +177,7 @@ contract MetaStable2TokenAuraVault is
         onlyNotionalOwner
     {
         BalancerVaultStorage.setStrategyVaultSettings(
-            settings, uint32(MAX_ORACLE_QUERY_WINDOW), BalancerConstants.VAULT_PERCENT_BASIS
+            settings, MAX_ORACLE_QUERY_WINDOW, BalancerConstants.VAULT_PERCENT_BASIS
         );
     }
 

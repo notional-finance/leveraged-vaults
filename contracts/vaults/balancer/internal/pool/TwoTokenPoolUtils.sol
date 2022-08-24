@@ -1,19 +1,44 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {TwoTokenPoolContext, OracleContext, PoolParams} from "../../BalancerVaultTypes.sol";
+import {
+    TwoTokenPoolContext, 
+    OracleContext, 
+    PoolParams,
+    DepositParams,
+    DynamicTradeParams,
+    DepositTradeParams,
+    RedeemParams,
+    AuraStakingContext,
+    StrategyContext,
+    StrategyVaultSettings,
+    StrategyVaultState
+} from "../../BalancerVaultTypes.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
+import {Constants} from "../../../../global/Constants.sol";
+import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
+import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
-import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
+import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
+import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
+import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 
 library TwoTokenPoolUtils {
     using TokenUtils for IERC20;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
+    using TradeHandler for Trade;
+    using TypeConvert for uint256;
+    using StrategyUtils for StrategyContext;
+    using AuraStakingUtils for AuraStakingContext;
+    using BalancerVaultStorage for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultState;
 
     /// @notice Returns parameters for joining and exiting Balancer pools
     function _getPoolParams(
@@ -139,5 +164,181 @@ library TwoTokenPoolUtils {
         IERC20(poolContext.secondaryToken).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
         // Allow BPT spender to pull BALANCER_POOL_TOKEN
         IERC20(address(poolContext.basePool.pool)).checkApprove(bptSpender, type(uint256).max);
+    }
+
+    /// @notice Trade primary currency for secondary if the trade is specified
+    function _tradePrimaryForSecondary(
+        TwoTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        bytes memory data
+    ) private returns (uint256 primarySold, uint256 secondaryBought) {
+        (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
+
+        (primarySold, secondaryBought) = StrategyUtils._executeDynamicTradeExactIn({
+            params: params.tradeParams, 
+            tradingModule: strategyContext.tradingModule, 
+            sellToken: poolContext.primaryToken, 
+            buyToken: poolContext.secondaryToken, 
+            amount: params.tradeAmount
+        });
+    }
+
+    function _deposit(
+        TwoTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        AuraStakingContext memory stakingContext,
+        uint256 deposit,
+        DepositParams memory params
+    ) internal returns (uint256 strategyTokensMinted) {
+        uint256 secondaryAmount;
+        if (params.tradeData.length != 0) {
+            // Allows users to trade on a different DEX instead of Balancer when joining
+            (uint256 primarySold, uint256 secondaryBought) = _tradePrimaryForSecondary({
+                poolContext: poolContext,
+                strategyContext: strategyContext,
+                data: params.tradeData
+            });
+            deposit -= primarySold;
+            secondaryAmount = secondaryBought;
+        }
+
+        uint256 bptMinted = poolContext._joinPoolAndStake({
+            strategyContext: strategyContext,
+            stakingContext: stakingContext,
+            primaryAmount: deposit,
+            secondaryAmount: secondaryAmount,
+            minBPT: params.minBPT
+        });
+
+        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
+
+        // Update global supply count
+        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
+    }
+
+    function _sellSecondaryBalance(
+        TwoTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        RedeemParams memory params,
+        uint256 secondaryBalance
+    ) private returns (uint256 primaryPurchased) {
+        (DynamicTradeParams memory tradeParams) = abi.decode(
+            params.secondaryTradeParams, (DynamicTradeParams)
+        );
+
+        ( /*uint256 amountSold */, primaryPurchased) = 
+            StrategyUtils._executeDynamicTradeExactIn({
+                params: tradeParams,
+                tradingModule: strategyContext.tradingModule,
+                sellToken: poolContext.secondaryToken,
+                buyToken: poolContext.primaryToken,
+                amount: secondaryBalance
+            });
+    }
+
+    function _redeem(
+        TwoTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        AuraStakingContext memory stakingContext,
+        address account,
+        uint256 strategyTokens,
+        uint256 maturity,
+        RedeemParams memory params
+    ) internal returns (uint256 finalPrimaryBalance) {
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
+
+        if (bptClaim == 0) return 0;
+
+        // Underlying token balances from exiting the pool
+        (uint256 primaryBalance, uint256 secondaryBalance)
+            = _unstakeAndExitPool(
+                poolContext, stakingContext, bptClaim, params.minPrimary, params.minSecondary
+            );
+        
+        finalPrimaryBalance = primaryBalance;
+        if (secondaryBalance > 0) {
+            uint256 primaryPurchased = _sellSecondaryBalance(
+                poolContext, strategyContext, params, secondaryBalance
+            );
+
+            finalPrimaryBalance += primaryPurchased;
+        }
+
+        // Update global strategy token balance
+        // This only needs to be updated for normal redemption
+        // and emergency settlement. For normal and post-maturity settlement
+        // scenarios (account == address(this) && data.length == 32), we
+        // update totalStrategyTokenGlobal before this function is called.
+        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
+    }
+
+    function _joinPoolAndStake(
+        TwoTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        AuraStakingContext memory stakingContext,
+        uint256 primaryAmount,
+        uint256 secondaryAmount,
+        uint256 minBPT
+    ) internal returns (uint256 bptMinted) {
+        // prettier-ignore
+        PoolParams memory poolParams = poolContext._getPoolParams( 
+            primaryAmount, 
+            secondaryAmount,
+            true // isJoin
+        );
+
+        bptMinted = BalancerUtils._joinPoolExactTokensIn({
+            context: poolContext.basePool,
+            params: poolParams,
+            minBPT: minBPT
+        });
+
+        // Check BPT threshold to make sure our share of the pool is
+        // below maxBalancerPoolShare
+        uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
+            poolContext.basePool.pool.totalSupply()
+        );
+        uint256 bptHeldAfterJoin = strategyContext.totalBPTHeld + bptMinted;
+        if (bptHeldAfterJoin > bptThreshold)
+            revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
+
+        // Transfer token to Aura protocol for boosted staking
+        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+    }
+
+    function _unstakeAndExitPool(
+        TwoTokenPoolContext memory poolContext,
+        AuraStakingContext memory stakingContext,
+        uint256 bptClaim,
+        uint256 minPrimary,
+        uint256 minSecondary
+    ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
+        // Withdraw BPT tokens back to the vault for redemption
+        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+
+        uint256[] memory exitBalances = BalancerUtils._exitPoolExactBPTIn({
+            context: poolContext.basePool,
+            params: poolContext._getPoolParams(minPrimary, minSecondary, false), // isJoin = false
+            bptExitAmount: bptClaim
+        });
+        
+        (primaryBalance, secondaryBalance) 
+            = (exitBalances[poolContext.primaryIndex], exitBalances[poolContext.secondaryIndex]);
+    }
+
+    function _convertStrategyToUnderlying(
+        TwoTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        OracleContext memory oracleContext,
+        uint256 strategyTokenAmount
+    ) internal view returns (int256 underlyingValue) {
+        
+        uint256 bptClaim 
+            = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
+
+        underlyingValue 
+            = poolContext._getTimeWeightedPrimaryBalance(oracleContext, bptClaim).toInt();
     }
 }

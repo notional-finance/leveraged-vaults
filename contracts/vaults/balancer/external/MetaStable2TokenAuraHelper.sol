@@ -15,34 +15,26 @@ import {BalancerEvents} from "../BalancerEvents.sol";
 import {NotionalUtils} from "../../../utils/NotionalUtils.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
-import {TwoTokenAuraStrategyUtils} from "../internal/strategy/TwoTokenAuraStrategyUtils.sol";
+import {TwoTokenPoolUtils} from "../internal/pool/TwoTokenPoolUtils.sol";
 import {TwoTokenAuraRewardUtils} from "../internal/reward/TwoTokenAuraRewardUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 import {BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
 library MetaStable2TokenAuraHelper {
-    using TwoTokenAuraStrategyUtils for StrategyContext;
     using TwoTokenAuraRewardUtils for TwoTokenPoolContext;
+    using TwoTokenPoolUtils for TwoTokenPoolContext;
     using Stable2TokenOracleMath for StableOracleContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultSettings;
-    using BalancerVaultStorage for StrategyVaultState;
 
-    function settleVaultNormal(
-        MetaStable2TokenAuraStrategyContext memory context,
+    function settleVault(
+        MetaStable2TokenAuraStrategyContext calldata context,
         uint256 maturity,
         uint256 strategyTokensToRedeem,
-        bytes calldata data
+        RedeemParams memory params
     ) external {
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.baseStrategy.vaultState.lastSettlementTimestamp,
-            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
-            context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
-            data
-        );
-
         // These min primary and min secondary amounts must be within some configured
         // delta of the current oracle price
         // This check is only necessary during settlement
@@ -53,9 +45,9 @@ library MetaStable2TokenAuraHelper {
             secondaryAmount: params.minSecondary
         });
         
-        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
+        int256 expectedUnderlyingRedeemed = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
             oracleContext: context.oracleContext.baseOracle,
-            poolContext: context.poolContext,
             strategyTokenAmount: strategyTokensToRedeem
         });
 
@@ -65,57 +57,12 @@ library MetaStable2TokenAuraHelper {
             redeemStrategyTokenAmount: strategyTokensToRedeem,
             params: params
         });
-
-        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
-        context.baseStrategy.vaultState.setStrategyVaultState();
-
-        emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);
-    }
-
-    function settleVaultPostMaturity(
-        MetaStable2TokenAuraStrategyContext memory context,
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        bytes calldata data
-    ) external {
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
-            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
-            context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
-            data
-        );
-
-        // These min primary and min secondary amounts must be within some configured
-        // delta of the current oracle price
-        // This check is only necessary during settlement
-        context.oracleContext._validatePairPrice({
-            poolContext: context.poolContext,
-            tradingModule: context.baseStrategy.tradingModule,
-            primaryAmount: params.minPrimary,
-            secondaryAmount: params.minSecondary
-        });
-
-        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
-            oracleContext: context.oracleContext.baseOracle,
-            poolContext: context.poolContext,
-            strategyTokenAmount: strategyTokensToRedeem
-        });
-
-        context.baseStrategy._executeSettlement({
-            maturity: maturity,
-            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            redeemStrategyTokenAmount: strategyTokensToRedeem,
-            params: params
-        });
-
-        context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
-        context.baseStrategy.vaultState.setStrategyVaultState();  
 
         emit BalancerEvents.VaultSettlement(maturity, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
-        MetaStable2TokenAuraStrategyContext memory context, 
+        MetaStable2TokenAuraStrategyContext calldata context, 
         uint256 maturity, 
         bytes calldata data
     ) external {
@@ -131,19 +78,18 @@ library MetaStable2TokenAuraHelper {
             secondaryAmount: params.minSecondary
         });
 
-        (uint256 bptToSettle, uint256 maxUnderlyingSurplus) = 
-            context.baseStrategy._getEmergencySettlementParams({
-                poolContext: context.poolContext.basePool, 
-                maturity: maturity, 
-                totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
-            });
+        uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
+            poolContext: context.poolContext.basePool, 
+            maturity: maturity, 
+            totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
+        });
 
         uint256 redeemStrategyTokenAmount = 
             context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);
 
-        int256 expectedUnderlyingRedeemed = context.baseStrategy._convertStrategyToUnderlying({
+        int256 expectedUnderlyingRedeemed = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
             oracleContext: context.oracleContext.baseOracle,
-            poolContext: context.poolContext,
             strategyTokenAmount: redeemStrategyTokenAmount
         });
 
@@ -184,9 +130,9 @@ library MetaStable2TokenAuraHelper {
             secondaryAmount: secondaryAmount
         });
 
-        uint256 bptAmount = strategyContext._joinPoolAndStake({
+        uint256 bptAmount = poolContext._joinPoolAndStake({
+            strategyContext: strategyContext,
             stakingContext: context.stakingContext,
-            poolContext: poolContext,
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount,
             /// @notice minBPT is not required to be set by the caller because primaryAmount

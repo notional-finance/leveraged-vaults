@@ -9,12 +9,12 @@ import {
     StrategyVaultSettings,
     StrategyVaultState
 } from "../../BalancerVaultTypes.sol";
+import {VaultState} from "../../../../global/Types.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
-import {NotionalUtils} from "../../../../utils/NotionalUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
 
@@ -54,13 +54,12 @@ library SettlementUtils {
     }
 
     /// @notice Calculates the amount of BPT availTable for emergency settlement
-    // @audit make private
     function _getEmergencySettlementBPTAmount(
         uint256 bptTotalSupply,
         uint16 maxBalancerPoolShare,
         uint256 totalBPTHeld,
         uint256 bptHeldInMaturity
-    ) internal pure returns (uint256 bptToSettle) {
+    ) private pure returns (uint256 bptToSettle) {
         // desiredPoolShare = maxPoolShare * bufferPercentage
         uint256 desiredPoolShare = (maxBalancerPoolShare *
             BalancerConstants.BALANCER_POOL_SHARE_BUFFER) /
@@ -79,12 +78,17 @@ library SettlementUtils {
         }
     }
 
+    function _totalSupplyInMaturity(uint256 maturity) private view returns (uint256) {
+        VaultState memory vaultState = Deployments.NOTIONAL.getVaultState(address(this), maturity);
+        return vaultState.totalStrategyTokens;
+    }
+
     function _getEmergencySettlementParams(
         StrategyContext memory strategyContext,
         PoolContext memory poolContext,
         uint256 maturity,
         uint256 totalBPTSupply
-    )  internal view returns(uint256 bptToSettle, uint256 maxUnderlyingSurplus) {
+    )  internal view returns(uint256 bptToSettle) {
         StrategyVaultSettings memory settings = strategyContext.vaultSettings;
         StrategyVaultState memory state = strategyContext.vaultState;
 
@@ -96,7 +100,7 @@ library SettlementUtils {
 
         uint256 bptHeldInMaturity = _getBPTHeldInMaturity(
             state,
-            NotionalUtils._totalSupplyInMaturity(maturity),
+            _totalSupplyInMaturity(maturity),
             strategyContext.totalBPTHeld
         );
 
@@ -106,8 +110,6 @@ library SettlementUtils {
             totalBPTHeld: strategyContext.totalBPTHeld,
             bptHeldInMaturity: bptHeldInMaturity
         });
-        // @audit this parameter is never used, _executeSettlement just reads it off the heap
-        maxUnderlyingSurplus = settings.maxUnderlyingSurplus;
     }
 
     function _executeSettlement(
@@ -143,13 +145,17 @@ library SettlementUtils {
             );
         }
 
-        Deployments.NOTIONAL.redeemStrategyTokensToCash(
+        
+        (
+            /* int256 assetCashSurplus */,
+            int256 underlyingCashSurplus
+        ) = Deployments.NOTIONAL.redeemStrategyTokensToCash(
             maturity, redeemStrategyTokenAmount, abi.encode(params)
         );
 
-        // @audit if the underlyingCashRequiredToSettle at this point is negative
-        // and we are past maturity, call settleVault on notional to finalize the
-        // vault settlement
+        if (underlyingCashSurplus <= 0 && maturity <= block.timestamp) {
+            Deployments.NOTIONAL.settleVault(address(this), maturity);
+        }
     }
 
     function _getBPTHeldInMaturity(

@@ -11,7 +11,6 @@ import {
     StrategyVaultSettings
 } from "../vaults/balancer/BalancerVaultTypes.sol";
 import {NotionalUtils} from "../utils/NotionalUtils.sol";
-import {Boosted3TokenAuraStrategyUtils} from "../vaults/balancer/internal/strategy/Boosted3TokenAuraStrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "../vaults/balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {BalancerUtils} from "../vaults/balancer/internal/pool/BalancerUtils.sol";
 import {StrategyUtils} from "../vaults/balancer/internal/strategy/StrategyUtils.sol";
@@ -20,7 +19,6 @@ import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 
 contract MockBoosted3TokenAuraVault {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
-    using Boosted3TokenAuraStrategyUtils for StrategyContext;
     using StrategyUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultSettings;
 
@@ -47,16 +45,27 @@ contract MockBoosted3TokenAuraVault {
 
     function _deposit(uint256 deposit, uint256 maturity, uint256 minBPT) 
         external returns (uint256 bptMinted) {
-        return getStrategyContext().baseStrategy._deposit(
-            stakingContext, poolContext, deposit, minBPT
+        return poolContext._deposit(
+            _baseStrategyContext(), stakingContext, deposit, minBPT
         );
     }
 
     function _redeem(uint256 strategyTokens, uint256 maturity, uint256 minPrimary) 
         external returns (uint256 finalPrimaryBalance) {
-        return getStrategyContext().baseStrategy._redeem(
-            stakingContext, poolContext, strategyTokens, minPrimary
+        return poolContext._redeem(
+            _baseStrategyContext(), stakingContext, strategyTokens, minPrimary
         );
+    }
+
+    function _baseStrategyContext() internal view returns (StrategyContext memory) {
+        return StrategyContext({
+            totalBPTHeld: _bptHeld(),
+            settlementPeriodInSeconds: settlementPeriodInSeconds,
+            tradingModule: tradingModule,
+            vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
+            vaultState: BalancerVaultStorage.getStrategyVaultState(),
+            feeReceiver: feeReceiver
+        });
     }
 
     function getStrategyContext() public view returns (Boosted3TokenAuraStrategyContext memory) {
@@ -64,14 +73,7 @@ contract MockBoosted3TokenAuraVault {
             poolContext: poolContext,
             oracleContext: oracleContext,
             stakingContext: stakingContext,
-            baseStrategy: StrategyContext({
-                totalBPTHeld: _bptHeld(),
-                settlementPeriodInSeconds: settlementPeriodInSeconds,
-                tradingModule: tradingModule,
-                vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
-                vaultState: BalancerVaultStorage.getStrategyVaultState(),
-                feeReceiver: feeReceiver
-            })
+            baseStrategy: _baseStrategyContext()
         });
     }
 
@@ -81,9 +83,9 @@ contract MockBoosted3TokenAuraVault {
         uint256 maturity
     ) public view returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = getStrategyContext();
-        underlyingValue = context.baseStrategy._convertStrategyToUnderlying({
+        underlyingValue = poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
             oracleContext: context.oracleContext,
-            poolContext: context.poolContext,
             strategyTokenAmount: strategyTokenAmount
         });
     }

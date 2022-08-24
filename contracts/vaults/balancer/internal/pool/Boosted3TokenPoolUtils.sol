@@ -4,24 +4,38 @@ pragma solidity 0.8.15;
 import {
     ThreeTokenPoolContext,
     TwoTokenPoolContext,
-    BoostedOracleContext
+    BoostedOracleContext,
+    AuraStakingContext,
+    StrategyContext,
+    StrategyVaultSettings,
+    StrategyVaultState
 } from "../../BalancerVaultTypes.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
+import {StableMath} from "../math/StableMath.sol";
+import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
+import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
-import {StableMath} from "../math/StableMath.sol";
+
 
 library Boosted3TokenPoolUtils {
     using TypeConvert for uint256;
     using TypeConvert for int256;
     using TokenUtils for IERC20;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
+    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
+    using AuraStakingUtils for AuraStakingContext;
+    using StrategyUtils for StrategyContext;
+    using BalancerVaultStorage for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultState;
 
     // Preminted BPT is sometimes called Phantom BPT, as the preminted BPT (which is deposited in the Vault as balance of
     // the Pool) doesn't belong to any entity until transferred out of the Pool. The Pool's arithmetic behaves as if it
@@ -215,8 +229,7 @@ library Boosted3TokenPoolUtils {
     }
 
     function _joinPoolExactTokensIn(ThreeTokenPoolContext memory context, uint256 primaryAmount, uint256 minBPT)
-        internal returns (uint256 bptAmount) {
-        // @audit why not move the staking into this method?
+        private returns (uint256 bptAmount) {
         IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
 
         // Swap underlyingToken for LinearPool BPT
@@ -236,13 +249,10 @@ library Boosted3TokenPoolUtils {
             amountIn: linearPoolBPT,
             limit: minBPT
         });
-
-        // @audit threshold is not checked here...
     }
 
     function _exitPoolExactBPTIn(ThreeTokenPoolContext memory context, uint256 bptExitAmount, uint256 minPrimary)
-        internal returns (uint256 primaryBalance) {
-        // @audit why not move the unstaking into this method?
+        private returns (uint256 primaryBalance) {
         IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
 
         // Swap Boosted BPT for LinearPool BPT
@@ -262,5 +272,131 @@ library Boosted3TokenPoolUtils {
             amountIn: linearPoolBPT,
             limit: minPrimary
         }); 
+    }
+
+    function _deposit(
+        ThreeTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        AuraStakingContext memory stakingContext,
+        uint256 deposit,
+        uint256 minBPT
+    ) internal returns (uint256 strategyTokensMinted) {
+        uint256 bptMinted = poolContext._joinPoolAndStake({
+            strategyContext: strategyContext,
+            stakingContext: stakingContext,
+            deposit: deposit,
+            minBPT: minBPT
+        });
+
+        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
+
+        // Update global supply count
+        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
+    }
+
+    function _redeem(
+        ThreeTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        AuraStakingContext memory stakingContext,
+        uint256 strategyTokens,
+        uint256 minPrimary
+    ) internal returns (uint256 finalPrimaryBalance) {
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
+
+        if (bptClaim == 0) return 0;
+
+        finalPrimaryBalance = _unstakeAndExitPool({
+            stakingContext: stakingContext,
+            poolContext: poolContext,
+            bptClaim: bptClaim,
+            minPrimary: minPrimary
+        });
+
+        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
+    }
+
+    function _joinPoolAndStake(
+        ThreeTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        AuraStakingContext memory stakingContext,
+        uint256 deposit,
+        uint256 minBPT
+    ) internal returns (uint256 bptMinted) {
+        bptMinted = _joinPoolExactTokensIn(poolContext, deposit, minBPT);
+
+        // Check BPT threshold to make sure our share of the pool is
+        // below maxBalancerPoolShare
+        uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
+            poolContext.basePool.basePool.pool.totalSupply()
+        );
+        uint256 bptHeldAfterJoin = strategyContext.totalBPTHeld + bptMinted;
+        if (bptHeldAfterJoin > bptThreshold)
+            revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
+
+        // Transfer token to Aura protocol for boosted staking
+        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+    }
+
+    function _unstakeAndExitPool(
+        ThreeTokenPoolContext memory poolContext,
+        AuraStakingContext memory stakingContext,
+        uint256 bptClaim,
+        uint256 minPrimary
+    ) internal returns (uint256 primaryBalance) {
+        // Withdraw BPT tokens back to the vault for redemption
+        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+
+        primaryBalance = _exitPoolExactBPTIn(poolContext, bptClaim, minPrimary);    
+    }
+
+    // @audit this probably deserves more commentary, also would think this makes
+    // more sense inside Boosted3TokenPoolUtils since Aura has nothing to do with the
+    // valuation
+    function _convertStrategyToUnderlying(
+        ThreeTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        BoostedOracleContext memory oracleContext,
+        uint256 strategyTokenAmount
+    ) internal view returns (int256 underlyingValue) {
+        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
+        
+        underlyingValue = poolContext._getTimeWeightedPrimaryBalance(
+            oracleContext, 
+            strategyContext.tradingModule, 
+            bptClaim
+        ).toInt();
+    }
+
+    function _getMinBPT(
+        ThreeTokenPoolContext calldata poolContext,
+        BoostedOracleContext calldata oracleContext,
+        ITradingModule tradingModule,
+        uint256 primaryAmount
+    ) internal view returns (uint256 minBPT) {
+        // Calculate minBPT to minimize slippage
+        (
+            uint256 virtualSupply, 
+            uint256[] memory balances, 
+            uint256 invariant
+        ) = poolContext._getValidatedPoolData(oracleContext, tradingModule);
+
+        uint256[] memory amountsIn = new uint256[](3);
+        // _getValidatedPoolData rearranges the balances so that primary is always in the
+        // zero index spot
+        amountsIn[0] = primaryAmount;
+
+        minBPT = StableMath._calcBptOutGivenExactTokensIn({
+            amp: oracleContext.ampParam,
+            balances: balances,
+            amountsIn: amountsIn,
+            bptTotalSupply: virtualSupply,
+            swapFeePercentage: 0,
+            currentInvariant: invariant
+        });
+
+        minBPT = minBPT * BalancerConstants.MAX_BOOSTED_POOL_SLIPPAGE_PERCENT / 
+            uint256(BalancerConstants.VAULT_PERCENT_BASIS);
     }
 }
