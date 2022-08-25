@@ -8,10 +8,12 @@ import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
+import {TradeHandler} from "../trading/TradeHandler.sol";
 import {nProxy} from "../proxy/nProxy.sol";
 
 abstract contract BaseStrategyVault is Initializable, IStrategyVault {
     using TokenUtils for IERC20;
+    using TradeHandler for Trade;
 
     /// @notice Hardcoded on the implementation contract during deployment
     NotionalProxy public immutable NOTIONAL;
@@ -105,10 +107,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         uint16 dexId,
         Trade memory trade
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-        (bool success, bytes memory result) = nProxy(payable(address(TRADING_MODULE))).getImplementation()
-            .delegatecall(abi.encodeWithSelector(ITradingModule.executeTrade.selector, dexId, trade));
-        require(success);
-        (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
+        return trade._executeTrade(dexId, TRADING_MODULE);
     }
 
     /**************************************************************************/

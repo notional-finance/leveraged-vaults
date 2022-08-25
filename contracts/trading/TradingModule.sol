@@ -11,7 +11,7 @@ import {CurveAdapter} from "./adapters/CurveAdapter.sol";
 import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
 import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
 import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
-import {TradeHandler} from "./TradeHandler.sol";
+import {TradingUtils} from "./TradingUtils.sol";
 
 import {IERC20} from "../utils/TokenUtils.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -129,7 +129,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         ) = PROXY.getExecutionData(dexId, address(this), trade);
 
         return
-            TradeHandler._executeInternal(
+            TradingUtils._executeInternal(
                 trade,
                 dexId,
                 spender,
@@ -157,7 +157,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         ) = _getExecutionData(dexId, address(this), trade);
 
         return
-            TradeHandler._executeInternal(
+            TradingUtils._executeInternal(
                 trade,
                 dexId,
                 spender,
@@ -244,7 +244,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         require(oraclePrice >= 0); /// @dev Chainlink rate error
         require(oracleDecimals >= 0); /// @dev Chainlink decimals error
 
-        limitAmount = TradeHandler._getLimitAmount({
+        limitAmount = TradingUtils._getLimitAmount({
             tradeType: tradeType,
             sellToken: sellToken,
             buyToken: buyToken,

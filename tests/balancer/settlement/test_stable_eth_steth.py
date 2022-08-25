@@ -78,3 +78,25 @@ def test_emergency_single_maturity_success(StratStableETHstETH):
     vaultState = env.notional.getVaultState(vault.address, maturity)
     assert vaultState["totalStrategyTokens"] == 0
     assert pytest.approx(vaultState["totalAssetCash"], rel=1e-2) == 74512960552
+
+def test_deposit_in_settlement_window_failure(StratStableETHstETH):
+    (env, vault, mock) = StratStableETHstETH
+    maturity = env.notional.getActiveMarkets(1)[0][1]
+    primaryBorrowAmount = Wei(5e8)
+    depositAmount = Wei(10e18)
+    settlementPeriod = vault.getStrategyContext()["baseStrategy"]["settlementPeriodInSeconds"]
+    sleepAmount = maturity - settlementPeriod + 1 - chain.time()
+    chain.sleep(sleepAmount)
+    chain.mine()
+    with brownie.reverts():
+        env.notional.enterVault.call(
+            env.whales["ETH"],
+            vault.address,
+            depositAmount,
+            maturity,
+            primaryBorrowAmount,
+            0,
+            get_deposit_params(),
+            {"from": env.whales["ETH"], "value": depositAmount}
+        )
+        

@@ -1,5 +1,4 @@
 import pytest
-import eth_abi
 import brownie
 from brownie import ZERO_ADDRESS, Wei, accounts
 from brownie.network.state import Chain
@@ -24,7 +23,7 @@ def test_single_maturity_low_leverage_success(StratStableETHstETH):
     vaultAccount = env.notional.getVaultAccount(accounts[0], vault.address)
     assert vaultAccount["fCash"] == -primaryBorrowAmount
     assert vaultState["totalfCash"] == vaultAccount["fCash"]
-    assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == 1482554109
+    assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == 1489053994
     assert vaultAccount["vaultShares"] == vaultState["totalVaultShares"]
     assert vaultAccount["vaultShares"] == vaultState["totalStrategyTokens"]
     underlyingValue = vault.convertStrategyToUnderlying(env.whales["ETH"], vaultAccount["vaultShares"], maturity)
@@ -39,7 +38,7 @@ def test_single_maturity_high_leverage_success(StratStableETHstETH):
     vaultAccount = env.notional.getVaultAccount(accounts[0], vault.address)
     assert vaultAccount["fCash"] == -primaryBorrowAmount
     assert vaultState["totalfCash"] == vaultAccount["fCash"]
-    assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == 4922602638
+    assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == 4952629555
     assert vaultAccount["vaultShares"] == vaultState["totalVaultShares"]
     assert vaultAccount["vaultShares"] == vaultState["totalStrategyTokens"]
     underlyingValue = vault.convertStrategyToUnderlying(accounts[0], vaultAccount["vaultShares"], maturity)
@@ -55,11 +54,11 @@ def test_multiple_maturities_low_leverage_success(StratStableETHstETH):
     vaultState2 = env.notional.getVaultState(vault.address, maturity2)
     vaultAccount1 = env.notional.getVaultAccount(accounts[0], vault.address)
     vaultAccount2 = env.notional.getVaultAccount(accounts[1], vault.address)
-    assert pytest.approx(vaultAccount1["vaultShares"], rel=1e-5) == 1482554110
+    assert pytest.approx(vaultAccount1["vaultShares"], rel=1e-5) == 1489053995
     assert vaultAccount1["vaultShares"] == vaultState1["totalVaultShares"]
     underlyingValue1 = vault.convertStrategyToUnderlying(accounts[0], vaultAccount1["vaultShares"], maturity1)
     assert pytest.approx(underlyingValue1, rel=5e-2) == depositAmount + primaryBorrowAmount * 1e10
-    assert pytest.approx(vaultAccount2["vaultShares"], rel=1e-5) == 1482707034
+    assert pytest.approx(vaultAccount2["vaultShares"], rel=1e-5) == 1487751514
     assert vaultAccount2["vaultShares"] == vaultState2["totalVaultShares"]
     underlyingValue2 = vault.convertStrategyToUnderlying(accounts[1], vaultAccount2["vaultShares"], maturity2)
     assert pytest.approx(underlyingValue2, rel=5e-2) == depositAmount + primaryBorrowAmount * 1e10
@@ -98,7 +97,7 @@ def test_secondary_currency_trading_success(StratStableETHstETH):
 def test_leverage_ratio_too_high_failure(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
     maturity = env.notional.getActiveMarkets(1)[0][1]
-    primaryBorrowAmount = Wei(60e8)
+    primaryBorrowAmount = Wei(90e8)
     depositAmount = Wei(10e18)
     with brownie.reverts("Insufficient Collateral"):
         env.notional.enterVault.call(
@@ -122,27 +121,6 @@ def test_balancer_share_too_high_failure(StratStableETHstETH):
     )
     primaryBorrowAmount = Wei(5e8)
     depositAmount = Wei(10e18)
-    with brownie.reverts():
-        env.notional.enterVault.call(
-            env.whales["ETH"],
-            vault.address,
-            depositAmount,
-            maturity,
-            primaryBorrowAmount,
-            0,
-            get_deposit_params(),
-            {"from": env.whales["ETH"], "value": depositAmount}
-        )
-
-def test_deposit_in_settlement_window_failure(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
-    maturity = env.notional.getActiveMarkets(1)[0][1]
-    primaryBorrowAmount = Wei(5e8)
-    depositAmount = Wei(10e18)
-    settlementPeriod = vault.getStrategyContext()["baseStrategy"]["settlementPeriodInSeconds"]
-    sleepAmount = maturity - settlementPeriod + 1 - chain.time()
-    chain.sleep(sleepAmount)
-    chain.mine()
     with brownie.reverts():
         env.notional.enterVault.call(
             env.whales["ETH"],

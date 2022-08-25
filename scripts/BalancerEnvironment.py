@@ -112,11 +112,14 @@ class BalancerEnvironment(Environment):
     def __init__(self, network) -> None:
         Environment.__init__(self, network)
 
-    def deployBalancerVault(self, strat, vaultContract):
+    def deployBalancerVault(self, strat, vaultContract, libs=None):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
+
         # Deploy external libs
-        MetaStable2TokenAuraHelper.deploy({"from": self.deployer})
-        Boosted3TokenAuraHelper.deploy({"from": self.deployer})
+        if libs != None:
+            for lib in libs:
+                lib.deploy({"from": self.deployer})
+
 
         impl = vaultContract.deploy(
             self.addresses["notional"],
@@ -186,33 +189,27 @@ def main():
     env = BalancerEnvironment(networkName)
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    stableVault = env.deployBalancerVault("StratStableETHstETH", MetaStable2TokenAuraVault)
+    stableVault = env.deployBalancerVault(
+        "StratStableETHstETH", 
+        MetaStable2TokenAuraVault,
+        [MetaStable2TokenAuraHelper]
+    )
     env.mockStable2TokenAuraVault = MockStable2TokenAuraVault.deploy(
         stableVault.getStrategyContext(),
         {"from": env.deployer}
     )
 
-    boosted3TokenVault = env.deployBalancerVault("StratBoostedPoolDAIPrimary", Boosted3TokenAuraVault)
+    boosted3TokenVault = env.deployBalancerVault(
+        "StratBoostedPoolDAIPrimary", 
+        Boosted3TokenAuraVault,
+        [Boosted3TokenAuraHelper]
+    )
 
     env.mockThreeTokenAuraVault = MockBoosted3TokenAuraVault.deploy(
         boosted3TokenVault.getStrategyContext(),
         {"from": env.deployer}
     )
-    env.tokens["DAI"].transfer(env.mockThreeTokenAuraVault.address, 10000e18, {"from": env.whales["DAI_EOA"]})
-    env.tokens["DAI"].approve(env.balancerVault, 2 ** 255, {"from": env.mockThreeTokenAuraVault.address})
 
-    tx = env.mockThreeTokenAuraVault._deposit(5000e18, maturity, 0)
-
-    strategyTokenAmount = tx.return_value
-
-    print(strategyTokenAmount)
-    
-    #tx = env.mockThreeTokenAuraVault._redeem(strategyTokenAmount, maturity, 0)
-
-    #primaryBalance = tx.return_value
-
-    #print(primaryBalance)
-    
     return
 
     stableStrategyContext = stableVault.getStrategyContext()
