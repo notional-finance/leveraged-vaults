@@ -14,11 +14,14 @@ import {BalancerEvents} from "../BalancerEvents.sol";
 abstract contract AuraStakingMixin {
     using TokenUtils for IERC20;
 
-    // @audit maybe some documentation about what each of these contracts do?
+    /// @notice Balancer liquidity gauge used to get a list of reward tokens
     ILiquidityGauge internal immutable LIQUIDITY_GAUGE;
+    /// @notice Aura booster contract used for staking BPT
     IAuraBooster internal immutable AURA_BOOSTER;
+    /// @notice Aura reward pool contract used for unstaking and claiming reward tokens
     IAuraRewardPool internal immutable AURA_REWARD_POOL;
     uint256 internal immutable AURA_POOL_ID;
+    /// @notice The address used to receive a portion of the reward tokens
     address internal immutable FEE_RECEIVER;
     IERC20 internal immutable BAL_TOKEN;
     IERC20 internal immutable AURA_TOKEN;

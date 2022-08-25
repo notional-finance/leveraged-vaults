@@ -351,7 +351,12 @@ library Boosted3TokenPoolUtils {
         primaryBalance = _exitPoolExactBPTIn(poolContext, bptClaim, minPrimary);    
     }
 
-    // @audit this probably deserves more commentary
+    /// @notice We value strategy tokens in terms of the primary balance. The time weighted
+    /// primary balance is used in order to prevent pool manipulation.
+    /// @param poolContext pool context variables
+    /// @param oracleContext oracle context variables
+    /// @param strategyTokenAmount amount of strategy tokens
+    /// @return underlyingValue underlying value of strategy tokens
     function _convertStrategyToUnderlying(
         ThreeTokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
