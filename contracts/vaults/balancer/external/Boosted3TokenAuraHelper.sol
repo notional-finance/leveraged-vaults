@@ -80,9 +80,9 @@ library Boosted3TokenAuraHelper {
     }
 
     function _executeSettlement(
-        StrategyContext memory strategyContext,
-        BoostedOracleContext memory oracleContext,
-        ThreeTokenPoolContext memory poolContext,
+        StrategyContext calldata strategyContext,
+        BoostedOracleContext calldata oracleContext,
+        ThreeTokenPoolContext calldata poolContext,
         uint256 maturity,
         uint256 bptToSettle,
         uint256 redeemStrategyTokenAmount,
@@ -90,7 +90,7 @@ library Boosted3TokenAuraHelper {
     ) private {
         // Calculate minPrimary using Chainlink oracle data
         params.minPrimary = poolContext._getTimeWeightedPrimaryBalance(
-            oracleContext, strategyContext.tradingModule, bptToSettle
+            oracleContext, strategyContext, bptToSettle
         );
         params.minPrimary = params.minPrimary * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT / 
             uint256(BalancerConstants.VAULT_PERCENT_BASIS);
@@ -125,7 +125,7 @@ library Boosted3TokenAuraHelper {
         });
 
         uint256 minBPT = context.poolContext._getMinBPT(
-            oracleContext, strategyContext.tradingModule, primaryAmount
+            oracleContext, strategyContext, primaryAmount
         );
         uint256 bptAmount = context.poolContext._joinPoolAndStake({
             strategyContext: strategyContext,

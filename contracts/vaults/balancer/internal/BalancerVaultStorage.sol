@@ -30,12 +30,13 @@ library BalancerVaultStorage {
         require(settings.oracleWindowInSeconds <= maxOracleQueryWindow);
         require(settings.settlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
         require(settings.postMaturitySettlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
+        require(settings.maxRewardTradeSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.balancerOracleWeight <= balancerOracleWeight);
         require(settings.maxBalancerPoolShare <= BalancerConstants.VAULT_PERCENT_BASIS);
         require(settings.settlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.postMaturitySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.feePercentage <= BalancerConstants.VAULT_PERCENT_BASIS);
-        require(settings.maxRewardTradeSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
+        require(settings.oraclePriceDeviationLimitPercent <= BalancerConstants.VAULT_PERCENT_BASIS);
 
         mapping(uint256 => StrategyVaultSettings) storage store = _settings();
         // Hardcode to the zero slot

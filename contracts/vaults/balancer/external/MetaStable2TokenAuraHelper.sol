@@ -79,9 +79,9 @@ library MetaStable2TokenAuraHelper {
     }
 
     function _executeSettlement(
-        StrategyContext memory strategyContext,
-        StableOracleContext memory oracleContext,
-        TwoTokenPoolContext memory poolContext,
+        StrategyContext calldata strategyContext,
+        StableOracleContext calldata oracleContext,
+        TwoTokenPoolContext calldata poolContext,
         uint256 maturity,
         uint256 bptToSettle,
         uint256 redeemStrategyTokenAmount,
@@ -90,7 +90,7 @@ library MetaStable2TokenAuraHelper {
         /// @notice params.minPrimary and params.minSecondary are not required for this strategy vault
         (params.minPrimary, params.minSecondary) = oracleContext._getMinExitAmounts({
             poolContext: poolContext,
-            tradingModule: strategyContext.tradingModule,
+            strategyContext: strategyContext,
             bptAmount: bptToSettle
         });
 
@@ -130,7 +130,7 @@ library MetaStable2TokenAuraHelper {
         // Make sure we are joining with the right proportion to minimize slippage
         oracleContext._validateSpotPriceAndPairPrice({
             poolContext: poolContext,
-            tradingModule: strategyContext.tradingModule,
+            strategyContext: strategyContext,
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount
         });

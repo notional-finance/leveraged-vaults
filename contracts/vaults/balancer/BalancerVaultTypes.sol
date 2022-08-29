@@ -182,6 +182,7 @@ struct StrategyVaultSettings {
     uint32 settlementSlippageLimitPercent;
     /// @notice Slippage limit for emergency settlement (vault owns too much of the Balancer pool)
     uint32 postMaturitySettlementSlippageLimitPercent;
+    uint32 maxRewardTradeSlippageLimitPercent;
     uint16 maxBalancerPoolShare;
     uint16 balancerOracleWeight;
     /// @notice Cool down in minutes for normal settlement
@@ -190,7 +191,8 @@ struct StrategyVaultSettings {
     uint16 postMaturitySettlementCoolDownInMinutes;
     /// @notice Determines the amount of BAL transferred to FEE_RECEIVER
     uint16 feePercentage;
-    uint256 maxRewardTradeSlippageLimitPercent;
+    /// @notice Limits the amount of allowable deviation from the oracle price
+    uint16 oraclePriceDeviationLimitPercent;
 }
 
 struct StrategyVaultState {

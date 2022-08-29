@@ -93,12 +93,13 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("oracleWindowInSeconds", settings["oracleWindowInSeconds"]), 
         kwargs.get("settlementSlippageLimitPercent", settings["settlementSlippageLimitPercent"]), 
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
+        kwargs.get("maxRewardTradeSlippageLimitPercent", settings["maxRewardTradeSlippageLimitPercent"]),
         kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
         kwargs.get("balancerOracleWeight", settings["balancerOracleWeight"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("postMaturitySettlementCoolDownInMinutes", settings["postMaturitySettlementCoolDownInMinutes"]), 
         kwargs.get("feePercentage", settings["feePercentage"]),
-        kwargs.get("maxRewardTradeSlippageLimitPercent", settings["maxRewardTradeSlippageLimitPercent"])
+        kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"])
     ]
 
 def get_univ3_single_data(fee):

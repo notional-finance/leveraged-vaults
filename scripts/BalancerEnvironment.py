@@ -42,12 +42,13 @@ StrategyConfig = {
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimit": 5e6, # 5%
             "postMaturitySettlementSlippageLimit": 10e6, # 10%
+            "maxRewardTradeSlippageLimitPercent": 5e6,
             "balancerOracleWeight": 0.6e4, # 60%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-            "maxRewardTradeSlippageLimitPercent": 5e6
+            "oraclePriceDeviationLimitPercent": 500, # +/- 5%
         },
         "StratBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
@@ -70,12 +71,13 @@ StrategyConfig = {
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimit": 5e6, # 5%
             "postMaturitySettlementSlippageLimit": 10e6, # 10%
+            "maxRewardTradeSlippageLimitPercent": 5e6,
             "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-            "maxRewardTradeSlippageLimitPercent": 5e6
+            "oraclePriceDeviationLimitPercent": 10, # +/- 0.1%
         },
         "StratBoostedPoolUSDCPrimary": {
             "vaultConfig": get_vault_config(
@@ -98,12 +100,13 @@ StrategyConfig = {
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimit": 5e6, # 5%
             "postMaturitySettlementSlippageLimit": 10e6, # 10%
+            "maxRewardTradeSlippageLimitPercent": 5e6,
             "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-            "maxRewardTradeSlippageLimitPercent": 5e6
+            "oraclePriceDeviationLimitPercent": 10, # +/- 0.1%
         }
     }
 }
@@ -149,12 +152,13 @@ class BalancerEnvironment(Environment):
                     stratConfig["oracleWindowInSeconds"],
                     stratConfig["settlementSlippageLimit"], 
                     stratConfig["postMaturitySettlementSlippageLimit"], 
+                    stratConfig["maxRewardTradeSlippageLimitPercent"],
                     stratConfig["maxBalancerPoolShare"],
                     stratConfig["balancerOracleWeight"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["postMaturitySettlementCoolDownInMinutes"],
                     stratConfig["feePercentage"],
-                    stratConfig["maxRewardTradeSlippageLimitPercent"]
+                    stratConfig["oraclePriceDeviationLimitPercent"]
                 ]
             ],
             {"from": self.notional.owner()}

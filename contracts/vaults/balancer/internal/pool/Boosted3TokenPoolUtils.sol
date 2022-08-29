@@ -64,7 +64,7 @@ library Boosted3TokenPoolUtils {
     }
 
     function _validateSpotPrice(
-        ITradingModule tradingModule,
+        StrategyContext memory context,
         address tokenIn,
         uint8 tokenIndexIn,
         address tokenOut,
@@ -73,7 +73,7 @@ library Boosted3TokenPoolUtils {
         uint256 ampParam,
         uint256 invariant
     ) private view {
-        (int256 answer, int256 decimals) = tradingModule.getOraclePrice(tokenOut, tokenIn);
+        (int256 answer, int256 decimals) = context.tradingModule.getOraclePrice(tokenOut, tokenIn);
         require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
         
         uint256 spotPrice = _getSpotPrice({
@@ -82,12 +82,14 @@ library Boosted3TokenPoolUtils {
             balances: balances, 
             tokenIndexIn: tokenIndexIn, // Primary index
             tokenIndexOut: tokenIndexOut // Secondary index
-        });
+        }); 
 
         uint256 oraclePrice = answer.toUint();
-        uint256 lowerLimit = (oraclePrice * BalancerConstants.STABLE_SPOT_PRICE_LOWER_LIMIT) / 
+        uint256 lowerLimit = (oraclePrice * 
+            (BalancerConstants.VAULT_PERCENT_BASIS - context.vaultSettings.oraclePriceDeviationLimitPercent)) / 
             BalancerConstants.VAULT_PERCENT_BASIS;
-        uint256 upperLimit = (oraclePrice * BalancerConstants.STABLE_SPOT_PRICE_UPPER_LIMIT) / 
+        uint256 upperLimit = (oraclePrice * 
+            (BalancerConstants.VAULT_PERCENT_BASIS + context.vaultSettings.oraclePriceDeviationLimitPercent)) / 
             BalancerConstants.VAULT_PERCENT_BASIS;
 
         // Check spot price against oracle price to make sure it hasn't been manipulated
@@ -98,7 +100,7 @@ library Boosted3TokenPoolUtils {
 
     function _validateTokenPrices(
         ThreeTokenPoolContext memory poolContext, 
-        ITradingModule tradingModule,
+        StrategyContext memory strategyContext,
         uint256[] memory balances,
         uint256 ampParam,
         uint256 invariant
@@ -108,7 +110,7 @@ library Boosted3TokenPoolUtils {
         address tertiaryUnderlying = IBoostedPool(address(poolContext.tertiaryToken)).getMainToken();
 
         _validateSpotPrice({
-            tradingModule: tradingModule,
+            context: strategyContext,
             tokenIn: primaryUnderlying,
             tokenIndexIn: 0, // primary index
             tokenOut: secondaryUnderlying,
@@ -119,7 +121,7 @@ library Boosted3TokenPoolUtils {
         });
 
         _validateSpotPrice({
-            tradingModule: tradingModule,
+            context: strategyContext,
             tokenIn: primaryUnderlying,
             tokenIndexIn: 0, // primary index
             tokenOut: tertiaryUnderlying,
@@ -159,7 +161,7 @@ library Boosted3TokenPoolUtils {
     function _getValidatedPoolData(
         ThreeTokenPoolContext memory poolContext,
         BoostedOracleContext memory oracleContext,
-        ITradingModule tradingModule
+        StrategyContext memory strategyContext
     ) internal view returns (uint256 virtualSupply, uint256[] memory balances, uint256 invariant) {
         (virtualSupply, balances) = 
             _getVirtualSupplyAndBalances(poolContext, oracleContext);
@@ -172,7 +174,7 @@ library Boosted3TokenPoolUtils {
         // validate spot prices against oracle prices
         _validateTokenPrices({
             poolContext: poolContext,
-            tradingModule: tradingModule,
+            strategyContext: strategyContext,
             balances: balances,
             ampParam: oracleContext.ampParam,
             invariant: invariant
@@ -188,14 +190,14 @@ library Boosted3TokenPoolUtils {
     function _getTimeWeightedPrimaryBalance(
         ThreeTokenPoolContext memory poolContext,
         BoostedOracleContext memory oracleContext,
-        ITradingModule tradingModule,
+        StrategyContext memory strategyContext,
         uint256 bptAmount
     ) internal view returns (uint256 primaryAmount) {
         (
            uint256 virtualSupply, 
            uint256[] memory balances, 
            uint256 invariant
-        ) = _getValidatedPoolData(poolContext, oracleContext, tradingModule);
+        ) = _getValidatedPoolData(poolContext, oracleContext, strategyContext);
 
         // NOTE: For Boosted 3 token pools, the LP token (BPT) is just another
         // token in the pool. So, we first use _calcTokenOutGivenExactBptIn
@@ -366,16 +368,14 @@ library Boosted3TokenPoolUtils {
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
         
         underlyingValue = poolContext._getTimeWeightedPrimaryBalance(
-            oracleContext, 
-            strategyContext.tradingModule, 
-            bptClaim
+            oracleContext, strategyContext, bptClaim
         ).toInt();
     }
 
     function _getMinBPT(
         ThreeTokenPoolContext calldata poolContext,
         BoostedOracleContext calldata oracleContext,
-        ITradingModule tradingModule,
+        StrategyContext calldata strategyContext,
         uint256 primaryAmount
     ) internal view returns (uint256 minBPT) {
         // Calculate minBPT to minimize slippage
@@ -383,7 +383,7 @@ library Boosted3TokenPoolUtils {
             uint256 virtualSupply, 
             uint256[] memory balances, 
             uint256 invariant
-        ) = poolContext._getValidatedPoolData(oracleContext, tradingModule);
+        ) = poolContext._getValidatedPoolData(oracleContext, strategyContext);
 
         uint256[] memory amountsIn = new uint256[](3);
         // _getValidatedPoolData rearranges the balances so that primary is always in the
