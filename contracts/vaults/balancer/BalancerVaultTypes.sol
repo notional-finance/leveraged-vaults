@@ -1,25 +1,31 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.7.6;
+pragma solidity 0.8.15;
 
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../../interfaces/notional/IVaultController.sol";
-import {IBoostController} from "../../../interfaces/notional/IBoostController.sol";
-import {IVeBalDelegator} from "../../../interfaces/notional/IVeBalDelegator.sol";
+import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
+import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
-import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
-import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
-import {ITradingModule, Trade} from "../../../interfaces/trading/ITradingModule.sol";
+import {IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
+import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
+import {IERC20} from "../../../interfaces/IERC20.sol";
 
 struct DeploymentParams {
-    uint16 secondaryBorrowCurrencyId;
+    uint16 primaryBorrowCurrencyId;
     bytes32 balancerPoolId;
-    IBoostController boostController;
     ILiquidityGauge liquidityGauge;
     ITradingModule tradingModule;
     uint32 settlementPeriodInSeconds;
+    address feeReceiver;
+}
+
+struct AuraVaultDeploymentParams {
+    IAuraRewardPool auraRewardPool;
+    DeploymentParams baseParams;
 }
 
 struct InitParams {
@@ -30,9 +36,12 @@ struct InitParams {
 
 struct DepositParams {
     uint256 minBPT;
-    uint256 secondaryfCashAmount;
-    uint32 secondaryBorrowLimit;
-    uint32 secondaryRollLendLimit;
+    bytes tradeData;
+}
+
+struct DepositTradeParams {
+    uint256 tradeAmount;
+    DynamicTradeParams tradeParams;
 }
 
 struct RedeemParams {
@@ -42,55 +51,122 @@ struct RedeemParams {
     bytes secondaryTradeParams;
 }
 
-struct SecondaryTradeParams {
+/// @notice Parameters for dynamic slippage trades
+struct DynamicTradeParams {
     uint16 dexId;
+    TradeType tradeType;
     uint32 oracleSlippagePercent;
+    bool tradeUnwrapped;
     bytes exchangeData;
 }
 
-struct BoostContext {
-    ILiquidityGauge liquidityGauge;
-    IBoostController boostController;
+/// @notice Parameters for joining/exiting Balancer pools
+struct PoolParams {
+    IAsset[] assets;
+    uint256[] amounts;
+    uint256 msgValue;
 }
 
 struct OracleContext {
-    IBalancerPool pool;
-    bytes32 poolId;
     uint256 oracleWindowInSeconds;
-    uint256 primaryWeight;
-    uint256 secondaryWeight;
-    uint8 primaryIndex;
-    uint8 primaryDecimals;
-    uint8 secondaryDecimals;
+    uint256 balancerOracleWeight;
+}
+
+struct StableOracleContext {
+    /// @notice Amplification parameter
+    uint256 ampParam;
+    OracleContext baseOracle;
+}
+
+struct BoostedOracleContext {
+    /// @notice Amplification parameter
+    uint256 ampParam;
+    /// @notice BPT balance in the pool
+    uint256 bptBalance;
+    /// @notice Protocol fee amount used to calculate the virtual supply
+    uint256 dueProtocolFeeBptAmount;
 }
 
 /// @notice Balancer pool related fields
 struct PoolContext {
-    IBalancerPool pool;
+    IERC20 pool;
     bytes32 poolId;
+}
+
+struct AuraStakingContext {
+    ILiquidityGauge liquidityGauge;
+    IAuraBooster auraBooster;
+    IAuraRewardPool auraRewardPool;
+    uint256 auraPoolId;
+    IERC20[] rewardTokens;
+}
+
+struct TwoTokenPoolContext {
     address primaryToken;
     address secondaryToken;
     uint8 primaryIndex;
+    uint8 secondaryIndex;
+    uint8 primaryDecimals;
+    uint8 secondaryDecimals;
+    uint256 primaryBalance;
+    uint256 secondaryBalance;
+    PoolContext basePool;
 }
 
-struct NormalSettlementContext {
+struct ThreeTokenPoolContext {
+    address tertiaryToken;
+    uint8 tertiaryIndex;
+    uint8 tertiaryDecimals;
+    uint256 tertiaryBalance;
+    TwoTokenPoolContext basePool;
+}
+
+struct StrategyContext {
+    uint256 totalBPTHeld;
+    uint32 settlementPeriodInSeconds;
+    ITradingModule tradingModule;
+    StrategyVaultSettings vaultSettings;
+    StrategyVaultState vaultState;
+    address feeReceiver;
+}
+
+struct MetaStable2TokenAuraStrategyContext {
+    TwoTokenPoolContext poolContext;
+    StableOracleContext oracleContext;
+    AuraStakingContext stakingContext;
+    StrategyContext baseStrategy;
+}
+
+struct Boosted3TokenAuraStrategyContext {
+    ThreeTokenPoolContext poolContext;
+    BoostedOracleContext oracleContext;
+    AuraStakingContext stakingContext;
+    StrategyContext baseStrategy;
+}
+
+struct NormalSettlementData {
     uint256 maxUnderlyingSurplus;
-    uint256 primarySettlementBalance;
-    uint256 secondarySettlementBalance;
     uint256 redeemStrategyTokenAmount;
     int256 underlyingCashRequiredToSettle;
-    uint256 debtSharesToRepay;
-    /// @notice Amount of secondary fCash borrowed in external precision
-    uint256 borrowedSecondaryfCashAmountExternal;
-    PoolContext poolContext;
-    BoostContext boostContext;
 }
 
-struct RewardTokenTradeParams {
-    uint16 primaryTradeDexId;
-    Trade primaryTrade;
-    uint16 secondaryTradeDexId;
-    Trade secondaryTrade;
+struct BoostedSettlementData {
+    uint256 maxUnderlyingSurplus;
+    uint256 primarySettlementBalance;
+    uint256 redeemStrategyTokenAmount;
+    int256 underlyingCashRequiredToSettle;
+}
+
+struct Balanced2TokenRewardTradeParams {
+    SingleSidedRewardTradeParams primaryTrade;
+    SingleSidedRewardTradeParams secondaryTrade;
+}
+
+struct SingleSidedRewardTradeParams {
+    address sellToken;
+    address buyToken;
+    uint256 amount;
+    DynamicTradeParams tradeParams;
 }
 
 struct ReinvestRewardParams {
@@ -98,37 +174,28 @@ struct ReinvestRewardParams {
     uint256 minBPT;
 }
 
-struct VeBalDelegatorInfo {
-    ILiquidityGauge liquidityGauge;
-    IVeBalDelegator veBalDelegator;
-    address balToken;
-}
-
 struct StrategyVaultSettings {
     uint256 maxUnderlyingSurplus;
     /// @notice Balancer oracle window in seconds
     uint32 oracleWindowInSeconds;
-    uint16 maxBalancerPoolShare;
     /// @notice Slippage limit for normal settlement
-    uint16 settlementSlippageLimitBPS;
+    uint32 settlementSlippageLimitPercent;
     /// @notice Slippage limit for emergency settlement (vault owns too much of the Balancer pool)
-    uint16 postMaturitySettlementSlippageLimitBPS;
+    uint32 postMaturitySettlementSlippageLimitPercent;
+    uint16 maxBalancerPoolShare;
     uint16 balancerOracleWeight;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;
     /// @notice Cool down in minutes for post maturity settlement
     uint16 postMaturitySettlementCoolDownInMinutes;
+    /// @notice Determines the amount of BAL transferred to FEE_RECEIVER
+    uint16 feePercentage;
+    uint256 maxRewardTradeSlippageLimitPercent;
 }
 
 struct StrategyVaultState {
     /// @notice Total number of strategy tokens across all maturities
-    uint256 totalStrategyTokenGlobal;
+    uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
     uint32 lastPostMaturitySettlementTimestamp;
-}
-
-struct SettlementState {
-    uint256 primarySettlementBalance;
-    uint256 secondarySettlementBalance;
-    uint256 strategyTokensRedeemed;
 }

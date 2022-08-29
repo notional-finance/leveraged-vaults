@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-
-import "../../global/Constants.sol";
+import {Deployments} from "../../global/Deployments.sol";
 import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/balancer/IBalancerVault.sol";
 
 library BalancerV2Adapter {
-    IBalancerVault public constant VAULT = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-
     struct SingleSwapData {
         bytes32 poolId;
     }
@@ -72,12 +69,12 @@ library BalancerV2Adapter {
             bytes memory executionCallData
         )
     {
-        target = address(VAULT);
-        if (trade.sellToken == Constants.ETH_ADDRESS) {
+        target = address(Deployments.BALANCER_VAULT);
+        if (trade.sellToken == Deployments.ETH_ADDRESS) {
             spender = address(0);
             msgValue = trade.amount;
         } else {
-            spender = address(VAULT);
+            spender = address(Deployments.BALANCER_VAULT);
             // msgValue is zero in this case
         }
 

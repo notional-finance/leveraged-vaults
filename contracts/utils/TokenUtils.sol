@@ -3,14 +3,14 @@ pragma solidity 0.8.15;
 
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {IEIP20NonStandard} from "../../interfaces/IEIP20NonStandard.sol";
-import {Constants} from "../global/Constants.sol";
+import {Deployments} from "../global/Deployments.sol";
 
 library TokenUtils {
     error ERC20Error();
 
     function tokenBalance(address token) internal view returns (uint256) {
         return
-            token == Constants.ETH_ADDRESS
+            token == Deployments.ETH_ADDRESS
                 ? address(this).balance
                 : IERC20(token).balanceOf(address(this));
     }
@@ -18,14 +18,14 @@ library TokenUtils {
     function checkApprove(IERC20 token, address spender, uint256 amount) internal {
         if (address(token) == address(0)) return;
 
-        token.approve(spender, amount);
+        IEIP20NonStandard(address(token)).approve(spender, amount);
         _checkReturnCode();
     }
 
     function checkRevoke(IERC20 token, address spender) internal {
         if (address(token) == address(0)) return;
 
-        token.approve(spender, 0);
+        IEIP20NonStandard(address(token)).approve(spender, 0);
         _checkReturnCode();
     }
 
@@ -57,5 +57,4 @@ library TokenUtils {
 
         if (!success) revert ERC20Error();
     }
-
 }

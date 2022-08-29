@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.7.6;
 
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-
 /// @title All shared constants for the Notional system should be declared here.
 library Constants {
-    NotionalProxy internal constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
     uint8 internal constant CETH_DECIMAL_PLACES = 8;
 
     // Token precision used for all internal balances, TokenHandler library ensures that we
@@ -115,23 +112,5 @@ library Constants {
 
     // Equal to 100% of all deposit amounts for nToken liquidity across fCash markets.
     int256 internal constant DEPOSIT_PERCENT_BASIS = 1e8;
-
-    /// @notice Precision for all percentages used by the vault
-    /// 1e4 = 100% (i.e. settlementSlippageLimitBPS)
-    uint16 internal constant VAULT_PERCENT_BASIS = 1e4;
-    /// @notice Buffer percentage between the desired share of the Balancer pool
-    /// and the maximum share of the pool allowed by maxBalancerPoolShare 1e4 = 100%, 8e3 = 80%
-    uint16 internal constant BALANCER_POOL_SHARE_BUFFER = 8e3;
-    /// @notice Lower limit used to validate the secondary borrow amount against 
-    /// the optimal amount obtained from the price oracle
-    uint256 internal constant SECONDARY_BORROW_UPPER_LIMIT = 105;
-    /// @notice Upper limit used to validate the secondary borrow amount against 
-    /// the optimal amount obtained from the price oracle
-    uint256 internal constant SECONDARY_BORROW_LOWER_LIMIT = 95;
-    /// @notice Max settlement cool down period allowed (1 day)
-    uint16 internal constant MAX_SETTLEMENT_COOLDOWN_IN_MINUTES = 24 * 60;
-    /// @notice Lower limit used to validate Balancer min exit amounts
-    uint256 internal constant MIN_EXIT_AMOUNTS_UPPER_LIMIT = 105;
-    /// @notice Upper limit used to validate Balancer min exit amounts
-    uint256 internal constant MIN_EXIT_AMOUNTS_LOWER_LIMIT = 95;
+    uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
 }

@@ -1,6 +1,26 @@
 import json
 import re
-from brownie import network, Contract
+import eth_abi
+from brownie import network, Contract, Wei
+from brownie.network.state import Chain
+
+chain = Chain()
+
+DEX_ID = {
+    'UNISWAP_V2': 0,
+    'UNISWAP_V3': 1,
+    'ZERO_EX': 2,
+    'BALANCER_V2': 3,
+    'CURVE': 4,
+    'NOTIONAL_VAULT': 5
+}
+
+TRADE_TYPE = {
+    'EXACT_IN_SINGLE': 0,
+    'EXACT_OUT_SINGLE': 1,
+    'EXACT_IN_BATCH': 2,
+    'EXACT_OUT_BATCH': 3
+}
 
 def getDependencies(bytecode):
     deps = set()
@@ -17,6 +37,7 @@ def deployArtifact(path, constructorArgs, deployer, name, libs=None):
 
     # Resolve dependencies
     deps = getDependencies(code)
+
     for dep in deps:
         library = dep.strip("_")
         code = code.replace(dep, libs[library][-40:])
@@ -65,3 +86,83 @@ def set_flags(flags, **kwargs):
     if "ALLOW_REENTRNACY" in kwargs:
         binList[8] = "1"
     return int("".join(reversed(binList)), 2)
+
+def get_updated_vault_settings(settings, **kwargs):
+    return [
+        kwargs.get("maxUnderlyingSurplus", settings["maxUnderlyingSurplus"]), 
+        kwargs.get("oracleWindowInSeconds", settings["oracleWindowInSeconds"]), 
+        kwargs.get("settlementSlippageLimitPercent", settings["settlementSlippageLimitPercent"]), 
+        kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
+        kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
+        kwargs.get("balancerOracleWeight", settings["balancerOracleWeight"]), 
+        kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
+        kwargs.get("postMaturitySettlementCoolDownInMinutes", settings["postMaturitySettlementCoolDownInMinutes"]), 
+        kwargs.get("feePercentage", settings["feePercentage"]),
+        kwargs.get("maxRewardTradeSlippageLimitPercent", settings["maxRewardTradeSlippageLimitPercent"])
+    ]
+
+def get_univ3_single_data(fee):
+    return eth_abi.encode_abi(['(uint24)'], [[fee]])
+
+def get_univ3_batch_data(path):
+    pathTypes = []
+    for idx in range(len(path)):
+        if idx % 2 == 0:
+            pathTypes.append('address')
+        else:
+            pathTypes.append('uint24')
+    packedEncoder = eth_abi.codec.ABIEncoder(eth_abi.registry.registry_packed)
+    return eth_abi.encode_abi(['(bytes)'], [[packedEncoder.encode_abi(
+        pathTypes,
+        path,
+    )]])
+
+def get_deposit_trade_params(dexId, tradeType, amount, slippage, unwrap, exchangeData):
+    return eth_abi.encode_abi(
+        ['(uint256,(uint16,uint8,uint32,bool,bytes))'],
+        [[
+            Wei(amount),
+            [
+                dexId,
+                tradeType,
+                Wei(slippage),
+                unwrap,
+                exchangeData
+            ]
+        ]]
+    )
+
+def get_dynamic_trade_params(dexId, tradeType, slippage, unwrap, exchangeData):
+    return eth_abi.encode_abi(
+        ['(uint16,uint8,uint32,bool,bytes)'],
+        [[
+            dexId,
+            tradeType,
+            Wei(slippage),
+            unwrap,
+            exchangeData
+        ]]
+    )
+
+def get_deposit_params(minBPT=0, secondaryBorrow=0, trade=bytes(0)):
+    return eth_abi.encode_abi(
+        ['(uint256,uint256,uint32,uint32,bytes)'],
+        [[
+            minBPT,
+            secondaryBorrow,
+            0, # secondaryBorrowLimit
+            0, # secondaryRollLendLimit
+            trade
+        ]]
+    )
+
+def get_redeem_params(minPrimary, minSecondary, trade):
+    return eth_abi.encode_abi(
+        ['(uint32,uint256,uint256,bytes)'],
+        [[
+            0,
+            Wei(minPrimary * 0.98),
+            Wei(minSecondary * 0.98),
+            trade
+        ]]
+    )

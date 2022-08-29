@@ -4,13 +4,14 @@ pragma solidity 0.8.15;
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
+import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
 import {CurveAdapter} from "./adapters/CurveAdapter.sol";
 import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
 import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
 import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
-import {TradeHandler} from "./TradeHandler.sol";
+import {TradingUtils} from "./TradingUtils.sol";
 
 import {IERC20} from "../utils/TokenUtils.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -33,13 +34,11 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint8 rateDecimals;
     }
 
-    uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
     int256 internal constant RATE_DECIMALS = 1e18;
     mapping(address => PriceOracle) public priceOracles;
+    uint32 public maxOracleFreshnessInSeconds;
 
-    event PriceOracleUpdated(address token, address oracle);
-
-    constructor(NotionalProxy notional_, ITradingModule proxy_) {
+    constructor(NotionalProxy notional_, ITradingModule proxy_) initializer { 
         NOTIONAL = notional_;
         PROXY = proxy_;
     }
@@ -53,11 +52,16 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         address /* newImplementation */
     ) internal override onlyNotionalOwner {}
 
-    function setPriceOracle(address token, AggregatorV2V3Interface oracle)
-        external
-        override
-        onlyNotionalOwner
-    {
+    function initialize(uint32 maxOracleFreshnessInSeconds_) external initializer onlyNotionalOwner {
+        maxOracleFreshnessInSeconds = maxOracleFreshnessInSeconds_;
+    }
+
+    function setMaxOracleFreshness(uint32 newMaxOracleFreshnessInSeconds) external onlyNotionalOwner {
+        emit MaxOracleFreshnessUpdated(maxOracleFreshnessInSeconds, newMaxOracleFreshnessInSeconds);
+        maxOracleFreshnessInSeconds = newMaxOracleFreshnessInSeconds;
+    }
+
+    function setPriceOracle(address token, AggregatorV2V3Interface oracle) external override onlyNotionalOwner {
         PriceOracle storage oracleStorage = priceOracles[token];
         oracleStorage.oracle = oracle;
         oracleStorage.rateDecimals = oracle.decimals();
@@ -125,7 +129,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         ) = PROXY.getExecutionData(dexId, address(this), trade);
 
         return
-            TradeHandler._executeInternal(
+            TradingUtils._executeInternal(
                 trade,
                 dexId,
                 spender,
@@ -153,7 +157,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         ) = _getExecutionData(dexId, address(this), trade);
 
         return
-            TradeHandler._executeInternal(
+            TradingUtils._executeInternal(
                 trade,
                 dexId,
                 spender,
@@ -213,24 +217,12 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         int256 baseDecimals = int256(10**baseOracle.rateDecimals);
         int256 quoteDecimals = int256(10**quoteOracle.rateDecimals);
 
-        (
-            ,
-            /* */
-            int256 basePrice, /* */ /* */ /* */
-            ,
-            ,
-
-        ) = baseOracle.oracle.latestRoundData();
+        (/* */, int256 basePrice, /* */, uint256 bpUpdatedAt, /* */) = baseOracle.oracle.latestRoundData();
+        require(block.timestamp - bpUpdatedAt <= maxOracleFreshnessInSeconds);
         require(basePrice > 0); /// @dev: Chainlink Rate Error
 
-        (
-            ,
-            /* */
-            int256 quotePrice, /* */ /* */ /* */
-            ,
-            ,
-
-        ) = quoteOracle.oracle.latestRoundData();
+        (/* */, int256 quotePrice, /* */, uint256 qpUpdatedAt, /* */) = quoteOracle.oracle.latestRoundData();
+        require(block.timestamp - qpUpdatedAt <= maxOracleFreshnessInSeconds);
         require(quotePrice > 0); /// @dev: Chainlink Rate Error
 
         answer =
@@ -239,8 +231,6 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         decimals = RATE_DECIMALS;
     }
 
-    // @audit there should be an internal and external version of this method, the external method should
-    // be exposed on the TradingModule directly
     function getLimitAmount(
         TradeType tradeType,
         address sellToken,
@@ -254,56 +244,14 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         require(oraclePrice >= 0); /// @dev Chainlink rate error
         require(oracleDecimals >= 0); /// @dev Chainlink decimals error
 
-        uint256 sellTokenDecimals = 10 **
-            (
-                sellToken == Constants.ETH_ADDRESS
-                    ? 18
-                    : IERC20(sellToken).decimals()
-            );
-        uint256 buyTokenDecimals = 10 **
-            (
-                buyToken == Constants.ETH_ADDRESS
-                    ? 18
-                    : IERC20(buyToken).decimals()
-            );
-
-        // @audit what about EXACT_OUT_BATCH, won't that fall into the wrong else condition?
-        if (tradeType == TradeType.EXACT_OUT_SINGLE) {
-            // 0 means no slippage limit
-            if (slippageLimit == 0) {
-                return type(uint256).max;
-            }
-            // Invert oracle price
-            // @audit comment this formula and re-arrange such that division is pushed to the end
-            // to the extent possible
-            oraclePrice = (oracleDecimals * oracleDecimals) / oraclePrice;
-            // For exact out trades, limitAmount is the max amount of sellToken the DEX can
-            // pull from the contract
-            limitAmount =
-                ((uint256(oraclePrice) +
-                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
-                        SLIPPAGE_LIMIT_PRECISION)) * amount) /
-                uint256(oracleDecimals);
-
-            // limitAmount is in buyToken precision after the previous calculation,
-            // convert it to sellToken precision
-            limitAmount = (limitAmount * sellTokenDecimals) / buyTokenDecimals;
-        } else {
-            // 0 means no slippage limit
-            if (slippageLimit == 0) {
-                return 0;
-            }
-            // For exact in trades, limitAmount is the min amount of buyToken the contract
-            // expects from the DEX
-            limitAmount =
-                ((uint256(oraclePrice) -
-                    ((uint256(oraclePrice) * uint256(slippageLimit)) /
-                        SLIPPAGE_LIMIT_PRECISION)) * amount) /
-                uint256(oracleDecimals);
-
-            // limitAmount is in sellToken precision after the previous calculation,
-            // convert it to buyToken precision
-            limitAmount = (limitAmount * buyTokenDecimals) / sellTokenDecimals;
-        }
+        limitAmount = TradingUtils._getLimitAmount({
+            tradeType: tradeType,
+            sellToken: sellToken,
+            buyToken: buyToken,
+            amount: amount,
+            slippageLimit: slippageLimit,
+            oraclePrice: uint256(oraclePrice),
+            oracleDecimals: uint256(oracleDecimals)
+        });
     }
 }

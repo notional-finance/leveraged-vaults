@@ -4,8 +4,6 @@ from brownie.network import Chain
 from brownie import network, Contract
 from scripts.EnvironmentConfig import getEnvironment
 
-chain = Chain()
-
 DEX_ID = {
     'UNUSED': 0,
     'UNISWAP_V2': 1,
@@ -20,12 +18,6 @@ def encode_exchange_data(dex, tradeType, params):
     if dex == 'UNISWAP_V3' and tradeType == 'EXACT_IN_SINGLE':
         return eth_abi.encode_abi(['(uint24)'], [tuple([params['fee']])])
 
-@pytest.fixture(autouse=True)
-def run_around_tests():
-    chain.snapshot()
-    yield
-    chain.revert()
-
 @pytest.fixture(scope="module", autouse=True)
 def env():
     name = network.show_active()
@@ -35,7 +27,6 @@ def env():
         return environment
     if name == 'mainnet-fork':
         return getEnvironment('mainnet')
-
 
 def set_flags(flags, **kwargs):
     binList = list(format(flags, "b").rjust(16, "0"))

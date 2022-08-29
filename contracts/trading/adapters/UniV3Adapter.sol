@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-
+import {Deployments} from "../../global/Deployments.sol";
+import {TradeHandler} from "../TradeHandler.sol";
 import "../../../interfaces/trading/ITradingModule.sol";
 import "../../../interfaces/uniswap/v3/ISwapRouter.sol";
 
 library UniV3Adapter {
-    ISwapRouter public constant ROUTER = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     struct UniV3SingleData { uint24 fee; }
 
@@ -18,7 +18,9 @@ library UniV3Adapter {
         UniV3SingleData memory data = abi.decode(trade.exchangeData, (UniV3SingleData));
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(
-            trade.sellToken, trade.buyToken, data.fee, from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
+            trade.sellToken == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : trade.sellToken, 
+            trade.buyToken == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : trade.buyToken, 
+            data.fee, from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
         );
 
         return abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector, params);
@@ -30,7 +32,9 @@ library UniV3Adapter {
         UniV3SingleData memory data = abi.decode(trade.exchangeData, (UniV3SingleData));
 
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams(
-            trade.sellToken, trade.buyToken, data.fee, from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
+            trade.sellToken == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : trade.sellToken, 
+            trade.buyToken == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : trade.buyToken, 
+            data.fee, from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
         );
 
         return abi.encodeWithSelector(ISwapRouter.exactOutputSingle.selector, params);
@@ -68,8 +72,8 @@ library UniV3Adapter {
             bytes memory executionCallData
         )
     {
-        spender = address(ROUTER);
-        target = address(ROUTER);
+        spender = address(Deployments.UNIV3_ROUTER);
+        target = address(Deployments.UNIV3_ROUTER);
         // msgValue is always zero for uniswap
 
         if (trade.tradeType == TradeType.EXACT_IN_SINGLE) {
