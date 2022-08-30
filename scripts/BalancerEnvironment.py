@@ -40,8 +40,9 @@ StrategyConfig = {
             "maxUnderlyingSurplus": 100e18, # 10 ETH
             "oracleWindowInSeconds": 3600,
             "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimit": 5e6, # 5%
-            "postMaturitySettlementSlippageLimit": 10e6, # 10%
+            "settlementSlippageLimitPercent": 5e6, # 5%
+            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
+            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "maxRewardTradeSlippageLimitPercent": 5e6,
             "balancerOracleWeight": 0.6e4, # 60%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
@@ -69,8 +70,9 @@ StrategyConfig = {
             "maxUnderlyingSurplus": 10000e18, # 10000 DAI
             "oracleWindowInSeconds": 0,
             "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimit": 5e6, # 5%
-            "postMaturitySettlementSlippageLimit": 10e6, # 10%
+            "settlementSlippageLimitPercent": 5e6, # 5%
+            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
+            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "maxRewardTradeSlippageLimitPercent": 5e6,
             "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
@@ -98,8 +100,9 @@ StrategyConfig = {
             "maxUnderlyingSurplus": 10000e6, # 10000 USDC
             "oracleWindowInSeconds": 0,
             "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimit": 5e6, # 5%
-            "postMaturitySettlementSlippageLimit": 10e6, # 10%
+            "settlementSlippageLimitPercent": 5e6, # 5%
+            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
+            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "maxRewardTradeSlippageLimitPercent": 5e6,
             "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
@@ -150,8 +153,9 @@ class BalancerEnvironment(Environment):
                 [
                     stratConfig["maxUnderlyingSurplus"],
                     stratConfig["oracleWindowInSeconds"],
-                    stratConfig["settlementSlippageLimit"], 
-                    stratConfig["postMaturitySettlementSlippageLimit"], 
+                    stratConfig["settlementSlippageLimitPercent"], 
+                    stratConfig["postMaturitySettlementSlippageLimitPercent"], 
+                    stratConfig["emergencySettlementSlippageLimitPercent"], 
                     stratConfig["maxRewardTradeSlippageLimitPercent"],
                     stratConfig["maxBalancerPoolShare"],
                     stratConfig["balancerOracleWeight"],

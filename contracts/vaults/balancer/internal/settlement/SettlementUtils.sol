@@ -24,25 +24,15 @@ library SettlementUtils {
     using StrategyUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultSettings;
 
-    /// @notice Validates settlement parameters, including that the settlement is
-    /// past a specified cool down period and that the slippage passed in by the caller
+    /// @notice Validates that the slippage passed in by the caller
     /// does not exceed the designated threshold.
-    /// @param lastSettlementTimestamp the last time the vault was settled
-    /// @param coolDownInMinutes configured length of time required between settlements to ensure that
-    /// slippage thresholds are respected (gives the market time to arbitrage back into position)
     /// @param slippageLimitPercent configured limit on the slippage from the oracle price allowed
     /// @param data trade parameters passed into settlement
     /// @return params abi decoded redemption parameters
     function _decodeParamsAndValidate(
-        uint32 lastSettlementTimestamp,
-        uint32 coolDownInMinutes,
         uint32 slippageLimitPercent,
         bytes memory data
     ) internal view returns (RedeemParams memory params) {
-        // Convert coolDown to seconds
-        if (lastSettlementTimestamp + (coolDownInMinutes * 60) > block.timestamp)
-            revert Errors.InSettlementCoolDown(lastSettlementTimestamp, coolDownInMinutes);
-
         params = abi.decode(data, (RedeemParams));
         DynamicTradeParams memory callbackData = abi.decode(
             params.secondaryTradeParams, (DynamicTradeParams)
@@ -51,6 +41,16 @@ library SettlementUtils {
         if (callbackData.oracleSlippagePercent > slippageLimitPercent) {
             revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercent, slippageLimitPercent);
         }
+    }
+
+    /// @notice Validates that the settlement is past a specified cool down period.
+    /// @param lastSettlementTimestamp the last time the vault was settled
+    /// @param coolDownInMinutes configured length of time required between settlements to ensure that
+    /// slippage thresholds are respected (gives the market time to arbitrage back into position)
+    function _validateCoolDown(uint32 lastSettlementTimestamp, uint32 coolDownInMinutes) internal view {
+        // Convert coolDown to seconds
+        if (lastSettlementTimestamp + (coolDownInMinutes * 60) > block.timestamp)
+            revert Errors.InSettlementCoolDown(lastSettlementTimestamp, coolDownInMinutes);
     }
 
     /// @notice Calculates the amount of BPT availTable for emergency settlement
