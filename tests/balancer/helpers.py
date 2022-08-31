@@ -12,14 +12,7 @@ def get_metastable_amounts(poolContext, amount):
     return (Wei(primaryAmount), Wei(secondaryAmount))
 
 def enterMaturity(
-    env, 
-    vault, 
-    currencyId, 
-    maturityIndex, 
-    depositAmount, 
-    primaryBorrowAmount, 
-    account,
-    depositParams=None
+    env, vault, currencyId, maturityIndex, depositAmount, primaryBorrowAmount, account, callStatic=False, depositParams=None
 ):
     maturity = env.notional.getActiveMarkets(currencyId)[maturityIndex][1]
     value = 0
@@ -27,16 +20,28 @@ def enterMaturity(
         value = depositAmount
     if depositParams == None:
         depositParams = get_deposit_params()
-    env.notional.enterVault(
-        account,
-        vault.address,
-        depositAmount,
-        maturity,
-        primaryBorrowAmount,
-        0,
-        depositParams,
-        {"from": account, "value": value}
-    )
+    if callStatic:
+        env.notional.enterVault.call(
+            account,
+            vault.address,
+            Wei(depositAmount),
+            Wei(maturity),
+            Wei(primaryBorrowAmount),
+            0,
+            depositParams,
+            {"from": account, "value": Wei(value)}
+        )
+    else:
+        env.notional.enterVault(
+            account,
+            vault.address,
+            Wei(depositAmount),
+            Wei(maturity),
+            Wei(primaryBorrowAmount),
+            0,
+            depositParams,
+            {"from": account, "value": Wei(value)}
+        )
     return maturity
 
 def exitVaultPercent(env, vault, account, percent, redeemParams):

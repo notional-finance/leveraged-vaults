@@ -79,7 +79,7 @@ StrategyConfig = {
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-            "oraclePriceDeviationLimitPercent": 10, # +/- 0.1%
+            "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
         },
         "StratBoostedPoolUSDCPrimary": {
             "vaultConfig": get_vault_config(
@@ -109,7 +109,7 @@ StrategyConfig = {
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-            "oraclePriceDeviationLimitPercent": 10, # +/- 0.1%
+            "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
         }
     }
 }

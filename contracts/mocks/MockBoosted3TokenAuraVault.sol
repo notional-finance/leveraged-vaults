@@ -45,7 +45,7 @@ contract MockBoosted3TokenAuraVault {
     function _deposit(uint256 deposit, uint256 maturity, uint256 minBPT) 
         external returns (uint256 bptMinted) {
         return poolContext._deposit(
-            _baseStrategyContext(), stakingContext, deposit, minBPT
+            _baseStrategyContext(), stakingContext, oracleContext, deposit, minBPT
         );
     }
 

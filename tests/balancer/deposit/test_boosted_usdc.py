@@ -1,6 +1,5 @@
 import pytest
-import eth_abi
-from brownie import Wei
+import brownie
 from tests.fixtures import *
 from tests.balancer.helpers import enterMaturity
 from scripts.common import get_deposit_params
@@ -18,3 +17,11 @@ def test_single_maturity_high_leverage_success(StratBoostedPoolUSDCPrimary):
     depositAmount = 10000e6
     env.tokens["USDC"].approve(env.notional, 2 ** 256 - 1, {"from": env.whales["USDC"]})
     maturity = enterMaturity(env, vault, 3, 0, depositAmount, primaryBorrowAmount, env.whales["USDC"])
+
+def test_leverage_ratio_too_high_failure(StratBoostedPoolUSDCPrimary):
+    (env, vault, mock) = StratBoostedPoolUSDCPrimary
+    primaryBorrowAmount = 60000e8
+    depositAmount = 10000e6
+    env.tokens["USDC"].approve(env.notional, 2 ** 256 - 1, {"from": env.whales["USDC"]})
+    with brownie.reverts("Insufficient Collateral"):
+        enterMaturity(env, vault, 3, 0, depositAmount, primaryBorrowAmount, env.whales["USDC"], True)

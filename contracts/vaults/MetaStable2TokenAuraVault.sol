@@ -75,7 +75,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         uint256 strategyTokens,
         uint256 maturity,
         bytes calldata data
-    ) internal override returns (uint256 finalPrimaryBalance) {        
+    ) internal override returns (uint256 finalPrimaryBalance) {    
         RedeemParams memory params = abi.decode(data, (RedeemParams));
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
 

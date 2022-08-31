@@ -255,7 +255,7 @@ library TwoTokenPoolUtils {
             = _unstakeAndExitPool(
                 poolContext, stakingContext, bptClaim, params.minPrimary, params.minSecondary
             );
-        
+
         finalPrimaryBalance = primaryBalance;
         if (secondaryBalance > 0) {
             uint256 primaryPurchased = _sellSecondaryBalance(
@@ -266,10 +266,6 @@ library TwoTokenPoolUtils {
         }
 
         // Update global strategy token balance
-        // This only needs to be updated for normal redemption
-        // and emergency settlement. For normal and post-maturity settlement
-        // scenarios (account == address(this) && data.length == 32), we
-        // update totalStrategyTokenGlobal before this function is called.
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }

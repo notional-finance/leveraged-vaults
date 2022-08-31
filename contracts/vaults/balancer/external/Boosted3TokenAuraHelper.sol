@@ -133,6 +133,7 @@ library Boosted3TokenAuraHelper {
         uint256 bptAmount = context.poolContext._joinPoolAndStake({
             strategyContext: strategyContext,
             stakingContext: stakingContext,
+            oracleContext: oracleContext,
             deposit: primaryAmount,
             minBPT: minBPT
         });

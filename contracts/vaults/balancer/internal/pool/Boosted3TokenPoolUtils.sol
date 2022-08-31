@@ -280,12 +280,14 @@ library Boosted3TokenPoolUtils {
         ThreeTokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
+        BoostedOracleContext memory oracleContext,
         uint256 deposit,
         uint256 minBPT
     ) internal returns (uint256 strategyTokensMinted) {
         uint256 bptMinted = poolContext._joinPoolAndStake({
             strategyContext: strategyContext,
             stakingContext: stakingContext,
+            oracleContext: oracleContext,
             deposit: deposit,
             minBPT: minBPT
         });
@@ -323,6 +325,7 @@ library Boosted3TokenPoolUtils {
         ThreeTokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
+        BoostedOracleContext memory oracleContext,
         uint256 deposit,
         uint256 minBPT
     ) internal returns (uint256 bptMinted) {
@@ -331,7 +334,7 @@ library Boosted3TokenPoolUtils {
         // Check BPT threshold to make sure our share of the pool is
         // below maxBalancerPoolShare
         uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
-            poolContext.basePool.basePool.pool.totalSupply()
+            poolContext._getVirtualSupply(oracleContext)
         );
         uint256 bptHeldAfterJoin = strategyContext.totalBPTHeld + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)

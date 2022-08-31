@@ -73,7 +73,8 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
 
         strategyTokensMinted = context.poolContext._deposit({
             strategyContext: context.baseStrategy,
-            stakingContext: context.stakingContext, 
+            stakingContext: context.stakingContext,
+            oracleContext: context.oracleContext, 
             deposit: deposit,
             minBPT: params.minBPT
         });
