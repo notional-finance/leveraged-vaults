@@ -7,8 +7,8 @@ import {IBalancerVault, IAsset} from "../../interfaces/balancer/IBalancerVault.s
 import {WETH9} from "../../interfaces/WETH9.sol";
 import {ISwapRouter as UniV3ISwapRouter} from "../../interfaces/uniswap/v3/ISwapRouter.sol";
 import {IUniV2Router2} from "../../interfaces/uniswap/v2/IUniV2Router2.sol";
-import {ICurveRouter} from "../../../interfaces/curve/ICurveRouter.sol";
-import {ICurveRegistry} from "../../../interfaces/curve/ICurveRegistry.sol";
+import {ICurveRouter} from "../../interfaces/curve/ICurveRouter.sol";
+import {ICurveRegistry} from "../../interfaces/curve/ICurveRegistry.sol";
 
 /// @title Hardcoded Deployment Addresses for ETH Mainnet
 library Deployments {

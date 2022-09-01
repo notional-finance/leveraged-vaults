@@ -1,4 +1,5 @@
 
+import math
 import pytest
 import eth_abi
 import brownie
@@ -37,15 +38,21 @@ def test_normal_single_maturity_success(StratStableETHstETH):
     vaultState = env.notional.getVaultState(vault.address, maturity)
     assert vaultState["totalAssetCash"] == 0
     assert vaultState["totalStrategyTokens"] == vaultState["totalVaultShares"]
+    tokensToRedeem = math.floor(vaultState["totalStrategyTokens"] * 0.5)
     vault.settleVaultNormal(
         maturity,
-        vaultState["totalStrategyTokens"] * 0.5,
+        tokensToRedeem,
         redeemParams,
         {"from": accounts[1]}
     )
     vaultState = env.notional.getVaultState(vault.address, maturity)
     assert pytest.approx(vaultState["totalAssetCash"], rel=1e-2) == 37256494853
-    assert vaultState["totalStrategyTokens"] == vaultState["totalVaultShares"] * 0.5
+    assert vaultState["totalStrategyTokens"] == vaultState["totalVaultShares"] - tokensToRedeem
+
+    # Can't deposit during settlement (totalAssetCash > 0)
+    with brownie.reverts():
+        enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[1], True)
+
 
 def test_post_maturity_single_maturity_success(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
@@ -78,25 +85,4 @@ def test_emergency_single_maturity_success(StratStableETHstETH):
     vaultState = env.notional.getVaultState(vault.address, maturity)
     assert vaultState["totalStrategyTokens"] == 0
     assert pytest.approx(vaultState["totalAssetCash"], rel=1e-2) == 74512960552
-
-def test_deposit_in_settlement_window_failure(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
-    maturity = env.notional.getActiveMarkets(1)[0][1]
-    primaryBorrowAmount = Wei(5e8)
-    depositAmount = Wei(10e18)
-    settlementPeriod = vault.getStrategyContext()["baseStrategy"]["settlementPeriodInSeconds"]
-    sleepAmount = maturity - settlementPeriod + 1 - chain.time()
-    chain.sleep(sleepAmount)
-    chain.mine()
-    with brownie.reverts():
-        env.notional.enterVault.call(
-            env.whales["ETH"],
-            vault.address,
-            depositAmount,
-            maturity,
-            primaryBorrowAmount,
-            0,
-            get_deposit_params(),
-            {"from": env.whales["ETH"], "value": depositAmount}
-        )
         

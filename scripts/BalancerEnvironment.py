@@ -12,6 +12,7 @@ from brownie import (
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
 from brownie.network.state import Chain
+from brownie.convert import to_bytes
 from scripts.common import deployArtifact, get_vault_config, set_flags
 from scripts.EnvironmentConfig import Environment
 from eth_utils import keccak
@@ -126,7 +127,6 @@ class BalancerEnvironment(Environment):
             for lib in libs:
                 lib.deploy({"from": self.deployer})
 
-
         impl = vaultContract.deploy(
             self.addresses["notional"],
             [
@@ -145,6 +145,29 @@ class BalancerEnvironment(Environment):
 
         proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, vaultContract.abi)
+
+        print(
+            vaultProxy.initialize.encode_input(
+                [
+                    stratConfig["name"],
+                    stratConfig["primaryCurrency"],
+                    [
+                        stratConfig["maxUnderlyingSurplus"],
+                        stratConfig["oracleWindowInSeconds"],
+                        stratConfig["settlementSlippageLimitPercent"], 
+                        stratConfig["postMaturitySettlementSlippageLimitPercent"], 
+                        stratConfig["emergencySettlementSlippageLimitPercent"], 
+                        stratConfig["maxRewardTradeSlippageLimitPercent"],
+                        stratConfig["maxBalancerPoolShare"],
+                        stratConfig["balancerOracleWeight"],
+                        stratConfig["settlementCoolDownInMinutes"],
+                        stratConfig["postMaturitySettlementCoolDownInMinutes"],
+                        stratConfig["feePercentage"],
+                        stratConfig["oraclePriceDeviationLimitPercent"]
+                    ]
+                ]
+            )
+        )
 
         vaultProxy.initialize(
             [
@@ -175,14 +198,6 @@ class BalancerEnvironment(Environment):
             {"from": self.notional.owner()}
         )
 
-        if (stratConfig["secondaryBorrowCurrency"] != None):
-            self.notional.updateSecondaryBorrowCapacity(
-                proxy.address,
-                stratConfig["secondaryBorrowCurrency"]["currencyId"],
-                stratConfig["secondaryBorrowCurrency"]["maxCapacity"],
-                {"from": self.notional.owner()}
-            )
-
         return vaultProxy
 
 def getEnvironment(network = "mainnet"):
@@ -197,25 +212,20 @@ def main():
     env = BalancerEnvironment(networkName)
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    stableVault = env.deployBalancerVault(
+    vault1 = env.deployBalancerVault(
         "StratStableETHstETH", 
         MetaStable2TokenAuraVault,
         [MetaStable2TokenAuraHelper]
     )
-    env.mockStable2TokenAuraVault = MockStable2TokenAuraVault.deploy(
-        stableVault.getStrategyContext(),
-        {"from": env.deployer}
-    )
-
-    boosted3TokenVault = env.deployBalancerVault(
+    vault2 = env.deployBalancerVault(
         "StratBoostedPoolDAIPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-
-    env.mockThreeTokenAuraVault = MockBoosted3TokenAuraVault.deploy(
-        boosted3TokenVault.getStrategyContext(),
-        {"from": env.deployer}
+    vault3 = env.deployBalancerVault(
+        "StratBoostedPoolUSDCPrimary", 
+        Boosted3TokenAuraVault,
+        [Boosted3TokenAuraHelper]
     )
 
     return
