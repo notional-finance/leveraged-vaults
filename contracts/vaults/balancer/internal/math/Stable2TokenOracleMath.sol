@@ -78,9 +78,11 @@ library Stable2TokenOracleMath {
 
         // min amounts are calculated based on the share of the Balancer pool with a small discount applied
         uint256 totalBPTSupply = poolContext.basePool.pool.totalSupply();
-        minPrimary = (poolContext.primaryBalance * bptAmount * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT) / 
+        minPrimary = (poolContext.primaryBalance * bptAmount * 
+            strategyContext.vaultSettings.balancerPoolSlippageLimitPercent) / 
             (totalBPTSupply * uint256(BalancerConstants.VAULT_PERCENT_BASIS));
-        minSecondary = (poolContext.secondaryBalance * bptAmount * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT) / 
+        minSecondary = (poolContext.secondaryBalance * bptAmount * 
+            strategyContext.vaultSettings.balancerPoolSlippageLimitPercent) / 
             (totalBPTSupply * uint256(BalancerConstants.VAULT_PERCENT_BASIS));
     }
 

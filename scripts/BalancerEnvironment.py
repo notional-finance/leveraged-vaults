@@ -51,6 +51,7 @@ StrategyConfig = {
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 500, # +/- 5%
+            "balancerPoolSlippageLimitPercent": 9900, # 1%
         },
         "StratBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
@@ -81,6 +82,7 @@ StrategyConfig = {
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
+            "balancerPoolSlippageLimitPercent": 9900, # 1%
         },
         "StratBoostedPoolUSDCPrimary": {
             "vaultConfig": get_vault_config(
@@ -111,6 +113,7 @@ StrategyConfig = {
             "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
+            "balancerPoolSlippageLimitPercent": 9900, # 1%
         }
     }
 }
@@ -163,7 +166,8 @@ class BalancerEnvironment(Environment):
                         stratConfig["settlementCoolDownInMinutes"],
                         stratConfig["postMaturitySettlementCoolDownInMinutes"],
                         stratConfig["feePercentage"],
-                        stratConfig["oraclePriceDeviationLimitPercent"]
+                        stratConfig["oraclePriceDeviationLimitPercent"],
+                        stratConfig["balancerPoolSlippageLimitPercent"]
                     ]
                 ]
             )
@@ -185,7 +189,8 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["postMaturitySettlementCoolDownInMinutes"],
                     stratConfig["feePercentage"],
-                    stratConfig["oraclePriceDeviationLimitPercent"]
+                    stratConfig["oraclePriceDeviationLimitPercent"],
+                    stratConfig["balancerPoolSlippageLimitPercent"]
                 ]
             ],
             {"from": self.notional.owner()}

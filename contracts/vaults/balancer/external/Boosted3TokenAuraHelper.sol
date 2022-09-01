@@ -95,7 +95,7 @@ library Boosted3TokenAuraHelper {
         params.minPrimary = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, strategyContext, bptToSettle
         );
-        params.minPrimary = params.minPrimary * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT / 
+        params.minPrimary = params.minPrimary * strategyContext.vaultSettings.balancerPoolSlippageLimitPercent / 
             uint256(BalancerConstants.VAULT_PERCENT_BASIS);
 
         int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({

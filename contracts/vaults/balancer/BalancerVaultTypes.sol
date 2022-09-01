@@ -196,6 +196,8 @@ struct StrategyVaultSettings {
     uint16 feePercentage;
     /// @notice Limits the amount of allowable deviation from the oracle price
     uint16 oraclePriceDeviationLimitPercent;
+    /// @notice Slippage limit for joining/exiting Balancer pools
+    uint16 balancerPoolSlippageLimitPercent;
 }
 
 struct StrategyVaultState {

@@ -402,7 +402,7 @@ library Boosted3TokenPoolUtils {
             currentInvariant: invariant
         });
 
-        minBPT = minBPT * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT / 
+        minBPT = minBPT * strategyContext.vaultSettings.balancerPoolSlippageLimitPercent / 
             uint256(BalancerConstants.VAULT_PERCENT_BASIS);
     }
 }

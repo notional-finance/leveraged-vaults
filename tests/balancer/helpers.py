@@ -1,3 +1,4 @@
+import math
 from brownie import Wei
 from scripts.common import (
     get_deposit_params, 
@@ -48,13 +49,16 @@ def exitVaultPercent(env, vault, account, percent, redeemParams):
     vaultAccount = env.notional.getVaultAccount(account, vault.address)
     vaultShares = vaultAccount["vaultShares"]
     primaryBorrowAmount = vaultAccount["fCash"]
+    sharesToRedeem = math.floor(vaultShares * percent)
+    fCashToRepay = math.floor(-primaryBorrowAmount * percent)
     env.notional.exitVault(
         account,
         vault.address,
         account,
-        vaultShares * percent,
-        -primaryBorrowAmount * percent,
+        sharesToRedeem,
+        fCashToRepay,
         0,
         redeemParams,
         {"from": account}
     )
+    return (sharesToRedeem, fCashToRepay)
