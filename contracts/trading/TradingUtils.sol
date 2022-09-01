@@ -34,7 +34,6 @@ library TradingUtils {
         uint256 msgValue,
         bytes memory executionData
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-
         // Get pre-trade token balances
         (uint256 preTradeSellBalance, uint256 preTradeBuyBalance) = _getBalances(trade);
 

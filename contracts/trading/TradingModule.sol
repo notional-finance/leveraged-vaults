@@ -148,7 +148,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         external
         override
         returns (uint256 amountSold, uint256 amountBought)
-    {        
+    {
         (
             address spender,
             address target,
@@ -237,7 +237,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         address buyToken,
         uint256 amount,
         uint32 slippageLimit
-    ) external view override returns (uint256 limitAmount) {        
+    ) external view override returns (uint256 limitAmount) {
         // prettier-ignore
         (int256 oraclePrice, int256 oracleDecimals) = getOraclePrice(sellToken, buyToken);
 
