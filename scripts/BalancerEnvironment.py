@@ -5,9 +5,7 @@ from brownie import (
     MetaStable2TokenAuraVault,
     Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
-    MetaStable2TokenAuraHelper,
-    MockStable2TokenAuraVault,
-    MockBoosted3TokenAuraVault
+    MetaStable2TokenAuraHelper
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei

@@ -7,7 +7,7 @@ import {nProxy} from "../proxy/nProxy.sol";
 /// @notice TradeHandler is an internal library to be compiled into StrategyVaults to interact
 /// with the TradeModule and execute trades
 library TradeHandler {
-    
+
     /// @notice Can be used to delegate call to the TradingModule's implementation in order to execute
     /// a trade.
     function _executeTradeWithDynamicSlippage(

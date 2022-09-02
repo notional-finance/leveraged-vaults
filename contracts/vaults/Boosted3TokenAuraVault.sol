@@ -164,7 +164,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         address account,
         uint256 strategyTokenAmount,
         uint256 maturity
-    ) public view override returns (int256 underlyingValue) {
+    ) public view virtual override returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,

@@ -2,14 +2,14 @@
 pragma solidity 0.8.15;
 
 import {AuraVaultDeploymentParams} from "../vaults/balancer/BalancerVaultTypes.sol";
-import {Boosted3TokenAuraVault} from "../vaults/Boosted3TokenAuraVault.sol";
+import {MetaStable2TokenAuraVault} from "../vaults/MetaStable2TokenAuraVault.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 
-contract MockBoosted3TokenAuraVault is Boosted3TokenAuraVault {
+contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
     constructor(
         NotionalProxy notional_, 
         AuraVaultDeploymentParams memory params
-    ) Boosted3TokenAuraVault(notional_, params) {
+    ) MetaStable2TokenAuraVault(notional_, params) {
     }
 
     function convertStrategyToUnderlying(
