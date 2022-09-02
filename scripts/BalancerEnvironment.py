@@ -2,12 +2,10 @@ import eth_abi
 from brownie import (
     network, 
     nProxy,
-    MetaStable2TokenAuraVault,
-    Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
     MetaStable2TokenAuraHelper,
-    MockStable2TokenAuraVault,
-    MockBoosted3TokenAuraVault
+    Boosted3TokenAuraVault,
+    MetaStable2TokenAuraVault
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -148,30 +146,6 @@ class BalancerEnvironment(Environment):
 
         proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, vaultContract.abi)
-
-        print(
-            vaultProxy.initialize.encode_input(
-                [
-                    stratConfig["name"],
-                    stratConfig["primaryCurrency"],
-                    [
-                        stratConfig["maxUnderlyingSurplus"],
-                        stratConfig["oracleWindowInSeconds"],
-                        stratConfig["settlementSlippageLimitPercent"], 
-                        stratConfig["postMaturitySettlementSlippageLimitPercent"], 
-                        stratConfig["emergencySettlementSlippageLimitPercent"], 
-                        stratConfig["maxRewardTradeSlippageLimitPercent"],
-                        stratConfig["maxBalancerPoolShare"],
-                        stratConfig["balancerOracleWeight"],
-                        stratConfig["settlementCoolDownInMinutes"],
-                        stratConfig["postMaturitySettlementCoolDownInMinutes"],
-                        stratConfig["feePercentage"],
-                        stratConfig["oraclePriceDeviationLimitPercent"],
-                        stratConfig["balancerPoolSlippageLimitPercent"]
-                    ]
-                ]
-            )
-        )
 
         vaultProxy.initialize(
             [

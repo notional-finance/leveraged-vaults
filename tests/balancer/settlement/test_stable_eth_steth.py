@@ -18,7 +18,7 @@ from scripts.common import (
 chain = Chain()
 
 def test_normal_single_maturity_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -26,11 +26,7 @@ def test_normal_single_maturity_success(StratStableETHstETH):
     chain.mine()
     # Disable oracle freshness check
     env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
-    strategyContext = vault.getStrategyContext()
-    spotBalances = mock.getSpotBalances(strategyContext["baseStrategy"]["totalBPTHeld"])
-    redeemParams = get_redeem_params(
-        spotBalances["primaryBalance"] * 0.5 * 0.98, 
-        spotBalances["secondaryBalance"] * 0.5 * 0.98, 
+    redeemParams = get_redeem_params(0, 0, 
         get_dynamic_trade_params(
             DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
         )
@@ -55,10 +51,10 @@ def test_normal_single_maturity_success(StratStableETHstETH):
 
 
 def test_post_maturity_single_maturity_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
 
 def test_emergency_single_maturity_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -69,10 +65,7 @@ def test_emergency_single_maturity_success(StratStableETHstETH):
         list(settings.values()), 
         {"from": env.notional.owner()}
     )
-    spotBalances = mock.getSpotBalances(strategyContext["baseStrategy"]["totalBPTHeld"])
-    redeemParams = get_redeem_params(
-        spotBalances["primaryBalance"] * 0.98, 
-        spotBalances["secondaryBalance"] * 0.98, 
+    redeemParams = get_redeem_params(0, 0, 
         get_dynamic_trade_params(
             DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
         )

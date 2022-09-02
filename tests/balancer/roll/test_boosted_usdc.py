@@ -15,7 +15,7 @@ from scripts.common import (
 chain = Chain()
 
 def test_single_account_next_maturity_success(StratBoostedPoolUSDCPrimary):
-    (env, vault, mock) = StratBoostedPoolUSDCPrimary
+    (env, vault) = StratBoostedPoolUSDCPrimary
     primaryBorrowAmount = 5000e8
     depositAmount = 10000e6
     env.tokens["USDC"].approve(env.notional, 2 ** 256 - 1, {"from": env.whales["USDC"]})

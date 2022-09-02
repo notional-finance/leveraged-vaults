@@ -18,7 +18,7 @@ from scripts.common import (
 chain = Chain()
 
 def test_normal_single_maturity_success(StratBoostedPoolUSDCPrimary):
-    (env, vault, mock) = StratBoostedPoolUSDCPrimary
+    (env, vault) = StratBoostedPoolUSDCPrimary
     primaryBorrowAmount = 5000e8
     depositAmount = 10000e6
     env.tokens["USDC"].approve(env.notional, 2 ** 256 - 1, {"from": env.whales["USDC"]})
@@ -43,10 +43,10 @@ def test_normal_single_maturity_success(StratBoostedPoolUSDCPrimary):
     )
 
 def test_post_maturity_single_maturity_success(StratBoostedPoolUSDCPrimary):
-    (env, vault, mock) = StratBoostedPoolUSDCPrimary
+    (env, vault) = StratBoostedPoolUSDCPrimary
 
 def test_emergency_single_maturity_success(StratBoostedPoolUSDCPrimary):
-    (env, vault, mock) = StratBoostedPoolUSDCPrimary
+    (env, vault) = StratBoostedPoolUSDCPrimary
     primaryBorrowAmount = 5000e8
     depositAmount = 10000e6
     env.tokens["USDC"].approve(env.notional, 2 ** 256 - 1, {"from": env.whales["USDC"]})

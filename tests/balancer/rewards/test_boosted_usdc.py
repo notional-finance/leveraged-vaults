@@ -18,7 +18,7 @@ from scripts.common import (
 chain = Chain()
 
 def test_reinvest_rewards_success(StratBoostedPoolUSDCPrimary):
-    (env, vault, mock) = StratBoostedPoolUSDCPrimary
+    (env, vault) = StratBoostedPoolUSDCPrimary
     rewardAmount = Wei(50e18)
     env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
 
