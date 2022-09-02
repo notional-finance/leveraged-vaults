@@ -17,8 +17,23 @@ from scripts.common import (
 
 chain = Chain()
 
+def test_claim_rewards_success(StratStableETHstETH):
+    (env, vault) = StratStableETHstETH
+    primaryBorrowAmount = 100e8
+    depositAmount = 50e18
+    enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
+    chain.sleep(3600 * 24 * 365)
+    chain.mine()
+    feeReceiver = vault.getStrategyContext()["baseStrategy"]["feeReceiver"]
+    feePercentage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["feePercentage"] / 1e2
+    assert env.tokens["BAL"].balanceOf(vault.address) == 0
+    assert env.tokens["AURA"].balanceOf(vault.address) == 0
+    assert env.tokens["BAL"].balanceOf(feeReceiver) == 0
+    assert env.tokens["AURA"].balanceOf(feeReceiver) == 0
+    vault.claimRewardTokens({"from": accounts[1]})
+
 def test_reinvest_rewards_success(StratBoostedPoolUSDCPrimary):
-    (env, vault, mock) = StratBoostedPoolUSDCPrimary
+    (env, vault) = StratBoostedPoolUSDCPrimary
     rewardAmount = Wei(50e18)
     env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
 

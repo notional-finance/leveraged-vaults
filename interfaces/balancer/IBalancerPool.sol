@@ -12,6 +12,7 @@ interface IBoostedPool {
         uint256 precision
     );
     function getDueProtocolFeeBptAmount() external view returns (uint256);
+    function getCachedProtocolSwapFeePercentage() external view returns (uint256);
 }
 
 interface IMetaStablePool is IERC20 {

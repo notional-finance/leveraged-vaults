@@ -15,7 +15,7 @@ from scripts.common import (
 chain = Chain()
 
 def test_single_maturity_low_leverage_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -30,7 +30,7 @@ def test_single_maturity_low_leverage_success(StratStableETHstETH):
     assert pytest.approx(underlyingValue, rel=5e-2) == depositAmount + primaryBorrowAmount * 1e10
 
 def test_single_maturity_high_leverage_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -45,7 +45,7 @@ def test_single_maturity_high_leverage_success(StratStableETHstETH):
     assert pytest.approx(underlyingValue, rel=5e-2) == depositAmount + primaryBorrowAmount * 1e10
 
 def test_multiple_maturities_low_leverage_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -64,14 +64,14 @@ def test_multiple_maturities_low_leverage_success(StratStableETHstETH):
     assert pytest.approx(underlyingValue2, rel=5e-2) == depositAmount + primaryBorrowAmount * 1e10
 
 def test_multiple_maturities_high_leverage_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
     maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     maturity2 = enterMaturity(env, vault, 1, 1, depositAmount, primaryBorrowAmount, accounts[1])
 
 def test_multiple_accounts_in_each_maturity_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
     maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -81,7 +81,7 @@ def test_multiple_accounts_in_each_maturity_success(StratStableETHstETH):
     pass
 
 def test_secondary_currency_trading_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
     depositParams = get_deposit_params(trade=get_deposit_trade_params(
@@ -95,14 +95,14 @@ def test_secondary_currency_trading_success(StratStableETHstETH):
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0], depositParams)
 
 def test_leverage_ratio_too_high_failure(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 90e8
     depositAmount = 10e18
     with brownie.reverts("Insufficient Collateral"):
         enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0], True)
 
 def test_balancer_share_too_high_failure(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     settings = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]
     vault.setStrategyVaultSettings(
         get_updated_vault_settings(settings, maxBalancerPoolShare=0),

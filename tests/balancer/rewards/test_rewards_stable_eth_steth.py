@@ -12,7 +12,7 @@ from scripts.common import (
 chain = Chain()
 
 def test_claim_rewards_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 100e8
     depositAmount = 50e18
     enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -40,7 +40,7 @@ def test_claim_rewards_success(StratStableETHstETH):
     ) == feePercentage
 
 def test_reinvest_rewards_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     rewardAmount = Wei(50e18)
     env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
 

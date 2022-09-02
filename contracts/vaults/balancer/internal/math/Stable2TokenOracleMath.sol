@@ -102,6 +102,12 @@ library Stable2TokenOracleMath {
             oracleContext.ampParam, StableMath._balances(primaryAmount, secondaryAmount), true // round up
         );
 
+        /// @notice Balancer math functions expect all amounts to be in BALANCER_PRECISION
+        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
+        uint256 secondaryPrecision = 10 ** poolContext.secondaryDecimals;
+        primaryAmount = primaryAmount * BalancerConstants.BALANCER_PRECISION / primaryPrecision;
+        secondaryAmount = secondaryAmount * BalancerConstants.BALANCER_PRECISION / secondaryPrecision;
+
         uint256 calculatedPairPrice = StableMath._calcSpotPrice({
             amplificationParameter: oracleContext.ampParam,
             invariant: invariant,

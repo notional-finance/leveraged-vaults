@@ -24,10 +24,11 @@ import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.s
 import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
-
+import {FixedPoint} from "../math/FixedPoint.sol";
 
 library Boosted3TokenPoolUtils {
     using TypeConvert for uint256;
+    using FixedPoint for uint256;
     using TypeConvert for int256;
     using TokenUtils for IERC20;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
@@ -391,7 +392,9 @@ library Boosted3TokenPoolUtils {
         uint256[] memory amountsIn = new uint256[](3);
         // _getValidatedPoolData rearranges the balances so that primary is always in the
         // zero index spot
-        amountsIn[0] = primaryAmount;
+        /// @notice Balancer math functions expect all amounts to be in BALANCER_PRECISION
+        uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
+        amountsIn[0] = primaryAmount * BalancerConstants.BALANCER_PRECISION / primaryPrecision;
 
         minBPT = StableMath._calcBptOutGivenExactTokensIn({
             amp: oracleContext.ampParam,
@@ -402,7 +405,29 @@ library Boosted3TokenPoolUtils {
             currentInvariant: invariant
         });
 
+        uint256 swapFeePercentage = IBoostedPool(address(poolContext.basePool.basePool.pool))
+            .getCachedProtocolSwapFeePercentage();
+
+        if (swapFeePercentage > 0) {
+            minBPT -= _getDueProtocolFeeByBpt(minBPT, swapFeePercentage);
+        }
+
         minBPT = minBPT * strategyContext.vaultSettings.balancerPoolSlippageLimitPercent / 
             uint256(BalancerConstants.VAULT_PERCENT_BASIS);
+    }
+
+    function _addSwapFeeAmount(uint256 amount, uint256 protocolSwapFeePercentage) private view returns (uint256) {
+        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+        return amount.divUp(FixedPoint.ONE.sub(protocolSwapFeePercentage));
+    }
+
+    function _getDueProtocolFeeByBpt(
+        uint256 bptAmount,
+        uint256 protocolSwapFeePercentage
+    ) private view returns (uint256) {
+        uint256 feeAmount = _addSwapFeeAmount(bptAmount, protocolSwapFeePercentage).sub(bptAmount);
+
+        uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
+        return protocolFeeAmount;
     }
 }
