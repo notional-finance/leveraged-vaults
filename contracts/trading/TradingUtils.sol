@@ -10,7 +10,6 @@ import {nProxy} from "../proxy/nProxy.sol";
 
 /// @notice Utility library used by the trading module
 library TradingUtils {
-    
     using TokenUtils for IERC20;
 
     error ERC20Error();
