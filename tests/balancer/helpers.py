@@ -1,5 +1,6 @@
 import math
-from brownie import Wei
+import pytest
+from brownie import Wei, interface
 from scripts.common import (
     get_deposit_params, 
 )
@@ -62,3 +63,31 @@ def exitVaultPercent(env, vault, account, percent, redeemParams):
         {"from": account}
     )
     return (sharesToRedeem, fCashToRepay)
+
+def check_invariant(env, vault, accounts, maturities):
+    accountTotalfCash = 0
+    accountTotalVaultShares = 0
+    for account in accounts:
+        vaultAccount = env.notional.getVaultAccount(account, vault.address)
+        accountTotalfCash += vaultAccount["fCash"]
+        accountTotalVaultShares += vaultAccount["vaultShares"]
+    vaultTotalfCash = 0
+    vaultTotalVaultShares = 0
+    vaultTotalStrategyTokens = 0
+    for maturity in maturities:
+        vaultState = env.notional.getVaultState(vault.address, maturity)
+        vaultTotalfCash += vaultState["totalfCash"]
+        vaultTotalVaultShares += vaultState["totalVaultShares"]
+        vaultTotalStrategyTokens += vaultState["totalStrategyTokens"]
+    assert vaultTotalfCash == accountTotalfCash
+    assert vaultTotalVaultShares == accountTotalVaultShares
+    auraPool = interface.IAuraRewardPool(vault.getStrategyContext()["stakingContext"]["auraRewardPool"])
+
+    # TODO: figure out if this is acceptable
+    # >>> vault.convertBPTClaimToStrategyTokens(1e18)
+    # 99999999
+    # >>> vault.getStrategyContext()["baseStrategy"]["totalBPTHeld"]
+    # 14913990323669347625
+    # >>> vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalStrategyTokenGlobal"]
+    # 1491399032
+    assert pytest.approx(vaultTotalStrategyTokens, rel=1e-6) == math.floor(auraPool.balanceOf(vault.address) / 1e10)

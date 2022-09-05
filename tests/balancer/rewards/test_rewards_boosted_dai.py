@@ -1,27 +1,20 @@
 
 import pytest
 import eth_abi
-import brownie
-from brownie import ZERO_ADDRESS, Wei, accounts
+from brownie import Wei, accounts
 from brownie.network.state import Chain
 from tests.fixtures import *
 from tests.balancer.helpers import enterMaturity
-from scripts.common import (
-    get_deposit_params, 
-    get_dynamic_trade_params,
-    get_univ3_batch_data,
-    get_redeem_params,
-    DEX_ID,
-    TRADE_TYPE
-)
+from scripts.common import get_univ3_batch_data, DEX_ID, TRADE_TYPE
 
 chain = Chain()
 
-def test_claim_rewards_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
-    primaryBorrowAmount = 100e8
-    depositAmount = 50e18
-    enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
+def test_claim_rewards_success(StratBoostedPoolDAIPrimary):
+    (env, vault) = StratBoostedPoolDAIPrimary
+    primaryBorrowAmount = 5000e8
+    depositAmount = 10000e18
+    env.tokens["DAI"].approve(env.notional, 2 ** 256 - 1, {"from": env.whales["DAI_EOA"]})
+    enterMaturity(env, vault, 2, 0, depositAmount, primaryBorrowAmount, env.whales["DAI_EOA"])
     chain.sleep(3600 * 24 * 365)
     chain.mine()
     feeReceiver = vault.getStrategyContext()["baseStrategy"]["feeReceiver"]
@@ -31,7 +24,20 @@ def test_claim_rewards_success(StratStableETHstETH):
     assert env.tokens["BAL"].balanceOf(feeReceiver) == 0
     assert env.tokens["AURA"].balanceOf(feeReceiver) == 0
     vault.claimRewardTokens({"from": accounts[1]})
-    
+    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 759444808298505578
+    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 2888928050767515216
+    # Test profit skimming
+    assert pytest.approx(
+        env.tokens["BAL"].balanceOf(feeReceiver) / (
+            env.tokens["BAL"].balanceOf(vault.address) + env.tokens["BAL"].balanceOf(feeReceiver)) * 100,
+        rel=1e-3
+    ) == feePercentage
+    assert pytest.approx(
+        env.tokens["AURA"].balanceOf(feeReceiver) / (
+            env.tokens["AURA"].balanceOf(vault.address) + env.tokens["AURA"].balanceOf(feeReceiver)) * 100,
+        rel=1e-3
+    ) == feePercentage
+
 def test_reinvest_rewards_success(StratBoostedPoolDAIPrimary):
     (env, vault) = StratBoostedPoolDAIPrimary
     rewardAmount = Wei(50e18)
