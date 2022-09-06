@@ -5,7 +5,8 @@ from brownie import (
     MetaStable2TokenAuraVault,
     Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
-    MetaStable2TokenAuraHelper
+    MetaStable2TokenAuraHelper,
+    FlashLiquidator
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -119,6 +120,7 @@ StrategyConfig = {
 class BalancerEnvironment(Environment):
     def __init__(self, network) -> None:
         Environment.__init__(self, network)
+        self.liquidator = self.deployLiquidator()
 
     def deployBalancerVault(self, strat, vaultContract, libs=None):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
@@ -203,6 +205,11 @@ class BalancerEnvironment(Environment):
 
         return vaultProxy
 
+    def deployLiquidator(self):
+        liquidator = FlashLiquidator.deploy(self.notional, {"from": self.deployer})
+        liquidator.enableCurrencies([1, 2, 3], {"from": self.deployer})
+        return liquidator
+
 def getEnvironment(network = "mainnet"):
     if network == "mainnet-fork" or network == "hardhat-fork":
         network = "mainnet"
@@ -229,42 +236,5 @@ def main():
         "StratBoostedPoolUSDCPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
-    )
-
-    return
-
-    stableStrategyContext = stableVault.getStrategyContext()
-    weightedStrategyContext = weightedVault.getStrategyContext()
-    
-
-    chain.undo()
-    chain.undo()
-    chain.sleep(maturity + 3600 * 24 - chain.time())
-    chain.mine()
-
-    weightedVault.settleVaultPostMaturity(
-        maturity,
-        vaultAccount["vaultShares"],
-        eth_abi.encode_abi(
-            ['(uint32,uint256,uint256,bytes)'],
-            [[
-                0,
-                Wei(spotBalances["primaryBalance"] * 0.98),
-                Wei(spotBalances["secondaryBalance"] * 0.98),
-                eth_abi.encode_abi(
-                    ['(uint16,uint8,uint32,bytes)'],
-                    [[
-                        1,
-                        0,
-                        Wei(5e6),
-                        eth_abi.encode_abi(
-                            ['(uint24)'],
-                            [[3000]]
-                        )
-                    ]]
-                )
-            ]]
-        ),
-        {"from": env.notional.owner()}
     )
 

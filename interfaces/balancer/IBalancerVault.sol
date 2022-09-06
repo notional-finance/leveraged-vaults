@@ -112,4 +112,11 @@ interface IBalancerVault {
             uint256[] memory balances,
             uint256 lastChangeBlock
         );
+
+    function flashLoan(
+        address recipient, 
+        address[] calldata tokens, 
+        uint256[] calldata amounts, 
+        bytes calldata userData
+    ) external;
 }
