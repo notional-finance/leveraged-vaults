@@ -153,18 +153,18 @@ class Environment:
             "0xc29562b045d80fd77c69bec09541f5c16fe20d9d", 
             "AURA/ETH Chainlink Adapter", 
             3600,
-            False,
+            True,
             {"from": self.notional.owner()}    
         )
         auraUSDAdapter = ChainlinkAdapter.deploy(
-            auraETHAdapter.address,
             "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",
+            auraETHAdapter.address,
+            "AURA/USD Chainlink Adapter",
             {"from": self.notional.owner()}
         )
         self.tradingModule.setPriceOracle(
             self.tokens["AURA"].address,
             auraUSDAdapter.address,
-            "AURA/USD Chainlink Adapter",
             {"from": self.notional.owner()}
         )        
 
