@@ -1,9 +1,7 @@
 import math
 import pytest
 from brownie import Wei, interface
-from scripts.common import (
-    get_deposit_params, 
-)
+from scripts.common import get_deposit_params
 
 def get_metastable_amounts(poolContext, amount):
     primaryBalance = poolContext["primaryBalance"]
@@ -46,22 +44,20 @@ def enterMaturity(
         )
     return maturity
 
-def exitVaultPercent(env, vault, account, percent, redeemParams):
+def exitVaultPercent(env, vault, account, percent, redeemParams, callStatic=False):
     vaultAccount = env.notional.getVaultAccount(account, vault.address)
     vaultShares = vaultAccount["vaultShares"]
     primaryBorrowAmount = vaultAccount["fCash"]
     sharesToRedeem = math.floor(vaultShares * percent)
     fCashToRepay = math.floor(-primaryBorrowAmount * percent)
-    env.notional.exitVault(
-        account,
-        vault.address,
-        account,
-        sharesToRedeem,
-        fCashToRepay,
-        0,
-        redeemParams,
-        {"from": account}
-    )
+    if callStatic:
+        env.notional.exitVault.call(
+            account, vault.address, account, sharesToRedeem, fCashToRepay, 0, redeemParams, {"from": account}
+        )
+    else:
+        env.notional.exitVault(
+            account, vault.address, account, sharesToRedeem, fCashToRepay, 0, redeemParams, {"from": account}
+        )
     return (sharesToRedeem, fCashToRepay)
 
 def check_invariant(env, vault, accounts, maturities):
@@ -82,12 +78,9 @@ def check_invariant(env, vault, accounts, maturities):
     assert vaultTotalfCash == accountTotalfCash
     assert vaultTotalVaultShares == accountTotalVaultShares
     auraPool = interface.IAuraRewardPool(vault.getStrategyContext()["stakingContext"]["auraRewardPool"])
-
-    # TODO: figure out if this is acceptable
-    # >>> vault.convertBPTClaimToStrategyTokens(1e18)
-    # 99999999
-    # >>> vault.getStrategyContext()["baseStrategy"]["totalBPTHeld"]
-    # 14913990323669347625
-    # >>> vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalStrategyTokenGlobal"]
-    # 1491399032
     assert pytest.approx(vaultTotalStrategyTokens, rel=1e-6) == math.floor(auraPool.balanceOf(vault.address) / 1e10)
+
+def check_account(env, vault, account, vaultShares, fCash):
+    vaultAccount = env.notional.getVaultAccount(account, vault.address)
+    assert vaultAccount["vaultShares"] == vaultShares
+    assert vaultAccount['fCash'] == -fCash

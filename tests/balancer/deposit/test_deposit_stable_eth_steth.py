@@ -99,7 +99,7 @@ def test_balancer_share_too_high_failure(StratStableETHstETH):
     settings = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]
     # Only Notional owner can change settings
     with brownie.reverts():
-        vault.setStrategyVaultSettings(
+        vault.setStrategyVaultSettings.call(
             get_updated_vault_settings(settings, maxBalancerPoolShare=0),
             {"from": accounts[0]}
         )
