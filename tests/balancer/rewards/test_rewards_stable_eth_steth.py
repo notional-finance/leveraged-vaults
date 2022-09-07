@@ -2,12 +2,7 @@ import pytest
 from brownie import ZERO_ADDRESS, Wei, accounts
 from tests.fixtures import *
 from tests.balancer.helpers import enterMaturity, get_metastable_amounts
-from scripts.common import (
-    DEX_ID,
-    TRADE_TYPE,
-    get_univ3_single_data,
-    get_univ3_batch_data
-)
+from scripts.common import get_univ3_single_data, get_univ3_batch_data, DEX_ID, TRADE_TYPE
 
 chain = Chain()
 

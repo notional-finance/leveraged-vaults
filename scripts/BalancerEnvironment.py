@@ -237,4 +237,3 @@ def main():
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-
