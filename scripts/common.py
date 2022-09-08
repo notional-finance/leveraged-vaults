@@ -7,12 +7,13 @@ from brownie.network.state import Chain
 chain = Chain()
 
 DEX_ID = {
-    'UNISWAP_V2': 0,
-    'UNISWAP_V3': 1,
-    'ZERO_EX': 2,
-    'BALANCER_V2': 3,
-    'CURVE': 4,
-    'NOTIONAL_VAULT': 5
+    'UNUSED': 0,
+    'UNISWAP_V2': 1,
+    'UNISWAP_V3': 2,
+    'ZERO_EX': 3,
+    'BALANCER_V2': 4,
+    'CURVE': 5,
+    'NOTIONAL_VAULT': 6
 }
 
 TRADE_TYPE = {
@@ -93,12 +94,15 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("oracleWindowInSeconds", settings["oracleWindowInSeconds"]), 
         kwargs.get("settlementSlippageLimitPercent", settings["settlementSlippageLimitPercent"]), 
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
+        kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
+        kwargs.get("maxRewardTradeSlippageLimitPercent", settings["maxRewardTradeSlippageLimitPercent"]),
         kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
         kwargs.get("balancerOracleWeight", settings["balancerOracleWeight"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("postMaturitySettlementCoolDownInMinutes", settings["postMaturitySettlementCoolDownInMinutes"]), 
         kwargs.get("feePercentage", settings["feePercentage"]),
-        kwargs.get("maxRewardTradeSlippageLimitPercent", settings["maxRewardTradeSlippageLimitPercent"])
+        kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
+        kwargs.get("balancerPoolSlippageLimitPercent", settings["balancerPoolSlippageLimitPercent"])
     ]
 
 def get_univ3_single_data(fee):

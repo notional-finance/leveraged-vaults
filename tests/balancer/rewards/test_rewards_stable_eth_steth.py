@@ -2,17 +2,12 @@ import pytest
 from brownie import ZERO_ADDRESS, Wei, accounts
 from tests.fixtures import *
 from tests.balancer.helpers import enterMaturity, get_metastable_amounts
-from scripts.common import (
-    DEX_ID,
-    TRADE_TYPE,
-    get_univ3_single_data,
-    get_univ3_batch_data
-)
+from scripts.common import get_univ3_single_data, get_univ3_batch_data, DEX_ID, TRADE_TYPE
 
 chain = Chain()
 
 def test_claim_rewards_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 100e8
     depositAmount = 50e18
     enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -22,14 +17,11 @@ def test_claim_rewards_success(StratStableETHstETH):
     feePercentage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["feePercentage"] / 1e2
     assert env.tokens["BAL"].balanceOf(vault.address) == 0
     assert env.tokens["AURA"].balanceOf(vault.address) == 0
-    assert env.tokens["LIDO"].balanceOf(vault.address) == 0
     assert env.tokens["BAL"].balanceOf(feeReceiver) == 0
     assert env.tokens["AURA"].balanceOf(feeReceiver) == 0
-    assert env.tokens["LIDO"].balanceOf(feeReceiver) == 0
     vault.claimRewardTokens({"from": accounts[1]})
-    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 20823590328622938880
-    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 81003766378343232242
-    assert pytest.approx(env.tokens["LIDO"].balanceOf(vault.address), rel=1e-2) == 10611082985908268438
+    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 7724567060268075278
+    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 29384253097259758357
     # Test profit skimming
     assert pytest.approx(
         env.tokens["BAL"].balanceOf(feeReceiver) / (
@@ -41,15 +33,9 @@ def test_claim_rewards_success(StratStableETHstETH):
             env.tokens["AURA"].balanceOf(vault.address) + env.tokens["AURA"].balanceOf(feeReceiver)) * 100,
         rel=1e-3
     ) == feePercentage
-    assert pytest.approx(
-        env.tokens["LIDO"].balanceOf(feeReceiver) / (
-            env.tokens["LIDO"].balanceOf(vault.address) + env.tokens["LIDO"].balanceOf(feeReceiver)) * 100,
-        rel=1e-3
-    ) == feePercentage
-
 
 def test_reinvest_rewards_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+    (env, vault) = StratStableETHstETH
     rewardAmount = Wei(50e18)
     env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
 
@@ -91,4 +77,4 @@ def test_reinvest_rewards_success(StratStableETHstETH):
     ), 0],
         {"from": accounts[1]}
     )
-    assert pytest.approx(vault.getStrategyContext()["baseStrategy"]["totalBPTHeld"], rel=1e-2) == 173784412923241944
+    assert pytest.approx(vault.getStrategyContext()["baseStrategy"]["totalBPTHeld"], rel=1e-2) == 216521031523390134

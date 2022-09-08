@@ -75,7 +75,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         uint256 strategyTokens,
         uint256 maturity,
         bytes calldata data
-    ) internal override returns (uint256 finalPrimaryBalance) {        
+    ) internal override returns (uint256 finalPrimaryBalance) {    
         RedeemParams memory params = abi.decode(data, (RedeemParams));
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
 
@@ -93,7 +93,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         address account,
         uint256 strategyTokenAmount,
         uint256 maturity
-    ) public view override returns (int256 underlyingValue) {
+    ) public view virtual override returns (int256 underlyingValue) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
@@ -114,9 +114,11 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             revert Errors.NotInSettlementWindow();
         }
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+        SettlementUtils._validateCoolDown(
             context.baseStrategy.vaultState.lastSettlementTimestamp,
-            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes
+        );
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
             data
         );
@@ -136,9 +138,11 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             revert Errors.HasNotMatured();
         }
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+        SettlementUtils._validateCoolDown(
             context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
-            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes
+        );
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
             data
         );

@@ -71,45 +71,7 @@ class Environment:
         self.deployTradingModule()
 
     def upgradeNotional(self):
-        tradingAction = deployArtifact(
-            "scripts/artifacts/TradingAction.json", 
-            [], 
-            self.deployer, 
-            "TradingAction", 
-            {"SettleAssetsExternal": self.addresses["libs"]["SettleAssetsExternal"]}
-        )
-        vaultAccountAction = deployArtifact(
-            "scripts/artifacts/VaultAccountAction.json", 
-            [], 
-            self.deployer, 
-            "VaultAccountAction", 
-            {"TradingAction": tradingAction.address}
-        )
-        vaultAction = deployArtifact(
-            "scripts/artifacts/VaultAction.json", 
-            [], 
-            self.deployer, 
-            "VaultAction",  
-            {"TradingAction": tradingAction.address})
-        router = deployArtifact("scripts/artifacts/Router.json", [
-            (
-                self.addresses["actions"]["GovernanceAction"],
-                self.addresses["actions"]["Views"],
-                self.addresses["actions"]["InitializeMarketsAction"],
-                self.addresses["actions"]["nTokenAction"],
-                self.addresses["actions"]["BatchAction"],
-                self.addresses["actions"]["AccountAction"],
-                self.addresses["actions"]["ERC1155Action"],
-                self.addresses["actions"]["LiquidateCurrencyAction"],
-                self.addresses["actions"]["LiquidatefCashAction"],
-                self.addresses["tokens"]["cETH"],
-                self.addresses["actions"]["TreasuryAction"],
-                self.addresses["actions"]["CalculationViews"],
-                vaultAccountAction.address,
-                vaultAction.address,
-            )
-        ], self.deployer, "Router")
-        self.notional.upgradeTo(router.address, {'from': self.notional.owner()})
+        self.notional.upgradeTo("0x77c7E0d24CD025CeB2f2523CfF22e91Fad25C9c2", {'from': self.notional.owner()})
 
     def deployTradingModule(self):
         emptyImpl = EmptyProxy.deploy({"from": self.deployer})

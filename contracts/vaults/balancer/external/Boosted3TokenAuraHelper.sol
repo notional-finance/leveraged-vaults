@@ -55,7 +55,10 @@ library Boosted3TokenAuraHelper {
         uint256 maturity, 
         bytes calldata data
     ) external {
-        RedeemParams memory params = abi.decode(data, (RedeemParams));
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
+            data
+        );
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             poolContext: context.poolContext.basePool.basePool, 
@@ -80,9 +83,9 @@ library Boosted3TokenAuraHelper {
     }
 
     function _executeSettlement(
-        StrategyContext memory strategyContext,
-        BoostedOracleContext memory oracleContext,
-        ThreeTokenPoolContext memory poolContext,
+        StrategyContext calldata strategyContext,
+        BoostedOracleContext calldata oracleContext,
+        ThreeTokenPoolContext calldata poolContext,
         uint256 maturity,
         uint256 bptToSettle,
         uint256 redeemStrategyTokenAmount,
@@ -90,9 +93,9 @@ library Boosted3TokenAuraHelper {
     ) private {
         // Calculate minPrimary using Chainlink oracle data
         params.minPrimary = poolContext._getTimeWeightedPrimaryBalance(
-            oracleContext, strategyContext.tradingModule, bptToSettle
+            oracleContext, strategyContext, bptToSettle
         );
-        params.minPrimary = params.minPrimary * BalancerConstants.MAX_POOL_SLIPPAGE_PERCENT / 
+        params.minPrimary = params.minPrimary * strategyContext.vaultSettings.balancerPoolSlippageLimitPercent / 
             uint256(BalancerConstants.VAULT_PERCENT_BASIS);
 
         int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
@@ -125,11 +128,13 @@ library Boosted3TokenAuraHelper {
         });
 
         uint256 minBPT = context.poolContext._getMinBPT(
-            oracleContext, strategyContext.tradingModule, primaryAmount
+            oracleContext, strategyContext, primaryAmount
         );
+
         uint256 bptAmount = context.poolContext._joinPoolAndStake({
             strategyContext: strategyContext,
             stakingContext: stakingContext,
+            oracleContext: oracleContext,
             deposit: primaryAmount,
             minBPT: minBPT
         });

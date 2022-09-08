@@ -73,7 +73,8 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
 
         strategyTokensMinted = context.poolContext._deposit({
             strategyContext: context.baseStrategy,
-            stakingContext: context.stakingContext, 
+            stakingContext: context.stakingContext,
+            oracleContext: context.oracleContext, 
             deposit: deposit,
             minBPT: params.minBPT
         });
@@ -108,9 +109,11 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
             revert Errors.NotInSettlementWindow();
         }
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+        SettlementUtils._validateCoolDown(
             context.baseStrategy.vaultState.lastSettlementTimestamp,
-            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes
+        );
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
             data
         );
@@ -130,9 +133,11 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
             revert Errors.HasNotMatured();
         }
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+        SettlementUtils._validateCoolDown(
             context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
-            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes,
+            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes
+        );
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
             data
         );
@@ -159,7 +164,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         address account,
         uint256 strategyTokenAmount,
         uint256 maturity
-    ) public view override returns (int256 underlyingValue) {
+    ) public view virtual override returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,

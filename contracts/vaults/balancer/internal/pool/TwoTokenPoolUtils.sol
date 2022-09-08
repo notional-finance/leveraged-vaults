@@ -122,6 +122,7 @@ library TwoTokenPoolUtils {
     function _getTimeWeightedPrimaryBalance(
         TwoTokenPoolContext memory poolContext,
         OracleContext memory oracleContext,
+        StrategyContext memory strategyContext,
         uint256 bptAmount
     ) internal view returns (uint256 primaryAmount) {
         // Gets the BPT token price denominated in token index = 0
@@ -131,13 +132,7 @@ library TwoTokenPoolUtils {
             oracleContext.oracleWindowInSeconds
         );
 
-        // Gets the pair price
-        uint256 pairPrice = BalancerUtils._getTimeWeightedOraclePrice(
-            address(poolContext.basePool.pool),
-            IPriceOracle.Variable.PAIR_PRICE,
-            oracleContext.oracleWindowInSeconds
-        );
-
+        uint256 pairPrice = _getOraclePairPrice(poolContext, oracleContext, strategyContext.tradingModule);
         uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
 
         if (poolContext.primaryIndex == 0) {
@@ -255,7 +250,7 @@ library TwoTokenPoolUtils {
             = _unstakeAndExitPool(
                 poolContext, stakingContext, bptClaim, params.minPrimary, params.minSecondary
             );
-        
+
         finalPrimaryBalance = primaryBalance;
         if (secondaryBalance > 0) {
             uint256 primaryPurchased = _sellSecondaryBalance(
@@ -266,10 +261,6 @@ library TwoTokenPoolUtils {
         }
 
         // Update global strategy token balance
-        // This only needs to be updated for normal redemption
-        // and emergency settlement. For normal and post-maturity settlement
-        // scenarios (account == address(this) && data.length == 32), we
-        // update totalStrategyTokenGlobal before this function is called.
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
@@ -345,6 +336,6 @@ library TwoTokenPoolUtils {
             = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
 
         underlyingValue 
-            = poolContext._getTimeWeightedPrimaryBalance(oracleContext, bptClaim).toInt();
+            = poolContext._getTimeWeightedPrimaryBalance(oracleContext, strategyContext, bptClaim).toInt();
     }
 }
