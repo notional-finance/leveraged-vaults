@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {IFlashLoanRecipient} from "../../interfaces/balancer/IFlashLoanRecipient.sol";
+import {IFlashLoanReceiver} from "../../interfaces/aave/IFlashLoanReceiver.sol";
+import {IFlashLender} from "../../interfaces/aave/IFlashLender.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {CErc20Interface} from "../../interfaces/compound/CErc20Interface.sol";
 import {CEtherInterface} from "../../interfaces/compound/CEtherInterface.sol";
@@ -12,10 +13,11 @@ import {Token} from "../global/Types.sol";
 import {BoringOwnable} from "./BoringOwnable.sol";
 import {Deployments} from "../global/Deployments.sol";
 
-contract FlashLiquidator is BoringOwnable, IFlashLoanRecipient {
+contract FlashLiquidator is BoringOwnable, IFlashLoanReceiver {
     using TokenUtils for IERC20;
 
     NotionalProxy public immutable NOTIONAL;
+    IFlashLender public immutable FLASH_LENDER;
     mapping(address => address) internal underlyingToAsset;
 
     struct LiquidationParams {
@@ -25,8 +27,9 @@ contract FlashLiquidator is BoringOwnable, IFlashLoanRecipient {
         bytes redeemData;
     }
 
-    constructor(NotionalProxy notional) {
+    constructor(NotionalProxy notional, IFlashLender flashLender) {
         NOTIONAL = notional;
+        FLASH_LENDER = flashLender;
         owner = msg.sender;
         emit OwnershipTransferred(address(0), owner);
     }
@@ -36,10 +39,10 @@ contract FlashLiquidator is BoringOwnable, IFlashLoanRecipient {
             (Token memory assetToken, Token memory underlyingToken) = NOTIONAL.getCurrency(currencies[i]);
             IERC20(assetToken.tokenAddress).checkApprove(address(NOTIONAL), type(uint256).max);
             if (underlyingToken.tokenAddress == Constants.ETH_ADDRESS) {
-                IERC20(address(Deployments.WETH)).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
+                IERC20(address(Deployments.WETH)).checkApprove(address(FLASH_LENDER), type(uint256).max);
                 underlyingToAsset[address(Deployments.WETH)] = assetToken.tokenAddress;
             } else {
-                IERC20(underlyingToken.tokenAddress).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
+                IERC20(underlyingToken.tokenAddress).checkApprove(address(FLASH_LENDER), type(uint256).max);
                 IERC20(underlyingToken.tokenAddress).checkApprove(assetToken.tokenAddress, type(uint256).max);
                 underlyingToAsset[underlyingToken.tokenAddress] = assetToken.tokenAddress;
             }
@@ -47,57 +50,92 @@ contract FlashLiquidator is BoringOwnable, IFlashLoanRecipient {
     }
 
     function flashLiquidate(
-        address[] calldata tokens,
+        address[] calldata assets,
         uint256[] calldata amounts,
-        bytes calldata userData
+        uint256[] calldata modes,
+        bytes calldata params
     ) external onlyOwner {
-        Deployments.BALANCER_VAULT.flashLoan(address(this), tokens, amounts, userData);
+        FLASH_LENDER.flashLoan(address(this), assets, amounts, modes, address(this), params, 0);
     }
 
-    function receiveFlashLoan(
-        IERC20[] calldata tokens,
+    event Testing(uint256 wethBal, uint256 amount);
+
+    function executeOperation(
+        address[] calldata assets,
         uint256[] calldata amounts,
-        uint256[] calldata feeAmounts,
-        bytes calldata userData
-    ) external {
-        require(msg.sender == address(Deployments.BALANCER_VAULT));
+        uint256[] calldata premiums,
+        address initiator,
+        bytes calldata params
+    ) external returns (bool) {
+        require(msg.sender == address(FLASH_LENDER));
 
-        LiquidationParams memory params = abi.decode(userData, (LiquidationParams));
+        LiquidationParams memory liqParams = abi.decode(params, (LiquidationParams));
 
-        address assetToken = underlyingToAsset[address(tokens[0])];
+        address assetToken = underlyingToAsset[address(assets[0])];
 
         // Mint CToken
-        if (params.currencyId == Constants.ETH_CURRENCY_ID) {
+        if (liqParams.currencyId == Constants.ETH_CURRENCY_ID) {
             Deployments.WETH.withdraw(amounts[0]);
             CEtherInterface(assetToken).mint{value: amounts[0]}();
         } else {
             CErc20Interface(assetToken).mint(amounts[0]);
         }
 
-        (
-            /* int256 collateralRatio */,
-            /* int256 minCollateralRatio */,
-            int256 maxLiquidatorDepositAssetCash
-        ) = NOTIONAL.getVaultAccountCollateralRatio(params.account, params.vault);
-        
-        require(maxLiquidatorDepositAssetCash > 0);
+        {
+            (
+                /* int256 collateralRatio */,
+                /* int256 minCollateralRatio */,
+                int256 maxLiquidatorDepositAssetCash
+            ) = NOTIONAL.getVaultAccountCollateralRatio(liqParams.account, liqParams.vault);
+            
+            require(maxLiquidatorDepositAssetCash > 0);
 
-        NOTIONAL.deleverageAccount(
-            params.account, 
-            params.vault, 
-            address(this), 
-            uint256(maxLiquidatorDepositAssetCash), 
-            false, 
-            params.redeemData
-        );
+            NOTIONAL.deleverageAccount(
+                liqParams.account, 
+                liqParams.vault, 
+                address(this), 
+                uint256(maxLiquidatorDepositAssetCash), 
+                false, 
+                liqParams.redeemData
+            );
+        }
 
         // Redeem CToken
-        uint256 balance = IERC20(assetToken).balanceOf(address(this));
-        if (balance > 0) {
-            CErc20Interface(assetToken).redeem(balance);
-            if (params.currencyId == Constants.ETH_CURRENCY_ID) {
-                Deployments.WETH.deposit{value: address(this).balance}();
+        {
+            uint256 balance = IERC20(assetToken).balanceOf(address(this));
+            if (balance > 0) {
+                CErc20Interface(assetToken).redeem(balance);
+                if (liqParams.currencyId == Constants.ETH_CURRENCY_ID) {
+                    _wrapETH();
+                }
             }
         }
-    }    
+
+        _withdrawToOwner(assets[0], IERC20(assets[0]).balanceOf(address(this)) - amounts[0] - premiums[0]);
+
+        return true;
+    }
+
+    function _withdrawToOwner(address token, uint256 amount) private {
+        if (amount == type(uint256).max) {
+            amount = IERC20(token).balanceOf(address(this));
+        }
+        if (amount > 0) {
+            IERC20(token).checkTransfer(owner, amount);
+        }
+    }
+
+    function _wrapETH() private {
+        Deployments.WETH.deposit{value: address(this).balance}();
+    }
+
+    function withdrawToOwner(address token, uint256 amount) external onlyOwner {
+        _withdrawToOwner(token, amount);
+    }
+
+    function wrapETH() external onlyOwner {
+        _wrapETH();
+    }
+
+    receive() external payable {} 
 }

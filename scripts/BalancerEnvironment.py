@@ -206,7 +206,11 @@ class BalancerEnvironment(Environment):
         return vaultProxy
 
     def deployLiquidator(self):
-        liquidator = FlashLiquidator.deploy(self.notional, {"from": self.deployer})
+        liquidator = FlashLiquidator.deploy(
+            self.notional, 
+            "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
+            {"from": self.deployer}
+        )
         liquidator.enableCurrencies([1, 2, 3], {"from": self.deployer})
         return liquidator
 
