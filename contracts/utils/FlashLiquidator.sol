@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {IFlashLoanReceiver} from "../../interfaces/aave/IFlashLoanReceiver.sol";
-import {IFlashLender} from "../../interfaces/aave/IFlashLender.sol";
+import {IEulerDToken} from "../../interfaces/euler/IEulerDToken.sol";
+import {IEulerMarkets} from "../../interfaces/euler/IEulerMarkets.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {CErc20Interface} from "../../interfaces/compound/CErc20Interface.sol";
 import {CEtherInterface} from "../../interfaces/compound/CEtherInterface.sol";
@@ -13,11 +13,12 @@ import {Token} from "../global/Types.sol";
 import {BoringOwnable} from "./BoringOwnable.sol";
 import {Deployments} from "../global/Deployments.sol";
 
-contract FlashLiquidator is BoringOwnable, IFlashLoanReceiver {
+contract FlashLiquidator is BoringOwnable {
     using TokenUtils for IERC20;
 
     NotionalProxy public immutable NOTIONAL;
-    IFlashLender public immutable FLASH_LENDER;
+    address public immutable EULER;
+    IEulerMarkets public immutable MARKETS;
     mapping(address => address) internal underlyingToAsset;
 
     struct LiquidationParams {
@@ -27,9 +28,10 @@ contract FlashLiquidator is BoringOwnable, IFlashLoanReceiver {
         bytes redeemData;
     }
 
-    constructor(NotionalProxy notional, IFlashLender flashLender) {
-        NOTIONAL = notional;
-        FLASH_LENDER = flashLender;
+    constructor(NotionalProxy notional_, address euler_, IEulerMarkets markets_) {
+        NOTIONAL = notional_;
+        EULER = euler_;
+        MARKETS = markets_;
         owner = msg.sender;
         emit OwnershipTransferred(address(0), owner);
     }
@@ -39,10 +41,10 @@ contract FlashLiquidator is BoringOwnable, IFlashLoanReceiver {
             (Token memory assetToken, Token memory underlyingToken) = NOTIONAL.getCurrency(currencies[i]);
             IERC20(assetToken.tokenAddress).checkApprove(address(NOTIONAL), type(uint256).max);
             if (underlyingToken.tokenAddress == Constants.ETH_ADDRESS) {
-                IERC20(address(Deployments.WETH)).checkApprove(address(FLASH_LENDER), type(uint256).max);
+                IERC20(address(Deployments.WETH)).checkApprove(address(EULER), type(uint256).max);
                 underlyingToAsset[address(Deployments.WETH)] = assetToken.tokenAddress;
             } else {
-                IERC20(underlyingToken.tokenAddress).checkApprove(address(FLASH_LENDER), type(uint256).max);
+                IERC20(underlyingToken.tokenAddress).checkApprove(address(EULER), type(uint256).max);
                 IERC20(underlyingToken.tokenAddress).checkApprove(assetToken.tokenAddress, type(uint256).max);
                 underlyingToAsset[underlyingToken.tokenAddress] = assetToken.tokenAddress;
             }
@@ -50,35 +52,31 @@ contract FlashLiquidator is BoringOwnable, IFlashLoanReceiver {
     }
 
     function flashLiquidate(
-        address[] calldata assets,
-        uint256[] calldata amounts,
-        uint256[] calldata modes,
-        bytes calldata params
+        address asset,
+        uint256 amount,
+        LiquidationParams calldata params
     ) external onlyOwner {
-        FLASH_LENDER.flashLoan(address(this), assets, amounts, modes, address(this), params, 0);
+        IEulerDToken dToken = IEulerDToken(MARKETS.underlyingToDToken(asset));
+        dToken.flashLoan(amount, abi.encode(asset, amount, params));
     }
 
-    event Testing(uint256 wethBal, uint256 amount);
+    function onFlashLoan(bytes memory data) external {
+        require(msg.sender == address(EULER));
 
-    function executeOperation(
-        address[] calldata assets,
-        uint256[] calldata amounts,
-        uint256[] calldata premiums,
-        address initiator,
-        bytes calldata params
-    ) external returns (bool) {
-        require(msg.sender == address(FLASH_LENDER));
+        (
+            address asset, 
+            uint256 amount, 
+            LiquidationParams memory params
+        ) = abi.decode(data, (address, uint256, LiquidationParams));
 
-        LiquidationParams memory liqParams = abi.decode(params, (LiquidationParams));
-
-        address assetToken = underlyingToAsset[address(assets[0])];
+        address assetToken = underlyingToAsset[asset];
 
         // Mint CToken
-        if (liqParams.currencyId == Constants.ETH_CURRENCY_ID) {
-            Deployments.WETH.withdraw(amounts[0]);
-            CEtherInterface(assetToken).mint{value: amounts[0]}();
+        if (params.currencyId == Constants.ETH_CURRENCY_ID) {
+            Deployments.WETH.withdraw(amount);
+            CEtherInterface(assetToken).mint{value: amount}();
         } else {
-            CErc20Interface(assetToken).mint(amounts[0]);
+            CErc20Interface(assetToken).mint(amount);
         }
 
         {
@@ -86,17 +84,17 @@ contract FlashLiquidator is BoringOwnable, IFlashLoanReceiver {
                 /* int256 collateralRatio */,
                 /* int256 minCollateralRatio */,
                 int256 maxLiquidatorDepositAssetCash
-            ) = NOTIONAL.getVaultAccountCollateralRatio(liqParams.account, liqParams.vault);
+            ) = NOTIONAL.getVaultAccountCollateralRatio(params.account, params.vault);
             
             require(maxLiquidatorDepositAssetCash > 0);
 
             NOTIONAL.deleverageAccount(
-                liqParams.account, 
-                liqParams.vault, 
+                params.account, 
+                params.vault, 
                 address(this), 
                 uint256(maxLiquidatorDepositAssetCash), 
                 false, 
-                liqParams.redeemData
+                params.redeemData
             );
         }
 
@@ -105,15 +103,15 @@ contract FlashLiquidator is BoringOwnable, IFlashLoanReceiver {
             uint256 balance = IERC20(assetToken).balanceOf(address(this));
             if (balance > 0) {
                 CErc20Interface(assetToken).redeem(balance);
-                if (liqParams.currencyId == Constants.ETH_CURRENCY_ID) {
+                if (params.currencyId == Constants.ETH_CURRENCY_ID) {
                     _wrapETH();
                 }
             }
         }
 
-        _withdrawToOwner(assets[0], IERC20(assets[0]).balanceOf(address(this)) - amounts[0] - premiums[0]);
+        _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount);
 
-        return true;
+        IERC20(asset).transfer(msg.sender, amount); // repay
     }
 
     function _withdrawToOwner(address token, uint256 amount) private {

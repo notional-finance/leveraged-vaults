@@ -208,7 +208,8 @@ class BalancerEnvironment(Environment):
     def deployLiquidator(self):
         liquidator = FlashLiquidator.deploy(
             self.notional, 
-            "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
+            "0x27182842E098f60e3D576794A5bFFb0777E025d3",
+            "0x3520d5a913427E6F0D6A83E07ccD4A4da316e4d3",
             {"from": self.deployer}
         )
         liquidator.enableCurrencies([1, 2, 3], {"from": self.deployer})
