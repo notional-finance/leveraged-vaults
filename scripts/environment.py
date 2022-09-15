@@ -6,18 +6,18 @@ from brownie import (
     network,
     interface,
     Contract,
-    Balancer2TokenVault,
-    BalancerBoostController,
+    EmptyProxy,
     TradingModule,
     BalancerV2Adapter,
     nProxy,
-    MockDelegateRegistry
+    MockERC20,
+    MockWstETH,
+    MockAura,
+    MetaStable2TokenAuraHelper,
+    MetaStable2TokenAuraVault
 )
-from eth_utils import keccak
 from brownie.network.state import Chain
 from brownie.convert.datatypes import Wei
-from scripts.trading.environment import Environment as TradingEnvironment
-from scripts.common import deployArtifact
 
 ETH_ADDRESS = "0x0000000000000000000000000000000000000000"
 chain = Chain()
@@ -26,6 +26,7 @@ EnvironmentConfig = {
     "goerli": {
         "notional": "0xD8229B55bD73c61D840d339491219ec6Fa667B0a",
         "weightedPool2TokensFactory": "0xA5bf2ddF098bb0Ef6d120C98217dD6B141c74EE0",
+        "metaStablePoolFactory": "0xA55F73E2281c60206ba43A3590dB07B8955832Be",
         "balancerVault": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
         "balancerMinter": "0xdf0399539A72E2689B8B2DD53C3C2A0883879fDd",
         "ETHNOTEPool": {
@@ -54,8 +55,13 @@ EnvironmentConfig = {
         "feeDistributor": "0x7F91dcdE02F72b478Dc73cB21730cAcA907c8c44",
         "gaugeController": "0xBB1CE49b16d55A1f2c6e88102f32144C7334B116",
         "sNOTE": "0x9AcDB8100Aa74913f7702bf8b43128f36E6e3f22",
-        "WETH": "0x04B9c40dF01bdc99dd2c31Ae4B232f20F4BBaC5B",
-        "USDC": "0x31dd61Ac1B7A0bc88f7a58389c0660833a66C35c"
+        "NOTE": "0xC5e91B01F9B23952821410Be7Aa3c45B6429C670",
+        "WETH": "0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1",
+        "USDC": "0x31dd61Ac1B7A0bc88f7a58389c0660833a66C35c",
+        "stETH": "0x85ddf7aD3c038D868Dd2356907017219483129D6",
+        "wstETH": "0xd2D24271030ecE6068C7E8874daF61fCC3225acB",
+        "BAL": "0x9343F822Bfd32dFe488f6C369A5E40734986143A",
+        "AURA": "0x6428dE1090f5a01246D37BEF5E29CC98eca06882",
     },
     "mainnet": {
         "notional": "0x1344A36A1B56144C3Bc62E7757377D288fDE0369",
@@ -88,13 +94,27 @@ class Environment:
         self.config = config
         self.deployer = deployer
         self.notional = interface.NotionalProxy(config["notional"])
-        self.notional.upgradeTo('0x433a0679756D6EB110E8Ff730d06DBee5D9F5db5', {'from': self.notional.owner()})
         self.weth = interface.IERC20(config["WETH"])
         self.usdc = interface.IERC20(config["USDC"])
+        self.note = interface.IERC20(config["NOTE"])
+        self.stETH = interface.IERC20(config["stETH"])
+        self.wstETH = interface.IERC20(config["wstETH"])
+        self.bal = interface.IERC20(config["BAL"])
+        self.aura = interface.IERC20(config["AURA"])
+        self.tradingModule = Contract.from_abi(
+            "TradingModule", "0xd250e8FB009Dc1783d121A48B619bEAA34c4913B", TradingModule.abi
+        )
         self.balancerVault = interface.IBalancerVault(config["balancerVault"])
-        self.pool2TokensFactory = self.loadPool2TokensFactory(self.config["weightedPool2TokensFactory"])
+        self.pool2TokensFactory = self.loadPool2TokensFactory(config["weightedPool2TokensFactory"])
+        self.metaStablePoolFactory = self.loadMetaStablePoolFactory(config["metaStablePoolFactory"])
+        self.metaStablePool = interface.IMetaStablePool("0x945a00E88c662886241ce93D333009bEE2B3dF3F")
+        self.metaStablePoolId = "0x945a00e88c662886241ce93d333009bee2b3df3f0002000000000000000001c2"
+        self.mockAuraBooster = Contract.from_abi(
+            "AuraBooster", "0x60E8E1194d134323C5749F855e5Df504759B5645", MockAura.abi
+        )
 
-        self.balancerV2Adapter = BalancerV2Adapter.deploy(config["balancerVault"], {"from": deployer})
+    def deployTradingModule(self):
+        self.balancerV2Adapter = BalancerV2Adapter.deploy(self.config["balancerVault"], {"from": self.deployer})
         impl = TradingModule.deploy(
             ZERO_ADDRESS,
             ZERO_ADDRESS,
@@ -102,70 +122,120 @@ class Environment:
             ZERO_ADDRESS,
             ZERO_ADDRESS,
             ZERO_ADDRESS,            
-            {"from": deployer}
+            {"from": self.deployer}
         )
 
-        initData = impl.initialize.encode_input(deployer.address)
-        self.proxy = nProxy.deploy(impl.address, initData, {"from": deployer})
-        self.tradingModule = Contract.from_abi("TradingModule", self.proxy.address, interface.ITradingModule.abi)
-
-        self.mockDelegateRegistry = MockDelegateRegistry.deploy({"from": deployer})
-
-        # Deploy balancer test pool
-        self.veBalDelegator = deployArtifact(
-            "scripts/artifacts/VeBalDelegator.json",
-            [
-                config["BALETHPool"]["address"],
-                config["veToken"],
-                config["feeDistributor"],
-                config["balancerMinter"],
-                config["gaugeController"],
-                config["sNOTE"],
-                self.mockDelegateRegistry.address,
-                keccak(text="balancer.eth"),
-                deployer.address
-            ],
-            deployer,
-            "VeBalDelegator"
-        )
-
-        self.boostController = BalancerBoostController.deploy(
-            self.veBalDelegator.address,
-            config["notional"],
-            {"from": deployer}
-        )
-
-        self.ETHUSDCPool = self.deployBalancerPool(config["ETHUSDCPool"]["config"], deployer, deployer)
-        self.initBalancerPool(config["ETHUSDCPool"]["config"], self.ETHUSDCPool, deployer)
-        self.balancerSwap(self.ETHUSDCPool, self.usdc.address, self.weth.address, 10e6, deployer)
-        # Make sure oracle is initialized
-        chain.sleep(3600)
-        chain.mine()
-
-        self.ETHUSDCVault = Balancer2TokenVault.deploy(
-            config["notional"],
-            1, # ETH
-            True,
-            True,
-            [
-                config["WETH"],
-                config["balancerVault"],
-                self.ETHUSDCPool["id"],
-                self.boostController.address,
-                self.ETHUSDCPool["liquidityGauge"],
-                self.tradingModule.address,
-                3600,
-                3600 * 24 * 7, # 1-week settlement
-                0.2e8, # 20% settlement percentage
-                3600 * 6 # 6 hour settlement cooldown
-            ],
-            {"from": deployer}
-        )
+        initData = impl.initialize.encode_input(self.deployer.address)
+        self.proxy = nProxy.deploy(impl.address, initData, {"from": self.deployer})
+        self.tradingModule = Contract.from_abi("TradingModule", self.proxy.address, interface.ITradingModule.abi)        
 
     def loadPool2TokensFactory(self, address):
         with open("./abi/balancer/poolFactory.json", "r") as f:
             abi = json.load(f)
         return Contract.from_abi('Weighted Pool 2 Token Factory', address, abi)
+
+    def loadMetaStablePoolFactory(self, address):
+        with open("./abi/balancer/MetaStablePoolFactory.json", "r") as f:
+            abi = json.load(f)
+        return Contract.from_abi('MetaStable Pool Factory', address, abi)
+
+    def deployMockStETH(self):
+        stETH = MockERC20.deploy("Notional stETH", "stETH", 18, 0, {"from": self.deployer})
+        MockERC20.publish_source(stETH)
+
+    def deployMockWstETH(self, stETH):
+        wstETH = MockWstETH.deploy(stETH, {"from": self.deployer})
+        MockWstETH.publish_source(wstETH)
+
+    def deployMockBalToken(self):
+        bal = MockERC20.deploy("Notional BAL", "BAL", 18, 0, {"from": self.deployer})
+        MockERC20.publish_source(bal)
+
+    def deployMockAuraToken(self):
+        aura = MockERC20.deploy("Notional AURA", "AURA", 18, 0, {"from": self.deployer})
+        MockERC20.publish_source(aura)
+
+    def deployMockAura(self):
+        aura = MockAura.deploy(
+            1,
+            self.metaStablePool.address,
+            self.bal.address,
+            self.aura.address,
+            {"from": self.deployer}
+        )
+        MockAura.publish_source(aura)
+
+    def deployTradingModule(self):
+        emptyImpl = EmptyProxy.deploy({"from": self.deployer})
+        EmptyProxy.publish_source(emptyImpl)
+        proxy = nProxy.deploy(emptyImpl.address, bytes(0), {"from": self.deployer})
+        nProxy.publish_source(proxy)
+
+        impl = TradingModule.deploy(self.notional.address, proxy.address, {"from": self.deployer})
+        TradingModule.publish_source(impl)
+        emptyProxy = Contract.from_abi("EmptyProxy", proxy.address, EmptyProxy.abi)
+        emptyProxy.upgradeTo(impl.address, {"from": self.deployer})        
+
+    def deployMetaStableVault(self):
+        helper = MetaStable2TokenAuraHelper.deploy(self.deployer)
+        MetaStable2TokenAuraHelper.publish_source(helper)
+
+        impl = MetaStable2TokenAuraVault.deploy(
+            self.addresses["notional"],
+            [
+                self.mockAuraBooster.address,
+                [
+                    1,
+                    self.metaStablePoolId,
+                    self.mockMetaStablePoolGauge.address,
+                    self.tradingModule.address,
+                    3600 * 24 * 7,
+                    "0x8638f94155c333fd7087c012Dc51B0528bb06035"
+                ]
+            ],
+            {"from": self.deployer}
+        )
+        MetaStable2TokenAuraVault.publish_source(impl)
+
+        proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+        nProxy.publish_source(proxy)
+
+    def deployMetaStablePool(self):
+        self.metaStablePoolFactory.create(
+            "wstETH/ETH Balancer Pool",
+            "wstETH-BPT",
+            [self.wstETH.address, self.weth.address],
+            50, # Amplification parameter 1e3 precision
+            ["0x2d0605E29b7B7453Ea837662D21006B2908F9Fb7", ZERO_ADDRESS],
+            [10800, 0],
+            400000000000000,
+            True,
+            self.deployer,
+            {"from": self.deployer}
+        )
+
+    def initMetaStablePool(self):
+    #    self.wstETH.approve(self.balancerVault.address, 2**256 - 1, {"from": self.deployer})
+        userData = eth_abi.encode_abi(
+            ['uint256', 'uint256[]'],
+            [0, [Wei(0.1e18), Wei(0.1e18)]]
+        )
+
+        self.balancerVault.joinPool(
+            self.metaStablePoolId,
+            self.deployer,
+            self.deployer,
+            (
+                [self.wstETH.address, ETH_ADDRESS],
+                [Wei(0.1e18), Wei(0.1e18)],
+                userData,
+                False
+            ),
+            {
+                "from": self.deployer,
+                "value": Wei(0.1e18)
+            }
+        )
 
     def deployBalancerPool(self, poolConfig, owner, deployer):
         # NOTE: owner is immutable, need to deploy the proxy first
@@ -207,20 +277,14 @@ class Environment:
             {"from": initializer}
         )
 
-    def balancerSwap(self, poolInstance, fromToken, toToken, amount, trader):
-        self.balancerVault.swap([
-            poolInstance["id"],
-            0,
-            fromToken,
-            toToken,
-            amount,
-            0x0
-        ], [
-            trader,
-            False,
-            trader,
-            False
-        ], 0, chain.time() + 20000, { "from": trader })
+    def balancerSwap(self, poolId, fromToken, toToken, amount, trader):
+        self.balancerVault.swap(
+            [poolId, 0, fromToken, toToken, amount, 0x0], 
+            [trader, False, trader, False],
+            0, 
+            chain.time() + 20000, 
+            { "from": trader }
+        )
 
 def main():
     networkName = network.show_active()

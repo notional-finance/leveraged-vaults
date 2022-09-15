@@ -62,7 +62,7 @@ contract FlashLiquidator is BoringOwnable {
 
     function onFlashLoan(bytes memory data) external {
         require(msg.sender == address(EULER));
-
+        
         (
             address asset, 
             uint256 amount, 

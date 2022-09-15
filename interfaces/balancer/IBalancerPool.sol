@@ -29,6 +29,10 @@ interface IMetaStablePool is IERC20 {
         bool isUpdating,
         uint256 precision
     );
+
+    function getLastInvariant() external view returns (uint256, uint256);
+
+    function getScalingFactors() external view returns (uint256[] memory);
 }
 
 interface IWeightedPool is IERC20 {
