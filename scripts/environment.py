@@ -1,3 +1,4 @@
+from time import sleep
 import eth_abi
 import json
 from brownie import (
@@ -13,11 +14,14 @@ from brownie import (
     MockERC20,
     MockWstETH,
     MockAura,
+    MockLiquidityGauge,
     MetaStable2TokenAuraHelper,
     MetaStable2TokenAuraVault
 )
 from brownie.network.state import Chain
 from brownie.convert.datatypes import Wei
+
+from scripts.common import deployArtifact
 
 ETH_ADDRESS = "0x0000000000000000000000000000000000000000"
 chain = Chain()
@@ -109,8 +113,14 @@ class Environment:
         self.metaStablePoolFactory = self.loadMetaStablePoolFactory(config["metaStablePoolFactory"])
         self.metaStablePool = interface.IMetaStablePool("0x945a00E88c662886241ce93D333009bEE2B3dF3F")
         self.metaStablePoolId = "0x945a00e88c662886241ce93d333009bee2b3df3f0002000000000000000001c2"
+        self.metaStableGauge = Contract.from_abi(
+            "LiquidityGauge", "0x6AEbe2d1e94504079702fF1AEA16975dADf24cD3", MockLiquidityGauge.abi
+        )
         self.mockAuraBooster = Contract.from_abi(
-            "AuraBooster", "0x60E8E1194d134323C5749F855e5Df504759B5645", MockAura.abi
+            "AuraBooster", "0x69232d11F36C17813C1B01ed73d6a4841a205dfa", MockAura.abi
+        )
+        self.metaStableVault = Contract.from_abi(
+            "MetaStable2TokenAuraVault", "0xE767769b639Af18dbeDc5FB534E263fF7BE43456", MetaStable2TokenAuraVault.abi
         )
 
     def deployTradingModule(self):
@@ -155,6 +165,10 @@ class Environment:
         aura = MockERC20.deploy("Notional AURA", "AURA", 18, 0, {"from": self.deployer})
         MockERC20.publish_source(aura)
 
+    def deployMockLiquidityGauge(self):
+        gauge = MockLiquidityGauge.deploy(self.metaStablePool.address, {"from": self.deployer})
+        MockLiquidityGauge.publish_source(gauge)
+
     def deployMockAura(self):
         aura = MockAura.deploy(
             1,
@@ -177,28 +191,71 @@ class Environment:
         emptyProxy.upgradeTo(impl.address, {"from": self.deployer})        
 
     def deployMetaStableVault(self):
-        helper = MetaStable2TokenAuraHelper.deploy(self.deployer)
-        MetaStable2TokenAuraHelper.publish_source(helper)
+        #helper = MetaStable2TokenAuraHelper.deploy({"from": self.deployer})
+        #MetaStable2TokenAuraHelper.publish_source(helper)
 
-        impl = MetaStable2TokenAuraVault.deploy(
-            self.addresses["notional"],
+        deployArtifact(
+            "scripts/artifacts/MetaStable2TokenAuraVault.json", 
             [
-                self.mockAuraBooster.address,
+                self.notional.address,
                 [
-                    1,
-                    self.metaStablePoolId,
-                    self.mockMetaStablePoolGauge.address,
-                    self.tradingModule.address,
-                    3600 * 24 * 7,
-                    "0x8638f94155c333fd7087c012Dc51B0528bb06035"
+                    self.mockAuraBooster.address,
+                    [
+                        1,
+                        self.metaStablePoolId,
+                        self.metaStableGauge.address,
+                        self.tradingModule.address,
+                        3600 * 24 * 7,
+                        "0x8638f94155c333fd7087c012Dc51B0528bb06035" # Treasury manager
+                    ]
                 ]
             ],
-            {"from": self.deployer}
+            self.deployer,
+            "MetaStable2TokenAuraVault",
+            {"$8eca08c2c2913e10a3819288bd975d0c9a$": "0x248aCAA436491b7CEFD03A006409a9Ad664AB45D"}
         )
-        MetaStable2TokenAuraVault.publish_source(impl)
 
-        proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
-        nProxy.publish_source(proxy)
+        #impl = MetaStable2TokenAuraVault.deploy(
+        #    self.notional.address,
+        #    [
+        #        self.mockAuraBooster.address,
+        #        [
+        #            1,
+        #            self.metaStablePoolId,
+        #            self.metaStableGauge.address,
+        #            self.tradingModule.address,
+        #            3600 * 24 * 7,
+        #            "0x8638f94155c333fd7087c012Dc51B0528bb06035" # Treasury manager
+        #        ]
+        #    ],
+        #    {"from": self.deployer}
+        #)
+        #MetaStable2TokenAuraVault.publish_source(impl)
+
+        #proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+        #nProxy.publish_source(proxy)
+
+    def initMetaStableVault(self):
+        print(self.metaStableVault.initialize.encode_input(
+            [
+                "wstETH/ETH Aura Vault",
+                1,
+                [
+                    100e18, # maxUnderlyingSurplus,
+                    60, #oracleWindowInSeconds
+                    5e6, #settlementSlippageLimitPercent 
+                    10e6, #postMaturitySettlementSlippageLimitPercent 
+                    10e6, #emergencySettlementSlippageLimitPercent 
+                    5e6, #maxRewardTradeSlippageLimitPercent
+                    1e4, #maxBalancerPoolShare
+                    0.6e4, #balancerOracleWeight
+                    60 * 6, #settlementCoolDownInMinutes
+                    1e2, #feePercentage
+                    500, #oraclePriceDeviationLimitPercent
+                    9900 #balancerPoolSlippageLimitPercent
+                ]
+            ]
+        ))
 
     def deployMetaStablePool(self):
         self.metaStablePoolFactory.create(
@@ -294,3 +351,28 @@ def main():
         networkName = "goerli"
     deployer = accounts.load(networkName.upper() + "_DEPLOYER")
     env = Environment(EnvironmentConfig[networkName], deployer)
+    poolId = "0x945a00e88c662886241ce93d333009bee2b3df3f0002000000000000000001c2"
+    for i in range(1024):
+        try:
+            if env.weth.balanceOf(deployer) == 0:
+                print("wstETH -> weth")
+                env.balancerSwap(poolId, env.wstETH.address, env.weth.address, 0.05e18, deployer)
+            else:
+                print("weth -> wstETH")
+                env.balancerSwap(poolId, env.weth.address, env.wstETH.address, env.weth.balanceOf(deployer), deployer)
+            sleep(120)
+        except:
+            sleep(120)
+
+    #poolId = "0xde148e6cc3f6047eed6e97238d341a2b8589e19e000200000000000000000053"
+    #for i in range(210):
+    #    try:
+    #        if env.weth.balanceOf(deployer) == 0:
+    #            print("note -> weth")
+    #            env.balancerSwap(poolId, env.note.address, env.weth.address, 0.1e8, deployer)
+    #        else:
+    #            print("weth -> note")
+    #            env.balancerSwap(poolId, env.weth.address, env.note.address, env.weth.balanceOf(deployer), deployer)
+    #        sleep(120)
+    #    except:
+    #        sleep(60)
