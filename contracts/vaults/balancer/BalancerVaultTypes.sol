@@ -78,6 +78,16 @@ struct StableOracleContext {
     OracleContext baseOracle;
 }
 
+struct UnderlyingPoolContext {
+    uint256 scaleFactor;
+    uint256 mainBalance;
+    uint256 wrappedBalance;
+    uint256 virtualSupply;
+    uint256 fee;
+    uint256 lowerTarget;
+    uint256 upperTarget;
+}
+
 struct BoostedOracleContext {
     /// @notice Amplification parameter
     uint256 ampParam;
@@ -85,6 +95,10 @@ struct BoostedOracleContext {
     uint256 bptBalance;
     /// @notice Protocol fee amount used to calculate the virtual supply
     uint256 dueProtocolFeeBptAmount;
+    /// @notice Primary scale factor used for downscaling
+    uint256 primaryScaleFactor;
+    /// @notice Underlying linear pool for the primary token
+    UnderlyingPoolContext primaryUnderlyingPool;
 }
 
 /// @notice Balancer pool related fields
@@ -190,8 +204,6 @@ struct StrategyVaultSettings {
     uint16 balancerOracleWeight;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;
-    /// @notice Cool down in minutes for post maturity settlement
-    uint16 postMaturitySettlementCoolDownInMinutes;
     /// @notice Determines the amount of BAL transferred to FEE_RECEIVER
     uint16 feePercentage;
     /// @notice Limits the amount of allowable deviation from the oracle price
@@ -204,5 +216,4 @@ struct StrategyVaultState {
     /// @notice Total number of strategy tokens across all maturities
     uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
-    uint32 lastPostMaturitySettlementTimestamp;
 }

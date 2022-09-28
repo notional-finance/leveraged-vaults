@@ -17,6 +17,7 @@ import {Errors} from "../../../../global/Errors.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {StableMath} from "../math/StableMath.sol";
+import {LinearMath} from "../math/LinearMath.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
@@ -205,7 +206,7 @@ library Boosted3TokenPoolUtils {
         // to calculate the value of 1 BPT. Then, we scale it to the BPT
         // amount to get the value in terms of the primary currency.
         // Use virtual total supply and zero swap fees for joins
-        primaryAmount = StableMath._calcTokenOutGivenExactBptIn({
+        uint256 linearBPTAmount = StableMath._calcTokenOutGivenExactBptIn({
             amp: oracleContext.ampParam, 
             balances: balances, 
             tokenIndex: 0, 
@@ -214,6 +215,26 @@ library Boosted3TokenPoolUtils {
             swapFeePercentage: 0, 
             currentInvariant: invariant
         });
+
+        // TODO: remove fee amount before downscaling
+
+        // Downscale BPT out
+        linearBPTAmount = linearBPTAmount * BalancerConstants.BALANCER_PRECISION / oracleContext.primaryScaleFactor;
+
+        // Convert from linear pool BPT to primary Amount
+        primaryAmount = LinearMath._calcMainOutPerBptIn({
+            bptIn: linearBPTAmount,
+            mainBalance: oracleContext.primaryUnderlyingPool.mainBalance,
+            wrappedBalance: oracleContext.primaryUnderlyingPool.wrappedBalance,
+            bptSupply: oracleContext.primaryUnderlyingPool.virtualSupply,
+            params: LinearMath.Params({
+                fee: oracleContext.primaryUnderlyingPool.fee,
+                lowerTarget: oracleContext.primaryUnderlyingPool.lowerTarget,
+                upperTarget: oracleContext.primaryUnderlyingPool.upperTarget
+            }) 
+        });
+
+        // TODO: apply linear pool scale factor (downscale)
 
         uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
         primaryAmount = (primaryAmount * bptAmount * primaryPrecision) / BalancerConstants.BALANCER_PRECISION_SQUARED;
@@ -374,60 +395,5 @@ library Boosted3TokenPoolUtils {
         underlyingValue = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, strategyContext, bptClaim
         ).toInt();
-    }
-
-    function _getMinBPT(
-        ThreeTokenPoolContext calldata poolContext,
-        BoostedOracleContext calldata oracleContext,
-        StrategyContext calldata strategyContext,
-        uint256 primaryAmount
-    ) internal view returns (uint256 minBPT) {
-        // Calculate minBPT to minimize slippage
-        (
-            uint256 virtualSupply, 
-            uint256[] memory balances, 
-            uint256 invariant
-        ) = poolContext._getValidatedPoolData(oracleContext, strategyContext);
-
-        uint256[] memory amountsIn = new uint256[](3);
-        // _getValidatedPoolData rearranges the balances so that primary is always in the
-        // zero index spot
-        /// @notice Balancer math functions expect all amounts to be in BALANCER_PRECISION
-        uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
-        amountsIn[0] = primaryAmount * BalancerConstants.BALANCER_PRECISION / primaryPrecision;
-
-        minBPT = StableMath._calcBptOutGivenExactTokensIn({
-            amp: oracleContext.ampParam,
-            balances: balances,
-            amountsIn: amountsIn,
-            bptTotalSupply: virtualSupply,
-            swapFeePercentage: 0,
-            currentInvariant: invariant
-        });
-
-        uint256 swapFeePercentage = IBoostedPool(address(poolContext.basePool.basePool.pool))
-            .getCachedProtocolSwapFeePercentage();
-
-        if (swapFeePercentage > 0) {
-            minBPT -= _getDueProtocolFeeByBpt(minBPT, swapFeePercentage);
-        }
-
-        minBPT = minBPT * strategyContext.vaultSettings.balancerPoolSlippageLimitPercent / 
-            uint256(BalancerConstants.VAULT_PERCENT_BASIS);
-    }
-
-    function _addSwapFeeAmount(uint256 amount, uint256 protocolSwapFeePercentage) private view returns (uint256) {
-        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(FixedPoint.ONE.sub(protocolSwapFeePercentage));
-    }
-
-    function _getDueProtocolFeeByBpt(
-        uint256 bptAmount,
-        uint256 protocolSwapFeePercentage
-    ) private view returns (uint256) {
-        uint256 feeAmount = _addSwapFeeAmount(bptAmount, protocolSwapFeePercentage).sub(bptAmount);
-
-        uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
-        return protocolFeeAmount;
     }
 }

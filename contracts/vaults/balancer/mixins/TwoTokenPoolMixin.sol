@@ -8,6 +8,7 @@ import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {PoolMixin} from "./PoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 
 abstract contract TwoTokenPoolMixin is PoolMixin {
     error InvalidPrimaryToken(address token);
@@ -72,6 +73,12 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             uint256[] memory balances,
             /* uint256 lastChangeBlock */
         ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+
+        uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
+
+        for (uint256 i; i < balances.length; i++) {
+            balances[i] = balances[i] * scalingFactors[i] / BalancerConstants.BALANCER_PRECISION;
+        }
 
         return TwoTokenPoolContext({
             primaryToken: address(PRIMARY_TOKEN),

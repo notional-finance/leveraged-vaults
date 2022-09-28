@@ -138,10 +138,6 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             revert Errors.HasNotMatured();
         }
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        SettlementUtils._validateCoolDown(
-            context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
-            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes
-        );
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
             data
@@ -149,8 +145,6 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         MetaStable2TokenAuraHelper.settleVault(
             context, maturity, strategyTokensToRedeem, params
         );
-        context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
-        context.baseStrategy.vaultState.setStrategyVaultState();  
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {

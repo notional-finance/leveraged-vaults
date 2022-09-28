@@ -5,11 +5,13 @@ import {
     ThreeTokenPoolContext, 
     TwoTokenPoolContext, 
     BoostedOracleContext,
+    UnderlyingPoolContext,
     OracleContext,
     AuraVaultDeploymentParams
 } from "../BalancerVaultTypes.sol";
+import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
+import {IBoostedPool, ILinearPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {PoolMixin} from "./PoolMixin.sol";
@@ -100,7 +102,8 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         TERTIARY_DECIMALS = uint8(tertiaryDecimals);
     }
 
-    function _boostedOracleContext(uint256[] memory balances) internal view returns (BoostedOracleContext memory) {
+    function _boostedOracleContext(uint256[] memory balances, uint256 primaryScaleFactor) 
+        internal view returns (BoostedOracleContext memory) {
         IBoostedPool pool = IBoostedPool(address(BALANCER_POOL_TOKEN));
 
         (
@@ -109,10 +112,38 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             /* uint256 precision */
         ) = pool.getAmplificationParameter();
 
+        ILinearPool underlyingPool = ILinearPool(address(PRIMARY_TOKEN));
+        (uint256 lowerTarget, uint256 upperTarget) = underlyingPool.getTargets();
+        uint256 mainIndex = underlyingPool.getMainIndex();
+        uint256 wrappedIndex = underlyingPool.getWrappedIndex();
+
+        (
+            /* address[] memory tokens */,
+            uint256[] memory underlyingBalances,
+            /* uint256 lastChangeBlock */
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(underlyingPool.getPoolId());
+
+        uint256[] memory underlyingScalingFactors = underlyingPool.getScalingFactors();
+
+        for (uint256 i; i < underlyingBalances.length; i++) {
+            underlyingBalances[i] = underlyingBalances[i] * underlyingScalingFactors[i] / 
+                BalancerConstants.BALANCER_PRECISION;
+        }        
+
         return BoostedOracleContext({
             ampParam: value,
             bptBalance: balances[BPT_INDEX],
-            dueProtocolFeeBptAmount: pool.getDueProtocolFeeBptAmount() 
+            dueProtocolFeeBptAmount: pool.getDueProtocolFeeBptAmount(),
+            primaryScaleFactor: primaryScaleFactor,
+            primaryUnderlyingPool: UnderlyingPoolContext({
+                scaleFactor: underlyingScalingFactors[mainIndex],
+                mainBalance: underlyingBalances[mainIndex],
+                wrappedBalance: underlyingBalances[wrappedIndex],
+                virtualSupply: underlyingPool.getVirtualSupply(),
+                fee: underlyingPool.getSwapFeePercentage(),
+                lowerTarget: lowerTarget,
+                upperTarget: upperTarget    
+            })
         });
     }
 

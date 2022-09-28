@@ -63,7 +63,7 @@ def get_vault_config(**kwargs):
         kwargs.get("reserveFeeShare", 20),  # 6: 20% reserve fee share
         kwargs.get("maxBorrowMarketIndex", 2),  # 7: 20% reserve fee share
         kwargs.get("maxDeleverageCollateralRatioBPS", 4000),  # 8: 40% max collateral ratio
-        kwargs.get("secondaryBorrowCurrencies", [0, 0, 0]),  # 9: none set
+        kwargs.get("secondaryBorrowCurrencies", [0, 0]),  # 9: none set
     ]
 
 def set_flags(flags, **kwargs):
@@ -99,7 +99,6 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
         kwargs.get("balancerOracleWeight", settings["balancerOracleWeight"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
-        kwargs.get("postMaturitySettlementCoolDownInMinutes", settings["postMaturitySettlementCoolDownInMinutes"]), 
         kwargs.get("feePercentage", settings["feePercentage"]),
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
         kwargs.get("balancerPoolSlippageLimitPercent", settings["balancerPoolSlippageLimitPercent"])

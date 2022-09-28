@@ -20,11 +20,13 @@ import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
+import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol";
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
+import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 
 contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
@@ -133,10 +135,6 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
             revert Errors.HasNotMatured();
         }
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        SettlementUtils._validateCoolDown(
-            context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
-            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes
-        );
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
             data
@@ -144,8 +142,6 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         Boosted3TokenAuraHelper.settleVault(
             context, maturity, strategyTokensToRedeem, params
         );
-        context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
-        context.baseStrategy.vaultState.setStrategyVaultState();  
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
@@ -194,9 +190,15 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
             /* uint256 lastChangeBlock */
         ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
+        uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
+
+        for (uint256 i; i < balances.length; i++) {
+            balances[i] = balances[i] * scalingFactors[i] / BalancerConstants.BALANCER_PRECISION;
+        }
+
         return Boosted3TokenAuraStrategyContext({
             poolContext: _threeTokenPoolContext(balances),
-            oracleContext: _boostedOracleContext(balances),
+            oracleContext: _boostedOracleContext(balances, scalingFactors[PRIMARY_INDEX]),
             stakingContext: _auraStakingContext(),
             baseStrategy: _baseStrategyContext()
         });
