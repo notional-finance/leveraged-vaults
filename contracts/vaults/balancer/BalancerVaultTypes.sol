@@ -45,7 +45,6 @@ struct DepositTradeParams {
 }
 
 struct RedeemParams {
-    uint32 minSecondaryLendRate;
     uint256 minPrimary;
     uint256 minSecondary;
     bytes secondaryTradeParams;

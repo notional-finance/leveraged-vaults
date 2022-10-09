@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 import {
     Boosted3TokenAuraStrategyContext, 
     StrategyContext,
+    DepositParams,
     RedeemParams,
     ReinvestRewardParams,
     ThreeTokenPoolContext,
@@ -28,6 +29,33 @@ library Boosted3TokenAuraHelper {
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultSettings;
+
+    function deposit(
+        Boosted3TokenAuraStrategyContext memory context,
+        DepositParams memory params,
+        uint256 deposit
+    ) external returns (uint256 strategyTokensMinted) {
+        strategyTokensMinted = context.poolContext._deposit({
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
+            oracleContext: context.oracleContext, 
+            deposit: deposit,
+            minBPT: params.minBPT
+        });
+    }
+
+    function redeem(
+        Boosted3TokenAuraStrategyContext memory context,
+        RedeemParams memory params,
+        uint256 strategyTokens
+    ) external returns (uint256 finalPrimaryBalance) {
+        finalPrimaryBalance = context.poolContext._redeem({
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
+            strategyTokens: strategyTokens,
+            minPrimary: params.minPrimary
+        });
+    }
 
     function settleVault(
         Boosted3TokenAuraStrategyContext calldata context,

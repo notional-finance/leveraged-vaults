@@ -26,10 +26,11 @@ import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
-import {IBalancerPool} from "../../../interfaces/balancer/IBalancerPool.sol";
+import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 
 contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
+    using Boosted3TokenAuraHelper for Boosted3TokenAuraStrategyContext;
     using StrategyUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultState;
 
@@ -71,15 +72,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     ) internal override returns (uint256 strategyTokensMinted) {
         // Entering the vault is not allowed within the settlement window
         DepositParams memory params = abi.decode(data, (DepositParams));
-        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-
-        strategyTokensMinted = context.poolContext._deposit({
-            strategyContext: context.baseStrategy,
-            stakingContext: context.stakingContext,
-            oracleContext: context.oracleContext, 
-            deposit: deposit,
-            minBPT: params.minBPT
-        });
+        return _strategyContext().deposit(params, deposit);
     }
 
     function _redeemFromNotional(
@@ -89,14 +82,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
-        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-
-        finalPrimaryBalance = context.poolContext._redeem({
-            strategyContext: context.baseStrategy,
-            stakingContext: context.stakingContext,
-            strategyTokens: strategyTokens,
-            minPrimary: params.minPrimary
-        });
+        return _strategyContext().redeem(params, strategyTokens);
     }
 
     function settleVaultNormal(

@@ -124,13 +124,19 @@ library TradingUtils {
     ) private {
         uint256 preTradeBalance;
 
-        if (trade.sellToken == address(Deployments.WETH) && spender == Deployments.ETH_ADDRESS) {
+        // Remember preTradeBalance if we are buying ETH or WETH just in
+        // case the contract already has some tokens
+        if (trade.buyToken == address(Deployments.WETH)) {
             preTradeBalance = address(this).balance;
+        } else if (trade.buyToken == Deployments.ETH_ADDRESS) {
+            preTradeBalance = IERC20(address(Deployments.WETH)).balanceOf(address(this));
+        }
+
+        if (trade.sellToken == address(Deployments.WETH) && spender == Deployments.ETH_ADDRESS) {
             // Curve doesn't support Deployments.WETH (spender == address(0))
             uint256 withdrawAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             Deployments.WETH.withdraw(withdrawAmount);
         } else if (trade.sellToken == Deployments.ETH_ADDRESS && spender != Deployments.ETH_ADDRESS) {
-            preTradeBalance = IERC20(address(Deployments.WETH)).balanceOf(address(this));
             // UniswapV3 doesn't support ETH (spender != address(0))
             uint256 depositAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             Deployments.WETH.deposit{value: depositAmount }();
