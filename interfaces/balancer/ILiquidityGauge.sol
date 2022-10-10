@@ -12,8 +12,6 @@ interface ILiquidityGauge is IERC20 {
 
     function claim_rewards() external;
 
-    function balanceOf(address) external view returns (uint256);
-
     // curve & balancer use lp_token()
     function lp_token() external view returns (address);
 

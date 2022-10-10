@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import {IEulerDToken} from "../../interfaces/euler/IEulerDToken.sol";
 import {IEulerMarkets} from "../../interfaces/euler/IEulerMarkets.sol";
+import {IEulerFlashLoanReceiver} from "../../interfaces/euler/IEulerFlashLoanReceiver.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {CErc20Interface} from "../../interfaces/compound/CErc20Interface.sol";
 import {CEtherInterface} from "../../interfaces/compound/CEtherInterface.sol";
@@ -13,7 +14,7 @@ import {Token} from "../global/Types.sol";
 import {BoringOwnable} from "./BoringOwnable.sol";
 import {Deployments} from "../global/Deployments.sol";
 
-contract FlashLiquidator is BoringOwnable {
+contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
     using TokenUtils for IERC20;
 
     NotionalProxy public immutable NOTIONAL;
@@ -60,7 +61,7 @@ contract FlashLiquidator is BoringOwnable {
         dToken.flashLoan(amount, abi.encode(asset, amount, params));
     }
 
-    function onFlashLoan(bytes memory data) external {
+    function onFlashLoan(bytes memory data) external override {
         require(msg.sender == address(EULER));
 
         (
