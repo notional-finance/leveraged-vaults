@@ -26,7 +26,6 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         uint16 currencyId;
         address account;
         address vault;
-        bool withdrawToOwner;
         bytes redeemData;
     }
 
@@ -79,7 +78,7 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         (
             address asset, 
             uint256 amount, 
-            bool withdrawToOwner,
+            bool withdraw,
             LiquidationParams memory params
         ) = abi.decode(data, (address, uint256, bool, LiquidationParams));
 
@@ -123,7 +122,7 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
             }
         }
 
-        if (withdrawToOwner) {
+        if (withdraw) {
             _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount);
         }
 
