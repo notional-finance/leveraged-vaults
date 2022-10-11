@@ -26,6 +26,7 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         uint16 currencyId;
         address account;
         address vault;
+        bool withdrawToOwner;
         bytes redeemData;
     }
 
@@ -52,13 +53,24 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         }
     }
 
+    function estimateProfit(
+        address asset,
+        uint256 amount,
+        LiquidationParams calldata params
+    ) external onlyOwner returns (uint256) {
+        uint256 balance = IERC20(asset).balanceOf(address(this));
+        IEulerDToken dToken = IEulerDToken(MARKETS.underlyingToDToken(asset));
+        dToken.flashLoan(amount, abi.encode(asset, amount, false, params));
+        return IERC20(asset).balanceOf(address(this)) - balance;
+    }
+
     function flashLiquidate(
         address asset,
         uint256 amount,
         LiquidationParams calldata params
-    ) external onlyOwner {
+    ) external {
         IEulerDToken dToken = IEulerDToken(MARKETS.underlyingToDToken(asset));
-        dToken.flashLoan(amount, abi.encode(asset, amount, params));
+        dToken.flashLoan(amount, abi.encode(asset, amount, true, params));
     }
 
     function onFlashLoan(bytes memory data) external override {
@@ -67,8 +79,9 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         (
             address asset, 
             uint256 amount, 
+            bool withdrawToOwner,
             LiquidationParams memory params
-        ) = abi.decode(data, (address, uint256, LiquidationParams));
+        ) = abi.decode(data, (address, uint256, bool, LiquidationParams));
 
         address assetToken = underlyingToAsset[asset];
 
@@ -110,7 +123,9 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
             }
         }
 
-        _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount);
+        if (withdrawToOwner) {
+            _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount);
+        }
 
         IERC20(asset).transfer(msg.sender, amount); // repay
     }
