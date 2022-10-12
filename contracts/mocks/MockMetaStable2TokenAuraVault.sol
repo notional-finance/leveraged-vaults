@@ -6,10 +6,16 @@ import {MetaStable2TokenAuraVault} from "../vaults/MetaStable2TokenAuraVault.sol
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 
 contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
+     mapping(address => uint256) public valuationFactors;
+
     constructor(
         NotionalProxy notional_, 
         AuraVaultDeploymentParams memory params
     ) MetaStable2TokenAuraVault(notional_, params) {
+    }
+
+    function setValuationFactor(address account, uint256 valuationFactor_) external {
+        valuationFactors[account] = valuationFactor_;
     }
 
     function convertStrategyToUnderlying(
@@ -17,6 +23,10 @@ contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
-        return super.convertStrategyToUnderlying(account, strategyTokenAmount, maturity);
+        uint256 valuationFactor = valuationFactors[account];
+        underlyingValue = super.convertStrategyToUnderlying(account, strategyTokenAmount, maturity);
+        if (valuationFactor > 0) {
+            underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;            
+        }
     }
 }
