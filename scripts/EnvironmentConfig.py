@@ -6,7 +6,9 @@ from brownie import (
     TradingModule,
     nProxy,
     EmptyProxy,
-    WstETHChainlinkOracle
+    WstETHChainlinkOracle,
+    BalancerPoolChainlinkAdapter,
+    ChainlinkAdapter
 )
 from brownie.network.contract import Contract
 from brownie.network.state import Chain
@@ -145,6 +147,27 @@ class Environment:
             wstETHAdapater.address,
             {"from": self.notional.owner()}
         )
+        # AURA/USD oracle
+        auraETHAdapter = BalancerPoolChainlinkAdapter.deploy(
+            self.notional,
+            "0xc29562b045d80fd77c69bec09541f5c16fe20d9d", 
+            "AURA/ETH Chainlink Adapter", 
+            3600,
+            True,
+            {"from": self.notional.owner()}    
+        )
+        auraUSDAdapter = ChainlinkAdapter.deploy(
+            "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",
+            auraETHAdapter.address,
+            "AURA/USD Chainlink Adapter",
+            {"from": self.notional.owner()}
+        )
+        self.tradingModule.setPriceOracle(
+            self.tokens["AURA"].address,
+            auraUSDAdapter.address,
+            {"from": self.notional.owner()}
+        )        
+
 
 def getEnvironment(network = "mainnet"):
     return Environment(network)
