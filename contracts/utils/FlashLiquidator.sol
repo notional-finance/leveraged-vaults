@@ -96,7 +96,8 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
             (
                 /* int256 collateralRatio */,
                 /* int256 minCollateralRatio */,
-                int256 maxLiquidatorDepositAssetCash
+                int256 maxLiquidatorDepositAssetCash,
+                /* uint256 vaultSharesToLiquidator */
             ) = NOTIONAL.getVaultAccountCollateralRatio(params.account, params.vault);
             
             require(maxLiquidatorDepositAssetCash > 0);
