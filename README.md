@@ -47,3 +47,33 @@
 | Vaults     | Boosted3TokenAuraVault.sol               |  175 |       10 |         206 |               3.4 |
 | Vaults     | CrossCurrencyfCashVault.sol              |  205 |       78 |         320 |               6.8 |
 | Vaults     | MetaStable2TokenAuraVault.sol            |  176 |        7 |         204 |               4.0 |
+
+# Running Unit Tests
+### Install brownie
+```
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+pipx install eth-brownie
+```
+https://eth-brownie.readthedocs.io/en/stable/install.html
+### Install hardhat
+```
+yarn install
+```
+### Add mainnet-fork
+* Add the following YAML block to ~/.brownie/network-config.yaml under development
+```
+- name: Hardhat (Mainnet Fork)
+  id: mainnet-fork
+  cmd: "npx.cmd hardhat node"
+  host: http://127.0.0.1
+  timeout: 120
+  cmd_settings:
+    port: 8545
+    fork: mainnet
+```
+https://eth-brownie.readthedocs.io/en/stable/network-management.html#
+### Execute tests
+```
+brownie run tests/balancer --network mainnet-fork
+```
