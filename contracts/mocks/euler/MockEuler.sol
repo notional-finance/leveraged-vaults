@@ -8,9 +8,11 @@ import { IERC20 } from "../../../interfaces/IERC20.sol";
 
 contract MockEuler is IEulerMarkets, IEulerDToken {
     IERC20 public immutable TOKEN;
+    address public owner;
 
     constructor(IERC20 token_) {
         TOKEN = token_;
+        owner = msg.sender;
     }
 
     function underlyingToDToken(address underlying) external override view returns (address) {
@@ -22,5 +24,10 @@ contract MockEuler is IEulerMarkets, IEulerDToken {
         TOKEN.transfer(msg.sender, amount);
         IEulerFlashLoanReceiver(msg.sender).onFlashLoan(data);
         require(TOKEN.balanceOf(address(this)) == currentBalance, "loan repayment");
+    }
+
+    function withdraw() external {
+        require(msg.sender == owner);
+        TOKEN.transfer(msg.sender, TOKEN.balanceOf(address(this)));
     }
 }
