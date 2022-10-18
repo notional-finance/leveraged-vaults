@@ -27,6 +27,7 @@ library BalancerVaultStorage {
         uint32 maxOracleQueryWindow,
         uint16 balancerOracleWeight
     ) internal {
+        require(balancerOracleWeight <= BalancerConstants.VAULT_PERCENT_BASIS);
         require(settings.oracleWindowInSeconds <= maxOracleQueryWindow);
         require(settings.settlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
         require(settings.postMaturitySettlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
