@@ -62,7 +62,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             Deployments.ETH_ADDRESS
             ? 18
             : SECONDARY_TOKEN.decimals();
-        require(primaryDecimals <= 18);
+        require(secondaryDecimals <= 18);
         SECONDARY_DECIMALS = uint8(secondaryDecimals);
     }
 
