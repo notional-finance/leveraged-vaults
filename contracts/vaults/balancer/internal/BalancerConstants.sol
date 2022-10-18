@@ -4,7 +4,6 @@ pragma solidity =0.8.15;
 library BalancerConstants {
     uint256 internal constant BALANCER_PRECISION = 1e18;
     uint256 internal constant BALANCER_PRECISION_SQUARED = 1e36;
-    uint256 internal constant BALANCER_ORACLE_WEIGHT_PRECISION = 1e8;
     uint32 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
 
     /// @notice Precision for all percentages used by the vault

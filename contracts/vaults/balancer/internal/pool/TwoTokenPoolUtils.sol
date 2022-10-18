@@ -93,7 +93,7 @@ library TwoTokenPoolUtils {
         }
 
         uint256 chainlinkWeightedPrice;
-        if (oracleContext.balancerOracleWeight < BalancerConstants.BALANCER_ORACLE_WEIGHT_PRECISION) {
+        if (oracleContext.balancerOracleWeight < BalancerConstants.VAULT_PERCENT_BASIS) {
             (int256 rate, int256 decimals) = tradingModule.getOraclePrice(
                 poolContext.primaryToken, poolContext.secondaryToken
             );
@@ -106,11 +106,11 @@ library TwoTokenPoolUtils {
 
             // No overflow in rate conversion, checked above
             chainlinkWeightedPrice = uint256(rate) * 
-                (BalancerConstants.BALANCER_ORACLE_WEIGHT_PRECISION - oracleContext.balancerOracleWeight);
+                (BalancerConstants.VAULT_PERCENT_BASIS - oracleContext.balancerOracleWeight);
         }
 
         oraclePairPrice = (balancerWeightedPrice + chainlinkWeightedPrice) / 
-            BalancerConstants.BALANCER_ORACLE_WEIGHT_PRECISION;
+            BalancerConstants.VAULT_PERCENT_BASIS;
     }
 
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
