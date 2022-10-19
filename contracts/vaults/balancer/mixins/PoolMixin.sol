@@ -60,4 +60,6 @@ abstract contract PoolMixin is AuraStakingMixin, BalancerStrategyBase {
         external view returns (uint256 bptClaim) {
         return _baseStrategyContext()._convertStrategyTokensToBPTClaim(strategyTokenAmount);
     }
+
+    uint256[40] private __gap; // Storage gap for future potential upgrades
 }

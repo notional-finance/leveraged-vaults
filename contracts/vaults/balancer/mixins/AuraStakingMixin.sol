@@ -82,4 +82,6 @@ abstract contract AuraStakingMixin {
 
         emit BalancerEvents.ClaimedRewardTokens(rewardTokens, claimedBalances);
     }
+
+    uint256[40] private __gap; // Storage gap for future potential upgrades
 }

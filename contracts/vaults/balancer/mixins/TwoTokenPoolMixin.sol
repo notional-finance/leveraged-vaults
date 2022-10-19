@@ -85,4 +85,6 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             basePool: _poolContext()
         });
     }
+
+    uint256[40] private __gap; // Storage gap for future potential upgrades
 }

@@ -25,4 +25,6 @@ abstract contract BalancerOracleMixin {
             balancerOracleWeight: settings.balancerOracleWeight
         });
     }
+
+    uint256[40] private __gap; // Storage gap for future potential upgrades
 }

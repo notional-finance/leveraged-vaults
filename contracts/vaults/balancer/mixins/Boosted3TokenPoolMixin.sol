@@ -137,4 +137,6 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             })
         });
     }
+
+    uint256[40] private __gap; // Storage gap for future potential upgrades
 }

@@ -33,4 +33,6 @@ abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracl
             baseOracle: _oracleContext()
         });
     }
+
+    uint256[40] private __gap; // Storage gap for future potential upgrades
 }
