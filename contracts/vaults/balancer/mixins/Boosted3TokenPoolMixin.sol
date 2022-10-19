@@ -14,6 +14,7 @@ import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {PoolMixin} from "./PoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {StableMath} from "../internal/math/StableMath.sol";
 
 abstract contract Boosted3TokenPoolMixin is PoolMixin {
     error InvalidPrimaryToken(address token);
@@ -106,8 +107,9 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         (
             uint256 value,
             /* bool isUpdating */,
-            /* uint256 precision */
+            uint256 precision
         ) = pool.getAmplificationParameter();
+        require(precision == StableMath._AMP_PRECISION);
 
         return BoostedOracleContext({
             ampParam: value,
