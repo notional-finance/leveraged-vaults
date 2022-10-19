@@ -186,8 +186,8 @@ library TradingUtils {
             );
 
         if (tradeType == TradeType.EXACT_OUT_SINGLE || tradeType == TradeType.EXACT_OUT_BATCH) {
-            // 0 means no slippage limit
-            if (slippageLimit == 0) {
+            // type(uint256).max means no slippage limit
+            if (slippageLimit == type(uint256).max) {
                 return type(uint256).max;
             }
             // For exact out trades, we need to invert the oracle price (1 / oraclePrice)
@@ -206,8 +206,8 @@ library TradingUtils {
             // convert it to sellToken precision
             limitAmount = (limitAmount * sellTokenDecimals) / buyTokenDecimals;
         } else {
-            // 0 means no slippage limit
-            if (slippageLimit == 0) {
+            // type(uint256).max means no slippage limit
+            if (slippageLimit == type(uint256).max) {
                 return 0;
             }
             // For exact in trades, limitAmount is the min amount of buyToken the contract
