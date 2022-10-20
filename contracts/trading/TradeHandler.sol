@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
 import {nProxy} from "../proxy/nProxy.sol";

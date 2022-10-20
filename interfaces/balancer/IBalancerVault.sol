@@ -1,4 +1,5 @@
-pragma solidity 0.8.15;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.7.6;
 
 interface IAsset {
     // solhint-disable-previous-line no-empty-blocks

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {AuraVaultDeploymentParams} from "../vaults/balancer/BalancerVaultTypes.sol";
 import {MetaStable2TokenAuraVault} from "../vaults/MetaStable2TokenAuraVault.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 
 contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
-     mapping(address => uint256) public valuationFactors;
+    mapping(address => uint256) public valuationFactors;
 
     constructor(
         NotionalProxy notional_, 

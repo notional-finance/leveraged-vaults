@@ -1,5 +1,5 @@
-
-pragma solidity 0.8.15;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.7.6;
 
 interface IAuraRewardPool {
     function withdrawAndUnwrap(uint256 amount, bool claim) external returns(bool);
