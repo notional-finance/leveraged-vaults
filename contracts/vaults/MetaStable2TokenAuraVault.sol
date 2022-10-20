@@ -60,7 +60,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
-        _strategyContext().deposit(deposit, data);
+        strategyTokensMinted = _strategyContext().deposit(deposit, data);
     }
 
     function _redeemFromNotional(
@@ -69,7 +69,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
-        _strategyContext().redeem(strategyTokens, data);
+        finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
     }
 
     function convertStrategyToUnderlying(

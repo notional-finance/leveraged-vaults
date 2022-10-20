@@ -70,7 +70,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
-        _strategyContext().deposit(deposit, data);
+        strategyTokensMinted = _strategyContext().deposit(deposit, data);
     }
 
     function _redeemFromNotional(
@@ -79,8 +79,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
-        _strategyContext().redeem(strategyTokens, data);
-
+        finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
     }
 
     function settleVaultNormal(
