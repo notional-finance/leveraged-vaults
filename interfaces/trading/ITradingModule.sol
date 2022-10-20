@@ -34,6 +34,10 @@ struct Trade {
 error InvalidTrade();
 
 interface ITradingModule {
+    struct TokenPermissions {
+        bool allowSell;
+    }
+
     event TradeExecuted(
         address indexed sellToken,
         address indexed buyToken,
@@ -43,6 +47,7 @@ interface ITradingModule {
 
     event PriceOracleUpdated(address token, address oracle);
     event MaxOracleFreshnessUpdated(uint32 currentValue, uint32 newValue);
+    event TokenPermissionsUpdated(address sender, address token, TokenPermissions permissions);
 
     function getExecutionData(uint16 dexId, address from, Trade calldata trade)
         external view returns (
@@ -53,6 +58,12 @@ interface ITradingModule {
         );
 
     function setPriceOracle(address token, AggregatorV2V3Interface oracle) external;
+
+    function setTokenPermissions(
+        address sender, 
+        address token, 
+        TokenPermissions calldata permissions
+    ) external;
 
     function getOraclePrice(address inToken, address outToken)
         external view returns (int256 answer, int256 decimals);
@@ -75,4 +86,6 @@ interface ITradingModule {
         uint256 amount,
         uint32 slippageLimit
     ) external view returns (uint256 limitAmount);
+
+    function canExecuteTrade(Trade calldata trade) external view returns (bool);
 }

@@ -28,6 +28,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
 
     error SellTokenEqualsBuyToken();
     error UnknownDEX();
+    error InsufficientPermissions();
 
     struct PriceOracle {
         AggregatorV2V3Interface oracle;
@@ -37,6 +38,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     int256 internal constant RATE_DECIMALS = 1e18;
     mapping(address => PriceOracle) public priceOracles;
     uint32 public maxOracleFreshnessInSeconds;
+    mapping(address => mapping(address => TokenPermissions)) public tokenWhitelist;
 
     constructor(NotionalProxy notional_, ITradingModule proxy_) initializer { 
         NOTIONAL = notional_;
@@ -67,6 +69,15 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         oracleStorage.rateDecimals = oracle.decimals();
 
         emit PriceOracleUpdated(token, address(oracle));
+    }
+
+    function setTokenPermissions(
+        address sender, 
+        address token, 
+        TokenPermissions calldata permissions
+    ) external override onlyNotionalOwner {
+        tokenWhitelist[sender][token] = permissions;
+        emit TokenPermissionsUpdated(sender, token, permissions);
     }
 
     /// @notice Called to receive execution data for vaults that will execute trades without
@@ -111,6 +122,8 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         Trade memory trade,
         uint32 dynamicSlippageLimit
     ) external override returns (uint256 amountSold, uint256 amountBought) {
+        if (!PROXY.canExecuteTrade(trade)) revert InsufficientPermissions();
+
         // This method calls back into the implementation via the proxy so that it has proper
         // access to storage.
         trade.limit = PROXY.getLimitAmount(
@@ -149,6 +162,8 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         override
         returns (uint256 amountSold, uint256 amountBought)
     {
+        if (!PROXY.canExecuteTrade(trade)) revert InsufficientPermissions();
+
         (
             address spender,
             address target,
@@ -227,6 +242,11 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             (basePrice * quoteDecimals * RATE_DECIMALS) /
             (quotePrice * baseDecimals);
         decimals = RATE_DECIMALS;
+    }
+
+    /// @notice Check if the caller is allowed to execute the provided trade object
+    function canExecuteTrade(Trade calldata trade) external view override returns (bool) {
+        return tokenWhitelist[msg.sender][trade.sellToken].allowSell;
     }
 
     function getLimitAmount(
