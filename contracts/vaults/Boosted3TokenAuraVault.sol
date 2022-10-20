@@ -16,6 +16,7 @@ import {
     Boosted3TokenAuraStrategyContext,
     StrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
+import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
@@ -25,6 +26,7 @@ import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
+import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 
 contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
@@ -179,6 +181,12 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
             uint256[] memory balances,
             /* uint256 lastChangeBlock */
         ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+
+        uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
+
+        for (uint256 i; i < balances.length; i++) {
+            balances[i] = balances[i] * scalingFactors[i] / BalancerConstants.BALANCER_PRECISION;
+        }
 
         return Boosted3TokenAuraStrategyContext({
             poolContext: _threeTokenPoolContext(balances),
