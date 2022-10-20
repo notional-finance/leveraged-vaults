@@ -69,7 +69,7 @@ abstract contract AuraStakingMixin is BalancerStrategyBase {
             claimedBalances[i] = rewardTokens[i].balanceOf(address(this));
         }
 
-        AURA_REWARD_POOL.getReward(address(this), true);
+        AURA_REWARD_POOL.getReward(address(this), true); // claimExtraRewards = true
         emit BalancerEvents.ClaimedRewardTokens(rewardTokens, claimedBalances);
     }
 

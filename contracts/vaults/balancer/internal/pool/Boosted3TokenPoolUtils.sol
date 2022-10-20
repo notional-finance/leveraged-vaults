@@ -342,7 +342,8 @@ library Boosted3TokenPoolUtils {
             revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 
         // Transfer token to Aura protocol for boosted staking
-        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+        bool success = stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+        if (!success) revert Errors.StakeFailed();
     }
 
     function _unstakeAndExitPool(
@@ -352,7 +353,8 @@ library Boosted3TokenPoolUtils {
         uint256 minPrimary
     ) internal returns (uint256 primaryBalance) {
         // Withdraw BPT tokens back to the vault for redemption
-        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+        bool success = stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+        if (!success) revert Errors.UnstakeFailed();
 
         primaryBalance = _exitPoolExactBPTIn(poolContext, bptClaim, minPrimary);    
     }

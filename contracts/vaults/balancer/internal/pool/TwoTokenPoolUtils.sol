@@ -294,7 +294,8 @@ library TwoTokenPoolUtils {
             revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 
         // Transfer token to Aura protocol for boosted staking
-        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+        bool success = stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+        if (!success) revert Errors.StakeFailed();
     }
 
     function _unstakeAndExitPool(
@@ -305,7 +306,8 @@ library TwoTokenPoolUtils {
         uint256 minSecondary
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
         // Withdraw BPT tokens back to the vault for redemption
-        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+        bool success = stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+        if (!success) revert Errors.UnstakeFailed();
 
         uint256[] memory exitBalances = BalancerUtils._exitPoolExactBPTIn({
             context: poolContext.basePool,
