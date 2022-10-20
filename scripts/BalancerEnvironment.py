@@ -47,7 +47,6 @@ StrategyConfig = {
             "balancerOracleWeight": 0.6e4, # 60%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
-            "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 500, # +/- 5%
             "balancerPoolSlippageLimitPercent": 9900, # 1%
@@ -78,7 +77,6 @@ StrategyConfig = {
             "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
-            "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
             "balancerPoolSlippageLimitPercent": 9900, # 1%
@@ -109,7 +107,6 @@ StrategyConfig = {
             "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "postMaturitySettlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
-            "feePercentage": 1e2, # 1%
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
             "balancerPoolSlippageLimitPercent": 9900, # 1%
@@ -139,8 +136,7 @@ class BalancerEnvironment(Environment):
                     stratConfig["poolId"],
                     stratConfig["liquidityGauge"],
                     self.tradingModule.address,
-                    stratConfig["settlementWindow"],
-                    stratConfig["feeReceiver"]
+                    stratConfig["settlementWindow"]
                 ]
             ],
             {"from": self.deployer}
@@ -165,7 +161,6 @@ class BalancerEnvironment(Environment):
                         stratConfig["balancerOracleWeight"],
                         stratConfig["settlementCoolDownInMinutes"],
                         stratConfig["postMaturitySettlementCoolDownInMinutes"],
-                        stratConfig["feePercentage"],
                         stratConfig["oraclePriceDeviationLimitPercent"],
                         stratConfig["balancerPoolSlippageLimitPercent"]
                     ]
@@ -188,7 +183,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["balancerOracleWeight"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["postMaturitySettlementCoolDownInMinutes"],
-                    stratConfig["feePercentage"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
                     stratConfig["balancerPoolSlippageLimitPercent"]
                 ]

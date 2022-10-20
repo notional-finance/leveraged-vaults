@@ -20,7 +20,6 @@ struct DeploymentParams {
     ILiquidityGauge liquidityGauge;
     ITradingModule tradingModule;
     uint32 settlementPeriodInSeconds;
-    address feeReceiver;
 }
 
 struct AuraVaultDeploymentParams {
@@ -127,7 +126,6 @@ struct StrategyContext {
     ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
-    address feeReceiver;
 }
 
 struct MetaStable2TokenAuraStrategyContext {
@@ -192,8 +190,6 @@ struct StrategyVaultSettings {
     uint16 settlementCoolDownInMinutes;
     /// @notice Cool down in minutes for post maturity settlement
     uint16 postMaturitySettlementCoolDownInMinutes;
-    /// @notice Determines the amount of BAL transferred to FEE_RECEIVER
-    uint16 feePercentage;
     /// @notice Limits the amount of allowable deviation from the oracle price
     uint16 oraclePriceDeviationLimitPercent;
     /// @notice Slippage limit for joining/exiting Balancer pools

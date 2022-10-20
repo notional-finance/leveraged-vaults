@@ -6,6 +6,7 @@ import {
     StableOracleContext,
     StrategyContext,
     TwoTokenPoolContext,
+    DepositParams,
     RedeemParams,
     ReinvestRewardParams,
     StrategyVaultSettings,
@@ -27,6 +28,36 @@ library MetaStable2TokenAuraHelper {
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultSettings;
+
+    function deposit(
+        MetaStable2TokenAuraStrategyContext memory context,
+        uint256 deposit,
+        bytes calldata data
+    ) external returns (uint256 strategyTokensMinted) {
+        DepositParams memory params = abi.decode(data, (DepositParams));
+
+        strategyTokensMinted = context.poolContext._deposit({
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
+            deposit: deposit,
+            params: params
+        });
+    }
+
+    function redeem(
+        MetaStable2TokenAuraStrategyContext memory context,
+        uint256 strategyTokens,
+        bytes calldata data
+    ) external returns (uint256 finalPrimaryBalance) {
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+
+        finalPrimaryBalance = context.poolContext._redeem({
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
+            strategyTokens: strategyTokens,
+            params: params
+        });
+    }
 
     function settleVault(
         MetaStable2TokenAuraStrategyContext calldata context,

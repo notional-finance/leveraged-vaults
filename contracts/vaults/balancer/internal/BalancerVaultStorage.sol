@@ -37,7 +37,6 @@ library BalancerVaultStorage {
         require(settings.settlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.postMaturitySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.emergencySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
-        require(settings.feePercentage <= BalancerConstants.VAULT_PERCENT_BASIS);
         require(settings.oraclePriceDeviationLimitPercent <= BalancerConstants.VAULT_PERCENT_BASIS);
 
         mapping(uint256 => StrategyVaultSettings) storage store = _settings();

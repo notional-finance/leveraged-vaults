@@ -30,6 +30,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultState;
+    using Boosted3TokenAuraHelper for Boosted3TokenAuraStrategyContext;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         Boosted3TokenPoolMixin(notional_, params)
@@ -44,7 +45,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         initializer
         onlyNotionalOwner
     {
-        __INIT_VAULT(params.name, params.borrowCurrencyId);
+        __INIT_BALANCER_VAULT(params.name, params.borrowCurrencyId);
         // 3 token vaults do not use the Balancer oracle
         BalancerVaultStorage.setStrategyVaultSettings(
             params.settings, 
@@ -67,17 +68,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
-        // Entering the vault is not allowed within the settlement window
-        DepositParams memory params = abi.decode(data, (DepositParams));
-        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-
-        strategyTokensMinted = context.poolContext._deposit({
-            strategyContext: context.baseStrategy,
-            stakingContext: context.stakingContext,
-            oracleContext: context.oracleContext, 
-            deposit: deposit,
-            minBPT: params.minBPT
-        });
+        _strategyContext().deposit(deposit, data);
     }
 
     function _redeemFromNotional(
@@ -86,22 +77,15 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
-        RedeemParams memory params = abi.decode(data, (RedeemParams));
-        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        _strategyContext().redeem(strategyTokens, data);
 
-        finalPrimaryBalance = context.poolContext._redeem({
-            strategyContext: context.baseStrategy,
-            stakingContext: context.stakingContext,
-            strategyTokens: strategyTokens,
-            minPrimary: params.minPrimary
-        });
     }
 
     function settleVaultNormal(
         uint256 maturity,
         uint256 strategyTokensToRedeem,
         bytes calldata data
-    ) external {
+    ) external onlyRole(NORMAL_SETTLEMENT_ROLE) {
         if (maturity <= block.timestamp) {
             revert Errors.PostMaturitySettlement();
         }
@@ -128,7 +112,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         uint256 maturity,
         uint256 strategyTokensToRedeem,
         bytes calldata data
-    ) external onlyNotionalOwner {
+    ) external onlyRole(POST_MATURITY_SETTLEMENT_ROLE)  {
         if (block.timestamp < maturity) {
             revert Errors.HasNotMatured();
         }
@@ -148,7 +132,8 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         context.baseStrategy.vaultState.setStrategyVaultState();  
     }
 
-    function settleVaultEmergency(uint256 maturity, bytes calldata data) external {
+    function settleVaultEmergency(uint256 maturity, bytes calldata data) 
+        external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
         Boosted3TokenAuraHelper.settleVaultEmergency(
@@ -156,7 +141,8 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         );
     }
 
-    function reinvestReward(ReinvestRewardParams calldata params) external {
+    function reinvestReward(ReinvestRewardParams calldata params) 
+        external onlyRole(REWARD_REINVESTMENT_ROLE) {
         Boosted3TokenAuraHelper.reinvestReward(_strategyContext(), params);
     }
 

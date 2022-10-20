@@ -236,9 +236,7 @@ library TwoTokenPoolUtils {
         TwoTokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
-        address account,
         uint256 strategyTokens,
-        uint256 maturity,
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);

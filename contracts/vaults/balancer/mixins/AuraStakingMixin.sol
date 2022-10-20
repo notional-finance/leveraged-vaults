@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.15;
 
-import {AuraStakingContext} from "../BalancerVaultTypes.sol";
+import {AuraStakingContext, AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {ILiquidityGauge} from "../../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IAuraBooster} from "../../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../../interfaces/aura/IAuraRewardPool.sol";
 import {IAuraStakingProxy} from "../../../../interfaces/aura/IAuraStakingProxy.sol";
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
 import {StrategyVaultSettings, BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
+import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
+import {BalancerStrategyBase} from "../BalancerStrategyBase.sol";
 
-abstract contract AuraStakingMixin {
+abstract contract AuraStakingMixin is BalancerStrategyBase {
     using TokenUtils for IERC20;
 
     /// @notice Balancer liquidity gauge used to get a list of reward tokens
@@ -21,15 +23,13 @@ abstract contract AuraStakingMixin {
     /// @notice Aura reward pool contract used for unstaking and claiming reward tokens
     IAuraRewardPool internal immutable AURA_REWARD_POOL;
     uint256 internal immutable AURA_POOL_ID;
-    /// @notice The address used to receive a portion of the reward tokens
-    address internal immutable FEE_RECEIVER;
     IERC20 internal immutable BAL_TOKEN;
     IERC20 internal immutable AURA_TOKEN;
 
-    constructor(ILiquidityGauge liquidityGauge, IAuraRewardPool auraRewardPool, address feeReceiver) {
-        LIQUIDITY_GAUGE = liquidityGauge;
-        AURA_REWARD_POOL = auraRewardPool;
-        FEE_RECEIVER = feeReceiver;
+    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
+        BalancerStrategyBase(notional_, params.baseParams) {
+        LIQUIDITY_GAUGE = params.baseParams.liquidityGauge;
+        AURA_REWARD_POOL = params.auraRewardPool;
         AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
         AURA_POOL_ID = AURA_REWARD_POOL.pid();
 
@@ -58,8 +58,8 @@ abstract contract AuraStakingMixin {
         });
     }
 
-    function claimRewardTokens() external returns (uint256[] memory claimedBalances) {
-        uint16 feePercentage = BalancerVaultStorage.getStrategyVaultSettings().feePercentage;
+    function claimRewardTokens() 
+        external onlyRole(REWARD_REINVESTMENT_ROLE) returns (uint256[] memory claimedBalances) {
         IERC20[] memory rewardTokens = _rewardTokens();
 
         uint256 numRewardTokens = rewardTokens.length;
@@ -70,16 +70,6 @@ abstract contract AuraStakingMixin {
         }
 
         AURA_REWARD_POOL.getReward(address(this), true);
-        for (uint256 i; i < numRewardTokens; i++) {
-            claimedBalances[i] = rewardTokens[i].balanceOf(address(this)) - claimedBalances[i];
-
-            if (claimedBalances[i] > 0 && feePercentage != 0 && FEE_RECEIVER != address(0)) {
-                uint256 feeAmount = claimedBalances[i] * feePercentage / BalancerConstants.VAULT_PERCENT_BASIS;
-                rewardTokens[i].checkTransfer(FEE_RECEIVER, feeAmount);
-                claimedBalances[i] -= feeAmount;
-            }
-        }
-
         emit BalancerEvents.ClaimedRewardTokens(rewardTokens, claimedBalances);
     }
 
