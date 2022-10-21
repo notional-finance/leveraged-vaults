@@ -118,10 +118,6 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
             revert Errors.HasNotMatured();
         }
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        SettlementUtils._validateCoolDown(
-            context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp,
-            context.baseStrategy.vaultSettings.postMaturitySettlementCoolDownInMinutes
-        );
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
             data
@@ -129,8 +125,6 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         Boosted3TokenAuraHelper.settleVault(
             context, maturity, strategyTokensToRedeem, params
         );
-        context.baseStrategy.vaultState.lastPostMaturitySettlementTimestamp = uint32(block.timestamp);    
-        context.baseStrategy.vaultState.setStrategyVaultState();  
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 

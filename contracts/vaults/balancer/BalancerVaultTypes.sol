@@ -188,8 +188,6 @@ struct StrategyVaultSettings {
     uint16 balancerOracleWeight;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;
-    /// @notice Cool down in minutes for post maturity settlement
-    uint16 postMaturitySettlementCoolDownInMinutes;
     /// @notice Limits the amount of allowable deviation from the oracle price
     uint16 oraclePriceDeviationLimitPercent;
     /// @notice Slippage limit for joining/exiting Balancer pools
@@ -200,5 +198,4 @@ struct StrategyVaultState {
     /// @notice Total number of strategy tokens across all maturities
     uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
-    uint32 lastPostMaturitySettlementTimestamp;
 }
