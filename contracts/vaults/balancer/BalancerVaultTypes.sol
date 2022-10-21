@@ -197,5 +197,4 @@ struct StrategyVaultState {
     /// @notice Total number of strategy tokens across all maturities
     uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
-    uint32 lastPostMaturitySettlementTimestamp;
 }

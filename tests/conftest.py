@@ -22,19 +22,16 @@ def run_around_tests():
 def StratStableETHstETH():
     env = getEnvironment(network.show_active())
     vault = env.deployBalancerVault("StratStableETHstETH", MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
-    vault.setValuationFactor(1e8, {"from": env.deployer})
     return (env, vault)
 
 @pytest.fixture()
 def StratBoostedPoolDAIPrimary():
     env = getEnvironment(network.show_active())
     vault = env.deployBalancerVault("StratBoostedPoolDAIPrimary", MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
-    vault.setValuationFactor(1e8, {"from": env.deployer})
     return (env, vault)
 
 @pytest.fixture()
 def StratBoostedPoolUSDCPrimary():
     env = getEnvironment(network.show_active())
     vault = env.deployBalancerVault("StratBoostedPoolUSDCPrimary", MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
-    vault.setValuationFactor(1e8, {"from": env.deployer})
     return (env, vault)
