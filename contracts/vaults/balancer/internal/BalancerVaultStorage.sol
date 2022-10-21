@@ -30,7 +30,6 @@ library BalancerVaultStorage {
         require(balancerOracleWeight <= BalancerConstants.VAULT_PERCENT_BASIS);
         require(settings.oracleWindowInSeconds <= maxOracleQueryWindow);
         require(settings.settlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
-        require(settings.postMaturitySettlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
         require(settings.maxRewardTradeSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.balancerOracleWeight <= balancerOracleWeight);
         require(settings.maxBalancerPoolShare <= BalancerConstants.VAULT_PERCENT_BASIS);

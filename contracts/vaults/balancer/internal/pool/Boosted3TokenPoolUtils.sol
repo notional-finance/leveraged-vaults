@@ -295,6 +295,7 @@ library Boosted3TokenPoolUtils {
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
+        strategyContext.vaultState.totalBPTHeld += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -318,6 +319,11 @@ library Boosted3TokenPoolUtils {
             minPrimary: minPrimary
         });
 
+        if (strategyContext.vaultState.totalBPTHeld < bptClaim) {
+            strategyContext.vaultState.totalBPTHeld = 0;
+        } else {
+            unchecked { strategyContext.vaultState.totalBPTHeld -= bptClaim; }
+        }
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
@@ -337,7 +343,7 @@ library Boosted3TokenPoolUtils {
         uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
             poolContext._getVirtualSupply(oracleContext)
         );
-        uint256 bptHeldAfterJoin = strategyContext.totalBPTHeld + bptMinted;
+        uint256 bptHeldAfterJoin = strategyContext.vaultState.totalBPTHeld + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)
             revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 

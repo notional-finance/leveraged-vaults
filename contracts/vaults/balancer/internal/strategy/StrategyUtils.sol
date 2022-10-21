@@ -19,14 +19,14 @@ library StrategyUtils {
         internal pure returns (uint256 bptClaim) {
         require(strategyTokenAmount <= context.vaultState.totalStrategyTokenGlobal);
         if (context.vaultState.totalStrategyTokenGlobal > 0) {
-            bptClaim = (strategyTokenAmount * context.totalBPTHeld) / context.vaultState.totalStrategyTokenGlobal;
+            bptClaim = (strategyTokenAmount * context.vaultState.totalBPTHeld) / context.vaultState.totalStrategyTokenGlobal;
         }
     }
 
     /// @notice Converts BPT to strategy tokens
     function _convertBPTClaimToStrategyTokens(StrategyContext memory context, uint256 bptClaim)
         internal pure returns (uint256 strategyTokenAmount) {
-        if (context.totalBPTHeld == 0) {
+        if (context.vaultState.totalBPTHeld == 0) {
             // Strategy tokens are in 8 decimal precision, BPT is in 18. Scale the minted amount down.
             return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
                 BalancerConstants.BALANCER_PRECISION;
@@ -35,7 +35,7 @@ library StrategyUtils {
         // BPT held in maturity is calculated before the new BPT tokens are minted, so this calculation
         // is the tokens minted that will give the account a corresponding share of the new bpt balance held.
         // The precision here will be the same as strategy token supply.
-        strategyTokenAmount = (bptClaim * context.vaultState.totalStrategyTokenGlobal) / context.totalBPTHeld;
+        strategyTokenAmount = (bptClaim * context.vaultState.totalStrategyTokenGlobal) / context.vaultState.totalBPTHeld;
     }
 
     function _executeDynamicTradeExactIn(

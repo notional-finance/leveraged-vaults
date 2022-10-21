@@ -44,7 +44,6 @@ struct DepositTradeParams {
 }
 
 struct RedeemParams {
-    uint32 minSecondaryLendRate;
     uint256 minPrimary;
     uint256 minSecondary;
     bytes secondaryTradeParams;
@@ -121,7 +120,6 @@ struct ThreeTokenPoolContext {
 }
 
 struct StrategyContext {
-    uint256 totalBPTHeld;
     uint32 settlementPeriodInSeconds;
     ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
@@ -188,8 +186,6 @@ struct StrategyVaultSettings {
     uint16 balancerOracleWeight;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;
-    /// @notice Cool down in minutes for post maturity settlement
-    uint16 postMaturitySettlementCoolDownInMinutes;
     /// @notice Limits the amount of allowable deviation from the oracle price
     uint16 oraclePriceDeviationLimitPercent;
     /// @notice Slippage limit for joining/exiting Balancer pools
@@ -197,6 +193,7 @@ struct StrategyVaultSettings {
 }
 
 struct StrategyVaultState {
+    uint256 totalBPTHeld;
     /// @notice Total number of strategy tokens across all maturities
     uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
