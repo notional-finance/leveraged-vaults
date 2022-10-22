@@ -76,10 +76,6 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
 
         uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
 
-        for (uint256 i; i < balances.length; i++) {
-            balances[i] = balances[i] * scalingFactors[i] / BalancerConstants.BALANCER_PRECISION;
-        }
-
         return TwoTokenPoolContext({
             primaryToken: address(PRIMARY_TOKEN),
             secondaryToken: address(SECONDARY_TOKEN),
@@ -89,6 +85,8 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             secondaryDecimals: SECONDARY_DECIMALS,
             primaryBalance: balances[PRIMARY_INDEX],
             secondaryBalance: balances[SECONDARY_INDEX],
+            primaryScaleFactor: scalingFactors[PRIMARY_INDEX],
+            secondaryScaleFactor: scalingFactors[SECONDARY_INDEX],
             basePool: _poolContext()
         });
     }

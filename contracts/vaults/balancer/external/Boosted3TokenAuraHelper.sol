@@ -94,7 +94,6 @@ library Boosted3TokenAuraHelper {
         );
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
-            poolContext: context.poolContext.basePool.basePool, 
             maturity: maturity, 
             totalBPTSupply: context.poolContext._getVirtualSupply(context.oracleContext)
         });

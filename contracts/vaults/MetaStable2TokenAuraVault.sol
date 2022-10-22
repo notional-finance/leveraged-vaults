@@ -48,9 +48,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         onlyNotionalOwner
     {
         __INIT_BALANCER_VAULT(params.name, params.borrowCurrencyId);
-        BalancerVaultStorage.setStrategyVaultSettings(
-            params.settings, MAX_ORACLE_QUERY_WINDOW, BalancerConstants.VAULT_PERCENT_BASIS
-        );
+        BalancerVaultStorage.setStrategyVaultSettings(params.settings);
         _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
@@ -80,7 +78,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext.baseOracle,
+            oracleContext: context.oracleContext,
             strategyTokenAmount: strategyTokenAmount
         });
     }
@@ -150,12 +148,10 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         external
         onlyNotionalOwner
     {
-        BalancerVaultStorage.setStrategyVaultSettings(
-            settings, MAX_ORACLE_QUERY_WINDOW, BalancerConstants.VAULT_PERCENT_BASIS
-        );
+        BalancerVaultStorage.setStrategyVaultSettings(settings);
     }
 
-    function _strategyContext() private view returns (MetaStable2TokenAuraStrategyContext memory) {
+    function _strategyContext() internal view returns (MetaStable2TokenAuraStrategyContext memory) {
         return MetaStable2TokenAuraStrategyContext({
             poolContext: _twoTokenPoolContext(),
             oracleContext: _stableOracleContext(),

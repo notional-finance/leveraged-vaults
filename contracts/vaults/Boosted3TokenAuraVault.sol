@@ -48,20 +48,12 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         onlyNotionalOwner
     {
         __INIT_BALANCER_VAULT(params.name, params.borrowCurrencyId);
-        // 3 token vaults do not use the Balancer oracle
-        BalancerVaultStorage.setStrategyVaultSettings(
-            params.settings, 
-            0, // Max Balancer oracle window size
-            0  // Balancer oracle weight
+        BalancerVaultStorage.setStrategyVaultSettings(params.settings);
+        (uint256[] memory balances, uint256[] memory scalingFactors) = _getScaledBalances();
+
+        _threeTokenPoolContext(balances, scalingFactors)._approveBalancerTokens(
+            address(_auraStakingContext().auraBooster)
         );
-
-        (
-            /* address[] memory tokens */,
-            uint256[] memory balances,
-            /* uint256 lastChangeBlock */
-        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
-
-        _threeTokenPoolContext(balances)._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
     function _depositFromNotional(
@@ -160,29 +152,28 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         external
         onlyNotionalOwner
     {
-        // 3 token vaults do not use the Balancer oracle
-        BalancerVaultStorage.setStrategyVaultSettings(
-            settings, 
-            0, // Max Balancer oracle window size
-            0  // Balancer oracle weight
-        );
+        BalancerVaultStorage.setStrategyVaultSettings(settings);
     }
 
-    function _strategyContext() private view returns (Boosted3TokenAuraStrategyContext memory) {
+    function _getScaledBalances() private view returns (uint256[] memory balances, uint256[] memory scalingFactors) {
         (
             /* address[] memory tokens */,
-            uint256[] memory balances,
+            balances,
             /* uint256 lastChangeBlock */
         ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
-        uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
+        scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
 
         for (uint256 i; i < balances.length; i++) {
             balances[i] = balances[i] * scalingFactors[i] / BalancerConstants.BALANCER_PRECISION;
         }
+    }
+
+    function _strategyContext() private view returns (Boosted3TokenAuraStrategyContext memory) {
+        (uint256[] memory balances, uint256[] memory scalingFactors) = _getScaledBalances();
 
         return Boosted3TokenAuraStrategyContext({
-            poolContext: _threeTokenPoolContext(balances),
+            poolContext: _threeTokenPoolContext(balances, scalingFactors),
             oracleContext: _boostedOracleContext(balances),
             stakingContext: _auraStakingContext(),
             baseStrategy: _baseStrategyContext()

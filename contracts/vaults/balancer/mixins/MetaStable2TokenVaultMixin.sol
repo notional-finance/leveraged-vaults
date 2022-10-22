@@ -3,16 +3,14 @@ pragma solidity 0.8.17;
 
 import {IMetaStablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {StableOracleContext} from "../BalancerVaultTypes.sol";
-import {BalancerOracleMixin} from "./BalancerOracleMixin.sol";
 import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
 import {AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
-abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracleMixin {
+abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin {
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
         TwoTokenPoolMixin(notional_, params)
-        BalancerOracleMixin(params.baseParams.balancerPoolId) 
     {
         // The oracle is required for the vault to behave properly
         (/* */, /* */, /* */, /* */, bool oracleEnabled) = 
@@ -29,8 +27,7 @@ abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracl
         require(precision == StableMath._AMP_PRECISION);
         
         return StableOracleContext({
-            ampParam: value,
-            baseOracle: _oracleContext()
+            ampParam: value
         });
     }
 

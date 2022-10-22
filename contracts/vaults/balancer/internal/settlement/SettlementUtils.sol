@@ -85,7 +85,6 @@ library SettlementUtils {
 
     function _getEmergencySettlementParams(
         StrategyContext memory strategyContext,
-        PoolContext memory poolContext,
         uint256 maturity,
         uint256 totalBPTSupply
     )  internal view returns(uint256 bptToSettle) {

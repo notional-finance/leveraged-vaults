@@ -91,7 +91,6 @@ library MetaStable2TokenAuraHelper {
         );
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
-            poolContext: context.poolContext.basePool, 
             maturity: maturity, 
             totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
         });
@@ -121,16 +120,19 @@ library MetaStable2TokenAuraHelper {
         uint256 redeemStrategyTokenAmount,
         RedeemParams memory params
     ) private {
+        uint256 oraclePrice = poolContext._getOraclePairPrice(strategyContext.tradingModule);
+
         /// @notice params.minPrimary and params.minSecondary are not required for this strategy vault
         (params.minPrimary, params.minSecondary) = oracleContext._getMinExitAmounts({
             poolContext: poolContext,
             strategyContext: strategyContext,
+            oraclePrice: oraclePrice,
             bptAmount: bptToSettle
         });
 
         int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
             strategyContext: strategyContext,
-            oracleContext: oracleContext.baseOracle,
+            oracleContext: oracleContext,
             strategyTokenAmount: redeemStrategyTokenAmount
         });
 
@@ -165,6 +167,7 @@ library MetaStable2TokenAuraHelper {
         oracleContext._validateSpotPriceAndPairPrice({
             poolContext: poolContext,
             strategyContext: strategyContext,
+            oraclePrice: poolContext._getOraclePairPrice(strategyContext.tradingModule),
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount
         });

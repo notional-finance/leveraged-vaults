@@ -44,7 +44,6 @@ StrategyConfig = {
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "maxRewardTradeSlippageLimitPercent": 5e6,
-            "balancerOracleWeight": 0.6e4, # 60%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 500, # +/- 5%
@@ -73,7 +72,6 @@ StrategyConfig = {
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "maxRewardTradeSlippageLimitPercent": 5e6,
-            "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -102,7 +100,6 @@ StrategyConfig = {
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "maxRewardTradeSlippageLimitPercent": 5e6,
-            "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -155,7 +152,6 @@ class BalancerEnvironment(Environment):
                         stratConfig["emergencySettlementSlippageLimitPercent"], 
                         stratConfig["maxRewardTradeSlippageLimitPercent"],
                         stratConfig["maxBalancerPoolShare"],
-                        stratConfig["balancerOracleWeight"],
                         stratConfig["settlementCoolDownInMinutes"],
                         stratConfig["oraclePriceDeviationLimitPercent"],
                         stratConfig["balancerPoolSlippageLimitPercent"]
@@ -176,7 +172,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
                     stratConfig["maxRewardTradeSlippageLimitPercent"],
                     stratConfig["maxBalancerPoolShare"],
-                    stratConfig["balancerOracleWeight"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
                     stratConfig["balancerPoolSlippageLimitPercent"]
