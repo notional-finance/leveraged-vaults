@@ -32,36 +32,4 @@ contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
             underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;            
         }
     }
-
-    function testFunc(uint256 bptAmount) public view returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256) {
-        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        uint256 oraclePairPrice = TwoTokenPoolUtils._getOraclePairPrice(
-            context.poolContext, context.baseStrategy.tradingModule
-        );
-        uint256 spotPrice = Stable2TokenOracleMath._getSpotPrice(
-            context.oracleContext, context.poolContext, context.poolContext.primaryIndex
-        );
-
-        Stable2TokenOracleMath._checkPriceLimit(context.baseStrategy, oraclePairPrice, spotPrice);
-
-        uint256 totalBPTSupply = context.poolContext.basePool.pool.totalSupply();
-        uint256 primaryBalance = context.poolContext.primaryBalance * bptAmount / totalBPTSupply;
-        uint256 secondaryBalance = context.poolContext.secondaryBalance * bptAmount / totalBPTSupply;
-
-        // Value the secondary balance in terms of the primary token using the oraclePairPrice
-        uint256 secondaryAmountInPrimary = secondaryBalance * BalancerConstants.BALANCER_PRECISION / spotPrice;
-
-        uint256 primaryPrecision = 10 ** context.poolContext.primaryDecimals;
-        uint256 primaryAmount = (primaryBalance + secondaryAmountInPrimary) * primaryPrecision / BalancerConstants.BALANCER_PRECISION;
-
-        return (oraclePairPrice, spotPrice, totalBPTSupply, primaryBalance, secondaryBalance, secondaryAmountInPrimary, primaryAmount);
-
-        // Make sure spot price is within oracleDeviationLimit of pairPrice
-        /*
-        
-        // Get shares of primary and secondary balances with the provided bptAmount
-
-
-        // Make sure primaryAmount is reported in primaryPrecision */
-    }
 }
