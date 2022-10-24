@@ -258,7 +258,6 @@ library TwoTokenPoolUtils {
             finalPrimaryBalance += primaryPurchased;
         }
 
-        strategyContext.vaultState.totalBPTHeld -= bptClaim;
         // Update global strategy token balance
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
