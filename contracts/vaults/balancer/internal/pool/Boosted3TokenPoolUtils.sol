@@ -295,7 +295,6 @@ library Boosted3TokenPoolUtils {
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
-        strategyContext.vaultState.totalBPTHeld += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -314,16 +313,12 @@ library Boosted3TokenPoolUtils {
 
         finalPrimaryBalance = _unstakeAndExitPool({
             stakingContext: stakingContext,
+            strategyContext: strategyContext,
             poolContext: poolContext,
             bptClaim: bptClaim,
             minPrimary: minPrimary
         });
 
-        if (strategyContext.vaultState.totalBPTHeld < bptClaim) {
-            strategyContext.vaultState.totalBPTHeld = 0;
-        } else {
-            unchecked { strategyContext.vaultState.totalBPTHeld -= bptClaim; }
-        }
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
@@ -350,10 +345,14 @@ library Boosted3TokenPoolUtils {
         // Transfer token to Aura protocol for boosted staking
         bool success = stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
         if (!success) revert Errors.StakeFailed();
+
+        strategyContext.vaultState.totalBPTHeld += bptMinted;
+        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _unstakeAndExitPool(
         ThreeTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         uint256 bptClaim,
         uint256 minPrimary
@@ -362,7 +361,10 @@ library Boosted3TokenPoolUtils {
         bool success = stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
         if (!success) revert Errors.UnstakeFailed();
 
-        primaryBalance = _exitPoolExactBPTIn(poolContext, bptClaim, minPrimary);    
+        primaryBalance = _exitPoolExactBPTIn(poolContext, bptClaim, minPrimary); 
+
+        strategyContext.vaultState.totalBPTHeld -= bptClaim;
+        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted
