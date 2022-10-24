@@ -86,6 +86,11 @@ library TradingUtils {
             trade.tradeType == TradeType.EXACT_OUT_BATCH;
     }
 
+    /// @notice we may need to unwrap excess WETH for exact out trades
+    function _needsToUnwrapExcessWETH(Trade memory trade, address spender) private pure returns (bool) {
+        return trade.sellToken == Deployments.ETH_ADDRESS && spender != Deployments.ETH_ADDRESS && _isExactOut(trade);
+    }
+
     function _preValidate(Trade memory trade, uint256 preTradeSellBalance) private pure {
         if (_isExactIn(trade) && preTradeSellBalance < trade.amount) {
             revert PreValidationExactIn(trade.amount, preTradeSellBalance);
@@ -123,10 +128,10 @@ library TradingUtils {
         Trade memory trade
     ) private {
         uint256 preTradeBalance;
-
+ 
         if (trade.buyToken == address(Deployments.WETH)) {
             preTradeBalance = address(this).balance;
-        } else if (trade.buyToken == Deployments.ETH_ADDRESS) {
+        } else if (trade.buyToken == Deployments.ETH_ADDRESS || _needsToUnwrapExcessWETH(trade, spender)) {
             preTradeBalance = IERC20(address(Deployments.WETH)).balanceOf(address(this));
         }
 
@@ -151,7 +156,7 @@ library TradingUtils {
                 unchecked { depositAmount = address(this).balance - preTradeBalance; }
                 Deployments.WETH.deposit{value: depositAmount}();
             }
-        } else if (trade.buyToken == Deployments.ETH_ADDRESS) {
+        } else if (trade.buyToken == Deployments.ETH_ADDRESS || _needsToUnwrapExcessWETH(trade, spender)) {
             uint256 postTradeBalance = IERC20(address(Deployments.WETH)).balanceOf(address(this));
             if (postTradeBalance > preTradeBalance) {
                 // If the caller specifies that they want to receive ETH but we have received Deployments.WETH,
