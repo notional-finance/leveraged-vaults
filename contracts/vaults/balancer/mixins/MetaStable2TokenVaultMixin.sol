@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {IMetaStablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {StableOracleContext} from "../BalancerVaultTypes.sol";
@@ -7,6 +7,7 @@ import {BalancerOracleMixin} from "./BalancerOracleMixin.sol";
 import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
 import {AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {StableMath} from "../internal/math/StableMath.sol";
 
 abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracleMixin {
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
@@ -23,12 +24,15 @@ abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin, BalancerOracl
         (
             uint256 value,
             /* bool isUpdating */,
-            /* uint256 precision */
+            uint256 precision
         ) = IMetaStablePool(address(BALANCER_POOL_TOKEN)).getAmplificationParameter();
+        require(precision == StableMath._AMP_PRECISION);
         
         return StableOracleContext({
             ampParam: value,
             baseOracle: _oracleContext()
         });
     }
+
+    uint256[40] private __gap; // Storage gap for future potential upgrades
 }

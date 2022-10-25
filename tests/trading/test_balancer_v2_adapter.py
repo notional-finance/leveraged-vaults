@@ -1,16 +1,11 @@
 import pytest
 import eth_abi
-from brownie import ZERO_ADDRESS
-from brownie.network.state import Chain
+import brownie
+from brownie import Wei, ZERO_ADDRESS, accounts, network, MockVault
 from brownie.convert import to_bytes
-from scripts.trading.environment import (
-    EnvironmentConfig,
-    TestAccounts, 
-    Environment, 
-    TradeType, 
-    DexId,
-    interface
-)
+from brownie.network.state import Chain
+from scripts.common import DEX_ID, TRADE_TYPE
+from scripts.EnvironmentConfig import getEnvironment
 
 chain = Chain()
 
@@ -20,119 +15,191 @@ def run_around_tests():
     yield
     chain.revert()
 
-def test_exact_in_single_eth_token():
-    testAccounts = TestAccounts()
-    env = Environment(testAccounts.ETHWhale)
-    testAccounts.ETHWhale.transfer(env.mockVault.address, 10e18)
-    trade = [
-        TradeType["EXACT_IN_SINGLE"], 
+def balancer_trade_exact_in_single(sellToken, buyToken, amount, poolId):
+    deadline = chain.time() + 20000
+    return [
+        TRADE_TYPE["EXACT_IN_SINGLE"], 
+        sellToken, 
+        buyToken, 
+        amount, 
+        0, 
+        deadline, 
+        eth_abi.encode_abi(
+            ["(bytes32)"],
+            [[to_bytes(poolId, "bytes32")]]
+        )
+    ]
+
+def balancer_trade_exact_in_batch(sellToken, buyToken, amount, swaps, assets, limits):
+    deadline = chain.time() + 20000
+    return [
+        TRADE_TYPE["EXACT_IN_BATCH"], 
+        sellToken, 
+        buyToken, 
+        amount, 
+        0, 
+        deadline, 
+        eth_abi.encode_abi(
+            ['((bytes32,uint256,uint256,uint256,bytes)[],address[],int256[])'],
+            [[swaps, assets, limits]]
+        )
+    ]    
+
+def test_wstETH_to_WETH_exact_in_dynamic_slippage():
+    env = getEnvironment(network.show_active())
+    mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
+
+    env.tokens["wstETH"].transfer(mockVault, 1e18, {"from": env.whales["wstETH"]})
+
+    trade = balancer_trade_exact_in_single(
+        env.tokens["wstETH"].address, 
+        env.tokens["WETH"].address, 
+        env.tokens["wstETH"].balanceOf(mockVault),
+        "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
+    )
+
+    # Vault does not have permission to sell wstETH
+    with brownie.reverts():
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
+
+    # Give vault permission to sell wstETH
+    env.tradingModule.setTokenPermissions(mockVault.address, env.tokens["wstETH"].address, [True], 
+        {"from": env.notional.owner()})
+
+    wstETHBefore = env.tokens["wstETH"].balanceOf(mockVault)
+    wethBefore = env.tokens["WETH"].balanceOf(mockVault)
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
+    assert env.tokens["wstETH"].balanceOf(mockVault) == 0
+    assert ret.return_value[0] == wstETHBefore - env.tokens["wstETH"].balanceOf(mockVault)
+    assert ret.return_value[1] == env.tokens["WETH"].balanceOf(mockVault) - wethBefore
+
+def test_wstETH_to_ETH_exact_in_dynamic_slippage():
+    env = getEnvironment(network.show_active())
+    mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
+
+    env.tokens["wstETH"].transfer(mockVault, 1e18, {"from": env.whales["wstETH"]})
+
+    trade = balancer_trade_exact_in_single(
+        env.tokens["wstETH"].address, 
         ZERO_ADDRESS, 
-        EnvironmentConfig["DAI"], 
-        1e18, 
-        0, 
-        chain.time() + 20000,
-        eth_abi.encode_abi(
-            ["(bytes32)"],
-            [[to_bytes("0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a", "bytes32")]]
-        )
-    ]
-
-    dai = interface.IERC20(EnvironmentConfig["DAI"])
-
-    assert env.mockVault.balance() == 10e18
-    assert dai.balanceOf(env.mockVault) == 0
-
-    env.mockVault.executeTrade(
-        DexId["BALANCER_V2"], 
-        trade,
-        {"from": testAccounts.ETHWhale}
+        env.tokens["wstETH"].balanceOf(mockVault),
+        "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
     )
 
-    assert env.mockVault.balance() == 9e18
-    assert pytest.approx(dai.balanceOf(env.mockVault), abs=1000) == 1804175391328282697475
+    # Vault does not have permission to sell wstETH
+    with brownie.reverts():
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
 
-def test_exact_in_single_token_eth():
-    testAccounts = TestAccounts()
-    env = Environment(testAccounts.ETHWhale)
-    trade = [
-        TradeType["EXACT_IN_SINGLE"],  
-        EnvironmentConfig["DAI"], 
-        ZERO_ADDRESS,
-        1000e18, 
-        0, 
-        chain.time() + 20000,
-        eth_abi.encode_abi(
-            ["(bytes32)"],
-            [[to_bytes("0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a", "bytes32")]]
-        )
-    ]
+    # Give vault permission to sell wstETH
+    env.tradingModule.setTokenPermissions(mockVault.address, env.tokens["wstETH"].address, [True], 
+        {"from": env.notional.owner()})
 
-    dai = interface.IERC20(EnvironmentConfig["DAI"])
-    dai.transfer(env.mockVault.address, 1000e18, {"from": testAccounts.DAIWhale})
+    wstETHBefore = env.tokens["wstETH"].balanceOf(mockVault)
+    ethBefore = mockVault.balance()
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
+    assert env.tokens["wstETH"].balanceOf(mockVault) == 0
+    assert ret.return_value[0] == wstETHBefore - env.tokens["wstETH"].balanceOf(mockVault)
+    assert ret.return_value[1] == mockVault.balance() - ethBefore
 
-    assert env.mockVault.balance() == 0
-    assert dai.balanceOf(env.mockVault) == 1000e18
+def test_WETH_to_wstETH_exact_in_dynamic_slippage():
+    env = getEnvironment(network.show_active())
+    mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
 
-    env.mockVault.executeTrade(
-        DexId["BALANCER_V2"], 
-        trade,
-        {"from": testAccounts.ETHWhale}
+    env.tokens["WETH"].transfer(mockVault, 1e18, {"from": env.whales["WETH"]})
+
+    trade = balancer_trade_exact_in_single(
+        env.tokens["WETH"].address, 
+        env.tokens["wstETH"].address, 
+        env.tokens["WETH"].balanceOf(mockVault),
+        "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
     )
 
-    assert pytest.approx(env.mockVault.balance(), abs=1000) == 553603061791307204
-    assert pytest.approx(dai.balanceOf(env.mockVault), abs=1000) == 0
+    # Vault does not have permission to sell WETH
+    with brownie.reverts():
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
 
-def test_exact_in_single_token_token():
-    testAccounts = TestAccounts()
-    env = Environment(testAccounts.ETHWhale)
-    trade = [
-        TradeType["EXACT_IN_SINGLE"],  
-        EnvironmentConfig["DAI"], 
-        EnvironmentConfig["USDC"],
-        1000e18, 
-        0, 
-        chain.time() + 20000,
-        eth_abi.encode_abi(
-            ["(bytes32)"],
-            [[to_bytes("0x06df3b2bbb68adc8b0e302443692037ed9f91b42000000000000000000000063", "bytes32")]]
-        )
-    ]
+    # Give vault permission to sell WETH
+    env.tradingModule.setTokenPermissions(mockVault.address, env.tokens["WETH"].address, [True], 
+        {"from": env.notional.owner()})
 
-    dai = interface.IERC20(EnvironmentConfig["DAI"])
-    dai.transfer(env.mockVault.address, 1000e18, {"from": testAccounts.DAIWhale})
-    usdc = interface.IERC20(EnvironmentConfig["USDC"])
+    wstETHBefore = env.tokens["wstETH"].balanceOf(mockVault)
+    wethBefore = env.tokens["WETH"].balanceOf(mockVault)
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
+    assert env.tokens["WETH"].balanceOf(mockVault) == 0
+    assert ret.return_value[0] == wethBefore - env.tokens["WETH"].balanceOf(mockVault)
+    assert ret.return_value[1] == env.tokens["wstETH"].balanceOf(mockVault) - wstETHBefore
 
-    assert usdc.balanceOf(env.mockVault) == 0
-    assert dai.balanceOf(env.mockVault) == 1000e18
+def test_ETH_to_wstETH_exact_in_dynamic_slippage():
+    env = getEnvironment(network.show_active())
+    mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
 
-    env.mockVault.executeTrade(
-        DexId["BALANCER_V2"], 
-        trade,
-        {"from": testAccounts.ETHWhale}
+    env.whales["ETH_EOA"].transfer(mockVault, 1e18)
+
+    trade = balancer_trade_exact_in_single(
+        ZERO_ADDRESS, 
+        env.tokens["wstETH"].address, 
+        mockVault.balance(),
+        "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
     )
 
-    assert pytest.approx(usdc.balanceOf(env.mockVault), abs=100) == 999892561
-    assert pytest.approx(dai.balanceOf(env.mockVault), abs=1000) == 0
+    # Vault does not have permission to sell ETH
+    with brownie.reverts():
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
 
-def test_exact_out_single_eth_token():
-    testAccounts = TestAccounts()
-    env = Environment(testAccounts.ETHWhale)
+    # Give vault permission to sell ETH
+    env.tradingModule.setTokenPermissions(mockVault.address, ZERO_ADDRESS, [True], 
+        {"from": env.notional.owner()})
 
-def test_exact_out_single_token_eth():
-    testAccounts = TestAccounts()
-    env = Environment(testAccounts.ETHWhale)
+    wstETHBefore = env.tokens["wstETH"].balanceOf(mockVault)
+    ethBefore = mockVault.balance()
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
+    assert mockVault.balance() == 0
+    assert ret.return_value[0] == ethBefore - mockVault.balance()
+    assert ret.return_value[1] == env.tokens["wstETH"].balanceOf(mockVault) - wstETHBefore
 
-def test_exact_out_single_token_token():
-    testAccounts = TestAccounts()
-    env = Environment(testAccounts.ETHWhale)
+def test_wstETH_to_WETH_to_DAI_exact_in_dynamic_slippage():
+    env = getEnvironment(network.show_active())
+    mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
 
-def test_exact_in_batch():
-    testAccounts = TestAccounts()
-    env = Environment(testAccounts.ETHWhale)
-    pass
+    env.tokens["wstETH"].transfer(mockVault, 1e18, {"from": env.whales["wstETH"]})
 
-def test_exact_out_batch():
-    testAccounts = TestAccounts()
-    env = Environment(testAccounts.ETHWhale)
-    pass
+    sellAmount = env.tokens["wstETH"].balanceOf(mockVault)
+    trade = balancer_trade_exact_in_batch(
+        env.tokens["wstETH"].address, 
+        env.tokens["DAI"].address, 
+        sellAmount,
+        [
+            # wstETh -> ETH
+            [
+                to_bytes("0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080", "bytes32"),
+                0,
+                1,
+                sellAmount,
+                bytes()
+            ],
+            # ETH -> DAI
+            [
+                to_bytes("0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a", "bytes32"),
+                1,
+                2,
+                0, # Entire amount from previous swap
+                bytes()
+            ]
+        ],
+        [env.tokens["wstETH"].address, env.tokens["WETH"].address, env.tokens["DAI"].address],
+        [sellAmount, 0, 0]
+    )
+    # Vault does not have permission to sell ETH
+    with brownie.reverts():
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
 
+    # Give vault permission to sell ETH
+    env.tradingModule.setTokenPermissions(mockVault.address, env.tokens["wstETH"], [True], 
+        {"from": env.notional.owner()})
+
+    wstETHBefore = env.tokens["wstETH"].balanceOf(mockVault)
+    daiBefore = env.tokens["DAI"].balanceOf(mockVault)
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["BALANCER_V2"], trade, 5e6, {"from": accounts[0]})
+    assert mockVault.balance() == 0
+    assert ret.return_value[0] == wstETHBefore - env.tokens["wstETH"].balanceOf(mockVault)
+    assert ret.return_value[1] == env.tokens["DAI"].balanceOf(mockVault) - daiBefore

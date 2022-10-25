@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {StableOracleContext, TwoTokenPoolContext, StrategyContext} from "../../BalancerVaultTypes.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
@@ -18,12 +18,9 @@ library Stable2TokenOracleMath {
         TwoTokenPoolContext memory poolContext, 
         uint256 tokenIndex
     ) internal view returns (uint256 spotPrice) {
-        // Prevents overflows, we don't expect tokens to be greater than 18 decimals, don't use
-        // equal sign for minor gas optimization
-        require(poolContext.primaryDecimals < 19); /// @dev primaryDecimals overflow
-        require(poolContext.secondaryDecimals < 19); /// @dev secondaryDecimals overflow
         require(tokenIndex < 2); /// @dev invalid token index
 
+        /// @notice poolContext balances are always in BALANCER_PRECISION (1e18)
         (uint256 balanceX, uint256 balanceY) = tokenIndex == 0 ?
             (poolContext.primaryBalance, poolContext.secondaryBalance) :
             (poolContext.secondaryBalance, poolContext.primaryBalance);

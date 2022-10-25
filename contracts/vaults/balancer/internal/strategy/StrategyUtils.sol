@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import { StrategyContext, DynamicTradeParams } from "../../BalancerVaultTypes.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
@@ -49,19 +49,6 @@ library StrategyUtils {
             params.tradeType == TradeType.EXACT_IN_SINGLE || params.tradeType == TradeType.EXACT_IN_BATCH
         );
 
-        // stETH generally has deeper liquidity than wstETH, setting tradeUnwrapped
-        // to lets the contract trade in stETH instead of wstETH
-        if (params.tradeUnwrapped && sellToken == address(Deployments.WRAPPED_STETH)) {
-            sellToken = Deployments.WRAPPED_STETH.stETH();
-            uint256 unwrappedAmount = IERC20(sellToken).balanceOf(address(this));
-            // NOTE: the amount returned by unwrap is not always accurate for some reason
-            Deployments.WRAPPED_STETH.unwrap(amount);
-            amount = IERC20(sellToken).balanceOf(address(this)) - unwrappedAmount;
-        }
-        if (params.tradeUnwrapped && buyToken == address(Deployments.WRAPPED_STETH)) {
-            buyToken = Deployments.WRAPPED_STETH.stETH();
-        }
-
         // Sell residual secondary balance
         Trade memory trade = Trade(
             params.tradeType,
@@ -73,20 +60,40 @@ library StrategyUtils {
             params.exchangeData
         );
 
+        // stETH generally has deeper liquidity than wstETH, setting tradeUnwrapped
+        // to lets the contract trade in stETH instead of wstETH
+        if (params.tradeUnwrapped) {
+            if (sellToken == address(Deployments.WRAPPED_STETH)) {
+                trade.sellToken = Deployments.WRAPPED_STETH.stETH();
+                uint256 amountBeforeUnwrap = IERC20(trade.sellToken).balanceOf(address(this));
+                // NOTE: the amount returned by unwrap is not always accurate for some reason
+                Deployments.WRAPPED_STETH.unwrap(trade.amount);
+                trade.amount = IERC20(trade.sellToken).balanceOf(address(this)) - amountBeforeUnwrap;
+            }
+            if (buyToken == address(Deployments.WRAPPED_STETH)) {
+                trade.buyToken = Deployments.WRAPPED_STETH.stETH();
+            }
+        }
+
         (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
             params.dexId, tradingModule, params.oracleSlippagePercent
         );
 
-        if (
-            params.tradeUnwrapped && 
-            buyToken == address(Deployments.WRAPPED_STETH) && 
-            amountBought > 0
-        ) {
-            IERC20(buyToken).checkApprove(address(Deployments.WRAPPED_STETH), amountBought);
-            uint256 wrappedAmount = Deployments.WRAPPED_STETH.balanceOf(address(this));
-            /// @notice the amount returned by wrap is not always accurate for some reason
-            Deployments.WRAPPED_STETH.wrap(amountBought);
-            amountBought = Deployments.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
+        if (params.tradeUnwrapped) {
+            if (sellToken == address(Deployments.WRAPPED_STETH)) {
+                // Setting amountSold to the original wstETH amount because _executeTradeWithDynamicSlippage
+                // returns the amount of stETH sold in this case
+                /// @notice amountSold == amount because this function only supports EXACT_IN trades
+                amountSold = amount;
+            }
+            if (buyToken == address(Deployments.WRAPPED_STETH) && amountBought > 0) {
+                // trade.buyToken == stETH here
+                IERC20(trade.buyToken).checkApprove(address(Deployments.WRAPPED_STETH), amountBought);
+                uint256 amountBeforeWrap = Deployments.WRAPPED_STETH.balanceOf(address(this));
+                /// @notice the amount returned by wrap is not always accurate for some reason
+                Deployments.WRAPPED_STETH.wrap(amountBought);
+                amountBought = Deployments.WRAPPED_STETH.balanceOf(address(this)) - amountBeforeWrap;
+            }
         }
     }
 }

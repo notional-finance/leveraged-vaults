@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {IPriceOracle} from "../../../../interfaces/balancer/IPriceOracle.sol";
 import {StrategyVaultSettings, OracleContext} from "../BalancerVaultTypes.sol";
@@ -25,4 +25,6 @@ abstract contract BalancerOracleMixin {
             balancerOracleWeight: settings.balancerOracleWeight
         });
     }
+
+    uint256[40] private __gap; // Storage gap for future potential upgrades
 }

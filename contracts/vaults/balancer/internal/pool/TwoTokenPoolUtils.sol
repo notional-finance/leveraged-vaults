@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {
     TwoTokenPoolContext, 
@@ -93,7 +93,7 @@ library TwoTokenPoolUtils {
         }
 
         uint256 chainlinkWeightedPrice;
-        if (oracleContext.balancerOracleWeight < BalancerConstants.BALANCER_ORACLE_WEIGHT_PRECISION) {
+        if (oracleContext.balancerOracleWeight < BalancerConstants.VAULT_PERCENT_BASIS) {
             (int256 rate, int256 decimals) = tradingModule.getOraclePrice(
                 poolContext.primaryToken, poolContext.secondaryToken
             );
@@ -106,11 +106,11 @@ library TwoTokenPoolUtils {
 
             // No overflow in rate conversion, checked above
             chainlinkWeightedPrice = uint256(rate) * 
-                (BalancerConstants.BALANCER_ORACLE_WEIGHT_PRECISION - oracleContext.balancerOracleWeight);
+                (BalancerConstants.VAULT_PERCENT_BASIS - oracleContext.balancerOracleWeight);
         }
 
         oraclePairPrice = (balancerWeightedPrice + chainlinkWeightedPrice) / 
-            BalancerConstants.BALANCER_ORACLE_WEIGHT_PRECISION;
+            BalancerConstants.VAULT_PERCENT_BASIS;
     }
 
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
@@ -236,9 +236,7 @@ library TwoTokenPoolUtils {
         TwoTokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
-        address account,
         uint256 strategyTokens,
-        uint256 maturity,
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
@@ -296,7 +294,8 @@ library TwoTokenPoolUtils {
             revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 
         // Transfer token to Aura protocol for boosted staking
-        stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+        bool success = stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+        if (!success) revert Errors.StakeFailed();
     }
 
     function _unstakeAndExitPool(
@@ -307,7 +306,8 @@ library TwoTokenPoolUtils {
         uint256 minSecondary
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
         // Withdraw BPT tokens back to the vault for redemption
-        stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+        bool success = stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+        if (!success) revert Errors.UnstakeFailed();
 
         uint256[] memory exitBalances = BalancerUtils._exitPoolExactBPTIn({
             context: poolContext.basePool,

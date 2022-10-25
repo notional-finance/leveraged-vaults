@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {Deployments} from "../../../global/Deployments.sol";
@@ -8,6 +8,7 @@ import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {PoolMixin} from "./PoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 
 abstract contract TwoTokenPoolMixin is PoolMixin {
     error InvalidPrimaryToken(address token);
@@ -62,7 +63,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             Deployments.ETH_ADDRESS
             ? 18
             : SECONDARY_TOKEN.decimals();
-        require(primaryDecimals <= 18);
+        require(secondaryDecimals <= 18);
         SECONDARY_DECIMALS = uint8(secondaryDecimals);
     }
 
@@ -72,6 +73,12 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             uint256[] memory balances,
             /* uint256 lastChangeBlock */
         ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+
+        uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
+
+        for (uint256 i; i < balances.length; i++) {
+            balances[i] = balances[i] * scalingFactors[i] / BalancerConstants.BALANCER_PRECISION;
+        }
 
         return TwoTokenPoolContext({
             primaryToken: address(PRIMARY_TOKEN),
@@ -85,4 +92,6 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
             basePool: _poolContext()
         });
     }
+
+    uint256[40] private __gap; // Storage gap for future potential upgrades
 }

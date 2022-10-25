@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.15;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.7.6;
 pragma abicoder v2;
 
 import './IUniswapV3SwapCallback.sol';

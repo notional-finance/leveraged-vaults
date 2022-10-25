@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {IEIP20NonStandard} from "../../interfaces/IEIP20NonStandard.sol";
@@ -18,8 +18,12 @@ library TokenUtils {
     function checkApprove(IERC20 token, address spender, uint256 amount) internal {
         if (address(token) == address(0)) return;
 
-        IEIP20NonStandard(address(token)).approve(spender, amount);
-        _checkReturnCode();
+        IEIP20NonStandard(address(token)).approve(spender, 0);
+        _checkReturnCode();            
+        if (amount > 0) {
+            IEIP20NonStandard(address(token)).approve(spender, amount);
+            _checkReturnCode();            
+        }
     }
 
     function checkRevoke(IERC20 token, address spender) internal {

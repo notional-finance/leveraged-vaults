@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
@@ -86,6 +86,11 @@ library TradingUtils {
             trade.tradeType == TradeType.EXACT_OUT_BATCH;
     }
 
+    /// @notice we may need to unwrap excess WETH for exact out trades
+    function _needsToUnwrapExcessWETH(Trade memory trade, address spender) private pure returns (bool) {
+        return trade.sellToken == Deployments.ETH_ADDRESS && spender != Deployments.ETH_ADDRESS && _isExactOut(trade);
+    }
+
     function _preValidate(Trade memory trade, uint256 preTradeSellBalance) private pure {
         if (_isExactIn(trade) && preTradeSellBalance < trade.amount) {
             revert PreValidationExactIn(trade.amount, preTradeSellBalance);
@@ -112,7 +117,13 @@ library TradingUtils {
     /// for EXACT_OUT trades
     function _approve(Trade memory trade, address spender) private {
         uint256 allowance = _isExactIn(trade) ? trade.amount : trade.limit;
-        IERC20(trade.sellToken).checkApprove(spender, allowance);
+        address sellToken = trade.sellToken;
+        // approve WETH instead of ETH for ETH trades if
+        // spender != address(0) (checked by the caller)
+        if (sellToken == Constants.ETH_ADDRESS) {
+            sellToken = address(Deployments.WETH);
+        }
+        IERC20(sellToken).checkApprove(spender, allowance);
     }
 
     function _executeTrade(
@@ -123,14 +134,18 @@ library TradingUtils {
         Trade memory trade
     ) private {
         uint256 preTradeBalance;
+ 
+        if (trade.buyToken == address(Deployments.WETH)) {
+            preTradeBalance = address(this).balance;
+        } else if (trade.buyToken == Deployments.ETH_ADDRESS || _needsToUnwrapExcessWETH(trade, spender)) {
+            preTradeBalance = IERC20(address(Deployments.WETH)).balanceOf(address(this));
+        }
 
         if (trade.sellToken == address(Deployments.WETH) && spender == Deployments.ETH_ADDRESS) {
-            preTradeBalance = address(this).balance;
             // Curve doesn't support Deployments.WETH (spender == address(0))
             uint256 withdrawAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             Deployments.WETH.withdraw(withdrawAmount);
         } else if (trade.sellToken == Deployments.ETH_ADDRESS && spender != Deployments.ETH_ADDRESS) {
-            preTradeBalance = IERC20(address(Deployments.WETH)).balanceOf(address(this));
             // UniswapV3 doesn't support ETH (spender != address(0))
             uint256 depositAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             Deployments.WETH.deposit{value: depositAmount }();
@@ -147,7 +162,7 @@ library TradingUtils {
                 unchecked { depositAmount = address(this).balance - preTradeBalance; }
                 Deployments.WETH.deposit{value: depositAmount}();
             }
-        } else if (trade.buyToken == Deployments.ETH_ADDRESS) {
+        } else if (trade.buyToken == Deployments.ETH_ADDRESS || _needsToUnwrapExcessWETH(trade, spender)) {
             uint256 postTradeBalance = IERC20(address(Deployments.WETH)).balanceOf(address(this));
             if (postTradeBalance > preTradeBalance) {
                 // If the caller specifies that they want to receive ETH but we have received Deployments.WETH,
@@ -182,8 +197,8 @@ library TradingUtils {
             );
 
         if (tradeType == TradeType.EXACT_OUT_SINGLE || tradeType == TradeType.EXACT_OUT_BATCH) {
-            // 0 means no slippage limit
-            if (slippageLimit == 0) {
+            // type(uint256).max means no slippage limit
+            if (slippageLimit == type(uint256).max) {
                 return type(uint256).max;
             }
             // For exact out trades, we need to invert the oracle price (1 / oraclePrice)
@@ -202,8 +217,8 @@ library TradingUtils {
             // convert it to sellToken precision
             limitAmount = (limitAmount * sellTokenDecimals) / buyTokenDecimals;
         } else {
-            // 0 means no slippage limit
-            if (slippageLimit == 0) {
+            // type(uint256).max means no slippage limit
+            if (slippageLimit == type(uint256).max) {
                 return 0;
             }
             // For exact in trades, limitAmount is the min amount of buyToken the contract

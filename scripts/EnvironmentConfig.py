@@ -170,5 +170,7 @@ class Environment:
 
 
 def getEnvironment(network = "mainnet"):
+    if network == "mainnet-fork" or network == "hardhat-fork":
+        network = "mainnet"
     return Environment(network)
 

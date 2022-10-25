@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../../interfaces/notional/IVaultController.sol";
@@ -20,7 +20,6 @@ struct DeploymentParams {
     ILiquidityGauge liquidityGauge;
     ITradingModule tradingModule;
     uint32 settlementPeriodInSeconds;
-    address feeReceiver;
 }
 
 struct AuraVaultDeploymentParams {
@@ -45,7 +44,6 @@ struct DepositTradeParams {
 }
 
 struct RedeemParams {
-    uint32 minSecondaryLendRate;
     uint256 minPrimary;
     uint256 minSecondary;
     bytes secondaryTradeParams;
@@ -127,7 +125,6 @@ struct StrategyContext {
     ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
-    address feeReceiver;
 }
 
 struct MetaStable2TokenAuraStrategyContext {
@@ -190,10 +187,6 @@ struct StrategyVaultSettings {
     uint16 balancerOracleWeight;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;
-    /// @notice Cool down in minutes for post maturity settlement
-    uint16 postMaturitySettlementCoolDownInMinutes;
-    /// @notice Determines the amount of BAL transferred to FEE_RECEIVER
-    uint16 feePercentage;
     /// @notice Limits the amount of allowable deviation from the oracle price
     uint16 oraclePriceDeviationLimitPercent;
     /// @notice Slippage limit for joining/exiting Balancer pools
@@ -204,5 +197,4 @@ struct StrategyVaultState {
     /// @notice Total number of strategy tokens across all maturities
     uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
-    uint32 lastPostMaturitySettlementTimestamp;
 }

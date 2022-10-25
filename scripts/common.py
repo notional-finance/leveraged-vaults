@@ -99,11 +99,12 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
         kwargs.get("balancerOracleWeight", settings["balancerOracleWeight"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
-        kwargs.get("postMaturitySettlementCoolDownInMinutes", settings["postMaturitySettlementCoolDownInMinutes"]), 
-        kwargs.get("feePercentage", settings["feePercentage"]),
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
         kwargs.get("balancerPoolSlippageLimitPercent", settings["balancerPoolSlippageLimitPercent"])
     ]
+
+def get_univ2_data(path):
+    return eth_abi.encode_abi(['(address[])'], [[path]])
 
 def get_univ3_single_data(fee):
     return eth_abi.encode_abi(['(uint24)'], [[fee]])
@@ -162,9 +163,8 @@ def get_deposit_params(minBPT=0, secondaryBorrow=0, trade=bytes(0)):
 
 def get_redeem_params(minPrimary, minSecondary, trade):
     return eth_abi.encode_abi(
-        ['(uint32,uint256,uint256,bytes)'],
+        ['(uint256,uint256,bytes)'],
         [[
-            0,
             Wei(minPrimary * 0.98),
             Wei(minSecondary * 0.98),
             trade
