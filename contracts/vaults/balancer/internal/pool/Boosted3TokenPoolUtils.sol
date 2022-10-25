@@ -295,6 +295,7 @@ library Boosted3TokenPoolUtils {
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
+        strategyContext.vaultState.totalBPTHeld += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -313,12 +314,12 @@ library Boosted3TokenPoolUtils {
 
         finalPrimaryBalance = _unstakeAndExitPool({
             stakingContext: stakingContext,
-            strategyContext: strategyContext,
             poolContext: poolContext,
             bptClaim: bptClaim,
             minPrimary: minPrimary
         });
 
+        strategyContext.vaultState.totalBPTHeld -= bptClaim;
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
@@ -345,14 +346,10 @@ library Boosted3TokenPoolUtils {
         // Transfer token to Aura protocol for boosted staking
         bool success = stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
         if (!success) revert Errors.StakeFailed();
-
-        strategyContext.vaultState.totalBPTHeld += bptMinted;
-        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _unstakeAndExitPool(
         ThreeTokenPoolContext memory poolContext,
-        StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         uint256 bptClaim,
         uint256 minPrimary
@@ -362,9 +359,6 @@ library Boosted3TokenPoolUtils {
         if (!success) revert Errors.UnstakeFailed();
 
         primaryBalance = _exitPoolExactBPTIn(poolContext, bptClaim, minPrimary); 
-
-        strategyContext.vaultState.totalBPTHeld -= bptClaim;
-        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted
@@ -389,7 +383,7 @@ library Boosted3TokenPoolUtils {
     function _getMinBPT(
         ThreeTokenPoolContext calldata poolContext,
         BoostedOracleContext calldata oracleContext,
-        StrategyContext calldata strategyContext,
+        StrategyContext memory strategyContext,
         uint256 primaryAmount
     ) internal view returns (uint256 minBPT) {
         // Calculate minBPT to minimize slippage

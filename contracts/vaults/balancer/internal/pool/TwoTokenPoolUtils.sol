@@ -207,6 +207,7 @@ library TwoTokenPoolUtils {
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
+        strategyContext.vaultState.totalBPTHeld += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -246,7 +247,7 @@ library TwoTokenPoolUtils {
         // Underlying token balances from exiting the pool
         (uint256 primaryBalance, uint256 secondaryBalance)
             = _unstakeAndExitPool(
-                poolContext, strategyContext, stakingContext, bptClaim, params.minPrimary, params.minSecondary
+                poolContext, stakingContext, bptClaim, params.minPrimary, params.minSecondary
             );
 
         finalPrimaryBalance = primaryBalance;
@@ -258,6 +259,7 @@ library TwoTokenPoolUtils {
             finalPrimaryBalance += primaryPurchased;
         }
 
+        strategyContext.vaultState.totalBPTHeld -= bptClaim;
         // Update global strategy token balance
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -296,14 +298,10 @@ library TwoTokenPoolUtils {
         // Transfer token to Aura protocol for boosted staking
         bool success = stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
         if (!success) revert Errors.StakeFailed();
-
-        strategyContext.vaultState.totalBPTHeld += bptMinted;
-        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _unstakeAndExitPool(
         TwoTokenPoolContext memory poolContext,
-        StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         uint256 bptClaim,
         uint256 minPrimary,
@@ -321,9 +319,6 @@ library TwoTokenPoolUtils {
         
         (primaryBalance, secondaryBalance) 
             = (exitBalances[poolContext.primaryIndex], exitBalances[poolContext.secondaryIndex]);
-
-        strategyContext.vaultState.totalBPTHeld -= bptClaim;
-        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted
