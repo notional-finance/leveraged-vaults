@@ -62,36 +62,38 @@ library StrategyUtils {
 
         // stETH generally has deeper liquidity than wstETH, setting tradeUnwrapped
         // to lets the contract trade in stETH instead of wstETH
-        if (params.tradeUnwrapped && sellToken == address(Deployments.WRAPPED_STETH)) {
-            trade.sellToken = Deployments.WRAPPED_STETH.stETH();
-            uint256 unwrappedAmount = IERC20(trade.sellToken).balanceOf(address(this));
-            // NOTE: the amount returned by unwrap is not always accurate for some reason
-            Deployments.WRAPPED_STETH.unwrap(trade.amount);
-            trade.amount = IERC20(trade.sellToken).balanceOf(address(this)) - unwrappedAmount;
-        }
-        if (params.tradeUnwrapped && buyToken == address(Deployments.WRAPPED_STETH)) {
-            trade.buyToken = Deployments.WRAPPED_STETH.stETH();
+        if (params.tradeUnwrapped) {
+            if (sellToken == address(Deployments.WRAPPED_STETH)) {
+                trade.sellToken = Deployments.WRAPPED_STETH.stETH();
+                uint256 amountBeforeUnwrap = IERC20(trade.sellToken).balanceOf(address(this));
+                // NOTE: the amount returned by unwrap is not always accurate for some reason
+                Deployments.WRAPPED_STETH.unwrap(trade.amount);
+                trade.amount = IERC20(trade.sellToken).balanceOf(address(this)) - amountBeforeUnwrap;
+            }
+            if (buyToken == address(Deployments.WRAPPED_STETH)) {
+                trade.buyToken = Deployments.WRAPPED_STETH.stETH();
+            }
         }
 
         (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
             params.dexId, tradingModule, params.oracleSlippagePercent
         );
 
-        if (
-            params.tradeUnwrapped && 
-            buyToken == address(Deployments.WRAPPED_STETH) && 
-            amountBought > 0
-        ) {
-            // Setting amountSold to the original wstETH amount because _executeTradeWithDynamicSlippage
-            // returns the amount of stETH sold in this case
-            /// @notice amountSold == amount because this function only supports EXACT_IN trades
-            amountSold = amount;
-            // trade.buyToken == stETH here
-            IERC20(trade.buyToken).checkApprove(address(Deployments.WRAPPED_STETH), amountBought);
-            uint256 wrappedAmount = Deployments.WRAPPED_STETH.balanceOf(address(this));
-            /// @notice the amount returned by wrap is not always accurate for some reason
-            Deployments.WRAPPED_STETH.wrap(amountBought);
-            amountBought = Deployments.WRAPPED_STETH.balanceOf(address(this)) - wrappedAmount;
+        if (params.tradeUnwrapped) {
+            if (sellToken == address(Deployments.WRAPPED_STETH)) {
+                // Setting amountSold to the original wstETH amount because _executeTradeWithDynamicSlippage
+                // returns the amount of stETH sold in this case
+                /// @notice amountSold == amount because this function only supports EXACT_IN trades
+                amountSold = amount;
+            }
+            if (buyToken == address(Deployments.WRAPPED_STETH) && amountBought > 0) {
+                // trade.buyToken == stETH here
+                IERC20(trade.buyToken).checkApprove(address(Deployments.WRAPPED_STETH), amountBought);
+                uint256 amountBeforeWrap = Deployments.WRAPPED_STETH.balanceOf(address(this));
+                /// @notice the amount returned by wrap is not always accurate for some reason
+                Deployments.WRAPPED_STETH.wrap(amountBought);
+                amountBought = Deployments.WRAPPED_STETH.balanceOf(address(this)) - amountBeforeWrap;
+            }
         }
     }
 }

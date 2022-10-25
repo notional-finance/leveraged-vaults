@@ -117,7 +117,13 @@ library TradingUtils {
     /// for EXACT_OUT trades
     function _approve(Trade memory trade, address spender) private {
         uint256 allowance = _isExactIn(trade) ? trade.amount : trade.limit;
-        IERC20(trade.sellToken).checkApprove(spender, allowance);
+        address sellToken = trade.sellToken;
+        // approve WETH instead of ETH for ETH trades if
+        // spender != address(0) (checked by the caller)
+        if (sellToken == Constants.ETH_ADDRESS) {
+            sellToken = address(Deployments.WETH);
+        }
+        IERC20(sellToken).checkApprove(spender, allowance);
     }
 
     function _executeTrade(
