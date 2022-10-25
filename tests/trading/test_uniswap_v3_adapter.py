@@ -1,9 +1,9 @@
 
 import pytest
 import brownie
-from brownie import accounts, network, MockVault
+from brownie import ZERO_ADDRESS, accounts, network, MockVault
 from brownie.network.state import Chain
-from scripts.common import DEX_ID, TRADE_TYPE, get_univ3_single_data
+from scripts.common import DEX_ID, TRADE_TYPE, get_univ3_batch_data, get_univ3_single_data
 from scripts.EnvironmentConfig import getEnvironment
 
 chain = Chain()
@@ -20,38 +20,95 @@ def univ3_trade_exact_in_single(sellToken, buyToken, amount, fee):
         TRADE_TYPE["EXACT_IN_SINGLE"], sellToken, buyToken, amount, 0, deadline, get_univ3_single_data(fee)
     ]
 
-def test_stETH_to_weth():
+def univ3_trade_exact_in_batch(sellToken, buyToken, amount, path):
+    deadline = chain.time() + 20000
+    return [
+        TRADE_TYPE["EXACT_IN_BATCH"], sellToken, buyToken, amount, 0, deadline, get_univ3_batch_data(path)
+    ]
+
+def test_USDC_to_WETH_exact_in():
     env = getEnvironment(network.show_active())
     mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
 
-    env.tokens["stETH"].transfer(mockVault, 1e18, {"from": env.whales["stETH"]})
+    env.tokens["USDC"].transfer(mockVault, 100e6, {"from": env.whales["USDC"]})
 
     trade = univ3_trade_exact_in_single(
-        env.tokens["stETH"].address, env.tokens["WETH"].address, env.tokens["stETH"].balanceOf(mockVault), 3000
+        env.tokens["USDC"].address, env.tokens["WETH"].address, env.tokens["USDC"].balanceOf(mockVault), 3000
     )
 
-    # Vault does not have permission to sell stETH
+    # Vault does not have permission to sell USDC
     with brownie.reverts():
         mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
 
-    # Give vault permission to sell stETH
-    env.tradingModule.setTokenPermissions(mockVault.address, env.tokens["stETH"].address, [True], 
+    # Give vault permission to sell USDC
+    env.tradingModule.setTokenPermissions(mockVault.address, env.tokens["USDC"].address, [True], 
         {"from": env.notional.owner()})
 
-    stETHBalBefore = env.tokens["stETH"].balanceOf(mockVault)
-    wethBalBefore = env.tokens["WETH"].balanceOf(mockVault)
-    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["CURVE"], trade, 5e6, {"from": accounts[0]})
-    assert ret.return_value[0] == stETHBalBefore - env.tokens["stETH"].balanceOf(mockVault)
-    assert ret.return_value[1] == env.tokens["WETH"].balanceOf(mockVault) - wethBalBefore
+    usdcBefore = env.tokens["USDC"].balanceOf(mockVault)
+    wethBefore = env.tokens["WETH"].balanceOf(mockVault)
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+    assert ret.return_value[0] == usdcBefore - env.tokens["USDC"].balanceOf(mockVault)
+    assert ret.return_value[1] == env.tokens["WETH"].balanceOf(mockVault) - wethBefore
 
-def test_weth_to_stETH():
+def test_USDC_to_ETH_exact_in():
+    env = getEnvironment(network.show_active())
+    mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
+
+    env.tokens["USDC"].transfer(mockVault, 100e6, {"from": env.whales["USDC"]})
+
+    trade = univ3_trade_exact_in_single(
+        env.tokens["USDC"].address, ZERO_ADDRESS, env.tokens["USDC"].balanceOf(mockVault), 3000
+    )
+
+    # Vault does not have permission to sell USDC
+    with brownie.reverts():
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+
+    # Give vault permission to sell USDC
+    env.tradingModule.setTokenPermissions(mockVault.address, env.tokens["USDC"].address, [True], 
+        {"from": env.notional.owner()})
+
+    usdcBefore = env.tokens["USDC"].balanceOf(mockVault)
+    ethBefore = mockVault.balance()
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+    assert ret.return_value[0] == usdcBefore - env.tokens["USDC"].balanceOf(mockVault)
+    assert ret.return_value[1] == mockVault.balance() - ethBefore
+
+def test_USDC_to_WETH_to_DAI_exact_in():
+    env = getEnvironment(network.show_active())
+    mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
+
+    env.tokens["USDC"].transfer(mockVault, 100e6, {"from": env.whales["USDC"]})
+
+    trade = univ3_trade_exact_in_batch(
+        env.tokens["USDC"].address, 
+        env.tokens["DAI"].address, 
+        env.tokens["USDC"].balanceOf(mockVault),
+        [env.tokens["USDC"].address, 3000, env.tokens["WETH"].address, 3000, env.tokens["DAI"].address]
+    )
+
+    # Vault does not have permission to sell USDC
+    with brownie.reverts():
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+
+    # Give vault permission to sell USDC
+    env.tradingModule.setTokenPermissions(mockVault.address, env.tokens["USDC"].address, [True], 
+        {"from": env.notional.owner()})
+
+    usdcBefore = env.tokens["USDC"].balanceOf(mockVault)
+    daiBefore = env.tokens["DAI"].balanceOf(mockVault)
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+    assert ret.return_value[0] == usdcBefore - env.tokens["USDC"].balanceOf(mockVault)
+    assert ret.return_value[1] == env.tokens["DAI"].balanceOf(mockVault) - daiBefore
+
+def test_WETH_to_USDC_exact_in():
     env = getEnvironment(network.show_active())
     mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
 
     env.tokens["WETH"].transfer(mockVault, 1e18, {"from": env.whales["WETH"]})
 
     trade = univ3_trade_exact_in_single(
-        env.tokens["WETH"].address, env.tokens["stETH"].address, env.tokens["WETH"].balanceOf(mockVault), 3000
+        env.tokens["WETH"].address, env.tokens["USDC"].address, env.tokens["WETH"].balanceOf(mockVault), 3000
     )
 
     # Vault does not have permission to sell WETH
@@ -62,8 +119,62 @@ def test_weth_to_stETH():
     env.tradingModule.setTokenPermissions(mockVault.address, env.tokens["WETH"].address, [True], 
         {"from": env.notional.owner()})
 
-    stETHBalBefore = env.tokens["stETH"].balanceOf(mockVault)
-    wethBalBefore = env.tokens["WETH"].balanceOf(mockVault)
-    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["CURVE"], trade, 5e6, {"from": accounts[0]})
-    assert ret.return_value[0] == wethBalBefore - env.tokens["WETH"].balanceOf(mockVault)
-    assert ret.return_value[1] == env.tokens["stETH"].balanceOf(mockVault) - stETHBalBefore
+    usdcBefore = env.tokens["USDC"].balanceOf(mockVault)
+    wethBefore = env.tokens["WETH"].balanceOf(mockVault)
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+    assert ret.return_value[0] == wethBefore - env.tokens["WETH"].balanceOf(mockVault)
+    assert ret.return_value[1] == env.tokens["USDC"].balanceOf(mockVault) - usdcBefore
+
+def test_ETH_to_USDC_exact_in():
+    env = getEnvironment(network.show_active())
+    mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
+
+    env.whales["ETH_EOA"].transfer(mockVault, 1e18)
+
+    trade = univ3_trade_exact_in_single(
+        ZERO_ADDRESS, env.tokens["USDC"].address, mockVault.balance(), 3000
+    )
+
+    # Vault does not have permission to sell ETH
+    with brownie.reverts():
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+
+    # Give vault permission to sell ETH
+    env.tradingModule.setTokenPermissions(mockVault.address, ZERO_ADDRESS, [True], 
+        {"from": env.notional.owner()})
+
+    usdcBefore = env.tokens["USDC"].balanceOf(mockVault)
+    ethBefore = mockVault.balance()
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+    assert ret.return_value[0] == ethBefore - mockVault.balance()
+    assert ret.return_value[1] == env.tokens["USDC"].balanceOf(mockVault) - usdcBefore
+
+def test_ETH_to_USDC_to_DAI_exact_in():
+    env = getEnvironment(network.show_active())
+    mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
+
+    env.whales["ETH_EOA"].transfer(mockVault, 1e18)
+
+    tradePath = [env.tokens["WETH"].address, 3000, env.tokens["USDC"].address, 3000, env.tokens["DAI"].address]
+    trade = univ3_trade_exact_in_batch(ZERO_ADDRESS, env.tokens["DAI"].address, mockVault.balance(), tradePath)
+
+    # Vault does not have permission to sell ETH
+    with brownie.reverts():
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+
+    # Give vault permission to sell ETH
+    env.tradingModule.setTokenPermissions(mockVault.address, ZERO_ADDRESS, [True], 
+        {"from": env.notional.owner()})
+
+    # Bad path should revert
+    with brownie.reverts():
+        badPath = [env.tokens["WETH"].address, 3000, env.tokens["USDC"].address, 3000, env.tokens["USDT"].address]
+        badTrade = univ3_trade_exact_in_batch(ZERO_ADDRESS, env.tokens["DAI"].address, mockVault.balance(), badPath)
+        mockVault.executeTradeWithDynamicSlippage.call(DEX_ID["UNISWAP_V3"], badTrade, 5e6, {"from": accounts[0]})
+
+    daiBefore = env.tokens["DAI"].balanceOf(mockVault)
+    ethBefore = mockVault.balance()
+    ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V3"], trade, 5e6, {"from": accounts[0]})
+    assert ret.return_value[0] == ethBefore - mockVault.balance()
+    assert ret.return_value[1] == env.tokens["DAI"].balanceOf(mockVault) - daiBefore
+
