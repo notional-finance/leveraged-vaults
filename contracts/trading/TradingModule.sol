@@ -123,6 +123,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint32 dynamicSlippageLimit
     ) external override returns (uint256 amountSold, uint256 amountBought) {
         if (!PROXY.canExecuteTrade(trade)) revert InsufficientPermissions();
+        if (trade.amount == 0) return (0, 0);
 
         // This method calls back into the implementation via the proxy so that it has proper
         // access to storage.
@@ -163,6 +164,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         returns (uint256 amountSold, uint256 amountBought)
     {
         if (!PROXY.canExecuteTrade(trade)) revert InsufficientPermissions();
+        if (trade.amount == 0) return (0, 0);
 
         (
             address spender,
