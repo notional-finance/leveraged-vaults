@@ -25,6 +25,7 @@ import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
+import {Stable2TokenOracleMath} from "./balancer/internal/math/Stable2TokenOracleMath.sol";
 import {MetaStable2TokenAuraHelper} from "./balancer/external/MetaStable2TokenAuraHelper.sol";
 
 contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
@@ -162,5 +163,10 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     
     function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory) {
         return _strategyContext();
+    }
+
+    function getSpotPrice(uint256 tokenIndex) external view returns (uint256 spotPrice) {
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        spotPrice = Stable2TokenOracleMath._getSpotPrice(context.oracleContext, context.poolContext, tokenIndex);
     }
 }
