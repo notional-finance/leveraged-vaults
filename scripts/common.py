@@ -102,6 +102,9 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("balancerPoolSlippageLimitPercent", settings["balancerPoolSlippageLimitPercent"])
     ]
 
+def get_univ2_data(path):
+    return eth_abi.encode_abi(['(address[])'], [[path]])
+
 def get_univ3_single_data(fee):
     return eth_abi.encode_abi(['(uint24)'], [[fee]])
 
