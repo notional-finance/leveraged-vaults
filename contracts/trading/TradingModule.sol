@@ -122,7 +122,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         Trade memory trade,
         uint32 dynamicSlippageLimit
     ) external override returns (uint256 amountSold, uint256 amountBought) {
-        if (!PROXY.canExecuteTrade(trade)) revert InsufficientPermissions();
+        if (!PROXY.canExecuteTrade(address(this), dexId, trade)) revert InsufficientPermissions();
         if (trade.amount == 0) return (0, 0);
 
         // This method calls back into the implementation via the proxy so that it has proper
@@ -163,7 +163,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         override
         returns (uint256 amountSold, uint256 amountBought)
     {
-        if (!PROXY.canExecuteTrade(trade)) revert InsufficientPermissions();
+        if (!PROXY.canExecuteTrade(address(this), dexId, trade)) revert InsufficientPermissions();
         if (trade.amount == 0) return (0, 0);
 
         (
@@ -246,9 +246,21 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         decimals = RATE_DECIMALS;
     }
 
+    function _getFlag(uint32 flags, uint16 flagID) private pure returns (bool) {
+        return (flags & flagID) == flagID;
+    }
+
     /// @notice Check if the caller is allowed to execute the provided trade object
-    function canExecuteTrade(Trade calldata trade) external view override returns (bool) {
-        return tokenWhitelist[msg.sender][trade.sellToken].allowSell;
+    function canExecuteTrade(address from, uint16 dexId, Trade calldata trade) external view override returns (bool) {
+        require(dexId <= uint16(DexId.NOTIONAL_VAULT));
+        TokenPermissions memory permissions = tokenWhitelist[from][trade.sellToken];
+        if (!_getFlag(permissions.dexFlags, uint16(1 << dexId))) {
+            return false;
+        }
+        if (!_getFlag(permissions.tradeTypeFlags, uint16(1 << uint8(trade.tradeType)))) {
+            return false;
+        }
+        return permissions.allowSell;
     }
 
     function getLimitAmount(
