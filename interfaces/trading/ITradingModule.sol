@@ -36,6 +36,10 @@ error InvalidTrade();
 interface ITradingModule {
     struct TokenPermissions {
         bool allowSell;
+        /// @notice allowed DEXes
+        uint32 dexFlags;
+        /// @notice allowed trade types
+        uint32 tradeTypeFlags; 
     }
 
     event TradeExecuted(
@@ -87,5 +91,5 @@ interface ITradingModule {
         uint32 slippageLimit
     ) external view returns (uint256 limitAmount);
 
-    function canExecuteTrade(Trade calldata trade) external view returns (bool);
+    function canExecuteTrade(address from, uint16 dexId, Trade calldata trade) external view returns (bool);
 }

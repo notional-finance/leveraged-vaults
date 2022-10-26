@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import { StrategyContext, DynamicTradeParams } from "../../BalancerVaultTypes.sol";
+import { StrategyContext, TradeParams } from "../../BalancerVaultTypes.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
@@ -38,12 +38,13 @@ library StrategyUtils {
         strategyTokenAmount = (bptClaim * context.vaultState.totalStrategyTokenGlobal) / context.vaultState.totalBPTHeld;
     }
 
-    function _executeDynamicTradeExactIn(
-        DynamicTradeParams memory params,
+    function _executeTradeExactIn(
+        TradeParams memory params,
         ITradingModule tradingModule,
         address sellToken,
         address buyToken,
-        uint256 amount
+        uint256 amount,
+        bool useDynamicSlippage
     ) internal returns (uint256 amountSold, uint256 amountBought) {
         require(
             params.tradeType == TradeType.EXACT_IN_SINGLE || params.tradeType == TradeType.EXACT_IN_BATCH
@@ -55,7 +56,7 @@ library StrategyUtils {
             sellToken,
             buyToken,
             amount,
-            0,
+            useDynamicSlippage ? 0 : params.oracleSlippagePercentOrLimit,
             block.timestamp, // deadline
             params.exchangeData
         );
@@ -75,9 +76,15 @@ library StrategyUtils {
             }
         }
 
-        (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
-            params.dexId, tradingModule, params.oracleSlippagePercent
-        );
+        if (useDynamicSlippage) {
+            (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
+                params.dexId, tradingModule, params.oracleSlippagePercentOrLimit
+            );
+        } else {
+            (amountSold, amountBought) = trade._executeTrade(
+                params.dexId, tradingModule
+            );
+        }
 
         if (params.tradeUnwrapped) {
             if (sellToken == address(Deployments.WRAPPED_STETH)) {

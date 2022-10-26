@@ -44,16 +44,15 @@ library Boosted3TokenAuraRewardUtils {
     ) internal returns (address rewardToken, uint256 primaryAmount) {
         SingleSidedRewardTradeParams memory params = abi.decode(data, (SingleSidedRewardTradeParams));
 
-        require(params.tradeParams.oracleSlippagePercent <= slippageLimit);
-
         _validateTrade(stakingContext, params, poolContext.basePool.primaryToken);
 
-        (/*uint256 amountSold*/, primaryAmount) = StrategyUtils._executeDynamicTradeExactIn({
+        (/*uint256 amountSold*/, primaryAmount) = StrategyUtils._executeTradeExactIn({
             params: params.tradeParams,
             tradingModule: tradingModule,
             sellToken: params.sellToken,
             buyToken: params.buyToken,
-            amount: params.amount
+            amount: params.amount,
+            useDynamicSlippage: false
         });
 
         rewardToken = params.sellToken;
