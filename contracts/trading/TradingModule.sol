@@ -246,7 +246,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         decimals = RATE_DECIMALS;
     }
 
-    function _getFlag(uint32 flags, uint16 flagID) private pure returns (bool) {
+    function _hasPermission(uint32 flags, uint32 flagID) private pure returns (bool) {
         return (flags & flagID) == flagID;
     }
 
@@ -255,10 +255,10 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         require(dexId <= uint16(DexId.NOTIONAL_VAULT));
         require(uint8(trade.tradeType) <= uint8(TradeType.EXACT_OUT_BATCH));
         TokenPermissions memory permissions = tokenWhitelist[from][trade.sellToken];
-        if (!_getFlag(permissions.dexFlags, uint16(1 << dexId))) {
+        if (!_hasPermission(permissions.dexFlags, uint32(1 << dexId))) {
             return false;
         }
-        if (!_getFlag(permissions.tradeTypeFlags, uint16(1 << uint8(trade.tradeType)))) {
+        if (!_hasPermission(permissions.tradeTypeFlags, uint32(1 << uint32(trade.tradeType)))) {
             return false;
         }
         return permissions.allowSell;
