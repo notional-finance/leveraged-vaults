@@ -53,6 +53,7 @@ def test_USDC_to_WETH_exact_in_single():
     usdcBefore = env.tokens["USDC"].balanceOf(mockVault)
     wethBefore = env.tokens["WETH"].balanceOf(mockVault)
     ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V2"], trade, 5e6, {"from": accounts[0]})
+    assert env.tokens["USDC"].balanceOf(mockVault) == 0
     assert ret.return_value[0] == usdcBefore - env.tokens["USDC"].balanceOf(mockVault)
     assert ret.return_value[1] == env.tokens["WETH"].balanceOf(mockVault) - wethBefore
 
@@ -77,6 +78,7 @@ def test_USDC_to_ETH_exact_in_single():
     usdcBefore = env.tokens["USDC"].balanceOf(mockVault)
     ethBefore = mockVault.balance()
     ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V2"], trade, 5e6, {"from": accounts[0]})
+    assert env.tokens["USDC"].balanceOf(mockVault) == 0
     assert ret.return_value[0] == usdcBefore - env.tokens["USDC"].balanceOf(mockVault)
     assert ret.return_value[1] == mockVault.balance() - ethBefore
 
@@ -101,6 +103,7 @@ def test_DAI_to_WETH_exact_in_single():
     daiBefore = env.tokens["DAI"].balanceOf(mockVault)
     wethBefore = env.tokens["WETH"].balanceOf(mockVault)
     ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V2"], trade, 5e6, {"from": accounts[0]})
+    assert env.tokens["DAI"].balanceOf(mockVault) == 0
     assert ret.return_value[0] == daiBefore - env.tokens["DAI"].balanceOf(mockVault)
     assert ret.return_value[1] == env.tokens["WETH"].balanceOf(mockVault) - wethBefore
 
@@ -125,6 +128,7 @@ def test_WETH_to_USDC_exact_in_single():
     usdcBefore = env.tokens["USDC"].balanceOf(mockVault)
     wethBefore = env.tokens["WETH"].balanceOf(mockVault)
     ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V2"], trade, 5e6, {"from": accounts[0]})
+    assert env.tokens["WETH"].balanceOf(mockVault) == 0
     assert ret.return_value[0] == wethBefore - env.tokens["WETH"].balanceOf(mockVault)
     assert ret.return_value[1] == env.tokens["USDC"].balanceOf(mockVault) - usdcBefore
 
@@ -149,5 +153,6 @@ def test_ETH_to_USDC_exact_in_single():
     usdcBefore = env.tokens["USDC"].balanceOf(mockVault)
     ethBefore = mockVault.balance()
     ret = mockVault.executeTradeWithDynamicSlippage(DEX_ID["UNISWAP_V2"], trade, 5e6, {"from": accounts[0]})
+    assert mockVault.balance() == 0
     assert ret.return_value[0] == ethBefore - mockVault.balance()
     assert ret.return_value[1] == env.tokens["USDC"].balanceOf(mockVault) - usdcBefore
