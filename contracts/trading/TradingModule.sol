@@ -76,6 +76,13 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         address token, 
         TokenPermissions calldata permissions
     ) external override onlyNotionalOwner {
+        /// @dev update these if we are adding new DEXes or types
+        for (uint32 i = uint32(DexId.NOTIONAL_VAULT) + 1; i < 32; i++) {
+            require(!_hasPermission(permissions.dexFlags, uint32(1 << i)));
+        }
+        for (uint32 i = uint32(TradeType.EXACT_OUT_BATCH) + 1; i < 32; i++) {
+            require(!_hasPermission(permissions.tradeTypeFlags, uint32(1 << i)));
+        }
         tokenWhitelist[sender][token] = permissions;
         emit TokenPermissionsUpdated(sender, token, permissions);
     }
@@ -252,8 +259,6 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
 
     /// @notice Check if the caller is allowed to execute the provided trade object
     function canExecuteTrade(address from, uint16 dexId, Trade calldata trade) external view override returns (bool) {
-        require(dexId <= uint16(DexId.NOTIONAL_VAULT));
-        require(uint8(trade.tradeType) <= uint8(TradeType.EXACT_OUT_BATCH));
         TokenPermissions memory permissions = tokenWhitelist[from][trade.sellToken];
         if (!_hasPermission(permissions.dexFlags, uint32(1 << dexId))) {
             return false;
