@@ -6,7 +6,7 @@ import {
     OracleContext, 
     PoolParams,
     DepositParams,
-    DynamicTradeParams,
+    TradeParams,
     DepositTradeParams,
     RedeemParams,
     AuraStakingContext,
@@ -169,12 +169,13 @@ library TwoTokenPoolUtils {
     ) private returns (uint256 primarySold, uint256 secondaryBought) {
         (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
 
-        (primarySold, secondaryBought) = StrategyUtils._executeDynamicTradeExactIn({
+        (primarySold, secondaryBought) = StrategyUtils._executeTradeExactIn({
             params: params.tradeParams, 
             tradingModule: strategyContext.tradingModule, 
             sellToken: poolContext.primaryToken, 
             buyToken: poolContext.secondaryToken, 
-            amount: params.tradeAmount
+            amount: params.tradeAmount,
+            useDynamicSlippage: true
         });
     }
 
@@ -218,17 +219,18 @@ library TwoTokenPoolUtils {
         RedeemParams memory params,
         uint256 secondaryBalance
     ) private returns (uint256 primaryPurchased) {
-        (DynamicTradeParams memory tradeParams) = abi.decode(
-            params.secondaryTradeParams, (DynamicTradeParams)
+        (TradeParams memory tradeParams) = abi.decode(
+            params.secondaryTradeParams, (TradeParams)
         );
 
         ( /*uint256 amountSold */, primaryPurchased) = 
-            StrategyUtils._executeDynamicTradeExactIn({
+            StrategyUtils._executeTradeExactIn({
                 params: tradeParams,
                 tradingModule: strategyContext.tradingModule,
                 sellToken: poolContext.secondaryToken,
                 buyToken: poolContext.primaryToken,
-                amount: secondaryBalance
+                amount: secondaryBalance,
+                useDynamicSlippage: true
             });
     }
 
