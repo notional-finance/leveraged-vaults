@@ -15,14 +15,14 @@ def run_around_tests():
     yield
     chain.revert()
 
-def balancer_trade_exact_in_single(sellToken, buyToken, amount, poolId):
+def balancer_trade_exact_in_single(sellToken, buyToken, amount, limit, poolId):
     deadline = chain.time() + 20000
     return [
         TRADE_TYPE["EXACT_IN_SINGLE"], 
         sellToken, 
         buyToken, 
         amount, 
-        0, 
+        limit, 
         deadline, 
         eth_abi.encode_abi(
             ["(bytes32)"],
@@ -55,6 +55,7 @@ def test_wstETH_to_WETH_exact_in_dynamic_slippage():
         env.tokens["wstETH"].address, 
         env.tokens["WETH"].address, 
         env.tokens["wstETH"].balanceOf(mockVault),
+        0,
         "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
     )
 
@@ -86,6 +87,7 @@ def test_wstETH_to_ETH_exact_in_dynamic_slippage():
         env.tokens["wstETH"].address, 
         ZERO_ADDRESS, 
         env.tokens["wstETH"].balanceOf(mockVault),
+        0,
         "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
     )
 
@@ -117,6 +119,7 @@ def test_WETH_to_wstETH_exact_in_dynamic_slippage():
         env.tokens["WETH"].address, 
         env.tokens["wstETH"].address, 
         env.tokens["WETH"].balanceOf(mockVault),
+        0,
         "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
     )
 
@@ -148,6 +151,7 @@ def test_ETH_to_wstETH_exact_in_dynamic_slippage():
         ZERO_ADDRESS, 
         env.tokens["wstETH"].address, 
         mockVault.balance(),
+        0,
         "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
     )
 
@@ -224,3 +228,40 @@ def test_wstETH_to_WETH_exact_in_static_slippage():
     mockVault = MockVault.deploy(env.tradingModule, {"from": accounts[0]})
 
     env.tokens["wstETH"].transfer(mockVault, 1e18, {"from": env.whales["wstETH"]})
+
+    trade = balancer_trade_exact_in_single(
+        env.tokens["wstETH"].address, 
+        env.tokens["WETH"].address, 
+        env.tokens["wstETH"].balanceOf(mockVault),
+        1e18,
+        "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
+    )
+
+    # Vault does not have permission to sell wstETH
+    with brownie.reverts():
+        mockVault.executeTrade.call(DEX_ID["BALANCER_V2"], trade, {"from": accounts[0]})
+
+    # Give vault permission to sell wstETH
+    env.tradingModule.setTokenPermissions(
+        mockVault.address, 
+        env.tokens["wstETH"].address, 
+        [True, set_dex_flags(0, BALANCER_V2=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.notional.owner()})
+
+    with brownie.reverts():
+        # slippage limit too high
+        badTrade = balancer_trade_exact_in_single(
+            env.tokens["wstETH"].address, 
+            env.tokens["WETH"].address, 
+            env.tokens["wstETH"].balanceOf(mockVault),
+            5e18,
+            "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080"
+        )
+        mockVault.executeTrade.call(DEX_ID["BALANCER_V2"], badTrade, {"from": accounts[0]})
+
+    wstETHBefore = env.tokens["wstETH"].balanceOf(mockVault)
+    wethBefore = env.tokens["WETH"].balanceOf(mockVault)
+    ret = mockVault.executeTrade(DEX_ID["BALANCER_V2"], trade, {"from": accounts[0]})
+    assert env.tokens["wstETH"].balanceOf(mockVault) == 0
+    assert ret.return_value[0] == wstETHBefore - env.tokens["wstETH"].balanceOf(mockVault)
+    assert ret.return_value[1] == env.tokens["WETH"].balanceOf(mockVault) - wethBefore

@@ -253,6 +253,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     /// @notice Check if the caller is allowed to execute the provided trade object
     function canExecuteTrade(address from, uint16 dexId, Trade calldata trade) external view override returns (bool) {
         require(dexId <= uint16(DexId.NOTIONAL_VAULT));
+        require(uint8(trade.tradeType) <= uint8(TradeType.EXACT_OUT_BATCH));
         TokenPermissions memory permissions = tokenWhitelist[from][trade.sellToken];
         if (!_getFlag(permissions.dexFlags, uint16(1 << dexId))) {
             return false;
