@@ -6,15 +6,18 @@ from brownie import (
     Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
     MetaStable2TokenAuraHelper,
-    FlashLiquidator
+    FlashLiquidator,
+    ZERO_ADDRESS
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
 from brownie.network.state import Chain
 from brownie.convert import to_bytes
-from scripts.common import deployArtifact, get_vault_config, set_flags
+from brownie import accounts, interface
+from scripts.common import deployArtifact, get_vault_config, set_flags, TRADE_TYPE
 from scripts.EnvironmentConfig import Environment
 from eth_utils import keccak
+
 
 chain = Chain()
 ETH_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -112,6 +115,8 @@ class BalancerEnvironment(Environment):
     def __init__(self, network) -> None:
         Environment.__init__(self, network)
         self.liquidator = self.deployLiquidator()
+        self.WSTETHWhale = accounts.at('0x248ccbf4864221fc0e840f29bb042ad5bfc89b5c', force=True)
+
 
     def deployBalancerVault(self, strat, vaultContract, libs=None):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
@@ -199,6 +204,21 @@ class BalancerEnvironment(Environment):
         liquidator.enableCurrencies([1, 2, 3], {"from": self.deployer})
         return liquidator
 
+    def balancer_trade_exact_in_single(self, sellToken, buyToken, amount, poolId):
+        deadline = chain.time() + 20000
+        return [
+            TRADE_TYPE["EXACT_IN_SINGLE"], 
+            sellToken, 
+            buyToken, 
+            amount, 
+            0, 
+            deadline, 
+            eth_abi.encode_abi(
+                ["(bytes32)"],
+                [[to_bytes(poolId, "bytes32")]]
+            )
+        ]
+
 def getEnvironment(network = "mainnet"):
     if network == "mainnet-fork" or network == "hardhat-fork":
         network = "mainnet"
@@ -226,3 +246,49 @@ def main():
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
+
+    poolId = vault1.getStrategyContext()["poolContext"]["basePool"].dict()['poolId']
+    pool = vault1.getStrategyContext()["poolContext"]["basePool"]["pool"]
+
+    env.tradingModule.setTokenPermissions(env.tradingModule.address, env.tokens["wstETH"].address, [True], {"from": env.notional.owner()})
+    env.tradingModule.setTokenPermissions(vault1.address, env.tokens["wstETH"].address, [True], {"from": env.notional.owner()})
+    for i in range(0,5):
+        primaryBalance = vault1.getStrategyContext()["poolContext"]["primaryBalance"]/1e18
+        secondaryBalance = vault1.getStrategyContext()["poolContext"]["secondaryBalance"]/1e18
+        primaryScaleFactor = vault1.getStrategyContext()["poolContext"]["primaryScaleFactor"]/1e18
+        secondaryScaleFactor = vault1.getStrategyContext()["poolContext"]["secondaryScaleFactor"]/1e18
+        secondaryBalanceBalancer = env.balancerVault.getPoolTokens(poolId)['balances'][0]/1e18
+        primaryBalanceBalancer = env.balancerVault.getPoolTokens(poolId)['balances'][1]/1e18
+
+        spotPrice = vault1.getSpotPrice(1)/1e18
+        oraclePrice = env.tradingModule.getOraclePrice(ZERO_ADDRESS, env.tokens["wstETH"])[0]/1e18
+        btpValueInWstETH = interface.IPriceOracle(pool).getLatest(1)/1e18
+        pairPrice = interface.IPriceOracle(pool).getLatest(0)/1e18
+        bptSupply = interface.IERC20(pool).totalSupply()/1e18
+        secondaryAmountInPrimary = secondaryBalance / spotPrice
+        poolValueInPrimary = primaryBalance + secondaryAmountInPrimary
+
+        env.tokens["wstETH"].transfer(env.tradingModule, 10000e18, {"from": env.WSTETHWhale})
+        tradeCallData = env.balancer_trade_exact_in_single(env.tokens["wstETH"].address, env.tokens["WETH"].address, 10000e18, poolId)
+        env.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 5e6, {"from": env.WSTETHWhale})
+        print()
+        
+        print("# of trades executed", i)
+        print("Primary Balance: ", primaryBalance)
+        print("Secondary Balance: ",secondaryBalance)
+        # print("primaryBalanceBalancer: ", primaryBalanceBalancer)
+        # print("secondaryBalanceBalancer: ", secondaryBalanceBalancer)
+        print()
+        print("primaryScaleFactor: ", primaryScaleFactor)
+        print("secondaryScaleFactor: ", secondaryScaleFactor)
+        print()
+        print("spotPrice: ", spotPrice)
+        print("oraclePrice: ", oraclePrice)
+        print("pairPrice wstETH/WETH", 1/(pairPrice * secondaryScaleFactor))
+        print("pairPrice WETH/stETH: ", pairPrice)
+        print("pairPrice WETH/wstETH: ", pairPrice * secondaryScaleFactor)
+        print()
+        print("poolValueInPrimary: ", poolValueInPrimary)
+        print("bptSupplyValueInPrimary ", bptSupply * btpValueInWstETH)
+        print()
+    
