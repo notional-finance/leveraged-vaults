@@ -14,6 +14,8 @@ interface IVaultAction {
     event VaultUpdated(address indexed vault, bool enabled, uint80 maxPrimaryBorrowCapacity);
     /// @notice Emitted when a vault's status is updated
     event VaultPauseStatus(address indexed vault, bool enabled);
+    /// @notice Emitted when a vault's deleverage status is updated
+    event VaultDeleverageStatus(address indexed vaultAddress, bool disableDeleverage);
     /// @notice Emitted when a secondary currency borrow capacity is updated
     event VaultUpdateSecondaryBorrowCapacity(address indexed vault, uint16 indexed currencyId, uint80 maxSecondaryBorrowCapacity);
     /// @notice Emitted when a vault has a shortfall upon settlement
@@ -109,6 +111,17 @@ interface IVaultAction {
     function setVaultPauseStatus(
         address vaultAddress,
         bool enable
+    ) external;
+
+    function setVaultDeleverageStatus(
+        address vaultAddress,
+        bool disableDeleverage
+    ) external;
+
+    /// @notice Governance only method to set the borrow capacity
+    function setMaxBorrowCapacity(
+        address vaultAddress,
+        uint80 maxVaultBorrowCapacity
     ) external;
 
     /// @notice Governance only method to force a particular vault to deleverage
@@ -213,7 +226,8 @@ interface IVaultAccountAction {
     event VaultExitPostMaturity(
         address indexed vault,
         address indexed account,
-        uint256 indexed maturity
+        uint256 indexed maturity,
+        uint256 underlyingToReceiver
     );
 
     event VaultExitPreMaturity(
@@ -221,7 +235,8 @@ interface IVaultAccountAction {
         address indexed account,
         uint256 indexed maturity,
         uint256 fCashToLend,
-        uint256 vaultSharesToRedeem
+        uint256 vaultSharesToRedeem,
+        uint256 underlyingToReceiver
     );
 
     event VaultDeleverageAccount(
@@ -243,7 +258,8 @@ interface IVaultAccountAction {
         address indexed vault,
         uint256 indexed maturity,
         address indexed account,
-        uint256 underlyingTokensTransferred,
+        uint256 underlyingTokensDeposited,
+        uint256 cashTransferToVault,
         uint256 strategyTokenDeposited,
         uint256 vaultSharesMinted
     );
@@ -286,10 +302,11 @@ interface IVaultAccountAction {
         address vault,
         uint256 fCashToBorrow,
         uint256 maturity,
+        uint256 depositAmountExternal,
         uint32 minLendRate,
         uint32 maxBorrowRate,
         bytes calldata enterVaultData
-    ) external returns (uint256 strategyTokensAdded);
+    ) external payable returns (uint256 strategyTokensAdded);
 
     /**
      * @notice Prior to maturity, allows an account to withdraw their position from the vault. Will

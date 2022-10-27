@@ -208,6 +208,7 @@ library TwoTokenPoolUtils {
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
+        strategyContext.vaultState.totalBPTHeld += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -260,6 +261,7 @@ library TwoTokenPoolUtils {
             finalPrimaryBalance += primaryPurchased;
         }
 
+        strategyContext.vaultState.totalBPTHeld -= bptClaim;
         // Update global strategy token balance
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -291,7 +293,7 @@ library TwoTokenPoolUtils {
         uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
             poolContext.basePool.pool.totalSupply()
         );
-        uint256 bptHeldAfterJoin = strategyContext.totalBPTHeld + bptMinted;
+        uint256 bptHeldAfterJoin = strategyContext.vaultState.totalBPTHeld + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)
             revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 

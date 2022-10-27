@@ -5,7 +5,7 @@ import {BaseStrategyVault} from "../BaseStrategyVault.sol";
 import {DeploymentParams} from "./BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 abstract contract BalancerStrategyBase is BaseStrategyVault, UUPSUpgradeable, AccessControlUpgradeable {
 

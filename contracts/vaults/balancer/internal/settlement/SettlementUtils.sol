@@ -95,19 +95,19 @@ library SettlementUtils {
         // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
         uint256 emergencyBPTWithdrawThreshold = settings._bptThreshold(totalBPTSupply);
 
-        if (strategyContext.totalBPTHeld <= emergencyBPTWithdrawThreshold)
+        if (strategyContext.vaultState.totalBPTHeld <= emergencyBPTWithdrawThreshold)
             revert Errors.InvalidEmergencySettlement();
 
         uint256 bptHeldInMaturity = _getBPTHeldInMaturity(
             state,
             _totalSupplyInMaturity(maturity),
-            strategyContext.totalBPTHeld
+            strategyContext.vaultState.totalBPTHeld
         );
 
         bptToSettle = _getEmergencySettlementBPTAmount({
             bptTotalSupply: totalBPTSupply,
             maxBalancerPoolShare: settings.maxBalancerPoolShare,
-            totalBPTHeld: strategyContext.totalBPTHeld,
+            totalBPTHeld: strategyContext.vaultState.totalBPTHeld,
             bptHeldInMaturity: bptHeldInMaturity
         });
     }

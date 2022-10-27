@@ -120,7 +120,6 @@ struct ThreeTokenPoolContext {
 }
 
 struct StrategyContext {
-    uint256 totalBPTHeld;
     uint32 settlementPeriodInSeconds;
     ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
@@ -194,6 +193,7 @@ struct StrategyVaultSettings {
 }
 
 struct StrategyVaultState {
+    uint256 totalBPTHeld;
     /// @notice Total number of strategy tokens across all maturities
     uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;

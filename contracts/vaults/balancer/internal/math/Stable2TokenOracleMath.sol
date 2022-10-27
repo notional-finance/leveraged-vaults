@@ -38,7 +38,7 @@ library Stable2TokenOracleMath {
     }
 
     function _checkPriceLimit(
-        StrategyContext calldata strategyContext,
+        StrategyContext memory strategyContext,
         TwoTokenPoolContext memory poolContext,
         uint256 poolPrice
     ) private view returns (bool) {
@@ -86,7 +86,7 @@ library Stable2TokenOracleMath {
     function _validateSpotPriceAndPairPrice(
         StableOracleContext calldata oracleContext,
         TwoTokenPoolContext calldata poolContext,
-        StrategyContext calldata strategyContext,
+        StrategyContext memory strategyContext,
         uint256 primaryAmount, 
         uint256 secondaryAmount
     ) internal view {

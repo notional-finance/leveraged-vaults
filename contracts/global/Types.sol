@@ -480,7 +480,10 @@ struct VaultConfigStorage {
     uint16 maxDeleverageCollateralRatioBPS;
     // An optional list of secondary borrow currencies
     uint16[2] secondaryBorrowCurrencies;
-    // 96 bytes left
+    // Required collateral ratio for accounts to stay inside a vault, prevents accounts
+    // from "free riding" on vaults. Enforced on entry and exit, not on deleverage.
+    uint16 maxRequiredAccountCollateralRatioBPS;
+    // 80 bytes left
 }
 
 struct VaultBorrowCapacityStorage {
@@ -496,6 +499,12 @@ struct VaultSecondaryBorrowStorage {
     // Used for accounting how much secondary borrow a single account owes as the fCashBorrowed
     // increases or decreases
     uint80 totalAccountDebtShares;
+    // The total secondary fCash borrowed converted to the primary borrow currency (underlying)
+    // snapshot prior to settlement. This is used to offset account value on settlement. Once this
+    // value is set, accounts can no longer borrow or repay on the secondary borrow currency
+    uint80 totalfCashBorrowedInPrimarySnapshot;
+    // Set to true once when the snapshot is set
+    bool hasSnapshotBeenSet;
 }
 
 struct VaultConfig {
@@ -511,6 +520,7 @@ struct VaultConfig {
     int256 maxDeleverageCollateralRatio;
     uint16[2] secondaryBorrowCurrencies;
     AssetRateParameters assetRate;
+    int256 maxRequiredAccountCollateralRatio;
 }
 
 /// @notice Represents a Vault's current borrow and collateral state
@@ -563,7 +573,11 @@ struct VaultAccountStorage {
     // Vault shares that the account holds
     uint80 vaultShares;
     // Maturity when the vault shares and fCash will mature
-    uint32 maturity;
+    uint40 maturity;
+    // Last block when a vault entered, used to ensure that vault accounts do not flash enter/exit.
+    // While there is no specified attack vector here, we can use it to prevent an entire class
+    // of attacks from happening without reducing UX.
+    uint32 lastEntryBlockHeight;
 }
 
 struct VaultAccountSecondaryDebtShareStorage {
@@ -583,4 +597,5 @@ struct VaultAccount {
     // This cash balance is used just within a transaction to track deposits
     // and withdraws for an account. Must be zeroed by the time we store the account
     int256 tempCashBalance;
+    uint256 lastEntryBlockHeight;
 }

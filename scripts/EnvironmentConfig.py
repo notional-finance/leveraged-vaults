@@ -73,7 +73,7 @@ class Environment:
         self.deployTradingModule()
 
     def upgradeNotional(self):
-        self.notional.upgradeTo("0x77c7E0d24CD025CeB2f2523CfF22e91Fad25C9c2", {'from': self.notional.owner()})
+        self.notional.upgradeTo("0xD7c3Dc1C36d19cF4e8cea4eA143a2f4458Dd1937", {'from': self.notional.owner()})
 
     def deployTradingModule(self):
         emptyImpl = EmptyProxy.deploy({"from": self.deployer})

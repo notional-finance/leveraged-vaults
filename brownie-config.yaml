@@ -4,8 +4,8 @@ compiler:
       enabled: true
       runs: 200
     remappings:
-      - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0"
-      - "@openzeppelin-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.6.0"
+      - "@openzeppelin/contracts=OpenZeppelin/openzeppelin-contracts@4.6.0/contracts"
+      - "@openzeppelin/contracts-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.6.0/contracts"
 networks:
   default: development
 
@@ -13,7 +13,7 @@ networks:
   default: mainnet-fork
   mainnet-fork:
     cmd_settings:
-      fork_block: 15784002
+      fork_block: 15840796
   
 reports:
   exclude_paths:
