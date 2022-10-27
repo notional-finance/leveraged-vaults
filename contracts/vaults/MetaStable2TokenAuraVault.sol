@@ -167,6 +167,12 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
 
     function getSpotPrice(uint256 tokenIndex) external view returns (uint256 spotPrice) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        spotPrice = Stable2TokenOracleMath._getSpotPrice(context.oracleContext, context.poolContext, tokenIndex);
+        spotPrice = Stable2TokenOracleMath._getSpotPrice(
+            context.oracleContext, 
+            context.poolContext, 
+            context.poolContext.primaryBalance,
+            context.poolContext.secondaryBalance,
+            tokenIndex
+        );
     }
 }

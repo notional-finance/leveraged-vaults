@@ -39,6 +39,7 @@ library TwoTokenPoolUtils {
     using AuraStakingUtils for AuraStakingContext;
     using BalancerVaultStorage for StrategyVaultSettings;
     using BalancerVaultStorage for StrategyVaultState;
+    using Stable2TokenOracleMath for StableOracleContext;
 
     /// @notice Returns parameters for joining and exiting Balancer pools
     function _getPoolParams(
@@ -99,9 +100,14 @@ library TwoTokenPoolUtils {
         uint256 bptAmount
     ) internal view returns (uint256 primaryAmount) {
         uint256 oraclePairPrice = _getOraclePairPrice(poolContext, strategyContext.tradingModule);
-        uint256 spotPrice = Stable2TokenOracleMath._getSpotPrice(
-            oracleContext, poolContext, 0
-        );
+        // tokenIndex == 0 because _getOraclePairPrice always returns the price in terms of
+        // the primary currency
+        uint256 spotPrice = oracleContext._getSpotPrice({
+            poolContext: poolContext,
+            primaryBalance: poolContext.primaryBalance,
+            secondaryBalance: poolContext.secondaryBalance,
+            tokenIndex: 0
+        });
 
         // Make sure spot price is within oracleDeviationLimit of pairPrice
         Stable2TokenOracleMath._checkPriceLimit(strategyContext, oraclePairPrice, spotPrice);

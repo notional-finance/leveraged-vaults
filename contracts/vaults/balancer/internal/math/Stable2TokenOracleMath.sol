@@ -15,14 +15,16 @@ library Stable2TokenOracleMath {
     function _getSpotPrice(
         StableOracleContext memory oracleContext, 
         TwoTokenPoolContext memory poolContext, 
+        uint256 primaryBalance,
+        uint256 secondaryBalance,
         uint256 tokenIndex
     ) internal view returns (uint256 spotPrice) {
         require(tokenIndex < 2); /// @dev invalid token index
 
         /// Apply scale factors
-        uint256 scaledPrimaryBalance = poolContext.primaryBalance * poolContext.primaryScaleFactor 
+        uint256 scaledPrimaryBalance = primaryBalance * poolContext.primaryScaleFactor 
             / BalancerConstants.BALANCER_PRECISION;
-        uint256 scaledSecondaryBalance = poolContext.secondaryBalance * poolContext.secondaryScaleFactor 
+        uint256 scaledSecondaryBalance = secondaryBalance * poolContext.secondaryScaleFactor 
             / BalancerConstants.BALANCER_PRECISION;
 
         /// @notice poolContext balances are always in BALANCER_PRECISION (1e18)
@@ -75,7 +77,13 @@ library Stable2TokenOracleMath {
     ) internal view returns (uint256 minPrimary, uint256 minSecondary) {
         // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
         // Validate the spot price to make sure the pool is not being manipulated
-        uint256 spotPrice = _getSpotPrice(oracleContext, poolContext, 0);
+        uint256 spotPrice = _getSpotPrice({
+            oracleContext: oracleContext,
+            poolContext: poolContext,
+            primaryBalance: poolContext.primaryBalance,
+            secondaryBalance: poolContext.secondaryBalance,
+            tokenIndex: 0
+        });
         _checkPriceLimit(strategyContext, oraclePrice, spotPrice);
 
         // min amounts are calculated based on the share of the Balancer pool with a small discount applied
@@ -97,7 +105,14 @@ library Stable2TokenOracleMath {
         uint256 secondaryAmount
     ) internal view {
         // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
-        uint256 spotPrice = _getSpotPrice(oracleContext, poolContext, 0);
+        uint256 spotPrice = _getSpotPrice({
+            oracleContext: oracleContext,
+            poolContext: poolContext,
+            primaryBalance: poolContext.primaryBalance,
+            secondaryBalance: poolContext.secondaryBalance,
+            tokenIndex: 0
+        });
+
         _checkPriceLimit(strategyContext, oraclePrice, spotPrice);
 
         // We always validate in terms of the primary here so it is the first value in the _balances array
