@@ -100,7 +100,7 @@ library TwoTokenPoolUtils {
     ) internal view returns (uint256 primaryAmount) {
         uint256 oraclePairPrice = _getOraclePairPrice(poolContext, strategyContext.tradingModule);
         uint256 spotPrice = Stable2TokenOracleMath._getSpotPrice(
-            oracleContext, poolContext, poolContext.primaryIndex
+            oracleContext, poolContext, 0
         );
 
         // Make sure spot price is within oracleDeviationLimit of pairPrice
@@ -112,7 +112,7 @@ library TwoTokenPoolUtils {
         uint256 secondaryBalance = poolContext.secondaryBalance * bptAmount / totalBPTSupply;
 
         // Value the secondary balance in terms of the primary token using the oraclePairPrice
-        uint256 secondaryAmountInPrimary = secondaryBalance * BalancerConstants.BALANCER_PRECISION / spotPrice;
+        uint256 secondaryAmountInPrimary = secondaryBalance * BalancerConstants.BALANCER_PRECISION / oraclePairPrice;
 
         // Make sure primaryAmount is reported in primaryPrecision
         uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;

@@ -42,7 +42,9 @@ library Stable2TokenOracleMath {
         });
 
         /// Apply secondary scale factor in reverse
-        uint256 scaleFactor = tokenIndex == 0 ? poolContext.primaryScaleFactor : poolContext.secondaryScaleFactor;
+        uint256 scaleFactor = tokenIndex == 0 ?
+            poolContext.secondaryScaleFactor * BalancerConstants.BALANCER_PRECISION / poolContext.primaryScaleFactor :
+            poolContext.primaryScaleFactor * BalancerConstants.BALANCER_PRECISION / poolContext.secondaryScaleFactor;
         spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / scaleFactor;
     }
 
