@@ -295,6 +295,7 @@ library Boosted3TokenPoolUtils {
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
+        strategyContext.vaultState.totalBPTHeld += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -318,6 +319,7 @@ library Boosted3TokenPoolUtils {
             minPrimary: minPrimary
         });
 
+        strategyContext.vaultState.totalBPTHeld -= bptClaim;
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
@@ -337,7 +339,7 @@ library Boosted3TokenPoolUtils {
         uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
             poolContext._getVirtualSupply(oracleContext)
         );
-        uint256 bptHeldAfterJoin = strategyContext.totalBPTHeld + bptMinted;
+        uint256 bptHeldAfterJoin = strategyContext.vaultState.totalBPTHeld + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)
             revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 
@@ -356,7 +358,7 @@ library Boosted3TokenPoolUtils {
         bool success = stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
         if (!success) revert Errors.UnstakeFailed();
 
-        primaryBalance = _exitPoolExactBPTIn(poolContext, bptClaim, minPrimary);    
+        primaryBalance = _exitPoolExactBPTIn(poolContext, bptClaim, minPrimary); 
     }
 
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted
@@ -381,7 +383,7 @@ library Boosted3TokenPoolUtils {
     function _getMinBPT(
         ThreeTokenPoolContext calldata poolContext,
         BoostedOracleContext calldata oracleContext,
-        StrategyContext calldata strategyContext,
+        StrategyContext memory strategyContext,
         uint256 primaryAmount
     ) internal view returns (uint256 minBPT) {
         // Calculate minBPT to minimize slippage

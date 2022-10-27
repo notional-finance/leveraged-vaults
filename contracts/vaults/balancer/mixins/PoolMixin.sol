@@ -29,14 +29,8 @@ abstract contract PoolMixin is AuraStakingMixin {
         });
     }
 
-    /// @dev Gets the total BPT held by the aura reward pool
-    function _bptHeld() internal view returns (uint256) {
-        return AURA_REWARD_POOL.balanceOf(address(this));
-    }
-
     function _baseStrategyContext() internal view returns(StrategyContext memory) {
         return StrategyContext({
-            totalBPTHeld: _bptHeld(),
             settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
             tradingModule: TRADING_MODULE,
             vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),

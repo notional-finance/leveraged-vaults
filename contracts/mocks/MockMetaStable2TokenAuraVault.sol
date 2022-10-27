@@ -32,4 +32,12 @@ contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
             underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;            
         }
     }
+
+    function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 minBPT) 
+        external returns (uint256) {
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        return TwoTokenPoolUtils._joinPoolAndStake(
+            context.poolContext, context.baseStrategy, context.stakingContext, primaryAmount, secondaryAmount, minBPT
+        );
+    }
 }

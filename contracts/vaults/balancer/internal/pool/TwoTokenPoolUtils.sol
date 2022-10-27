@@ -6,7 +6,7 @@ import {
     StableOracleContext, 
     PoolParams,
     DepositParams,
-    DynamicTradeParams,
+    TradeParams,
     DepositTradeParams,
     RedeemParams,
     AuraStakingContext,
@@ -134,12 +134,13 @@ library TwoTokenPoolUtils {
     ) private returns (uint256 primarySold, uint256 secondaryBought) {
         (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
 
-        (primarySold, secondaryBought) = StrategyUtils._executeDynamicTradeExactIn({
+        (primarySold, secondaryBought) = StrategyUtils._executeTradeExactIn({
             params: params.tradeParams, 
             tradingModule: strategyContext.tradingModule, 
             sellToken: poolContext.primaryToken, 
             buyToken: poolContext.secondaryToken, 
-            amount: params.tradeAmount
+            amount: params.tradeAmount,
+            useDynamicSlippage: true
         });
     }
 
@@ -172,6 +173,7 @@ library TwoTokenPoolUtils {
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
+        strategyContext.vaultState.totalBPTHeld += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -183,17 +185,18 @@ library TwoTokenPoolUtils {
         RedeemParams memory params,
         uint256 secondaryBalance
     ) private returns (uint256 primaryPurchased) {
-        (DynamicTradeParams memory tradeParams) = abi.decode(
-            params.secondaryTradeParams, (DynamicTradeParams)
+        (TradeParams memory tradeParams) = abi.decode(
+            params.secondaryTradeParams, (TradeParams)
         );
 
         ( /*uint256 amountSold */, primaryPurchased) = 
-            StrategyUtils._executeDynamicTradeExactIn({
+            StrategyUtils._executeTradeExactIn({
                 params: tradeParams,
                 tradingModule: strategyContext.tradingModule,
                 sellToken: poolContext.secondaryToken,
                 buyToken: poolContext.primaryToken,
-                amount: secondaryBalance
+                amount: secondaryBalance,
+                useDynamicSlippage: true
             });
     }
 
@@ -223,6 +226,7 @@ library TwoTokenPoolUtils {
             finalPrimaryBalance += primaryPurchased;
         }
 
+        strategyContext.vaultState.totalBPTHeld -= bptClaim;
         // Update global strategy token balance
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -254,7 +258,7 @@ library TwoTokenPoolUtils {
         uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
             poolContext.basePool.pool.totalSupply()
         );
-        uint256 bptHeldAfterJoin = strategyContext.totalBPTHeld + bptMinted;
+        uint256 bptHeldAfterJoin = strategyContext.vaultState.totalBPTHeld + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)
             revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 

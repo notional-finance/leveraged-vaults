@@ -39,7 +39,7 @@ struct DepositParams {
 
 struct DepositTradeParams {
     uint256 tradeAmount;
-    DynamicTradeParams tradeParams;
+    TradeParams tradeParams;
 }
 
 struct RedeemParams {
@@ -48,11 +48,11 @@ struct RedeemParams {
     bytes secondaryTradeParams;
 }
 
-/// @notice Parameters for dynamic slippage trades
-struct DynamicTradeParams {
+/// @notice Parameters for trades
+struct TradeParams {
     uint16 dexId;
     TradeType tradeType;
-    uint32 oracleSlippagePercent;
+    uint32 oracleSlippagePercentOrLimit;
     bool tradeUnwrapped;
     bytes exchangeData;
 }
@@ -115,7 +115,6 @@ struct ThreeTokenPoolContext {
 }
 
 struct StrategyContext {
-    uint256 totalBPTHeld;
     uint32 settlementPeriodInSeconds;
     ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
@@ -158,7 +157,7 @@ struct SingleSidedRewardTradeParams {
     address sellToken;
     address buyToken;
     uint256 amount;
-    DynamicTradeParams tradeParams;
+    TradeParams tradeParams;
 }
 
 struct ReinvestRewardParams {
@@ -188,6 +187,7 @@ struct StrategyVaultSettings {
 }
 
 struct StrategyVaultState {
+    uint256 totalBPTHeld;
     /// @notice Total number of strategy tokens across all maturities
     uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;

@@ -20,5 +20,10 @@ contract MockVault {
         return TradeHandler._executeTradeWithDynamicSlippage(trade, dexId, TRADING_MODULE, dynamicSlippageLimit);
     }
 
+    function executeTrade(uint16 dexId, Trade memory trade) 
+        external returns (uint256 amountSold, uint256 amountBought) {
+        return TradeHandler._executeTrade(trade, dexId, TRADING_MODULE);
+    }
+
     receive() external payable {}
 }

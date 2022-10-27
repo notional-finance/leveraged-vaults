@@ -28,6 +28,7 @@ library MetaStable2TokenAuraHelper {
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultState;
 
     function deposit(
         MetaStable2TokenAuraStrategyContext memory context,
@@ -148,7 +149,7 @@ library MetaStable2TokenAuraHelper {
         MetaStable2TokenAuraStrategyContext calldata context,
         ReinvestRewardParams calldata params
     ) external {
-        StrategyContext calldata strategyContext = context.baseStrategy;
+        StrategyContext memory strategyContext = context.baseStrategy;
         TwoTokenPoolContext calldata poolContext = context.poolContext; 
         StableOracleContext calldata oracleContext = context.oracleContext;
 
@@ -181,6 +182,9 @@ library MetaStable2TokenAuraHelper {
             /// and secondaryAmount are already validated
             minBPT: params.minBPT        
         });
+
+        strategyContext.vaultState.totalBPTHeld += bptAmount;
+        strategyContext.vaultState.setStrategyVaultState(); 
 
         emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
     }

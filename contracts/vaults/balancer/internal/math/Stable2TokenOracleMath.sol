@@ -91,7 +91,7 @@ library Stable2TokenOracleMath {
     function _validateSpotPriceAndPairPrice(
         StableOracleContext calldata oracleContext,
         TwoTokenPoolContext calldata poolContext,
-        StrategyContext calldata strategyContext,
+        StrategyContext memory strategyContext,
         uint256 oraclePrice,
         uint256 primaryAmount, 
         uint256 secondaryAmount

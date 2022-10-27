@@ -57,9 +57,6 @@ library TwoTokenAuraRewardUtils {
             (Balanced2TokenRewardTradeParams)
         );
 
-        require(params.primaryTrade.tradeParams.oracleSlippagePercent <= slippageLimit);
-        require(params.secondaryTrade.tradeParams.oracleSlippagePercent <= slippageLimit);
-
         _validateTrades(
             stakingContext,
             params.primaryTrade,
@@ -68,20 +65,22 @@ library TwoTokenAuraRewardUtils {
             poolContext.secondaryToken
         );
 
-        (/*uint256 amountSold*/, primaryAmount) = StrategyUtils._executeDynamicTradeExactIn({
+        (/*uint256 amountSold*/, primaryAmount) = StrategyUtils._executeTradeExactIn({
             params: params.primaryTrade.tradeParams,
             tradingModule: tradingModule,
             sellToken: params.primaryTrade.sellToken,
             buyToken: params.primaryTrade.buyToken,
-            amount: params.primaryTrade.amount
+            amount: params.primaryTrade.amount,
+            useDynamicSlippage: false
         });
 
-        (/*uint256 amountSold*/, secondaryAmount) = StrategyUtils._executeDynamicTradeExactIn({
+        (/*uint256 amountSold*/, secondaryAmount) = StrategyUtils._executeTradeExactIn({
             params: params.secondaryTrade.tradeParams,
             tradingModule: tradingModule,
             sellToken: params.secondaryTrade.sellToken,
             buyToken: params.secondaryTrade.buyToken,
-            amount: params.secondaryTrade.amount
+            amount: params.secondaryTrade.amount,
+            useDynamicSlippage: false
         });
 
         rewardToken = params.primaryTrade.sellToken;

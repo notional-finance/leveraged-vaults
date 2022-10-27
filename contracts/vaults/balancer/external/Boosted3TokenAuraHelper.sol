@@ -29,6 +29,7 @@ library Boosted3TokenAuraHelper {
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultSettings;
+    using BalancerVaultStorage for StrategyVaultState;
 
     function deposit(
         Boosted3TokenAuraStrategyContext memory context,
@@ -148,7 +149,7 @@ library Boosted3TokenAuraHelper {
         Boosted3TokenAuraStrategyContext calldata context,
         ReinvestRewardParams calldata params
     ) external {        
-        StrategyContext calldata strategyContext = context.baseStrategy;
+        StrategyContext memory strategyContext = context.baseStrategy;
         BoostedOracleContext calldata oracleContext = context.oracleContext;
         AuraStakingContext calldata stakingContext = context.stakingContext;
 
@@ -170,6 +171,9 @@ library Boosted3TokenAuraHelper {
             deposit: primaryAmount,
             minBPT: minBPT
         });
+
+        strategyContext.vaultState.totalBPTHeld += bptAmount;
+        strategyContext.vaultState.setStrategyVaultState(); 
 
         emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
     }

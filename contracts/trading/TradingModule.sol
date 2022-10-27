@@ -76,6 +76,13 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         address token, 
         TokenPermissions calldata permissions
     ) external override onlyNotionalOwner {
+        /// @dev update these if we are adding new DEXes or types
+        for (uint32 i = uint32(DexId.NOTIONAL_VAULT) + 1; i < 32; i++) {
+            require(!_hasPermission(permissions.dexFlags, uint32(1 << i)));
+        }
+        for (uint32 i = uint32(TradeType.EXACT_OUT_BATCH) + 1; i < 32; i++) {
+            require(!_hasPermission(permissions.tradeTypeFlags, uint32(1 << i)));
+        }
         tokenWhitelist[sender][token] = permissions;
         emit TokenPermissionsUpdated(sender, token, permissions);
     }
@@ -122,7 +129,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         Trade memory trade,
         uint32 dynamicSlippageLimit
     ) external override returns (uint256 amountSold, uint256 amountBought) {
-        if (!PROXY.canExecuteTrade(trade)) revert InsufficientPermissions();
+        if (!PROXY.canExecuteTrade(address(this), dexId, trade)) revert InsufficientPermissions();
         if (trade.amount == 0) return (0, 0);
 
         // This method calls back into the implementation via the proxy so that it has proper
@@ -163,7 +170,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         override
         returns (uint256 amountSold, uint256 amountBought)
     {
-        if (!PROXY.canExecuteTrade(trade)) revert InsufficientPermissions();
+        if (!PROXY.canExecuteTrade(address(this), dexId, trade)) revert InsufficientPermissions();
         if (trade.amount == 0) return (0, 0);
 
         (
@@ -246,9 +253,20 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         decimals = RATE_DECIMALS;
     }
 
+    function _hasPermission(uint32 flags, uint32 flagID) private pure returns (bool) {
+        return (flags & flagID) == flagID;
+    }
+
     /// @notice Check if the caller is allowed to execute the provided trade object
-    function canExecuteTrade(Trade calldata trade) external view override returns (bool) {
-        return tokenWhitelist[msg.sender][trade.sellToken].allowSell;
+    function canExecuteTrade(address from, uint16 dexId, Trade calldata trade) external view override returns (bool) {
+        TokenPermissions memory permissions = tokenWhitelist[from][trade.sellToken];
+        if (!_hasPermission(permissions.dexFlags, uint32(1 << dexId))) {
+            return false;
+        }
+        if (!_hasPermission(permissions.tradeTypeFlags, uint32(1 << uint32(trade.tradeType)))) {
+            return false;
+        }
+        return permissions.allowSell;
     }
 
     function getLimitAmount(
