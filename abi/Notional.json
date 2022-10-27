@@ -74,6 +74,31 @@
             {
                 "indexed": true,
                 "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "spender",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "Approval",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
                 "name": "account",
                 "type": "address"
             },
@@ -592,6 +617,31 @@
             {
                 "indexed": true,
                 "internalType": "address",
+                "name": "from",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "to",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "Transfer",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
                 "name": "operator",
                 "type": "address"
             },
@@ -946,6 +996,25 @@
             {
                 "indexed": true,
                 "internalType": "address",
+                "name": "vaultAddress",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "disableDeleverage",
+                "type": "bool"
+            }
+        ],
+        "name": "VaultDeleverageStatus",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
                 "name": "vault",
                 "type": "address"
             },
@@ -964,7 +1033,13 @@
             {
                 "indexed": false,
                 "internalType": "uint256",
-                "name": "underlyingTokensTransferred",
+                "name": "underlyingTokensDeposited",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "cashTransferToVault",
                 "type": "uint256"
             },
             {
@@ -1034,6 +1109,12 @@
                 "internalType": "uint256",
                 "name": "maturity",
                 "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "underlyingToReceiver",
+                "type": "uint256"
             }
         ],
         "name": "VaultExitPostMaturity",
@@ -1070,6 +1151,12 @@
                 "indexed": false,
                 "internalType": "uint256",
                 "name": "vaultSharesToRedeem",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "underlyingToReceiver",
                 "type": "uint256"
             }
         ],
@@ -1587,31 +1674,6 @@
             }
         ],
         "name": "VaultUpdated",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "owner",
-                "type": "address"
-            },
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "spender",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-            }
-        ],
-        "name": "nTokenApproveAll",
         "type": "event"
     },
     {
@@ -4339,6 +4401,11 @@
                         "internalType": "int256",
                         "name": "tempCashBalance",
                         "type": "int256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "lastEntryBlockHeight",
+                        "type": "uint256"
                     }
                 ],
                 "internalType": "struct VaultAccount",
@@ -4378,6 +4445,11 @@
                 "internalType": "int256",
                 "name": "maxLiquidatorDepositAssetCash",
                 "type": "int256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "vaultSharesToLiquidator",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -4505,6 +4577,11 @@
                         "internalType": "struct AssetRateParameters",
                         "name": "assetRate",
                         "type": "tuple"
+                    },
+                    {
+                        "internalType": "int256",
+                        "name": "maxRequiredAccountCollateralRatio",
+                        "type": "int256"
                     }
                 ],
                 "internalType": "struct VaultConfig",
@@ -5173,35 +5250,6 @@
                 "internalType": "uint16",
                 "name": "currencyId",
                 "type": "uint16"
-            },
-            {
-                "internalType": "uint256",
-                "name": "assets",
-                "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "receiver",
-                "type": "address"
-            }
-        ],
-        "name": "nTokenMintViaProxy",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "payable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint16",
-                "name": "currencyId",
-                "type": "uint16"
             }
         ],
         "name": "nTokenPresentValueAssetDenominated",
@@ -5229,25 +5277,6 @@
                 "internalType": "int256",
                 "name": "",
                 "type": "int256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint16",
-                "name": "currencyId",
-                "type": "uint16"
-            }
-        ],
-        "name": "nTokenPresentValueUnderlyingExternal",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -5287,40 +5316,6 @@
                 "internalType": "int256",
                 "name": "",
                 "type": "int256"
-            }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint16",
-                "name": "currencyId",
-                "type": "uint16"
-            },
-            {
-                "internalType": "uint256",
-                "name": "shares",
-                "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "receiver",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "owner",
-                "type": "address"
-            }
-        ],
-        "name": "nTokenRedeemViaProxy",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
             }
         ],
         "stateMutability": "nonpayable",
@@ -5678,6 +5673,11 @@
                 "type": "uint256"
             },
             {
+                "internalType": "uint256",
+                "name": "depositAmountExternal",
+                "type": "uint256"
+            },
+            {
                 "internalType": "uint32",
                 "name": "minLendRate",
                 "type": "uint32"
@@ -5701,7 +5701,7 @@
                 "type": "uint256"
             }
         ],
-        "stateMutability": "nonpayable",
+        "stateMutability": "payable",
         "type": "function"
     },
     {
@@ -5805,6 +5805,24 @@
         "inputs": [
             {
                 "internalType": "address",
+                "name": "vaultAddress",
+                "type": "address"
+            },
+            {
+                "internalType": "uint80",
+                "name": "maxVaultBorrowCapacity",
+                "type": "uint80"
+            }
+        ],
+        "name": "setMaxBorrowCapacity",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
                 "name": "pauseRouter_",
                 "type": "address"
             },
@@ -5882,6 +5900,24 @@
             }
         ],
         "name": "setTreasuryManager",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "vaultAddress",
+                "type": "address"
+            },
+            {
+                "internalType": "bool",
+                "name": "disableDeleverage",
+                "type": "bool"
+            }
+        ],
+        "name": "setVaultDeleverageStatus",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -6420,6 +6456,11 @@
                         "internalType": "uint16[2]",
                         "name": "secondaryBorrowCurrencies",
                         "type": "uint16[2]"
+                    },
+                    {
+                        "internalType": "uint16",
+                        "name": "maxRequiredAccountCollateralRatioBPS",
+                        "type": "uint16"
                     }
                 ],
                 "internalType": "struct VaultConfigStorage",
@@ -6433,19 +6474,6 @@
             }
         ],
         "name": "updateVault",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "newImplementation",
-                "type": "address"
-            }
-        ],
-        "name": "upgradeNTokenBeacon",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"

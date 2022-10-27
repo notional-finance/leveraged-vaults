@@ -79,6 +79,7 @@ def check_invariant(env, vault, accounts, maturities):
     assert vaultTotalVaultShares == accountTotalVaultShares
     auraPool = interface.IAuraRewardPool(vault.getStrategyContext()["stakingContext"]["auraRewardPool"])
     assert pytest.approx(vaultTotalStrategyTokens, rel=1e-6) == math.floor(auraPool.balanceOf(vault.address) / 1e10)
+    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"] == auraPool.balanceOf(vault)
 
 def check_account(env, vault, account, vaultShares, fCash):
     vaultAccount = env.notional.getVaultAccount(account, vault.address)

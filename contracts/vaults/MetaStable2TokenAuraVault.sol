@@ -155,7 +155,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         );
     }
 
-    function _strategyContext() private view returns (MetaStable2TokenAuraStrategyContext memory) {
+    function _strategyContext() internal view returns (MetaStable2TokenAuraStrategyContext memory) {
         return MetaStable2TokenAuraStrategyContext({
             poolContext: _twoTokenPoolContext(),
             oracleContext: _stableOracleContext(),

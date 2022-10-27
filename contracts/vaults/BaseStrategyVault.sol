@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import {Token, TokenType} from "../global/Types.sol";
-import {Initializable} from "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
