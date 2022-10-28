@@ -47,7 +47,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         initializer
         onlyNotionalOwner
     {
-        __INIT_BALANCER_VAULT(params.name, params.borrowCurrencyId);
+        __INIT_VAULT(params.name, params.borrowCurrencyId);
         BalancerVaultStorage.setStrategyVaultSettings(params.settings);
         (uint256[] memory balances, uint256[] memory scalingFactors) = _getScaledBalances();
 

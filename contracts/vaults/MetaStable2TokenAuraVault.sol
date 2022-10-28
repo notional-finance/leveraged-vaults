@@ -48,7 +48,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         initializer
         onlyNotionalOwner
     {
-        __INIT_BALANCER_VAULT(params.name, params.borrowCurrencyId);
+        __INIT_VAULT(params.name, params.borrowCurrencyId);
         BalancerVaultStorage.setStrategyVaultSettings(params.settings);
         _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }

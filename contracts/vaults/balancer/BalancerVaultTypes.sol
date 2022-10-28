@@ -52,7 +52,7 @@ struct RedeemParams {
 struct TradeParams {
     uint16 dexId;
     TradeType tradeType;
-    uint32 oracleSlippagePercentOrLimit;
+    uint256 oracleSlippagePercentOrLimit;
     bool tradeUnwrapped;
     bytes exchangeData;
 }

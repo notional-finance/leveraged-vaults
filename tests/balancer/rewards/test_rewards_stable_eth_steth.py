@@ -1,8 +1,16 @@
 import pytest
+import brownie
 from brownie import ZERO_ADDRESS, Wei, accounts
 from tests.fixtures import *
 from tests.balancer.helpers import enterMaturity, get_metastable_amounts
-from scripts.common import get_univ3_single_data, get_univ3_batch_data, DEX_ID, TRADE_TYPE
+from scripts.common import (
+    get_univ3_single_data, 
+    get_univ3_batch_data, 
+    DEX_ID, 
+    TRADE_TYPE,
+    set_dex_flags,
+    set_trade_type_flags
+)
 
 chain = Chain()
 
@@ -13,38 +21,34 @@ def test_claim_rewards_success(StratStableETHstETH):
     enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     chain.sleep(3600 * 24 * 365)
     chain.mine()
-    feeReceiver = vault.getStrategyContext()["baseStrategy"]["feeReceiver"]
-    feePercentage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["feePercentage"] / 1e2
     assert env.tokens["BAL"].balanceOf(vault.address) == 0
     assert env.tokens["AURA"].balanceOf(vault.address) == 0
-    assert env.tokens["BAL"].balanceOf(feeReceiver) == 0
-    assert env.tokens["AURA"].balanceOf(feeReceiver) == 0
+
+    # Cannot claim without the proper role assigned
+    with brownie.reverts():
+        vault.claimRewardTokens.call({"from": accounts[1]})
+
+    # Only Notional owner can grant roles
+    with brownie.reverts():
+        vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
+
+    vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": env.notional.owner()})
     vault.claimRewardTokens({"from": accounts[1]})
-    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 7724567060268075278
-    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 29384253097259758357
-    # Test profit skimming
-    assert pytest.approx(
-        env.tokens["BAL"].balanceOf(feeReceiver) / (
-            env.tokens["BAL"].balanceOf(vault.address) + env.tokens["BAL"].balanceOf(feeReceiver)) * 100,
-        rel=1e-3
-    ) == feePercentage
-    assert pytest.approx(
-        env.tokens["AURA"].balanceOf(feeReceiver) / (
-            env.tokens["AURA"].balanceOf(vault.address) + env.tokens["AURA"].balanceOf(feeReceiver)) * 100,
-        rel=1e-3
-    ) == feePercentage
+
+    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 9832364937130122743
+    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 36379750267381454149
 
 def test_reinvest_rewards_success(StratStableETHstETH):
     (env, vault) = StratStableETHstETH
     rewardAmount = Wei(50e18)
     env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
 
-    dynamicTradeParams = "(uint16,uint8,uint32,bool,bytes)"
-    singleSidedRewardTradeParams = "(address,address,uint256,{})".format(dynamicTradeParams)
+    tradeParams = "(uint16,uint8,uint256,bool,bytes)"
+    singleSidedRewardTradeParams = "(address,address,uint256,{})".format(tradeParams)
     balanced2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
     (primaryAmount, secondaryAmount) = get_metastable_amounts(vault.getStrategyContext()["poolContext"], rewardAmount)
-    assert vault.getStrategyContext()["baseStrategy"]["totalBPTHeld"] == 0
-    vault.reinvestReward([eth_abi.encode_abi(
+    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"] == 0
+    rewardParams = [eth_abi.encode_abi(
         [balanced2TokenRewardTradeParams],
         [[
             [
@@ -54,7 +58,7 @@ def test_reinvest_rewards_success(StratStableETHstETH):
                 [
                     DEX_ID["UNISWAP_V3"],
                     TRADE_TYPE["EXACT_IN_SINGLE"],
-                    Wei(5e6),
+                    0,
                     False,
                     get_univ3_single_data(3000)
                 ]
@@ -66,7 +70,7 @@ def test_reinvest_rewards_success(StratStableETHstETH):
                 [
                     DEX_ID["UNISWAP_V3"],
                     TRADE_TYPE["EXACT_IN_BATCH"],
-                    Wei(5e6),
+                    Wei(0.05e18), # static slippage
                     False,
                     get_univ3_batch_data([
                         env.tokens["BAL"].address, 3000, env.tokens["WETH"].address, 500, env.tokens["wstETH"].address
@@ -74,7 +78,28 @@ def test_reinvest_rewards_success(StratStableETHstETH):
                 ]
             ]
         ]]
-    ), 0],
-        {"from": accounts[1]}
-    )
-    assert pytest.approx(vault.getStrategyContext()["baseStrategy"]["totalBPTHeld"], rel=1e-2) == 216521031523390134
+    ), 0]
+
+    # Cannot reinvest without the proper role assigned
+    with brownie.reverts():
+        vault.reinvestReward.call(rewardParams, {"from": accounts[1]})
+
+    # Only Notional owner can grant roles
+    with brownie.reverts():
+        vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
+
+    vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": env.notional.owner()})
+
+    # Cannot trade BAL without token permissions
+    with brownie.reverts():
+        vault.reinvestReward.call(rewardParams, {"from": accounts[1]})
+
+    env.tradingModule.setTokenPermissions(
+        vault.address, 
+        env.tokens["BAL"].address, 
+        [True, set_dex_flags(0, UNISWAP_V3=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True, EXACT_IN_BATCH=True)], 
+        {"from": env.notional.owner()})
+
+    vault.reinvestReward(rewardParams, {"from": accounts[1]})
+
+    assert pytest.approx(vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"], rel=1e-2) == 215515074459105587

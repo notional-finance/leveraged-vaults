@@ -10,10 +10,16 @@ import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
 import {TradeHandler} from "../trading/TradeHandler.sol";
 import {nProxy} from "../proxy/nProxy.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-abstract contract BaseStrategyVault is Initializable, IStrategyVault {
+abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessControlUpgradeable {
     using TokenUtils for IERC20;
     using TradeHandler for Trade;
+
+    bytes32 internal constant NORMAL_SETTLEMENT_ROLE = keccak256("NORMAL_SETTLEMENT_ROLE");
+    bytes32 internal constant EMERGENCY_SETTLEMENT_ROLE = keccak256("EMERGENCY_SETTLEMENT_ROLE");
+    bytes32 internal constant POST_MATURITY_SETTLEMENT_ROLE = keccak256("POST_MATURITY_SETTLEMENT_ROLE");
+    bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
 
     /// @notice Hardcoded on the implementation contract during deployment
     NotionalProxy public immutable NOTIONAL;
@@ -92,6 +98,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         address underlyingAddress = _getNotionalUnderlyingToken(borrowCurrencyId_);
         _UNDERLYING_TOKEN = IERC20(underlyingAddress);
         _UNDERLYING_IS_ETH = underlyingAddress == address(0);
+        _setupRole(DEFAULT_ADMIN_ROLE, NOTIONAL.owner());
     }
 
     function _getNotionalUnderlyingToken(uint16 currencyId) internal view returns (address) {
@@ -190,6 +197,15 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault {
         address token, uint256 underlyingRequired, bytes calldata data
     ) external onlyNotional returns (bytes memory returnData) {
         return _repaySecondaryBorrowCallback(token, underlyingRequired, data);
+    }
+
+    function getRoles() external view returns (StrategyVaultRoles memory) {
+        return StrategyVaultRoles({
+            normalSettlement: NORMAL_SETTLEMENT_ROLE,
+            emergencySettlement: EMERGENCY_SETTLEMENT_ROLE,
+            postMaturitySettlement: POST_MATURITY_SETTLEMENT_ROLE,
+            rewardReinvestment: REWARD_REINVESTMENT_ROLE
+        });
     }
 
     // Storage gap for future potential upgrades

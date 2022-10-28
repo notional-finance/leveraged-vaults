@@ -49,6 +49,9 @@ library StrategyUtils {
         require(
             params.tradeType == TradeType.EXACT_IN_SINGLE || params.tradeType == TradeType.EXACT_IN_BATCH
         );
+        if (useDynamicSlippage) {
+            require(params.oracleSlippagePercentOrLimit <= Constants.SLIPPAGE_LIMIT_PRECISION);
+        }
 
         // Sell residual secondary balance
         Trade memory trade = Trade(
@@ -77,8 +80,9 @@ library StrategyUtils {
         }
 
         if (useDynamicSlippage) {
+            /// @dev params.oracleSlippagePercentOrLimit checked above
             (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
-                params.dexId, tradingModule, params.oracleSlippagePercentOrLimit
+                params.dexId, tradingModule, uint32(params.oracleSlippagePercentOrLimit)
             );
         } else {
             (amountSold, amountBought) = trade._executeTrade(

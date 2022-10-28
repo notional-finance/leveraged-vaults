@@ -113,12 +113,9 @@ library Stable2TokenOracleMath {
             tokenIndex: 0
         });
 
+        /// @notice Check spotPrice against oracle price to make sure that 
+        /// the pool is not being manipulated
         _checkPriceLimit(strategyContext, oraclePrice, spotPrice);
-
-        // We always validate in terms of the primary here so it is the first value in the _balances array
-        uint256 invariant = StableMath._calculateInvariant(
-            oracleContext.ampParam, StableMath._balances(primaryAmount, secondaryAmount), true // round up
-        );
 
         /// @notice Balancer math functions expect all amounts to be in BALANCER_PRECISION
         uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
@@ -126,13 +123,16 @@ library Stable2TokenOracleMath {
         primaryAmount = primaryAmount * BalancerConstants.BALANCER_PRECISION / primaryPrecision;
         secondaryAmount = secondaryAmount * BalancerConstants.BALANCER_PRECISION / secondaryPrecision;
 
-        uint256 calculatedPairPrice = StableMath._calcSpotPrice({
-            amplificationParameter: oracleContext.ampParam,
-            invariant: invariant,
-            balanceX: primaryAmount,
-            balanceY: secondaryAmount
+        uint256 calculatedPairPrice = _getSpotPrice({
+            oracleContext: oracleContext,
+            poolContext: poolContext,
+            primaryBalance: primaryAmount,
+            secondaryBalance: secondaryAmount,
+            tokenIndex: 0
         });
 
+        /// @notice Check the calculated primary/secondary price against the oracle price
+        /// to make sure that we are joining the pool proportionally
         _checkPriceLimit(strategyContext, oraclePrice, calculatedPairPrice);
     }
 }
