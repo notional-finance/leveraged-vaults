@@ -20,18 +20,20 @@ import {
 import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol";
 import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
 import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {Stable2TokenOracleMath} from "./balancer/internal/math/Stable2TokenOracleMath.sol";
 import {MetaStable2TokenAuraHelper} from "./balancer/external/MetaStable2TokenAuraHelper.sol";
+import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
+import {IERC20} from "../../interfaces/IERC20.sol";
 
 contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     using BalancerVaultStorage for StrategyVaultSettings;
     using BalancerVaultStorage for StrategyVaultState;
     using StrategyUtils for StrategyContext;
+    using SettlementUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using MetaStable2TokenAuraHelper for MetaStable2TokenAuraStrategyContext;
     
@@ -175,4 +177,13 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             tokenIndex
         );
     }
+
+    function getEmergencySettlementBPTAmount(uint256 maturity) external view returns (uint256 bptToSettle) {
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        bptToSettle = context.baseStrategy._getEmergencySettlementParams({
+            maturity: maturity, 
+            totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
+        });
+    }
 }
+

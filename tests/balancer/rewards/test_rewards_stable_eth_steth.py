@@ -30,9 +30,9 @@ def test_claim_rewards_success(StratStableETHstETH):
 
     # Only Notional owner can grant roles
     with brownie.reverts():
-        vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
-
+        vault.grantRole.call(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
     vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": env.notional.owner()})
+    
     vault.claimRewardTokens({"from": accounts[1]})
 
     assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 9832364937130122743
@@ -86,8 +86,7 @@ def test_reinvest_rewards_success(StratStableETHstETH):
 
     # Only Notional owner can grant roles
     with brownie.reverts():
-        vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
-
+        vault.grantRole.call(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
     vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": env.notional.owner()})
 
     # Cannot trade BAL without token permissions

@@ -1,4 +1,5 @@
 import pytest
+import brownie
 from brownie import accounts
 from brownie.network.state import Chain
 from tests.fixtures import *
@@ -16,6 +17,12 @@ def test_single_maturity_full_redemption_success(StratStableETHstETH):
     redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
         DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
     ))
+
+    # Min entry blocks
+    with brownie.reverts():
+        exitVaultPercent(env, vault, accounts[0], 1.0, redeemParams, True)
+    chain.mine(5)
+
     exitVaultPercent(env, vault, accounts[0], 1.0, redeemParams)
     check_invariant(env, vault, [accounts[0]], [maturity])
     check_account(env, vault, accounts[0], 0, 0)
@@ -26,12 +33,17 @@ def test_single_maturity_partial_redemption_success(StratStableETHstETH):
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
-
     vaultSharesBefore =  env.notional.getVaultAccount(accounts[0], vault.address)["vaultShares"]
     primaryAmountBefore = accounts[0].balance()
     redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
         DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
     ))
+
+    # Min entry blocks
+    with brownie.reverts():
+        exitVaultPercent(env, vault, accounts[0], 0.5, redeemParams, True)
+    chain.mine(5)
+
     (sharesRedeemed, fCashRepaid) = exitVaultPercent(env, vault, accounts[0], 0.5, redeemParams)
     check_invariant(env, vault, [accounts[0]], [maturity])
     check_account(env, vault, accounts[0], vaultSharesBefore - sharesRedeemed, primaryBorrowAmount - fCashRepaid)
@@ -53,6 +65,13 @@ def test_multiple_maturities_full_redemption_success(StratStableETHstETH):
     ))
     primaryAmountBefore1 = accounts[0].balance()
     primaryAmountBefore2 = accounts[1].balance()
+
+    # Min entry blocks
+    with brownie.reverts():
+        exitVaultPercent(env, vault, accounts[0], 1, redeemParams, True)
+        exitVaultPercent(env, vault, accounts[1], 1, redeemParams, True)
+    chain.mine(5)
+
     exitVaultPercent(env, vault, accounts[0], 1, redeemParams)
     check_invariant(env, vault, [accounts[0], accounts[1]], [maturity1, maturity2])
     check_account(env, vault, accounts[0], 0, 0)
@@ -75,6 +94,13 @@ def test_multiple_maturities_partial_redemption_success(StratStableETHstETH):
     vaultSharesBefore2 =  env.notional.getVaultAccount(accounts[1], vault.address)["vaultShares"]
     primaryAmountBefore1 = accounts[0].balance()
     primaryAmountBefore2 = accounts[1].balance()
+
+    # Min entry blocks
+    with brownie.reverts():
+        exitVaultPercent(env, vault, accounts[0], 0.5, redeemParams, True)
+        exitVaultPercent(env, vault, accounts[1], 0.5, redeemParams, True)
+    chain.mine(5)
+
     (sharesRedeemed, fCashRepaid) = exitVaultPercent(env, vault, accounts[0], 0.5, redeemParams)
     check_invariant(env, vault, [accounts[0], accounts[1]], [maturity1, maturity2])
     check_account(env, vault, accounts[0], vaultSharesBefore1 - sharesRedeemed, primaryBorrowAmount - fCashRepaid)

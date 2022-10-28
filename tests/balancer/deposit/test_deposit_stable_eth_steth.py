@@ -4,7 +4,7 @@ from brownie import ZERO_ADDRESS, accounts
 from brownie.network.state import Chain
 from brownie.convert import to_bytes
 from tests.fixtures import *
-from tests.balancer.helpers import enterMaturity, check_invariant
+from tests.balancer.helpers import enterMaturity, check_invariant, get_expected_borrow_amount
 from scripts.common import (
     get_deposit_params, 
     get_updated_vault_settings, 
@@ -16,13 +16,6 @@ from scripts.common import (
 )
 
 chain = Chain()
-
-def get_expected_borrow_amount(env, currencyId, maturityIndex, primaryBorrowAmount):
-    maturity = env.notional.getActiveMarkets(currencyId)[maturityIndex][1]
-    expectedBorrowAmount = env.notional.getPrincipalFromfCashBorrow(
-        1, primaryBorrowAmount, maturity, 0, chain.time()
-    )["borrowAmountUnderlying"]
-    return expectedBorrowAmount
 
 def get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount, primaryPercent=1):
     totalJoinAmount = depositAmount + expectedBorrowAmount
