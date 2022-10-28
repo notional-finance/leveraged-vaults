@@ -31,6 +31,11 @@ def StratStableETHstETH():
         {"from": env.notional.owner()})
     env.tradingModule.setTokenPermissions(
         vault.address, 
+        env.tokens["stETH"].address, 
+        [True, set_dex_flags(0, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.notional.owner()})
+    env.tradingModule.setTokenPermissions(
+        vault.address, 
         env.tokens["WETH"].address, 
         [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
         {"from": env.notional.owner()})
