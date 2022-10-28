@@ -167,8 +167,6 @@ struct ReinvestRewardParams {
 
 struct StrategyVaultSettings {
     uint256 maxUnderlyingSurplus;
-    /// @notice Balancer oracle window in seconds
-    uint32 oracleWindowInSeconds;
     /// @notice Slippage limit for normal settlement
     uint32 settlementSlippageLimitPercent;
     /// @notice Slippage limit for post maturity settlement
