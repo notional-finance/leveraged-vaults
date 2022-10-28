@@ -1,6 +1,7 @@
 import pytest
 import brownie
 from brownie import accounts
+from brownie.convert import to_bytes
 from brownie.network.state import Chain
 from tests.fixtures import *
 from tests.balancer.helpers import check_invariant, check_account, enterMaturity, exitVaultPercent
@@ -23,6 +24,22 @@ def test_single_maturity_full_redemption_success(StratStableETHstETH):
         exitVaultPercent(env, vault, accounts[0], 1.0, redeemParams, True)
     chain.mine(5)
 
+    # Trade unwrapped
+    exitVaultPercent(env, vault, accounts[0], 1.0, redeemParams)
+    check_invariant(env, vault, [accounts[0]], [maturity])
+    check_account(env, vault, accounts[0], 0, 0)
+    assert pytest.approx(accounts[0].balance() - primaryAmountBefore, rel=5e-2) == depositAmount
+
+    chain.undo()
+
+    # Trade wrapped
+    redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
+        DEX_ID["BALANCER_V2"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, False,
+        eth_abi.encode_abi(
+            ["(bytes32)"],
+            [[to_bytes("0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080", "bytes32")]]
+        )
+    ))
     exitVaultPercent(env, vault, accounts[0], 1.0, redeemParams)
     check_invariant(env, vault, [accounts[0]], [maturity])
     check_account(env, vault, accounts[0], 0, 0)

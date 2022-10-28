@@ -38,7 +38,6 @@ StrategyConfig = {
             "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 100e18, # 10 ETH
-            "oracleWindowInSeconds": 3600,
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimitPercent": 5e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
@@ -66,7 +65,6 @@ StrategyConfig = {
             "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 10000e18, # 10000 DAI
-            "oracleWindowInSeconds": 0,
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimitPercent": 5e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
@@ -146,7 +144,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["primaryCurrency"],
                     [
                         stratConfig["maxUnderlyingSurplus"],
-                        stratConfig["oracleWindowInSeconds"],
                         stratConfig["settlementSlippageLimitPercent"], 
                         stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                         stratConfig["emergencySettlementSlippageLimitPercent"], 
@@ -166,7 +163,6 @@ class BalancerEnvironment(Environment):
                 stratConfig["primaryCurrency"],
                 [
                     stratConfig["maxUnderlyingSurplus"],
-                    stratConfig["oracleWindowInSeconds"],
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
