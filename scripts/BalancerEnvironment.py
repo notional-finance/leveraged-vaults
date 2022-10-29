@@ -117,7 +117,6 @@ class BalancerEnvironment(Environment):
         self.liquidator = self.deployLiquidator()
         self.WSTETHWhale = accounts.at('0x248ccbf4864221fc0e840f29bb042ad5bfc89b5c', force=True)
 
-
     def deployBalancerVault(self, strat, vaultContract, libs=None):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
 
