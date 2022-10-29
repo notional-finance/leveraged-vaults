@@ -12,7 +12,7 @@ from scripts.common import (
 
 chain = Chain()
 
-def test_single_maturity_low_leverage_success(StratStableETHstETH):
+def test_single_maturity_success(StratStableETHstETH):
     (env, vault) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
@@ -23,8 +23,16 @@ def test_single_maturity_low_leverage_success(StratStableETHstETH):
     # Should be undercollateralized
     assert collateralInfo["collateralRatio"] < collateralInfo["minCollateralRatio"]
 
-    assetAmountFromLiquidator = collateralInfo["maxLiquidatorDepositAssetCash"]
+    # Manipulation the valuation factor causes the vault to transfer extra tokens
+    # to the liquidator. We keep track of this for the comparison at the end.
     vaultSharesToLiquidator = collateralInfo["vaultSharesToLiquidator"]
+    valuationFixBefore = vault.convertStrategyToUnderlying(accounts[0], vaultSharesToLiquidator, maturity)
+    vault.setValuationFactor(accounts[0], 1e8, {"from": accounts[0]})
+    valuationFixAfter = vault.convertStrategyToUnderlying(accounts[0], vaultSharesToLiquidator, maturity)
+    vault.setValuationFactor(accounts[0], 0.9e8, {"from": accounts[0]})
+    valuationFix = valuationFixAfter - valuationFixBefore
+
+    assetAmountFromLiquidator = collateralInfo["maxLiquidatorDepositAssetCash"]
     vaultState = env.notional.getVaultState(vault, maturity)
     assetRate = env.notional.getCurrencyAndRates(1)["assetRate"]
     strategyTokensToRedeem = vaultSharesToLiquidator / vaultState["totalVaultShares"] * vaultState["totalStrategyTokens"]
@@ -42,5 +50,7 @@ def test_single_maturity_low_leverage_success(StratStableETHstETH):
         [1, accounts[0].address, vault.address, redeemParams], 
         {"from": env.liquidator.owner()}
     )
+
     # 0.04 == liquidation discount
-    assert pytest.approx(env.tokens["WETH"].balanceOf(env.liquidator.owner()), rel=1e-4) == underlyingRedeemed * 0.04
+    expectedProfit = valuationFix + underlyingRedeemed * 0.04
+    assert pytest.approx(env.tokens["WETH"].balanceOf(env.liquidator.owner()), rel=1e-2) == expectedProfit

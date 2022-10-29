@@ -92,7 +92,6 @@ def set_flags(flags, **kwargs):
 def get_updated_vault_settings(settings, **kwargs):
     return [
         kwargs.get("maxUnderlyingSurplus", settings["maxUnderlyingSurplus"]), 
-        kwargs.get("oracleWindowInSeconds", settings["oracleWindowInSeconds"]), 
         kwargs.get("settlementSlippageLimitPercent", settings["settlementSlippageLimitPercent"]), 
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
         kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
