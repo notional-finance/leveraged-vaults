@@ -14,7 +14,7 @@ from brownie.convert.datatypes import Wei
 from brownie.network.state import Chain
 from brownie.convert import to_bytes
 from brownie import accounts, interface
-from scripts.common import deployArtifact, get_vault_config, set_flags, TRADE_TYPE
+from scripts.common import deployArtifact, get_vault_config, set_flags, TRADE_TYPE,  set_dex_flags, set_trade_type_flags
 from scripts.EnvironmentConfig import Environment
 from eth_utils import keccak
 
@@ -218,6 +218,37 @@ class BalancerEnvironment(Environment):
                 [[to_bytes(poolId, "bytes32")]]
             )
         ]
+    
+    def test_current_spot_price(self, vault):
+        spotPrice0 = vault.getSpotPrice(0)
+        spotPrice1 = vault.getSpotPrice(1)
+        assert 1/spotPrice1/spotPrice0 < 1e-35
+
+    def test_spot_price_within_1_perc_of_pair_price_after_trading(self, vault):
+        poolId = vault.getStrategyContext()["poolContext"]["basePool"].dict()['poolId']
+        pool = vault.getStrategyContext()["poolContext"]["basePool"]["pool"]        
+        self.tradingModule.setTokenPermissions(self.tradingModule.address, self.tokens["wstETH"].address, [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], {"from": self.notional.owner()})
+        self.tradingModule.setTokenPermissions(self.tradingModule.address, self.tokens["WETH"].address, [True, set_dex_flags(0, BALANCER_V2=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], {"from": self.notional.owner()})
+    
+        # Trade
+        self.tokens["wstETH"].transfer(self.tradingModule, 30000e18, {"from": self.WSTETHWhale})
+        tradeCallData = self.balancer_trade_exact_in_single(self.tokens["wstETH"].address, self.tokens["WETH"].address, 30000e18, poolId)
+        self.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 5e6, {"from": self.WSTETHWhale})
+
+        # Trade in small increments to update the balancer oracle pair price 
+        for i in range(0,10):
+            self.tokens["wstETH"].transfer(self.tradingModule, 1e18, {"from": self.WSTETHWhale})
+            tradeCallData = self.balancer_trade_exact_in_single(self.tokens["wstETH"].address, self.tokens["WETH"].address, 1e18, poolId)
+            self.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 5e6, {"from": self.WSTETHWhale})
+            tradeCallData = self.balancer_trade_exact_in_single(self.tokens["WETH"].address, self.tokens["wstETH"].address, 1e18, poolId)
+            self.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 5e6, {"from": self.WSTETHWhale})
+            chain.sleep(60)
+
+        secondaryScaleFactor = vault.getStrategyContext()["poolContext"]["secondaryScaleFactor"]/1e18
+        spotPrice0 = vault.getSpotPrice(0)/1e18
+        pairPrice = interface.IPriceOracle(pool).getLatest(0)/1e18
+        balancerPrice = 1/(pairPrice * secondaryScaleFactor)
+        assert spotPrice0/balancerPrice-1 < 0.01
 
 def getEnvironment(network = "mainnet"):
     if network == "mainnet-fork" or network == "hardhat-fork":
@@ -247,48 +278,5 @@ def main():
         [Boosted3TokenAuraHelper]
     )
 
-    poolId = vault1.getStrategyContext()["poolContext"]["basePool"].dict()['poolId']
-    pool = vault1.getStrategyContext()["poolContext"]["basePool"]["pool"]
-
-    env.tradingModule.setTokenPermissions(env.tradingModule.address, env.tokens["wstETH"].address, [True], {"from": env.notional.owner()})
-    env.tradingModule.setTokenPermissions(vault1.address, env.tokens["wstETH"].address, [True], {"from": env.notional.owner()})
-    for i in range(0,5):
-        primaryBalance = vault1.getStrategyContext()["poolContext"]["primaryBalance"]/1e18
-        secondaryBalance = vault1.getStrategyContext()["poolContext"]["secondaryBalance"]/1e18
-        primaryScaleFactor = vault1.getStrategyContext()["poolContext"]["primaryScaleFactor"]/1e18
-        secondaryScaleFactor = vault1.getStrategyContext()["poolContext"]["secondaryScaleFactor"]/1e18
-        secondaryBalanceBalancer = env.balancerVault.getPoolTokens(poolId)['balances'][0]/1e18
-        primaryBalanceBalancer = env.balancerVault.getPoolTokens(poolId)['balances'][1]/1e18
-
-        spotPrice = vault1.getSpotPrice(1)/1e18
-        oraclePrice = env.tradingModule.getOraclePrice(ZERO_ADDRESS, env.tokens["wstETH"])[0]/1e18
-        btpValueInWstETH = interface.IPriceOracle(pool).getLatest(1)/1e18
-        pairPrice = interface.IPriceOracle(pool).getLatest(0)/1e18
-        bptSupply = interface.IERC20(pool).totalSupply()/1e18
-        secondaryAmountInPrimary = secondaryBalance / spotPrice
-        poolValueInPrimary = primaryBalance + secondaryAmountInPrimary
-
-        env.tokens["wstETH"].transfer(env.tradingModule, 10000e18, {"from": env.WSTETHWhale})
-        tradeCallData = env.balancer_trade_exact_in_single(env.tokens["wstETH"].address, env.tokens["WETH"].address, 10000e18, poolId)
-        env.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 5e6, {"from": env.WSTETHWhale})
-        print()
-        
-        print("# of trades executed", i)
-        print("Primary Balance: ", primaryBalance)
-        print("Secondary Balance: ",secondaryBalance)
-        # print("primaryBalanceBalancer: ", primaryBalanceBalancer)
-        # print("secondaryBalanceBalancer: ", secondaryBalanceBalancer)
-        print()
-        print("primaryScaleFactor: ", primaryScaleFactor)
-        print("secondaryScaleFactor: ", secondaryScaleFactor)
-        print()
-        print("spotPrice: ", spotPrice)
-        print("oraclePrice: ", oraclePrice)
-        print("pairPrice wstETH/WETH", 1/(pairPrice * secondaryScaleFactor))
-        print("pairPrice WETH/stETH: ", pairPrice)
-        print("pairPrice WETH/wstETH: ", pairPrice * secondaryScaleFactor)
-        print()
-        print("poolValueInPrimary: ", poolValueInPrimary)
-        print("bptSupplyValueInPrimary ", bptSupply * btpValueInWstETH)
-        print()
-    
+    env.test_current_spot_price(vault1)
+    env.test_spot_price_within_1_perc_of_pair_price_after_trading(vault1)
