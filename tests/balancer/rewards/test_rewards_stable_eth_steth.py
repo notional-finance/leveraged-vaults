@@ -35,8 +35,8 @@ def test_claim_rewards_success(StratStableETHstETH):
     
     vault.claimRewardTokens({"from": accounts[1]})
 
-    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 9832364937130122743
-    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 36379750267381454149
+    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 5467774862544946181
+    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 20199134972592544500
 
 def test_reinvest_rewards_success(StratStableETHstETH):
     (env, vault) = StratStableETHstETH
@@ -101,4 +101,4 @@ def test_reinvest_rewards_success(StratStableETHstETH):
 
     vault.reinvestReward(rewardParams, {"from": accounts[1]})
 
-    assert pytest.approx(vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"], rel=1e-2) == 215515074459105587
+    assert pytest.approx(vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"], rel=1e-2) == 209476561588413989

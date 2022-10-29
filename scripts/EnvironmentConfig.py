@@ -75,98 +75,102 @@ class Environment:
     def upgradeNotional(self):
         self.notional.upgradeTo("0xD7c3Dc1C36d19cF4e8cea4eA143a2f4458Dd1937", {'from': self.notional.owner()})
 
-    def deployTradingModule(self):
-        emptyImpl = EmptyProxy.deploy({"from": self.deployer})
-        self.proxy = nProxy.deploy(emptyImpl.address, bytes(0), {"from": self.deployer})
+    def deployTradingModule(self, useFresh=False):
+        if useFresh == False:
+            self.tradingModule = Contract.from_abi("TradingModule", self.addresses["trading"]["proxy"], TradingModule.abi)
+            self.tradingModule.initialize(3600 * 24, {"from": self.notional.owner()})
+        else:
+            emptyImpl = EmptyProxy.deploy({"from": self.deployer})
+            self.proxy = nProxy.deploy(emptyImpl.address, bytes(0), {"from": self.deployer})
 
-        impl = TradingModule.deploy(self.notional.address, self.proxy.address, {"from": self.deployer})
-        emptyProxy = Contract.from_abi("EmptyProxy", self.proxy.address, EmptyProxy.abi)
-        emptyProxy.upgradeTo(impl.address, {"from": self.deployer})
+            impl = TradingModule.deploy(self.notional.address, self.proxy.address, {"from": self.deployer})
+            emptyProxy = Contract.from_abi("EmptyProxy", self.proxy.address, EmptyProxy.abi)
+            emptyProxy.upgradeTo(impl.address, {"from": self.deployer})
 
-        self.tradingModule = Contract.from_abi("TradingModule", self.proxy.address, TradingModule.abi)
+            self.tradingModule = Contract.from_abi("TradingModule", self.proxy.address, TradingModule.abi)
 
-        self.tradingModule.initialize(3600 * 24, {"from": self.notional.owner()})
+            self.tradingModule.initialize(3600 * 24, {"from": self.notional.owner()})
 
-        # ETH/USD oracle
-        self.tradingModule.setPriceOracle(
-            ZERO_ADDRESS, 
-            "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419", 
-            {"from": self.notional.owner()}
-        )
+            # ETH/USD oracle
+            self.tradingModule.setPriceOracle(
+                ZERO_ADDRESS, 
+                "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419", 
+                {"from": self.notional.owner()}
+            )
 
-        # WETH/USD oracle
-        self.tradingModule.setPriceOracle(
-            self.tokens["WETH"].address, 
-            "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419", 
-            {"from": self.notional.owner()}
-        )
-        # DAI/USD oracle
-        self.tradingModule.setPriceOracle(
-            self.tokens["DAI"].address,
-            "0xaed0c38402a5d19df6e4c03f4e2dced6e29c1ee9",
-            {"from": self.notional.owner()}
-        )
-        # USDC/USD oracle
-        self.tradingModule.setPriceOracle(
-            self.tokens["USDC"].address,
-            "0x8fffffd4afb6115b954bd326cbe7b4ba576818f6",
-            {"from": self.notional.owner()}
-        )
-        # USDT/USD oracle
-        self.tradingModule.setPriceOracle(
-            self.tokens["USDT"].address,
-            "0x3e7d1eab13ad0104d2750b8863b489d65364e32d",
-            {"from": self.notional.owner()}
-        )
-        # WBTC/USD oracle
-        self.tradingModule.setPriceOracle(
-            self.tokens["WBTC"].address,
-            "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
-            {"from": self.notional.owner()}
-        )
-        # BAL/USD oracle
-        self.tradingModule.setPriceOracle(
-            self.tokens["BAL"].address,
-            "0xdf2917806e30300537aeb49a7663062f4d1f2b5f",
-            {"from": self.notional.owner()}
-        )
-        # stETH/USD oracle
-        self.tradingModule.setPriceOracle(
-            self.tokens["stETH"].address,
-            "0xcfe54b5cd566ab89272946f602d76ea879cab4a8",
-            {"from": self.notional.owner()}
-        )
-        # wstETH/USD oracle
-        wstETHAdapater = WstETHChainlinkOracle.deploy(
-            "0xcfe54b5cd566ab89272946f602d76ea879cab4a8",
-            self.tokens["wstETH"].address,
-            {"from": self.notional.owner()}
-        )
-        self.tradingModule.setPriceOracle(
-            self.tokens["wstETH"].address,
-            wstETHAdapater.address,
-            {"from": self.notional.owner()}
-        )
-        # AURA/USD oracle
-        auraETHAdapter = BalancerPoolChainlinkAdapter.deploy(
-            self.notional,
-            "0xc29562b045d80fd77c69bec09541f5c16fe20d9d", 
-            "AURA/ETH Chainlink Adapter", 
-            3600,
-            True,
-            {"from": self.notional.owner()}    
-        )
-        auraUSDAdapter = ChainlinkAdapter.deploy(
-            "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",
-            auraETHAdapter.address,
-            "AURA/USD Chainlink Adapter",
-            {"from": self.notional.owner()}
-        )
-        self.tradingModule.setPriceOracle(
-            self.tokens["AURA"].address,
-            auraUSDAdapter.address,
-            {"from": self.notional.owner()}
-        )        
+            # WETH/USD oracle
+            self.tradingModule.setPriceOracle(
+                self.tokens["WETH"].address, 
+                "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419", 
+                {"from": self.notional.owner()}
+            )
+            # DAI/USD oracle
+            self.tradingModule.setPriceOracle(
+                self.tokens["DAI"].address,
+                "0xaed0c38402a5d19df6e4c03f4e2dced6e29c1ee9",
+                {"from": self.notional.owner()}
+            )
+            # USDC/USD oracle
+            self.tradingModule.setPriceOracle(
+                self.tokens["USDC"].address,
+                "0x8fffffd4afb6115b954bd326cbe7b4ba576818f6",
+                {"from": self.notional.owner()}
+            )
+            # USDT/USD oracle
+            self.tradingModule.setPriceOracle(
+                self.tokens["USDT"].address,
+                "0x3e7d1eab13ad0104d2750b8863b489d65364e32d",
+                {"from": self.notional.owner()}
+            )
+            # WBTC/USD oracle
+            self.tradingModule.setPriceOracle(
+                self.tokens["WBTC"].address,
+                "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
+                {"from": self.notional.owner()}
+            )
+            # BAL/USD oracle
+            self.tradingModule.setPriceOracle(
+                self.tokens["BAL"].address,
+                "0xdf2917806e30300537aeb49a7663062f4d1f2b5f",
+                {"from": self.notional.owner()}
+            )
+            # stETH/USD oracle
+            self.tradingModule.setPriceOracle(
+                self.tokens["stETH"].address,
+                "0xcfe54b5cd566ab89272946f602d76ea879cab4a8",
+                {"from": self.notional.owner()}
+            )
+            # wstETH/USD oracle
+            wstETHAdapater = WstETHChainlinkOracle.deploy(
+                "0xcfe54b5cd566ab89272946f602d76ea879cab4a8",
+                self.tokens["wstETH"].address,
+                {"from": self.notional.owner()}
+            )
+            self.tradingModule.setPriceOracle(
+                self.tokens["wstETH"].address,
+                wstETHAdapater.address,
+                {"from": self.notional.owner()}
+            )
+            # AURA/USD oracle
+            auraETHAdapter = BalancerPoolChainlinkAdapter.deploy(
+                self.notional,
+                "0xc29562b045d80fd77c69bec09541f5c16fe20d9d", 
+                "AURA/ETH Chainlink Adapter", 
+                3600,
+                True,
+                {"from": self.notional.owner()}    
+            )
+            auraUSDAdapter = ChainlinkAdapter.deploy(
+                "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",
+                auraETHAdapter.address,
+                "AURA/USD Chainlink Adapter",
+                {"from": self.notional.owner()}
+            )
+            self.tradingModule.setPriceOracle(
+                self.tokens["AURA"].address,
+                auraUSDAdapter.address,
+                {"from": self.notional.owner()}
+            )        
 
 
 def getEnvironment(network = "mainnet"):

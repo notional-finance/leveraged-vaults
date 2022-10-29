@@ -53,4 +53,4 @@ def test_single_maturity_success(StratStableETHstETH):
 
     # 0.04 == liquidation discount
     expectedProfit = valuationFix + underlyingRedeemed * 0.04
-    assert pytest.approx(env.tokens["WETH"].balanceOf(env.liquidator.owner()), rel=1e-2) == expectedProfit
+    assert pytest.approx(env.tokens["WETH"].balanceOf(env.liquidator.owner()), rel=5e-2) == expectedProfit
