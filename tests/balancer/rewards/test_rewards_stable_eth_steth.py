@@ -15,7 +15,7 @@ from scripts.common import (
 chain = Chain()
 
 def test_claim_rewards_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 100e8
     depositAmount = 50e18
     enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -35,11 +35,11 @@ def test_claim_rewards_success(StratStableETHstETH):
     
     vault.claimRewardTokens({"from": accounts[1]})
 
-    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 5467774862544946181
-    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 20199134972592544500
+    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 5262762817379772422
+    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 19440645847400879326
 
 def test_reinvest_rewards_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     rewardAmount = Wei(50e18)
     env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
 

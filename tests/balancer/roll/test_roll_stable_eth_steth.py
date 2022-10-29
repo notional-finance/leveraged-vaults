@@ -7,7 +7,7 @@ from scripts.common import (get_deposit_params)
 chain = Chain()
 
 def test_single_account_next_maturity_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])

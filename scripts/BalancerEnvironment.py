@@ -44,7 +44,7 @@ StrategyConfig = {
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "maxRewardTradeSlippageLimitPercent": 5e6,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
-            "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
+            "settlementWindow": 172800,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 500, # +/- 5%
             "balancerPoolSlippageLimitPercent": 9900, # 1%
         },
@@ -110,6 +110,34 @@ class BalancerEnvironment(Environment):
     def __init__(self, network) -> None:
         Environment.__init__(self, network)
         self.liquidator = self.deployLiquidator()
+
+    def initializeBalancerVault(self, vault, strat):
+        stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
+        vault.initialize(
+            [
+                stratConfig["name"],
+                stratConfig["primaryCurrency"],
+                [
+                    stratConfig["maxUnderlyingSurplus"],
+                    stratConfig["settlementSlippageLimitPercent"], 
+                    stratConfig["postMaturitySettlementSlippageLimitPercent"], 
+                    stratConfig["emergencySettlementSlippageLimitPercent"], 
+                    stratConfig["maxRewardTradeSlippageLimitPercent"],
+                    stratConfig["maxBalancerPoolShare"],
+                    stratConfig["settlementCoolDownInMinutes"],
+                    stratConfig["oraclePriceDeviationLimitPercent"],
+                    stratConfig["balancerPoolSlippageLimitPercent"]
+                ]
+            ],
+            {"from": self.notional.owner()}
+        )        
+
+        self.notional.updateVault(
+            vault.address,
+            stratConfig["vaultConfig"],
+            stratConfig["maxPrimaryBorrowCapacity"],
+            {"from": self.notional.owner()}
+        )
 
     def deployBalancerVault(self, strat, vaultContract, libs=None):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]

@@ -10,7 +10,7 @@ from scripts.common import get_dynamic_trade_params, get_redeem_params, DEX_ID, 
 chain = Chain()
 
 def test_single_maturity_full_redemption_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -46,7 +46,7 @@ def test_single_maturity_full_redemption_success(StratStableETHstETH):
     assert pytest.approx(accounts[0].balance() - primaryAmountBefore, rel=5e-2) == depositAmount
     
 def test_single_maturity_partial_redemption_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -72,7 +72,7 @@ def test_single_maturity_partial_redemption_success(StratStableETHstETH):
     assert pytest.approx(accounts[0].balance() - primaryAmountBefore, rel=5e-2) == depositAmount
 
 def test_multiple_maturities_full_redemption_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     depositAmount = 10e18
     primaryBorrowAmount = 5e8
     maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
@@ -99,7 +99,7 @@ def test_multiple_maturities_full_redemption_success(StratStableETHstETH):
     assert pytest.approx(accounts[0].balance() - primaryAmountBefore2, rel=5e-2) == depositAmount
 
 def test_multiple_maturities_partial_redemption_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     depositAmount = 10e18
     primaryBorrowAmount = 5e8
     maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])

@@ -22,12 +22,13 @@ from scripts.common import (
 chain = Chain()
 
 def test_normal_single_maturity(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
-    chain.sleep(maturity - 3600 * 24 * 6 - chain.time())
+    settlementWindow = vault.getStrategyContext()["baseStrategy"]["settlementPeriodInSeconds"]
+    chain.sleep(maturity - settlementWindow + 1 - chain.time())
     chain.mine(5)
     # Disable oracle freshness check
     env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
@@ -104,7 +105,7 @@ def test_normal_single_maturity(StratStableETHstETH):
     assert pytest.approx(totalUnderlyingCash, rel=1e-2) == depositAmount + expectedBorrowAmount
 
 def test_post_maturity_single_maturity(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
@@ -118,7 +119,7 @@ def test_post_maturity_single_maturity(StratStableETHstETH):
     with brownie.reverts():
         vault.settleVaultPostMaturity.call(maturity, tokensToRedeem, redeemParams, {"from": env.notional.owner()})
 
-    chain.sleep(maturity + 3600 * 24 - chain.time())
+    chain.sleep(maturity + 1 - chain.time())
     chain.mine(5)
     # Disable oracle freshness check
     env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
@@ -145,7 +146,7 @@ def test_post_maturity_single_maturity(StratStableETHstETH):
     assert vaultState["isSettled"] == True
 
 def test_emergency_single_maturity(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)

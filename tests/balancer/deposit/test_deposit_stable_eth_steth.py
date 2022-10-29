@@ -54,11 +54,11 @@ def get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount, pri
     return expectedBPTAmount
 
 def test_single_maturity_low_leverage_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     vaultAccount = env.notional.getVaultAccount(accounts[0], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -68,11 +68,11 @@ def test_single_maturity_low_leverage_success(StratStableETHstETH):
     check_invariant(env, vault, [accounts[0]], [maturity])
 
 def test_single_maturity_high_leverage_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     vaultAccount = env.notional.getVaultAccount(accounts[0], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -82,13 +82,13 @@ def test_single_maturity_high_leverage_success(StratStableETHstETH):
     check_invariant(env, vault, [accounts[0]], [maturity])
 
 def test_multiple_maturities_low_leverage_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 5e8
     depositAmount = 10e18
 
     # account 1
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     vaultAccount = env.notional.getVaultAccount(accounts[0], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -97,7 +97,7 @@ def test_multiple_maturities_low_leverage_success(StratStableETHstETH):
 
     # account 2
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 1, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     maturity2 = enterMaturity(env, vault, 1, 1, depositAmount, primaryBorrowAmount, accounts[1])
     vaultAccount = env.notional.getVaultAccount(accounts[1], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -107,13 +107,13 @@ def test_multiple_maturities_low_leverage_success(StratStableETHstETH):
     check_invariant(env, vault, [accounts[0], accounts[1]], [maturity1, maturity2])
 
 def test_multiple_maturities_high_leverage_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
 
     # account 1
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     vaultAccount = env.notional.getVaultAccount(accounts[0], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -122,7 +122,7 @@ def test_multiple_maturities_high_leverage_success(StratStableETHstETH):
 
     # account 2
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 1, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     maturity2 = enterMaturity(env, vault, 1, 1, depositAmount, primaryBorrowAmount, accounts[1])
     vaultAccount2 = env.notional.getVaultAccount(accounts[1], vault.address)
     assert pytest.approx(vaultAccount2["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -132,13 +132,13 @@ def test_multiple_maturities_high_leverage_success(StratStableETHstETH):
     check_invariant(env, vault, [accounts[0], accounts[1]], [maturity1, maturity2])
 
 def test_multiple_accounts_in_each_maturity_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
 
     # account 1
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     maturity1 = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     vaultAccount = env.notional.getVaultAccount(accounts[0], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -147,7 +147,7 @@ def test_multiple_accounts_in_each_maturity_success(StratStableETHstETH):
 
     # account 2
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[1])
     vaultAccount = env.notional.getVaultAccount(accounts[1], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -156,7 +156,7 @@ def test_multiple_accounts_in_each_maturity_success(StratStableETHstETH):
 
     # account 3
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 1, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     maturity2 = enterMaturity(env, vault, 1, 1, depositAmount, primaryBorrowAmount, accounts[2])
     vaultAccount = env.notional.getVaultAccount(accounts[2], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -165,7 +165,7 @@ def test_multiple_accounts_in_each_maturity_success(StratStableETHstETH):
 
     # account 4
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 1, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
     enterMaturity(env, vault, 1, 1, depositAmount, primaryBorrowAmount, accounts[3])
     vaultAccount = env.notional.getVaultAccount(accounts[3], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == expectedBPTAmount
@@ -175,11 +175,11 @@ def test_multiple_accounts_in_each_maturity_success(StratStableETHstETH):
     check_invariant(env, vault, [accounts[0], accounts[1], accounts[2], accounts[3]], [maturity1, maturity2])
 
 def test_secondary_currency_trading_unwrapped_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount, 0.5)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount, 0.5)
     totalUnderlyingAmount = depositAmount + expectedBorrowAmount
     depositParams = get_deposit_params(trade=get_deposit_trade_params(
         DEX_ID["CURVE"],  TRADE_TYPE["EXACT_IN_SINGLE"], (totalUnderlyingAmount) / 2, 5e6, True, bytes(0)
@@ -193,11 +193,11 @@ def test_secondary_currency_trading_unwrapped_success(StratStableETHstETH):
     check_invariant(env, vault, [accounts[0]], [maturity])
 
 def test_secondary_currency_trading_wrapped_success(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 40e8
     depositAmount = 10e18
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount, 0.5)
+    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount, 0.5)
     totalUnderlyingAmount = depositAmount + expectedBorrowAmount
     depositParams = get_deposit_params(trade=get_deposit_trade_params(
         DEX_ID["BALANCER_V2"],  TRADE_TYPE["EXACT_IN_SINGLE"], totalUnderlyingAmount / 2, 5e6, False, 
@@ -215,14 +215,14 @@ def test_secondary_currency_trading_wrapped_success(StratStableETHstETH):
     check_invariant(env, vault, [accounts[0]], [maturity])
 
 def test_leverage_ratio_too_high_failure(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     primaryBorrowAmount = 90e8
     depositAmount = 10e18
     with brownie.reverts("Insufficient Collateral"):
         enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0], True)
 
 def test_balancer_share_too_high_failure(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     settings = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]
     # Only Notional owner can change settings
     with brownie.reverts():

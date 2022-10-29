@@ -7,13 +7,13 @@ from tests.trading.helpers import balancer_trade_exact_in_single
 chain = Chain()
 
 def test_get_spot_price(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     spotPrice0 = vault.getSpotPrice(0)/1e18
     spotPrice1 = vault.getSpotPrice(1)/1e18
     assert pytest.approx((1/spotPrice1)/spotPrice0, rel=1e-35) == 1
 
 def test_spot_price_within_1_perc_of_pair_price_after_trading(StratStableETHstETH):
-    (env, vault) = StratStableETHstETH
+    (env, vault, mock) = StratStableETHstETH
     poolId = vault.getStrategyContext()["poolContext"]["basePool"].dict()['poolId']
     pool = vault.getStrategyContext()["poolContext"]["basePool"]["pool"]        
     env.tradingModule.setTokenPermissions(
