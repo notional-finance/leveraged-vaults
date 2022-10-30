@@ -2,7 +2,7 @@
 import math
 import pytest
 import brownie
-from brownie import accounts
+from brownie import accounts, Wei
 from brownie.network.state import Chain
 from tests.fixtures import *
 from tests.balancer.helpers import (
@@ -33,7 +33,7 @@ def test_normal_single_maturity(StratStableETHstETH):
     # Disable oracle freshness check
     env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
     redeemParams = get_redeem_params(
-        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0))
+        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(0.15e6), True, bytes(0))
     )
     tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * 0.5)
 
@@ -49,7 +49,7 @@ def test_normal_single_maturity(StratStableETHstETH):
     # Can't settle with bad slippage setting
     with brownie.reverts():
         vault.settleVaultNormal.call(maturity, tokensToRedeem, get_redeem_params(
-            0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 10e6, True, bytes(0))
+            0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(5e6), True, bytes(0))
         ), {"from": accounts[1]})
 
     # Can't redeem beyond maxUnderlyingSurplus
@@ -76,10 +76,10 @@ def test_normal_single_maturity(StratStableETHstETH):
         enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[1], True)
 
     # Redeem is allowed
-    redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
+    redeemParams2 = get_redeem_params(0, 0, get_dynamic_trade_params(
         DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
     ))
-    exitVaultPercent(env, vault, accounts[0], 1.0, redeemParams)
+    exitVaultPercent(env, vault, accounts[0], 1.0, redeemParams2)
     vaultState = env.notional.getVaultState(vault.address, maturity)
     assert vaultState["totalAssetCash"] == 0
     assert vaultState["totalStrategyTokens"] == 0
@@ -112,7 +112,7 @@ def test_post_maturity_single_maturity(StratStableETHstETH):
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * 0.5)
     redeemParams = get_redeem_params(
-        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0))
+        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(0.4e6), True, bytes(0))
     )
 
     # Can't call settleVaultPostMaturity before maturity
@@ -152,7 +152,7 @@ def test_emergency_single_maturity(StratStableETHstETH):
     expectedBorrowAmount = get_expected_borrow_amount(env, 1, 0, primaryBorrowAmount)
     maturity = enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
     redeemParams = get_redeem_params(
-        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0))
+        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(0.3e6), True, bytes(0))
     )
 
     # Role check

@@ -37,16 +37,16 @@ StrategyConfig = {
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
             "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 100e18, # 10 ETH
-            "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 5e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
-            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
-            "maxRewardTradeSlippageLimitPercent": 5e6,
-            "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
+            "maxUnderlyingSurplus": 20e18, # 20 ETH
+            "maxBalancerPoolShare": Wei(1.5e3), # 15%
+            "settlementSlippageLimitPercent": Wei(0.15e6), # 0.15%
+            "postMaturitySettlementSlippageLimitPercent": Wei(0.4e6), # 0.4%
+            "emergencySettlementSlippageLimitPercent": Wei(0.3e6), # 0.3%
+            "maxRewardTradeSlippageLimitPercent": 2e6, # 2%
+            "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
             "settlementWindow": 172800,  # 1-week settlement
-            "oraclePriceDeviationLimitPercent": 500, # +/- 5%
-            "balancerPoolSlippageLimitPercent": 9900, # 1%
+            "oraclePriceDeviationLimitPercent": 200, # +/- 2%
+            "balancerPoolSlippageLimitPercent": 9975, # 0.25%
         },
         "StratBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
