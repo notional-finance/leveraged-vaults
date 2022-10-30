@@ -3,6 +3,13 @@ pragma solidity >=0.7.6;
 
 interface IStrategyVault {
 
+    struct StrategyVaultRoles {
+        bytes32 normalSettlement;
+        bytes32 emergencySettlement;
+        bytes32 postMaturitySettlement;
+        bytes32 rewardReinvestment;
+    }
+
     function decimals() external view returns (uint8);
     function name() external view returns (string memory);
     function strategy() external view returns (bytes4 strategyId);

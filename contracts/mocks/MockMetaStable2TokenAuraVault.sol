@@ -5,6 +5,8 @@ import {AuraVaultDeploymentParams, MetaStable2TokenAuraStrategyContext} from "..
 import {MetaStable2TokenAuraVault} from "../vaults/MetaStable2TokenAuraVault.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {TwoTokenPoolUtils} from "../vaults/balancer/internal/pool/TwoTokenPoolUtils.sol";
+import {Stable2TokenOracleMath} from "../vaults/balancer/internal/math/Stable2TokenOracleMath.sol";
+import {BalancerConstants} from "../vaults/balancer/internal/BalancerConstants.sol";
 
 contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
     mapping(address => uint256) public valuationFactors;

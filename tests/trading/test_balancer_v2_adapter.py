@@ -1,11 +1,11 @@
 import pytest
-import eth_abi
 import brownie
 from brownie import Wei, ZERO_ADDRESS, accounts, network, MockVault
 from brownie.convert import to_bytes
 from brownie.network.state import Chain
-from scripts.common import DEX_ID, TRADE_TYPE, set_dex_flags, set_trade_type_flags
+from scripts.common import DEX_ID, set_dex_flags, set_trade_type_flags
 from scripts.EnvironmentConfig import getEnvironment
+from tests.trading.helpers import balancer_trade_exact_in_single, balancer_trade_exact_in_batch
 
 chain = Chain()
 
@@ -14,36 +14,6 @@ def run_around_tests():
     chain.snapshot()
     yield
     chain.revert()
-
-def balancer_trade_exact_in_single(sellToken, buyToken, amount, limit, poolId):
-    deadline = chain.time() + 20000
-    return [
-        TRADE_TYPE["EXACT_IN_SINGLE"], 
-        sellToken, 
-        buyToken, 
-        amount, 
-        limit, 
-        deadline, 
-        eth_abi.encode_abi(
-            ["(bytes32)"],
-            [[to_bytes(poolId, "bytes32")]]
-        )
-    ]
-
-def balancer_trade_exact_in_batch(sellToken, buyToken, amount, swaps, assets, limits):
-    deadline = chain.time() + 20000
-    return [
-        TRADE_TYPE["EXACT_IN_BATCH"], 
-        sellToken, 
-        buyToken, 
-        amount, 
-        0, 
-        deadline, 
-        eth_abi.encode_abi(
-            ['((bytes32,uint256,uint256,uint256,bytes)[],address[],int256[])'],
-            [[swaps, assets, limits]]
-        )
-    ]    
 
 def test_wstETH_to_WETH_exact_in_dynamic_slippage():
     env = getEnvironment(network.show_active())

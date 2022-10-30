@@ -5,7 +5,6 @@ import {
     ThreeTokenPoolContext, 
     TwoTokenPoolContext, 
     BoostedOracleContext,
-    OracleContext,
     AuraVaultDeploymentParams
 } from "../BalancerVaultTypes.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
@@ -118,7 +117,8 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         });
     }
 
-    function _threeTokenPoolContext(uint256[] memory balances) internal view returns (ThreeTokenPoolContext memory) {
+    function _threeTokenPoolContext(uint256[] memory balances, uint256[] memory scalingFactors) 
+        internal view returns (ThreeTokenPoolContext memory) {
         return ThreeTokenPoolContext({
             tertiaryToken: address(TERTIARY_TOKEN),
             tertiaryIndex: TERTIARY_INDEX,
@@ -133,6 +133,8 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
                 secondaryDecimals: SECONDARY_DECIMALS,
                 primaryBalance: balances[PRIMARY_INDEX],
                 secondaryBalance: balances[SECONDARY_INDEX],
+                primaryScaleFactor: scalingFactors[PRIMARY_INDEX],
+                secondaryScaleFactor: scalingFactors[SECONDARY_INDEX],
                 basePool: _poolContext()
             })
         });

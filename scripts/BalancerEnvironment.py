@@ -37,18 +37,16 @@ StrategyConfig = {
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
             "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 100e18, # 10 ETH
-            "oracleWindowInSeconds": 3600,
-            "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 5e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
-            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
-            "maxRewardTradeSlippageLimitPercent": 5e6,
-            "balancerOracleWeight": 0.6e4, # 60%
-            "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
-            "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-            "oraclePriceDeviationLimitPercent": 500, # +/- 5%
-            "balancerPoolSlippageLimitPercent": 9900, # 1%
+            "maxUnderlyingSurplus": 20e18, # 20 ETH
+            "maxBalancerPoolShare": Wei(1.5e3), # 15%
+            "settlementSlippageLimitPercent": Wei(0.15e6), # 0.15%
+            "postMaturitySettlementSlippageLimitPercent": Wei(0.4e6), # 0.4%
+            "emergencySettlementSlippageLimitPercent": Wei(0.3e6), # 0.3%
+            "maxRewardTradeSlippageLimitPercent": 2e6, # 2%
+            "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
+            "settlementWindow": 172800,  # 1-week settlement
+            "oraclePriceDeviationLimitPercent": 200, # +/- 2%
+            "balancerPoolSlippageLimitPercent": 9975, # 0.25%
         },
         "StratBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
@@ -67,13 +65,11 @@ StrategyConfig = {
             "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 10000e18, # 10000 DAI
-            "oracleWindowInSeconds": 0,
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimitPercent": 5e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "maxRewardTradeSlippageLimitPercent": 5e6,
-            "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -102,7 +98,6 @@ StrategyConfig = {
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "maxRewardTradeSlippageLimitPercent": 5e6,
-            "balancerOracleWeight": 0,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -115,6 +110,34 @@ class BalancerEnvironment(Environment):
     def __init__(self, network) -> None:
         Environment.__init__(self, network)
         self.liquidator = self.deployLiquidator()
+
+    def initializeBalancerVault(self, vault, strat):
+        stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
+        vault.initialize(
+            [
+                stratConfig["name"],
+                stratConfig["primaryCurrency"],
+                [
+                    stratConfig["maxUnderlyingSurplus"],
+                    stratConfig["settlementSlippageLimitPercent"], 
+                    stratConfig["postMaturitySettlementSlippageLimitPercent"], 
+                    stratConfig["emergencySettlementSlippageLimitPercent"], 
+                    stratConfig["maxRewardTradeSlippageLimitPercent"],
+                    stratConfig["maxBalancerPoolShare"],
+                    stratConfig["settlementCoolDownInMinutes"],
+                    stratConfig["oraclePriceDeviationLimitPercent"],
+                    stratConfig["balancerPoolSlippageLimitPercent"]
+                ]
+            ],
+            {"from": self.notional.owner()}
+        )        
+
+        self.notional.updateVault(
+            vault.address,
+            stratConfig["vaultConfig"],
+            stratConfig["maxPrimaryBorrowCapacity"],
+            {"from": self.notional.owner()}
+        )
 
     def deployBalancerVault(self, strat, vaultContract, libs=None):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
@@ -149,13 +172,11 @@ class BalancerEnvironment(Environment):
                     stratConfig["primaryCurrency"],
                     [
                         stratConfig["maxUnderlyingSurplus"],
-                        stratConfig["oracleWindowInSeconds"],
                         stratConfig["settlementSlippageLimitPercent"], 
                         stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                         stratConfig["emergencySettlementSlippageLimitPercent"], 
                         stratConfig["maxRewardTradeSlippageLimitPercent"],
                         stratConfig["maxBalancerPoolShare"],
-                        stratConfig["balancerOracleWeight"],
                         stratConfig["settlementCoolDownInMinutes"],
                         stratConfig["oraclePriceDeviationLimitPercent"],
                         stratConfig["balancerPoolSlippageLimitPercent"]
@@ -170,13 +191,11 @@ class BalancerEnvironment(Environment):
                 stratConfig["primaryCurrency"],
                 [
                     stratConfig["maxUnderlyingSurplus"],
-                    stratConfig["oracleWindowInSeconds"],
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
                     stratConfig["maxRewardTradeSlippageLimitPercent"],
                     stratConfig["maxBalancerPoolShare"],
-                    stratConfig["balancerOracleWeight"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
                     stratConfig["balancerPoolSlippageLimitPercent"]

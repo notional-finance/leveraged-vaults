@@ -58,12 +58,13 @@ def get_vault_config(**kwargs):
         kwargs.get("currencyId", 1),  # 1: currency id
         kwargs.get("minAccountBorrowSize", 100_000),  # 2: min account borrow size
         kwargs.get("minCollateralRatioBPS", 2000),  # 3: 20% collateral ratio
-        kwargs.get("feeRate5BPS", 20),  # 4: 1% fee
+        kwargs.get("feeRate5BPS", 0),  # 4: 1% fee
         kwargs.get("liquidationRate", 104),  # 5: 4% liquidation discount
         kwargs.get("reserveFeeShare", 20),  # 6: 20% reserve fee share
         kwargs.get("maxBorrowMarketIndex", 2),  # 7: 20% reserve fee share
         kwargs.get("maxDeleverageCollateralRatioBPS", 4000),  # 8: 40% max collateral ratio
-        kwargs.get("secondaryBorrowCurrencies", [0, 0, 0]),  # 9: none set
+        kwargs.get("secondaryBorrowCurrencies", [0, 0]),  # 9: none set
+        kwargs.get("maxRequiredAccountCollateralRatio", 30000),  # 10: none set
     ]
 
 def set_flags(flags, **kwargs):
@@ -91,13 +92,11 @@ def set_flags(flags, **kwargs):
 def get_updated_vault_settings(settings, **kwargs):
     return [
         kwargs.get("maxUnderlyingSurplus", settings["maxUnderlyingSurplus"]), 
-        kwargs.get("oracleWindowInSeconds", settings["oracleWindowInSeconds"]), 
         kwargs.get("settlementSlippageLimitPercent", settings["settlementSlippageLimitPercent"]), 
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
         kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
         kwargs.get("maxRewardTradeSlippageLimitPercent", settings["maxRewardTradeSlippageLimitPercent"]),
         kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
-        kwargs.get("balancerOracleWeight", settings["balancerOracleWeight"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
         kwargs.get("balancerPoolSlippageLimitPercent", settings["balancerPoolSlippageLimitPercent"])

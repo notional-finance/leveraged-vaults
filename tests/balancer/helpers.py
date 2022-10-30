@@ -1,7 +1,10 @@
 import math
 import pytest
 from brownie import Wei, interface
+from brownie.network.state import Chain
 from scripts.common import get_deposit_params
+
+chain = Chain()
 
 def get_metastable_amounts(poolContext, amount):
     primaryBalance = poolContext["primaryBalance"]
@@ -10,6 +13,17 @@ def get_metastable_amounts(poolContext, amount):
     primaryAmount = amount * primaryRatio
     secondaryAmount = amount - primaryAmount
     return (Wei(primaryAmount), Wei(secondaryAmount))
+
+def get_expected_borrow_amount(env, currencyId, maturityIndex, primaryBorrowAmount):
+    maturity = env.notional.getActiveMarkets(currencyId)[maturityIndex][1]
+    expectedBorrowAmount = env.notional.getPrincipalFromfCashBorrow(
+        1, primaryBorrowAmount, maturity, 0, chain.time()
+    )["borrowAmountUnderlying"]
+    return expectedBorrowAmount
+
+def convert_to_underlying(env, currencyId, assetCash):
+    assetRate = env.notional.getCurrencyAndRates(currencyId)["assetRate"]
+    return assetRate["rate"] * assetCash / assetRate["underlyingDecimals"]
 
 def enterMaturity(
     env, vault, currencyId, maturityIndex, depositAmount, primaryBorrowAmount, account, callStatic=False, depositParams=None

@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import {
     TwoTokenPoolContext, 
-    OracleContext, 
+    StableOracleContext, 
     PoolParams,
     DepositParams,
     TradeParams,
@@ -22,12 +22,12 @@ import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {Stable2TokenOracleMath} from "../math/Stable2TokenOracleMath.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
 import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
-import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 
 library TwoTokenPoolUtils {
@@ -39,6 +39,7 @@ library TwoTokenPoolUtils {
     using AuraStakingUtils for AuraStakingContext;
     using BalancerVaultStorage for StrategyVaultSettings;
     using BalancerVaultStorage for StrategyVaultState;
+    using Stable2TokenOracleMath for StableOracleContext;
 
     /// @notice Returns parameters for joining and exiting Balancer pools
     function _getPoolParams(
@@ -66,51 +67,24 @@ library TwoTokenPoolUtils {
     /// @notice Gets the oracle price pair price between two tokens using a weighted
     /// average between a chainlink oracle and the balancer TWAP oracle.
     /// @param poolContext oracle context variables
-    /// @param oracleContext oracle context variables
     /// @param tradingModule address of the trading module
     /// @return oraclePairPrice oracle price for the pair in 18 decimals
     function _getOraclePairPrice(
         TwoTokenPoolContext memory poolContext,
-        OracleContext memory oracleContext, 
         ITradingModule tradingModule
     ) internal view returns (uint256 oraclePairPrice) {
-        // NOTE: this balancer price is denominated in 18 decimal places
-        uint256 balancerWeightedPrice;
-        if (oracleContext.balancerOracleWeight > 0) {
-            uint256 balancerPrice = BalancerUtils._getTimeWeightedOraclePrice(
-                address(poolContext.basePool.pool),
-                IPriceOracle.Variable.PAIR_PRICE,
-                oracleContext.oracleWindowInSeconds
-            );
+        (int256 rate, int256 decimals) = tradingModule.getOraclePrice(
+            poolContext.primaryToken, poolContext.secondaryToken
+        );
+        require(rate > 0);
+        require(decimals >= 0);
 
-            if (poolContext.primaryIndex == 1) {
-                // If the primary index is the second token, we need to invert
-                // the balancer price.
-                balancerPrice = BalancerConstants.BALANCER_PRECISION_SQUARED / balancerPrice;
-            }
-
-            balancerWeightedPrice = balancerPrice * oracleContext.balancerOracleWeight;
+        if (uint256(decimals) != BalancerConstants.BALANCER_PRECISION) {
+            rate = (rate * int256(BalancerConstants.BALANCER_PRECISION)) / decimals;
         }
 
-        uint256 chainlinkWeightedPrice;
-        if (oracleContext.balancerOracleWeight < BalancerConstants.VAULT_PERCENT_BASIS) {
-            (int256 rate, int256 decimals) = tradingModule.getOraclePrice(
-                poolContext.primaryToken, poolContext.secondaryToken
-            );
-            require(rate > 0);
-            require(decimals >= 0);
-
-            if (uint256(decimals) != BalancerConstants.BALANCER_PRECISION) {
-                rate = (rate * int256(BalancerConstants.BALANCER_PRECISION)) / decimals;
-            }
-
-            // No overflow in rate conversion, checked above
-            chainlinkWeightedPrice = uint256(rate) * 
-                (BalancerConstants.VAULT_PERCENT_BASIS - oracleContext.balancerOracleWeight);
-        }
-
-        oraclePairPrice = (balancerWeightedPrice + chainlinkWeightedPrice) / 
-            BalancerConstants.VAULT_PERCENT_BASIS;
+        // No overflow in rate conversion, checked above
+        oraclePairPrice = uint256(rate);
     }
 
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
@@ -121,37 +95,34 @@ library TwoTokenPoolUtils {
     /// @return primaryAmount primary token balance
     function _getTimeWeightedPrimaryBalance(
         TwoTokenPoolContext memory poolContext,
-        OracleContext memory oracleContext,
+        StableOracleContext memory oracleContext,
         StrategyContext memory strategyContext,
         uint256 bptAmount
     ) internal view returns (uint256 primaryAmount) {
-        // Gets the BPT token price denominated in token index = 0
-        uint256 bptPrice = BalancerUtils._getTimeWeightedOraclePrice(
-            address(poolContext.basePool.pool),
-            IPriceOracle.Variable.BPT_PRICE,
-            oracleContext.oracleWindowInSeconds
-        );
+        uint256 oraclePairPrice = _getOraclePairPrice(poolContext, strategyContext.tradingModule);
+        // tokenIndex == 0 because _getOraclePairPrice always returns the price in terms of
+        // the primary currency
+        uint256 spotPrice = oracleContext._getSpotPrice({
+            poolContext: poolContext,
+            primaryBalance: poolContext.primaryBalance,
+            secondaryBalance: poolContext.secondaryBalance,
+            tokenIndex: 0
+        });
 
-        uint256 pairPrice = _getOraclePairPrice(poolContext, oracleContext, strategyContext.tradingModule);
+        // Make sure spot price is within oracleDeviationLimit of pairPrice
+        Stable2TokenOracleMath._checkPriceLimit(strategyContext, oraclePairPrice, spotPrice);
+        
+        // Get shares of primary and secondary balances with the provided bptAmount
+        uint256 totalBPTSupply = poolContext.basePool.pool.totalSupply();
+        uint256 primaryBalance = poolContext.primaryBalance * bptAmount / totalBPTSupply;
+        uint256 secondaryBalance = poolContext.secondaryBalance * bptAmount / totalBPTSupply;
+
+        // Value the secondary balance in terms of the primary token using the oraclePairPrice
+        uint256 secondaryAmountInPrimary = secondaryBalance * BalancerConstants.BALANCER_PRECISION / oraclePairPrice;
+
+        // Make sure primaryAmount is reported in primaryPrecision
         uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
-
-        if (poolContext.primaryIndex == 0) {
-            // Since bptPrice is always denominated in the first token, we can just multiply by
-            // the amount in this case. Both bptPrice and bptAmount are in 1e18 but we need to scale
-            // this back to the primary token's native precision.
-            // underlyingValue = (bptPrice * bptAmount * primaryPrecision) / (1e18 * 1e18)
-            primaryAmount = (bptPrice * bptAmount * primaryPrecision) / 
-                BalancerConstants.BALANCER_PRECISION_SQUARED;
-        } else {
-            // The second token in the BPT pool is the price that we want to get. In this case, we need to
-            // convert secondaryTokenValue to underlyingValue using the pairPrice.
-            // Both bptPrice and bptAmount are in 1e18
-            uint256 secondaryAmount = (bptPrice * bptAmount) / BalancerConstants.BALANCER_PRECISION;
-
-            // And then normalizing to primary token precision we add:
-            // PrimaryAmount = (SecondaryAmount * primaryPrecision) / PairPrice
-            primaryAmount = (secondaryAmount * primaryPrecision) / pairPrice;
-        }
+        primaryAmount = (primaryBalance + secondaryAmountInPrimary) * primaryPrecision / BalancerConstants.BALANCER_PRECISION;
     }
 
     function _approveBalancerTokens(TwoTokenPoolContext memory poolContext, address bptSpender) internal {
@@ -332,7 +303,7 @@ library TwoTokenPoolUtils {
     function _convertStrategyToUnderlying(
         TwoTokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
-        OracleContext memory oracleContext,
+        StableOracleContext memory oracleContext,
         uint256 strategyTokenAmount
     ) internal view returns (int256 underlyingValue) {
         

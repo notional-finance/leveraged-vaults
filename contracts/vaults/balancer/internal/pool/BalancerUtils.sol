@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 
 import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {PoolContext, PoolParams} from "../../BalancerVaultTypes.sol";
-import {IPriceOracle} from "../../../../../interfaces/balancer/IPriceOracle.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
@@ -16,22 +15,6 @@ library BalancerUtils {
     /// and Balancer uses WETH
     function getTokenAddress(address token) internal pure returns (address) {
         return token == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : address(token);
-    }
-
-    function _getTimeWeightedOraclePrice(
-        address pool,
-        IPriceOracle.Variable variable,
-        uint256 secs
-    ) internal view returns (uint256) {
-        IPriceOracle.OracleAverageQuery[]
-            memory queries = new IPriceOracle.OracleAverageQuery[](1);
-
-        queries[0].variable = variable;
-        queries[0].secs = secs;
-        queries[0].ago = 0; // now
-
-        // Gets the balancer time weighted average price denominated in the first token
-        return IPriceOracle(pool).getTimeWeightedAverage(queries)[0];
     }
 
     /// @notice Normalizes balances to 1e18 (used by Balancer price oracle functions)

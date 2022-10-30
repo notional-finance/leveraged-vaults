@@ -9,7 +9,6 @@ import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
-import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
 import {IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
@@ -53,7 +52,7 @@ struct RedeemParams {
 struct TradeParams {
     uint16 dexId;
     TradeType tradeType;
-    uint32 oracleSlippagePercentOrLimit;
+    uint256 oracleSlippagePercentOrLimit;
     bool tradeUnwrapped;
     bytes exchangeData;
 }
@@ -65,15 +64,9 @@ struct PoolParams {
     uint256 msgValue;
 }
 
-struct OracleContext {
-    uint256 oracleWindowInSeconds;
-    uint256 balancerOracleWeight;
-}
-
 struct StableOracleContext {
     /// @notice Amplification parameter
     uint256 ampParam;
-    OracleContext baseOracle;
 }
 
 struct BoostedOracleContext {
@@ -108,6 +101,8 @@ struct TwoTokenPoolContext {
     uint8 secondaryDecimals;
     uint256 primaryBalance;
     uint256 secondaryBalance;
+    uint256 primaryScaleFactor;
+    uint256 secondaryScaleFactor;
     PoolContext basePool;
 }
 
@@ -172,8 +167,6 @@ struct ReinvestRewardParams {
 
 struct StrategyVaultSettings {
     uint256 maxUnderlyingSurplus;
-    /// @notice Balancer oracle window in seconds
-    uint32 oracleWindowInSeconds;
     /// @notice Slippage limit for normal settlement
     uint32 settlementSlippageLimitPercent;
     /// @notice Slippage limit for post maturity settlement
@@ -183,7 +176,6 @@ struct StrategyVaultSettings {
     /// @notice Slippage limit for selling reward tokens
     uint32 maxRewardTradeSlippageLimitPercent;
     uint16 maxBalancerPoolShare;
-    uint16 balancerOracleWeight;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;
     /// @notice Limits the amount of allowable deviation from the oracle price
