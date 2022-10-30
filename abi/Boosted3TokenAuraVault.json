@@ -1,0 +1,1226 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "contract NotionalProxy",
+                "name": "notional_",
+                "type": "address"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "contract IAuraRewardPool",
+                        "name": "auraRewardPool",
+                        "type": "address"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "uint16",
+                                "name": "primaryBorrowCurrencyId",
+                                "type": "uint16"
+                            },
+                            {
+                                "internalType": "bytes32",
+                                "name": "balancerPoolId",
+                                "type": "bytes32"
+                            },
+                            {
+                                "internalType": "contract ILiquidityGauge",
+                                "name": "liquidityGauge",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "contract ITradingModule",
+                                "name": "tradingModule",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint32",
+                                "name": "settlementPeriodInSeconds",
+                                "type": "uint32"
+                            }
+                        ],
+                        "internalType": "struct DeploymentParams",
+                        "name": "baseParams",
+                        "type": "tuple"
+                    }
+                ],
+                "internalType": "struct AuraVaultDeploymentParams",
+                "name": "params",
+                "type": "tuple"
+            }
+        ],
+        "name": "constructor",
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "inputs": [],
+        "name": "CalculationDidNotConverge",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "ERC20Error",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "HasNotMatured",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint32",
+                "name": "lastSettlementTimestamp",
+                "type": "uint32"
+            },
+            {
+                "internalType": "uint32",
+                "name": "coolDownInMinutes",
+                "type": "uint32"
+            }
+        ],
+        "name": "InSettlementCoolDown",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "oraclePrice",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "poolPrice",
+                "type": "uint256"
+            }
+        ],
+        "name": "InvalidPrice",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "token",
+                "type": "address"
+            }
+        ],
+        "name": "InvalidPrimaryToken",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NotInSettlementWindow",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "PostMaturitySettlement",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "slippage",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint32",
+                "name": "limit",
+                "type": "uint32"
+            }
+        ],
+        "name": "SlippageTooHigh",
+        "type": "error"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "previousAdmin",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newAdmin",
+                "type": "address"
+            }
+        ],
+        "name": "AdminChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "beacon",
+                "type": "address"
+            }
+        ],
+        "name": "BeaconUpgraded",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint8",
+                "name": "version",
+                "type": "uint8"
+            }
+        ],
+        "name": "Initialized",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "previousAdminRole",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "newAdminRole",
+                "type": "bytes32"
+            }
+        ],
+        "name": "RoleAdminChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            }
+        ],
+        "name": "RoleGranted",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            }
+        ],
+        "name": "RoleRevoked",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "implementation",
+                "type": "address"
+            }
+        ],
+        "name": "Upgraded",
+        "type": "event"
+    },
+    {
+        "inputs": [],
+        "name": "DEFAULT_ADMIN_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "NOTIONAL",
+        "outputs": [
+            {
+                "internalType": "contract NotionalProxy",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "TRADING_MODULE",
+        "outputs": [
+            {
+                "internalType": "contract ITradingModule",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "claimRewardTokens",
+        "outputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "claimedBalances",
+                "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "bptClaim",
+                "type": "uint256"
+            }
+        ],
+        "name": "convertBPTClaimToStrategyTokens",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "strategyTokenAmount",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "strategyTokenAmount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            }
+        ],
+        "name": "convertStrategyToUnderlying",
+        "outputs": [
+            {
+                "internalType": "int256",
+                "name": "underlyingValue",
+                "type": "int256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "strategyTokenAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "convertStrategyTokensToBPTClaim",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "bptClaim",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [
+            {
+                "internalType": "uint8",
+                "name": "",
+                "type": "uint8"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "deposit",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+            }
+        ],
+        "name": "depositFromNotional",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "strategyTokensMinted",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getRoleAdmin",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRoles",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "bytes32",
+                        "name": "normalSettlement",
+                        "type": "bytes32"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "emergencySettlement",
+                        "type": "bytes32"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "postMaturitySettlement",
+                        "type": "bytes32"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "rewardReinvestment",
+                        "type": "bytes32"
+                    }
+                ],
+                "internalType": "struct IStrategyVault.StrategyVaultRoles",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getStrategyContext",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "components": [
+                            {
+                                "internalType": "address",
+                                "name": "tertiaryToken",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint8",
+                                "name": "tertiaryIndex",
+                                "type": "uint8"
+                            },
+                            {
+                                "internalType": "uint8",
+                                "name": "tertiaryDecimals",
+                                "type": "uint8"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "tertiaryBalance",
+                                "type": "uint256"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "address",
+                                        "name": "primaryToken",
+                                        "type": "address"
+                                    },
+                                    {
+                                        "internalType": "address",
+                                        "name": "secondaryToken",
+                                        "type": "address"
+                                    },
+                                    {
+                                        "internalType": "uint8",
+                                        "name": "primaryIndex",
+                                        "type": "uint8"
+                                    },
+                                    {
+                                        "internalType": "uint8",
+                                        "name": "secondaryIndex",
+                                        "type": "uint8"
+                                    },
+                                    {
+                                        "internalType": "uint8",
+                                        "name": "primaryDecimals",
+                                        "type": "uint8"
+                                    },
+                                    {
+                                        "internalType": "uint8",
+                                        "name": "secondaryDecimals",
+                                        "type": "uint8"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "primaryBalance",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "secondaryBalance",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "primaryScaleFactor",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "secondaryScaleFactor",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "components": [
+                                            {
+                                                "internalType": "contract IERC20",
+                                                "name": "pool",
+                                                "type": "address"
+                                            },
+                                            {
+                                                "internalType": "bytes32",
+                                                "name": "poolId",
+                                                "type": "bytes32"
+                                            }
+                                        ],
+                                        "internalType": "struct PoolContext",
+                                        "name": "basePool",
+                                        "type": "tuple"
+                                    }
+                                ],
+                                "internalType": "struct TwoTokenPoolContext",
+                                "name": "basePool",
+                                "type": "tuple"
+                            }
+                        ],
+                        "internalType": "struct ThreeTokenPoolContext",
+                        "name": "poolContext",
+                        "type": "tuple"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "uint256",
+                                "name": "ampParam",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "bptBalance",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "dueProtocolFeeBptAmount",
+                                "type": "uint256"
+                            }
+                        ],
+                        "internalType": "struct BoostedOracleContext",
+                        "name": "oracleContext",
+                        "type": "tuple"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "contract ILiquidityGauge",
+                                "name": "liquidityGauge",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "contract IAuraBooster",
+                                "name": "auraBooster",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "contract IAuraRewardPool",
+                                "name": "auraRewardPool",
+                                "type": "address"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "auraPoolId",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "contract IERC20[]",
+                                "name": "rewardTokens",
+                                "type": "address[]"
+                            }
+                        ],
+                        "internalType": "struct AuraStakingContext",
+                        "name": "stakingContext",
+                        "type": "tuple"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "uint32",
+                                "name": "settlementPeriodInSeconds",
+                                "type": "uint32"
+                            },
+                            {
+                                "internalType": "contract ITradingModule",
+                                "name": "tradingModule",
+                                "type": "address"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "maxUnderlyingSurplus",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint32",
+                                        "name": "settlementSlippageLimitPercent",
+                                        "type": "uint32"
+                                    },
+                                    {
+                                        "internalType": "uint32",
+                                        "name": "postMaturitySettlementSlippageLimitPercent",
+                                        "type": "uint32"
+                                    },
+                                    {
+                                        "internalType": "uint32",
+                                        "name": "emergencySettlementSlippageLimitPercent",
+                                        "type": "uint32"
+                                    },
+                                    {
+                                        "internalType": "uint32",
+                                        "name": "maxRewardTradeSlippageLimitPercent",
+                                        "type": "uint32"
+                                    },
+                                    {
+                                        "internalType": "uint16",
+                                        "name": "maxBalancerPoolShare",
+                                        "type": "uint16"
+                                    },
+                                    {
+                                        "internalType": "uint16",
+                                        "name": "settlementCoolDownInMinutes",
+                                        "type": "uint16"
+                                    },
+                                    {
+                                        "internalType": "uint16",
+                                        "name": "oraclePriceDeviationLimitPercent",
+                                        "type": "uint16"
+                                    },
+                                    {
+                                        "internalType": "uint16",
+                                        "name": "balancerPoolSlippageLimitPercent",
+                                        "type": "uint16"
+                                    }
+                                ],
+                                "internalType": "struct StrategyVaultSettings",
+                                "name": "vaultSettings",
+                                "type": "tuple"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "totalBPTHeld",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint80",
+                                        "name": "totalStrategyTokenGlobal",
+                                        "type": "uint80"
+                                    },
+                                    {
+                                        "internalType": "uint32",
+                                        "name": "lastSettlementTimestamp",
+                                        "type": "uint32"
+                                    }
+                                ],
+                                "internalType": "struct StrategyVaultState",
+                                "name": "vaultState",
+                                "type": "tuple"
+                            }
+                        ],
+                        "internalType": "struct StrategyContext",
+                        "name": "baseStrategy",
+                        "type": "tuple"
+                    }
+                ],
+                "internalType": "struct Boosted3TokenAuraStrategyContext",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "grantRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "hasRole",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "string",
+                        "name": "name",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint16",
+                        "name": "borrowCurrencyId",
+                        "type": "uint16"
+                    },
+                    {
+                        "components": [
+                            {
+                                "internalType": "uint256",
+                                "name": "maxUnderlyingSurplus",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint32",
+                                "name": "settlementSlippageLimitPercent",
+                                "type": "uint32"
+                            },
+                            {
+                                "internalType": "uint32",
+                                "name": "postMaturitySettlementSlippageLimitPercent",
+                                "type": "uint32"
+                            },
+                            {
+                                "internalType": "uint32",
+                                "name": "emergencySettlementSlippageLimitPercent",
+                                "type": "uint32"
+                            },
+                            {
+                                "internalType": "uint32",
+                                "name": "maxRewardTradeSlippageLimitPercent",
+                                "type": "uint32"
+                            },
+                            {
+                                "internalType": "uint16",
+                                "name": "maxBalancerPoolShare",
+                                "type": "uint16"
+                            },
+                            {
+                                "internalType": "uint16",
+                                "name": "settlementCoolDownInMinutes",
+                                "type": "uint16"
+                            },
+                            {
+                                "internalType": "uint16",
+                                "name": "oraclePriceDeviationLimitPercent",
+                                "type": "uint16"
+                            },
+                            {
+                                "internalType": "uint16",
+                                "name": "balancerPoolSlippageLimitPercent",
+                                "type": "uint16"
+                            }
+                        ],
+                        "internalType": "struct StrategyVaultSettings",
+                        "name": "settings",
+                        "type": "tuple"
+                    }
+                ],
+                "internalType": "struct InitParams",
+                "name": "params",
+                "type": "tuple"
+            }
+        ],
+        "name": "initialize",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "name",
+        "outputs": [
+            {
+                "internalType": "string",
+                "name": "",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "proxiableUUID",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "receiver",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "strategyTokens",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "underlyingToRepayDebt",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+            }
+        ],
+        "name": "redeemFromNotional",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "transferToReceiver",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "bytes",
+                        "name": "tradeData",
+                        "type": "bytes"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "minBPT",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct ReinvestRewardParams",
+                "name": "params",
+                "type": "tuple"
+            }
+        ],
+        "name": "reinvestReward",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "renounceRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "token",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "underlyingRequired",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+            }
+        ],
+        "name": "repaySecondaryBorrowCallback",
+        "outputs": [
+            {
+                "internalType": "bytes",
+                "name": "returnData",
+                "type": "bytes"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "revokeRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "maxUnderlyingSurplus",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "settlementSlippageLimitPercent",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "postMaturitySettlementSlippageLimitPercent",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "emergencySettlementSlippageLimitPercent",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint32",
+                        "name": "maxRewardTradeSlippageLimitPercent",
+                        "type": "uint32"
+                    },
+                    {
+                        "internalType": "uint16",
+                        "name": "maxBalancerPoolShare",
+                        "type": "uint16"
+                    },
+                    {
+                        "internalType": "uint16",
+                        "name": "settlementCoolDownInMinutes",
+                        "type": "uint16"
+                    },
+                    {
+                        "internalType": "uint16",
+                        "name": "oraclePriceDeviationLimitPercent",
+                        "type": "uint16"
+                    },
+                    {
+                        "internalType": "uint16",
+                        "name": "balancerPoolSlippageLimitPercent",
+                        "type": "uint16"
+                    }
+                ],
+                "internalType": "struct StrategyVaultSettings",
+                "name": "settings",
+                "type": "tuple"
+            }
+        ],
+        "name": "setStrategyVaultSettings",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+            }
+        ],
+        "name": "settleVaultEmergency",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "strategyTokensToRedeem",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+            }
+        ],
+        "name": "settleVaultNormal",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "maturity",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "strategyTokensToRedeem",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+            }
+        ],
+        "name": "settleVaultPostMaturity",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "strategy",
+        "outputs": [
+            {
+                "internalType": "bytes4",
+                "name": "",
+                "type": "bytes4"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes4",
+                "name": "interfaceId",
+                "type": "bytes4"
+            }
+        ],
+        "name": "supportsInterface",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newImplementation",
+                "type": "address"
+            }
+        ],
+        "name": "upgradeTo",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newImplementation",
+                "type": "address"
+            },
+            {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+            }
+        ],
+        "name": "upgradeToAndCall",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "stateMutability": "payable",
+        "type": "receive"
+    }
+]
