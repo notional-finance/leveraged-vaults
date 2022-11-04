@@ -1,0 +1,8 @@
+[profile.default]
+src = 'contracts'
+out = 'out'
+test = 'tests'
+libs = ['lib']
+gas_reports = ["*"]
+optimizer = true
+optimizer_runs = 20000
