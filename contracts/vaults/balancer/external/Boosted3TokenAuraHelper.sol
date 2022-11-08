@@ -156,8 +156,7 @@ library Boosted3TokenAuraHelper {
         (address rewardToken, uint256 primaryAmount) = context.poolContext._executeRewardTrades({
             stakingContext: stakingContext,
             tradingModule: strategyContext.tradingModule,
-            data: params.tradeData,
-            slippageLimit: strategyContext.vaultSettings.maxRewardTradeSlippageLimitPercent
+            data: params.tradeData
         });
 
         uint256 minBPT = context.poolContext._getMinBPT(

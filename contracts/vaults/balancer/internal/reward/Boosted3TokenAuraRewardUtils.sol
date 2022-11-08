@@ -39,8 +39,7 @@ library Boosted3TokenAuraRewardUtils {
         ThreeTokenPoolContext calldata poolContext,
         AuraStakingContext calldata stakingContext,
         ITradingModule tradingModule,
-        bytes calldata data,
-        uint256 slippageLimit
+        bytes calldata data
     ) internal returns (address rewardToken, uint256 primaryAmount) {
         SingleSidedRewardTradeParams memory params = abi.decode(data, (SingleSidedRewardTradeParams));
 

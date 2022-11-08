@@ -160,8 +160,7 @@ library MetaStable2TokenAuraHelper {
         ) = poolContext._executeRewardTrades(
             context.stakingContext,
             strategyContext.tradingModule,
-            params.tradeData,
-            strategyContext.vaultSettings.maxRewardTradeSlippageLimitPercent
+            params.tradeData
         );
 
         // Make sure we are joining with the right proportion to minimize slippage

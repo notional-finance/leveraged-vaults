@@ -111,6 +111,9 @@ class BalancerEnvironment(Environment):
         Environment.__init__(self, network)
         self.liquidator = self.deployLiquidator()
 
+    def getStratConfig(self, strat):
+        return StrategyConfig["balancer2TokenStrats"][strat]
+
     def initializeBalancerVault(self, vault, strat):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
         vault.initialize(
@@ -122,7 +125,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
-                    stratConfig["maxRewardTradeSlippageLimitPercent"],
                     stratConfig["maxBalancerPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
@@ -147,7 +149,7 @@ class BalancerEnvironment(Environment):
             for lib in libs:
                 lib.deploy({"from": self.deployer})
 
-        impl = vaultContract.deploy(
+        return vaultContract.deploy(
             self.addresses["notional"],
             [
                 stratConfig["auraRewardPool"],
@@ -162,29 +164,11 @@ class BalancerEnvironment(Environment):
             {"from": self.deployer}
         )
 
+    def deployVaultProxy(self, strat, impl, vaultContract):
+        stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
+
         proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, vaultContract.abi)
-
-        print(
-            vaultProxy.initialize.encode_input(
-                [
-                    stratConfig["name"],
-                    stratConfig["primaryCurrency"],
-                    [
-                        stratConfig["maxUnderlyingSurplus"],
-                        stratConfig["settlementSlippageLimitPercent"], 
-                        stratConfig["postMaturitySettlementSlippageLimitPercent"], 
-                        stratConfig["emergencySettlementSlippageLimitPercent"], 
-                        stratConfig["maxRewardTradeSlippageLimitPercent"],
-                        stratConfig["maxBalancerPoolShare"],
-                        stratConfig["settlementCoolDownInMinutes"],
-                        stratConfig["oraclePriceDeviationLimitPercent"],
-                        stratConfig["balancerPoolSlippageLimitPercent"]
-                    ]
-                ]
-            )
-        )
-
         vaultProxy.initialize(
             [
                 stratConfig["name"],
@@ -194,7 +178,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
-                    stratConfig["maxRewardTradeSlippageLimitPercent"],
                     stratConfig["maxBalancerPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],

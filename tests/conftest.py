@@ -24,34 +24,29 @@ def run_around_tests():
 @pytest.fixture()
 def StratStableETHstETH():
     env = getEnvironment(network.show_active())
+    strat = "StratStableETHstETH"
     vault = Contract.from_abi(
         "MetaStable2TokenAuraVault", 
         "0xF049B944eC83aBb50020774D48a8cf40790996e6", 
         MetaStable2TokenAuraVault.abi
     )
-    env.initializeBalancerVault(vault, "StratStableETHstETH")
-    env.tradingModule.setTokenPermissions(
-        vault.address, 
-        env.tokens["wstETH"].address, 
-        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
-        {"from": env.notional.owner()})
-    env.tradingModule.setTokenPermissions(
-        vault.address, 
-        env.tokens["stETH"].address, 
-        [True, set_dex_flags(0, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
-        {"from": env.notional.owner()})
-    env.tradingModule.setTokenPermissions(
-        vault.address, 
-        env.tokens["WETH"].address, 
-        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
-        {"from": env.notional.owner()})
-    env.tradingModule.setTokenPermissions(
-        vault.address, 
-        ZERO_ADDRESS, 
-        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
-        {"from": env.notional.owner()})
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+    stratConfig = env.getStratConfig(strat)
+    settingsData = vault.setStrategyVaultSettings.encode_input([
+        stratConfig["maxUnderlyingSurplus"],
+        stratConfig["settlementSlippageLimitPercent"], 
+        stratConfig["postMaturitySettlementSlippageLimitPercent"], 
+        stratConfig["emergencySettlementSlippageLimitPercent"], 
+        stratConfig["maxBalancerPoolShare"],
+        stratConfig["settlementCoolDownInMinutes"],
+        stratConfig["oraclePriceDeviationLimitPercent"],
+        stratConfig["balancerPoolSlippageLimitPercent"]
+    ])
+    vault.upgradeToAndCall(impl, settingsData, {"from": env.notional.owner()})
 
-    mock = env.deployBalancerVault("StratStableETHstETH", MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+    # Deploy mock contract necessary for liquidation tests
+    mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, mockImpl, MetaStable2TokenAuraVault)
     env.tradingModule.setTokenPermissions(
         mock.address, 
         env.tokens["wstETH"].address, 

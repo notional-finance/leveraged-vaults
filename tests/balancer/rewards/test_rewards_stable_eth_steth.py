@@ -33,10 +33,12 @@ def test_claim_rewards_success(StratStableETHstETH):
         vault.grantRole.call(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
     vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": env.notional.owner()})
     
-    vault.claimRewardTokens({"from": accounts[1]})
+    txn = vault.claimRewardTokens({"from": accounts[1]})
 
-    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 5262762817379772422
-    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 19440645847400879326
+    assert txn.return_value[0] == env.tokens["BAL"].balanceOf(vault.address)
+    assert txn.return_value[1] == env.tokens["AURA"].balanceOf(vault.address)
+    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 82947726591360320852
+    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 305248161917312885590
 
 def test_reinvest_rewards_success(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
@@ -47,7 +49,7 @@ def test_reinvest_rewards_success(StratStableETHstETH):
     singleSidedRewardTradeParams = "(address,address,uint256,{})".format(tradeParams)
     balanced2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
     (primaryAmount, secondaryAmount) = get_metastable_amounts(vault.getStrategyContext()["poolContext"], rewardAmount)
-    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"] == 0
+    bptBefore = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
     rewardParams = [eth_abi.encode_abi(
         [balanced2TokenRewardTradeParams],
         [[
@@ -89,16 +91,7 @@ def test_reinvest_rewards_success(StratStableETHstETH):
         vault.grantRole.call(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
     vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": env.notional.owner()})
 
-    # Cannot trade BAL without token permissions
-    with brownie.reverts():
-        vault.reinvestReward.call(rewardParams, {"from": accounts[1]})
-
-    env.tradingModule.setTokenPermissions(
-        vault.address, 
-        env.tokens["BAL"].address, 
-        [True, set_dex_flags(0, UNISWAP_V3=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True, EXACT_IN_BATCH=True)], 
-        {"from": env.notional.owner()})
-
     vault.reinvestReward(rewardParams, {"from": accounts[1]})
 
-    assert pytest.approx(vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"], rel=1e-2) == 209476561588413989
+    bptAfter = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
+    assert pytest.approx(bptAfter - bptBefore, rel=1e-2) == 209476561588413989

@@ -49,8 +49,7 @@ library TwoTokenAuraRewardUtils {
         TwoTokenPoolContext calldata poolContext,
         AuraStakingContext calldata stakingContext,
         ITradingModule tradingModule,
-        bytes calldata data,
-        uint256 slippageLimit
+        bytes calldata data
     ) internal returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
         Balanced2TokenRewardTradeParams memory params = abi.decode(
             data,
