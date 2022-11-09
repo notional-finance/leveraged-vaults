@@ -1,6 +1,6 @@
 import pytest
 import brownie
-from brownie import ZERO_ADDRESS, accounts
+from brownie import accounts
 from brownie.network.state import Chain
 from brownie.convert import to_bytes
 from tests.fixtures import *
@@ -15,8 +15,6 @@ from scripts.common import (
     get_deposit_params, 
     get_updated_vault_settings, 
     get_deposit_trade_params,
-    set_dex_flags,
-    set_trade_type_flags,
     DEX_ID,
     TRADE_TYPE
 )
@@ -145,7 +143,7 @@ def test_multiple_accounts_in_each_maturity_success(StratStableETHstETH):
     # account 3
     expectedBorrowAmount = get_expected_borrow_amount(env, currencyId, maturity2, primaryBorrowAmount)
     expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
-    maturity2 = enterMaturity(env, vault, currencyId, maturity2, depositAmount, primaryBorrowAmount, accounts[2])
+    enterMaturity(env, vault, currencyId, maturity2, depositAmount, primaryBorrowAmount, accounts[2])
     vaultAccount = env.notional.getVaultAccount(accounts[2], vault.address)
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-3) == expectedBPTAmount
     underlyingValue = vault.convertStrategyToUnderlying(accounts[2], vaultAccount["vaultShares"], maturity1)
@@ -210,10 +208,12 @@ def test_secondary_currency_trading_wrapped_success(StratStableETHstETH):
 
 def test_leverage_ratio_too_high_failure(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
+    currencyId = 1
     primaryBorrowAmount = 150e8
     depositAmount = 5e18
+    maturity = env.notional.getActiveMarkets(currencyId)[0][1]
     with brownie.reverts("Insufficient Collateral"):
-        enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0], True)
+        enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0], True)
 
 def test_balancer_share_too_high_failure(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
@@ -228,7 +228,9 @@ def test_balancer_share_too_high_failure(StratStableETHstETH):
         get_updated_vault_settings(settings, maxBalancerPoolShare=0),
         {"from": env.notional.owner()}
     )
+    currencyId = 1
     primaryBorrowAmount = 150e8
     depositAmount = 20e18
+    maturity = env.notional.getActiveMarkets(currencyId)[0][1]
     with brownie.reverts():
-        enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0], True)
+        enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0], True)

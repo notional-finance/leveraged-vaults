@@ -42,7 +42,6 @@ StrategyConfig = {
             "settlementSlippageLimitPercent": Wei(0.15e6), # 0.15%
             "postMaturitySettlementSlippageLimitPercent": Wei(0.4e6), # 0.4%
             "emergencySettlementSlippageLimitPercent": Wei(0.3e6), # 0.3%
-            "maxRewardTradeSlippageLimitPercent": 2e6, # 2%
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
             "settlementWindow": 172800,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 200, # +/- 2%
@@ -69,7 +68,6 @@ StrategyConfig = {
             "settlementSlippageLimitPercent": 5e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
-            "maxRewardTradeSlippageLimitPercent": 5e6,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -97,7 +95,6 @@ StrategyConfig = {
             "settlementSlippageLimitPercent": 5e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
-            "maxRewardTradeSlippageLimitPercent": 5e6,
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
