@@ -46,7 +46,7 @@ def StratStableETHstETH():
 
     # Deploy mock contract necessary for liquidation tests
     mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
-    mock = env.deployVaultProxy(strat, mockImpl, MetaStable2TokenAuraVault)
+    mock = env.deployVaultProxy(strat, mockImpl, MockMetaStable2TokenAuraVault)
     env.tradingModule.setTokenPermissions(
         mock.address, 
         env.tokens["wstETH"].address, 
