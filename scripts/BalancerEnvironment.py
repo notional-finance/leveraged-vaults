@@ -37,11 +37,11 @@ StrategyConfig = {
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
             "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 20e18, # 20 ETH
+            "maxUnderlyingSurplus": 2000e18, # 20 ETH
             "maxBalancerPoolShare": Wei(1.5e3), # 15%
-            "settlementSlippageLimitPercent": Wei(0.15e6), # 0.15%
-            "postMaturitySettlementSlippageLimitPercent": Wei(0.4e6), # 0.4%
-            "emergencySettlementSlippageLimitPercent": Wei(0.3e6), # 0.3%
+            "settlementSlippageLimitPercent": Wei(5e6), # 0.15%
+            "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 0.4%
+            "emergencySettlementSlippageLimitPercent": Wei(5e6), # 0.3%
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
             "settlementWindow": 172800,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 200, # +/- 2%

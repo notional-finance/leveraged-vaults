@@ -76,6 +76,13 @@ def StratStableETHstETH():
         [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
         {"from": env.notional.owner()})
 
+    env.notional.updateVault(
+        mock.address, 
+        [3, 1, 100, 900, 0, 102, 80, 2, 1500, [0, 0], 10000], 
+        750000000000,
+        {"from": env.notional.owner()}
+    )
+
     return (env, vault, mock)
 
 @pytest.fixture()
