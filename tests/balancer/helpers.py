@@ -123,6 +123,9 @@ def check_invariants(env, vault, accounts, maturities, snapshot=None):
     assert vaultTotalVaultShares == accountTotalVaultShares
     assert pytest.approx(vaultTotalStrategyTokens, rel=1e-3) == auraBalance
     assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"] == auraPool.balanceOf(vault)
+    if snapshot != None:
+        vaultTotalStrategyTokens += snapshot["totalStrategyTokens"]
+    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalStrategyTokenGlobal"] == vaultTotalStrategyTokens
 
 def check_account(env, vault, account, vaultShares, fCash):
     vaultAccount = env.notional.getVaultAccount(account, vault.address)

@@ -108,7 +108,6 @@ def test_post_maturity_single_maturity(StratStableETHstETH):
     primaryBorrowAmount = 300e8
     depositAmount = 100e18
     maturity = env.notional.getActiveMarkets(currencyId)[0][1]
-    expectedBorrowAmount = get_expected_borrow_amount(env, currencyId, maturity, primaryBorrowAmount)
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
     tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * 0.5)
     redeemParams = get_redeem_params(
@@ -146,7 +145,17 @@ def test_post_maturity_single_maturity(StratStableETHstETH):
     totalUnderlyingCash = convert_to_underlying(env, 1, vaultState["totalAssetCash"])
     assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore / 2
     assert vaultState["totalStrategyTokens"] == vaultState["totalVaultShares"] - tokensToRedeem
+    assert vaultState["isSettled"] == False
+
+    tokensToRedeem = env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"]
+
+    # Complete settlement
+    vault.settleVaultPostMaturity(maturity, tokensToRedeem, redeemParams, {"from": accounts[1]})
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    assert vaultState["totalStrategyTokens"] == 0
     assert vaultState["isSettled"] == True
+    totalUnderlyingCash = convert_to_underlying(env, 1, vaultState["totalAssetCash"])
+    assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore
 
 def test_emergency_single_maturity(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
@@ -154,7 +163,6 @@ def test_emergency_single_maturity(StratStableETHstETH):
     primaryBorrowAmount = 300e8
     depositAmount = 100e18
     maturity = env.notional.getActiveMarkets(currencyId)[0][1]
-    expectedBorrowAmount = get_expected_borrow_amount(env, currencyId, maturity, primaryBorrowAmount)
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
     redeemParams = get_redeem_params(
         0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(5e6), True, bytes(0))
@@ -176,14 +184,13 @@ def test_emergency_single_maturity(StratStableETHstETH):
     settings = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]
     vault.setStrategyVaultSettings(get_updated_vault_settings(settings, maxBalancerPoolShare=0), {"from": env.notional.owner()})
 
-    assert vault.getEmergencySettlementBPTAmount(maturity) == vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
-
     vaultState = env.notional.getVaultState(vault.address, maturity)
+    assert vault.getEmergencySettlementBPTAmount(maturity) == vault.convertStrategyTokensToBPTClaim(vaultState["totalStrategyTokens"])
     underlyingCashBefore = vault.convertStrategyToUnderlying(accounts[0], vaultState["totalStrategyTokens"], maturity)
 
     vault.settleVaultEmergency(maturity, redeemParams, {"from": accounts[1]})
 
     vaultState = env.notional.getVaultState(vault.address, maturity)
-    assert vaultState["totalStrategyTokens"] == 0
+    assert vaultState["totalStrategyTokens"] <= 1 # Rounding error?
     totalUnderlyingCash = convert_to_underlying(env, 1, vaultState["totalAssetCash"])
     assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore
