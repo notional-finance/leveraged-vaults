@@ -20,8 +20,9 @@ def test_single_maturity_full_redemption_success(StratStableETHstETH):
     currencyId = 1
     primaryBorrowAmount = 150e8
     depositAmount = 100e18
-    maturity = env.notional.getActiveMarkets(currencyId)[0][1]
-    snapshot = snapshot_invariants(env, vault, [maturity])
+    all_maturities = [m[1] for m in env.notional.getActiveMarkets(currencyId)]
+    maturity = all_maturities[0]
+    snapshot = snapshot_invariants(env, vault, all_maturities)
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
     primaryAmountBefore = accounts[0].balance()
     redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
@@ -35,7 +36,7 @@ def test_single_maturity_full_redemption_success(StratStableETHstETH):
 
     # Trade unwrapped
     exitVaultPercent(env, vault, accounts[0], 1.0, redeemParams)
-    check_invariants(env, vault, [accounts[0]], [maturity], snapshot)
+    check_invariants(env, vault, [accounts[0]], all_maturities, snapshot)
     check_account(env, vault, accounts[0], 0, 0)
     assert pytest.approx(accounts[0].balance() - primaryAmountBefore, rel=5e-2) == depositAmount
 
@@ -50,7 +51,7 @@ def test_single_maturity_full_redemption_success(StratStableETHstETH):
         )
     ))
     exitVaultPercent(env, vault, accounts[0], 1.0, redeemParams)
-    check_invariants(env, vault, [accounts[0]], [maturity], snapshot)
+    check_invariants(env, vault, [accounts[0]], all_maturities, snapshot)
     check_account(env, vault, accounts[0], 0, 0)
     assert pytest.approx(accounts[0].balance() - primaryAmountBefore, rel=5e-2) == depositAmount
     
@@ -59,8 +60,9 @@ def test_single_maturity_partial_redemption_success(StratStableETHstETH):
     currencyId = 1
     primaryBorrowAmount = 300e8
     depositAmount = 100e18
-    maturity = env.notional.getActiveMarkets(currencyId)[0][1]
-    snapshot = snapshot_invariants(env, vault, [maturity])
+    all_maturities = [m[1] for m in env.notional.getActiveMarkets(currencyId)]
+    maturity = all_maturities[0]
+    snapshot = snapshot_invariants(env, vault, all_maturities)
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
     vaultSharesBefore =  env.notional.getVaultAccount(accounts[0], vault.address)["vaultShares"]
     primaryAmountBefore = accounts[0].balance()
@@ -74,12 +76,12 @@ def test_single_maturity_partial_redemption_success(StratStableETHstETH):
     chain.mine(5)
 
     (sharesRedeemed, fCashRepaid) = exitVaultPercent(env, vault, accounts[0], 0.5, redeemParams)
-    check_invariants(env, vault, [accounts[0]], [maturity], snapshot)
+    check_invariants(env, vault, [accounts[0]], all_maturities, snapshot)
     check_account(env, vault, accounts[0], vaultSharesBefore - sharesRedeemed, primaryBorrowAmount - fCashRepaid)
     assert pytest.approx(accounts[0].balance() - primaryAmountBefore, rel=5e-2) == depositAmount * 0.5
 
     exitVaultPercent(env, vault, accounts[0], 1, redeemParams)
-    check_invariants(env, vault, [accounts[0]], [maturity], snapshot)
+    check_invariants(env, vault, [accounts[0]], all_maturities, snapshot)
     check_account(env, vault, accounts[0], 0, 0)
     assert pytest.approx(accounts[0].balance() - primaryAmountBefore, rel=5e-2) == depositAmount
 
