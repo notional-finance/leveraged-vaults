@@ -16,9 +16,11 @@ chain = Chain()
 
 def test_claim_rewards_success(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
+    currencyId = 1
     primaryBorrowAmount = 100e8
     depositAmount = 50e18
-    enterMaturity(env, vault, 1, 0, depositAmount, primaryBorrowAmount, accounts[0])
+    maturity = env.notional.getActiveMarkets(currencyId)[0][1]
+    enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
     chain.sleep(3600 * 24 * 365)
     chain.mine()
     assert env.tokens["BAL"].balanceOf(vault.address) == 0

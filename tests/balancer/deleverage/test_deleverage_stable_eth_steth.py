@@ -18,7 +18,7 @@ def test_single_maturity_success(StratStableETHstETH):
     primaryBorrowAmount = 150e8
     depositAmount = 20e18
     maturity = env.notional.getActiveMarkets(currencyId)[0][1]
-    maturity = enterMaturity(env, mock, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
+    enterMaturity(env, mock, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
     mock.setValuationFactor(accounts[0], 0.8e8, {"from": accounts[0]})
     collateralInfo = env.notional.getVaultAccountCollateralRatio(accounts[0], mock.address)
 
@@ -36,7 +36,7 @@ def test_single_maturity_success(StratStableETHstETH):
 
     assetAmountFromLiquidator = collateralInfo["maxLiquidatorDepositAssetCash"]
     vaultState = env.notional.getVaultState(mock, maturity)
-    assetRate = env.notional.getCurrencyAndRates(1)["assetRate"]
+    assetRate = env.notional.getCurrencyAndRates(currencyId)["assetRate"]
     strategyTokensToRedeem = vaultSharesToLiquidator / vaultState["totalVaultShares"] * vaultState["totalStrategyTokens"]
     underlyingRedeemed = mock.convertStrategyToUnderlying(accounts[0], strategyTokensToRedeem, maturity)
     flashLoanAmount = assetRate["rate"] * assetAmountFromLiquidator / assetRate["underlyingDecimals"]
@@ -53,6 +53,6 @@ def test_single_maturity_success(StratStableETHstETH):
         {"from": env.liquidator.owner()}
     )
 
-    # 0.04 == liquidation discount
-    expectedProfit = valuationFix + underlyingRedeemed * 0.04
+    # 0.02 == liquidation discount
+    expectedProfit = valuationFix + underlyingRedeemed * 0.02
     assert pytest.approx(env.tokens["WETH"].balanceOf(env.liquidator.owner()), rel=5e-2) == expectedProfit
