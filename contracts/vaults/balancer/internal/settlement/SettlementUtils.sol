@@ -24,25 +24,6 @@ library SettlementUtils {
     using StrategyUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultSettings;
 
-    /// @notice Validates that the slippage passed in by the caller
-    /// does not exceed the designated threshold.
-    /// @param slippageLimitPercent configured limit on the slippage from the oracle price allowed
-    /// @param data trade parameters passed into settlement
-    /// @return params abi decoded redemption parameters
-    function _decodeParamsAndValidate(
-        uint32 slippageLimitPercent,
-        bytes memory data
-    ) internal view returns (RedeemParams memory params) {
-        params = abi.decode(data, (RedeemParams));
-        TradeParams memory callbackData = abi.decode(
-            params.secondaryTradeParams, (TradeParams)
-        );
-
-        if (callbackData.oracleSlippagePercentOrLimit > slippageLimitPercent) {
-            revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercentOrLimit, slippageLimitPercent);
-        }
-    }
-
     /// @notice Validates that the settlement is past a specified cool down period.
     /// @param lastSettlementTimestamp the last time the vault was settled
     /// @param coolDownInMinutes configured length of time required between settlements to ensure that
