@@ -4,6 +4,7 @@ from brownie import (
     ZERO_ADDRESS,
     MetaStable2TokenAuraVault,
     MockMetaStable2TokenAuraVault,
+    Boosted3TokenAuraVault,
     MockBoosted3TokenAuraVault,
     MetaStable2TokenAuraHelper,
     Boosted3TokenAuraHelper
@@ -85,11 +86,19 @@ def StratStableETHstETH():
 @pytest.fixture()
 def StratBoostedPoolDAIPrimary():
     env = getEnvironment(network.show_active())
-    vault = env.deployBalancerVault("StratBoostedPoolDAIPrimary", MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
-    return (env, vault)
+    strat = "StratBoostedPoolDAIPrimary"
+    impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
+
+    mockImpl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, mockImpl, MockBoosted3TokenAuraVault)
+
+    return (env, vault, mock)
 
 @pytest.fixture()
 def StratBoostedPoolUSDCPrimary():
     env = getEnvironment(network.show_active())
-    vault = env.deployBalancerVault("StratBoostedPoolUSDCPrimary", MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    strat = "StratBoostedPoolUSDCPrimary"
+    impl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, MockBoosted3TokenAuraVault)
     return (env, vault)

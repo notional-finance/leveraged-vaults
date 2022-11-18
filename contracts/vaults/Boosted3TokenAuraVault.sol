@@ -163,7 +163,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         }
     }
 
-    function _strategyContext() private view returns (Boosted3TokenAuraStrategyContext memory) {
+    function _strategyContext() internal view returns (Boosted3TokenAuraStrategyContext memory) {
         (uint256[] memory balances, uint256[] memory scalingFactors) = _getScaledBalances();
 
         return Boosted3TokenAuraStrategyContext({
