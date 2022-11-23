@@ -31,7 +31,7 @@ contract MockBoosted3TokenAuraVault is Boosted3TokenAuraVault {
         }
     }
 
-    function joinPoolAndStake(uint256 primaryAmount, uint256 minBPT) 
+    function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 minBPT) 
         external returns (uint256) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         return Boosted3TokenPoolUtils._joinPoolAndStake(

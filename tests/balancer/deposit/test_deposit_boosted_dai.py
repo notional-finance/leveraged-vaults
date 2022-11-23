@@ -2,9 +2,15 @@ import pytest
 import brownie
 from brownie import accounts
 from tests.fixtures import *
-from tests.balancer.helpers import enterMaturity, snapshot_invariants, check_invariants
+from tests.balancer.helpers import enterMaturity, get_expected_bpt_amount, snapshot_invariants, check_invariants
+from tests.balancer.acceptance import DAIPrimaryContext, deposit_tests
 from scripts.common import get_updated_vault_settings
 
+def test_acceptance(StratBoostedPoolDAIPrimary):
+    (env, vault, mock) = StratBoostedPoolDAIPrimary
+    deposit_tests(DAIPrimaryContext(env, vault, mock), 10000e18, 5000e8)
+
+@pytest.mark.skip
 def test_single_maturity_low_leverage_success(StratBoostedPoolDAIPrimary):
     (env, vault, mock) = StratBoostedPoolDAIPrimary
     currencyId = 2
@@ -14,6 +20,7 @@ def test_single_maturity_low_leverage_success(StratBoostedPoolDAIPrimary):
     snapshot = snapshot_invariants(env, vault, maturities)
     env.tokens["DAI"].approve(env.notional, 2 ** 256 - 1, {"from": env.whales["DAI_EOA"]})
     maturity = enterMaturity(env, vault, currencyId, maturities[0], depositAmount, primaryBorrowAmount, env.whales["DAI_EOA"])
+    expectedBptAmount = get_expected_bpt_amount(env, mock, depositAmount, primaryBorrowAmount)
     vaultAccount = env.notional.getVaultAccount(env.whales["DAI_EOA"], vault.address)
     assert vaultAccount["fCash"] == -primaryBorrowAmount
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-5) == 0

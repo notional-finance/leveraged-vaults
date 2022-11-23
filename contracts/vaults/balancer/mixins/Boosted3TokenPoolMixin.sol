@@ -124,6 +124,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             tertiaryIndex: TERTIARY_INDEX,
             tertiaryDecimals: TERTIARY_DECIMALS,
             tertiaryBalance: balances[TERTIARY_INDEX],
+            tertiaryScaleFactor: scalingFactors[TERTIARY_INDEX],
             basePool: TwoTokenPoolContext({
                 primaryToken: address(PRIMARY_TOKEN),
                 secondaryToken: address(SECONDARY_TOKEN),

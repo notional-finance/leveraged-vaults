@@ -111,6 +111,7 @@ struct ThreeTokenPoolContext {
     uint8 tertiaryIndex;
     uint8 tertiaryDecimals;
     uint256 tertiaryBalance;
+    uint256 tertiaryScaleFactor;
     TwoTokenPoolContext basePool;
 }
 

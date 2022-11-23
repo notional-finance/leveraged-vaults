@@ -35,6 +35,8 @@ def convert_to_underlying(env, currencyId, assetCash):
 def enterMaturity(
     env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, account, callStatic=False, depositParams=None
 ):
+    print(vault)
+    print(currencyId)
     value = 0
     if currencyId == 1:
         value = depositAmount
@@ -132,14 +134,16 @@ def check_account(env, vault, account, vaultShares, fCash):
     assert vaultAccount["vaultShares"] == vaultShares
     assert vaultAccount['fCash'] == -fCash
 
-def get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount, primaryPercent=1):
+def get_expected_bpt_amount(context, depositAmount, expectedBorrowAmount, primaryPercent=1):
+    env = context.env
+    vault = context.mock
     totalJoinAmount = depositAmount + expectedBorrowAmount
     primaryAmount = totalJoinAmount * primaryPercent
+    primaryAmountToSell = totalJoinAmount - primaryAmount
     undoCount = 0
     if primaryAmount > 0:
-        env.whales["ETH"].transfer(vault, primaryAmount)
+        context.transfer(vault, depositAmount + expectedBorrowAmount)
         undoCount += 1
-    primaryAmountToSell = totalJoinAmount - primaryAmount
     secondaryAmount = 0
     if primaryAmountToSell > 0:
         env.whales["ETH"].transfer(env.tradingModule, primaryAmountToSell)
@@ -165,5 +169,6 @@ def get_expected_bpt_amount(env, vault, depositAmount, expectedBorrowAmount, pri
         env.tokens["wstETH"].transfer(vault, secondaryAmount, {"from": env.tradingModule})
         undoCount += 4
     expectedBPTAmount = vault.joinPoolAndStake.call(primaryAmount, secondaryAmount, 0) / 1e10
-    chain.undo(undoCount)
+    if undoCount > 0:
+        chain.undo(undoCount)
     return expectedBPTAmount

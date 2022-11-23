@@ -149,6 +149,7 @@ library Boosted3TokenAuraHelper {
         StrategyContext memory strategyContext = context.baseStrategy;
         BoostedOracleContext calldata oracleContext = context.oracleContext;
         AuraStakingContext calldata stakingContext = context.stakingContext;
+        ThreeTokenPoolContext calldata poolContext = context.poolContext;
 
         (address rewardToken, uint256 primaryAmount) = context.poolContext._executeRewardTrades({
             stakingContext: stakingContext,
@@ -156,16 +157,24 @@ library Boosted3TokenAuraHelper {
             data: params.tradeData
         });
 
-        uint256 minBPT = context.poolContext._getMinBPT(
-            oracleContext, strategyContext, primaryAmount
-        );
+        /// @notice This function is used to validate the spot price against
+        /// the oracle price. The return values are not used.
+        poolContext._getValidatedPoolData(oracleContext, strategyContext);
 
         uint256 bptAmount = context.poolContext._joinPoolAndStake({
             strategyContext: strategyContext,
             stakingContext: stakingContext,
             oracleContext: oracleContext,
             deposit: primaryAmount,
-            minBPT: minBPT
+            /// @notice Setting minBPT to 0 based on the following assumptions
+            /// 1. _getValidatedPoolData already validates the spot price to make sure
+            /// the pool isn't being manipulated
+            /// 2. We check maxBalancerPoolShare before joining to make sure the pool
+            /// has adequate liquidity
+            /// 3. Manipulating the pool before calling reinvestReward isn't expected
+            /// to be very profitable for the attacker because the function gets called
+            /// very frequently (relatively small trades)
+            minBPT: 0
         });
 
         strategyContext.vaultState.totalBPTHeld += bptAmount;
