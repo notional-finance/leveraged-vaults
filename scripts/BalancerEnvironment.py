@@ -2,6 +2,7 @@ import eth_abi
 from brownie import (
     network, 
     nProxy,
+    nMockProxy,
     MetaStable2TokenAuraVault,
     Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
@@ -149,10 +150,13 @@ class BalancerEnvironment(Environment):
             {"from": self.deployer}
         )
 
-    def deployVaultProxy(self, strat, impl, vaultContract):
+    def deployVaultProxy(self, strat, impl, vaultContract, mockImpl=None):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
 
-        proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+        if mockImpl == None:
+            proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+        else:
+            proxy = nMockProxy.deploy(impl.address, bytes(0), mockImpl, {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, vaultContract.abi)
         vaultProxy.initialize(
             [

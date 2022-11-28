@@ -5,10 +5,12 @@ import {
     ThreeTokenPoolContext, 
     TwoTokenPoolContext, 
     BoostedOracleContext,
-    AuraVaultDeploymentParams
+    UnderlyingPoolContext,
+    AuraVaultDeploymentParams,
+    Boosted3TokenAuraStrategyContext
 } from "../BalancerVaultTypes.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
+import {IBalancerPool, IBoostedPool, ILinearPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {PoolMixin} from "./PoolMixin.sol";
@@ -110,10 +112,32 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         ) = pool.getAmplificationParameter();
         require(precision == StableMath._AMP_PRECISION);
 
+        ILinearPool underlyingPool = ILinearPool(address(PRIMARY_TOKEN));
+        (uint256 lowerTarget, uint256 upperTarget) = underlyingPool.getTargets();
+        uint256 mainIndex = underlyingPool.getMainIndex();
+        uint256 wrappedIndex = underlyingPool.getWrappedIndex();
+
+        (
+            /* address[] memory tokens */,
+            uint256[] memory underlyingBalances,
+            /* uint256 lastChangeBlock */
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(underlyingPool.getPoolId());
+
+        uint256[] memory underlyingScalingFactors = underlyingPool.getScalingFactors();
+
         return BoostedOracleContext({
             ampParam: value,
             bptBalance: balances[BPT_INDEX],
-            dueProtocolFeeBptAmount: pool.getDueProtocolFeeBptAmount() 
+            dueProtocolFeeBptAmount: pool.getDueProtocolFeeBptAmount(),
+            primaryUnderlyingPool: UnderlyingPoolContext({
+                scaleFactor: underlyingScalingFactors[mainIndex],
+                mainBalance: underlyingBalances[mainIndex],
+                wrappedBalance: underlyingBalances[wrappedIndex],
+                virtualSupply: underlyingPool.getVirtualSupply(),
+                fee: underlyingPool.getSwapFeePercentage(),
+                lowerTarget: lowerTarget,
+                upperTarget: upperTarget    
+            })
         });
     }
 
@@ -139,6 +163,27 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
                 basePool: _poolContext()
             })
         });
+    }
+
+    function _strategyContext() internal view returns (Boosted3TokenAuraStrategyContext memory) {
+        (uint256[] memory balances, uint256[] memory scalingFactors) = _getBalancesAndScaleFactors();
+
+        return Boosted3TokenAuraStrategyContext({
+            poolContext: _threeTokenPoolContext(balances, scalingFactors),
+            oracleContext: _boostedOracleContext(balances),
+            stakingContext: _auraStakingContext(),
+            baseStrategy: _baseStrategyContext()
+        });
+    }
+
+    function _getBalancesAndScaleFactors() internal view returns (uint256[] memory balances, uint256[] memory scalingFactors) {
+        (
+            /* address[] memory tokens */,
+            balances,
+            /* uint256 lastChangeBlock */
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
+
+        scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

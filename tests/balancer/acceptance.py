@@ -17,6 +17,7 @@ class ETHPrimaryContext:
         self.currencyId = 1
         self.token = ZERO_ADDRESS
         self.depositor = accounts[0]
+        self.primaryDecimals = 18
     def transfer(self, dest, amount):
         self.depositor.transfer(dest, amount)
 
@@ -29,6 +30,7 @@ class DAIPrimaryContext:
         self.token = env.tokens["DAI"]
         self.depositor = env.whales["DAI_EOA"]
         self.token.approve(self.env.notional, 2**256-1, {"from": self.depositor})
+        self.primaryDecimals = self.token.decimals()
     def transfer(self, dest, amount):
         self.token.transfer(dest, amount, {"from": self.depositor})
 
@@ -41,6 +43,7 @@ class USDCPrimaryContext:
         self.token = env.tokens["USDC"]
         self.depositor = env.whales["USDC"]
         self.token.approve(self.env.notional, 2**256-1, {"from": self.depositor})
+        self.primaryDecimals = self.token.decimals()
     def transfer(self, dest, amount):
         self.token.transfer(dest, amount, {"from": self.depositor})
 
@@ -50,6 +53,7 @@ def deposit_tests(context, depositAmount, primaryBorrowAmount):
     vault = context.vault
     currencyId = context.currencyId
     depositor = context.depositor
+    primaryPrecision = 10**context.primaryDecimals
     maturities = [m[1] for m in notional.getActiveMarkets(currencyId)]
     snapshot = snapshot_invariants(env, vault, maturities)
     expectedBorrowAmount = get_expected_borrow_amount(env, currencyId, maturities[0], primaryBorrowAmount)
@@ -59,5 +63,5 @@ def deposit_tests(context, depositAmount, primaryBorrowAmount):
     assert vaultAccount["fCash"] == -primaryBorrowAmount
     assert pytest.approx(vaultAccount["vaultShares"], rel=1e-3) == expectedBptAmount
     underlyingValue = vault.convertStrategyToUnderlying(depositor, vaultAccount["vaultShares"], maturities[0])
-    assert pytest.approx(underlyingValue, rel=5e-2) == depositAmount + primaryBorrowAmount * 1e10
+    assert pytest.approx(underlyingValue, rel=5e-2) == depositAmount + primaryBorrowAmount * primaryPrecision / 1e8
     check_invariants(env, vault, [depositor], maturities, snapshot)

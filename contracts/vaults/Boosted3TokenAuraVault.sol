@@ -148,27 +148,6 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     {
         BalancerVaultStorage.setStrategyVaultSettings(settings);
     }
-
-    function _getBalancesAndScaleFactors() private view returns (uint256[] memory balances, uint256[] memory scalingFactors) {
-        (
-            /* address[] memory tokens */,
-            balances,
-            /* uint256 lastChangeBlock */
-        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
-
-        scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
-    }
-
-    function _strategyContext() internal view returns (Boosted3TokenAuraStrategyContext memory) {
-        (uint256[] memory balances, uint256[] memory scalingFactors) = _getBalancesAndScaleFactors();
-
-        return Boosted3TokenAuraStrategyContext({
-            poolContext: _threeTokenPoolContext(balances, scalingFactors),
-            oracleContext: _boostedOracleContext(balances),
-            stakingContext: _auraStakingContext(),
-            baseStrategy: _baseStrategyContext()
-        });
-    }
     
     function getStrategyContext() external view returns (Boosted3TokenAuraStrategyContext memory) {
         return _strategyContext();

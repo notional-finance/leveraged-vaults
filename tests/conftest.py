@@ -91,7 +91,8 @@ def StratBoostedPoolDAIPrimary():
     vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
 
     mockImpl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
-    mock = env.deployVaultProxy(strat, mockImpl, MockBoosted3TokenAuraVault)
+    mock = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockDAIBoostedVault", mock.address, MockBoosted3TokenAuraVault.abi)
 
     return (env, vault, mock)
 
@@ -99,6 +100,11 @@ def StratBoostedPoolDAIPrimary():
 def StratBoostedPoolUSDCPrimary():
     env = getEnvironment(network.show_active())
     strat = "StratBoostedPoolUSDCPrimary"
-    impl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
-    vault = env.deployVaultProxy(strat, impl, MockBoosted3TokenAuraVault)
-    return (env, vault)
+    impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
+
+    mockImpl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockUSDCBoostedVault", mock.address, MockBoosted3TokenAuraVault.abi)
+
+    return (env, vault, mock)

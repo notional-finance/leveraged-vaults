@@ -4,6 +4,7 @@ from brownie import accounts
 from brownie.network.state import Chain
 from brownie.convert import to_bytes
 from tests.fixtures import *
+from tests.balancer.acceptance import deposit_tests, ETHPrimaryContext
 from tests.balancer.helpers import (
     enterMaturity,
     snapshot_invariants,
@@ -21,23 +22,8 @@ from scripts.common import (
 
 chain = Chain()
 
-def test_single_maturity_low_leverage_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
-    currencyId = 1
-    primaryBorrowAmount = 150e8
-    depositAmount = 100e18
-    maturity1 = env.notional.getActiveMarkets(currencyId)[0][1]
-    maturity2 = env.notional.getActiveMarkets(currencyId)[1][1]
-    expectedBorrowAmount = get_expected_borrow_amount(env, currencyId, maturity1, primaryBorrowAmount)
-    expectedBPTAmount = get_expected_bpt_amount(env, mock, depositAmount, expectedBorrowAmount)
-    snapshot = snapshot_invariants(env, vault, [maturity1, maturity2])
-    enterMaturity(env, vault, currencyId, maturity1, depositAmount, primaryBorrowAmount, accounts[0])
-    vaultAccount = env.notional.getVaultAccount(accounts[0], vault.address)
-    assert pytest.approx(vaultAccount["vaultShares"], rel=1e-3) == expectedBPTAmount
-    assert vaultAccount["fCash"] == -primaryBorrowAmount
-    underlyingValue = vault.convertStrategyToUnderlying(accounts[0], vaultAccount["vaultShares"], maturity1)
-    assert pytest.approx(underlyingValue, rel=5e-3) == depositAmount + expectedBorrowAmount
-    check_invariants(env, vault, [accounts[0]], [maturity1, maturity2], snapshot)
+def test_acceptance(StratStableETHstETH):
+    deposit_tests(ETHPrimaryContext(*StratStableETHstETH), 100e18, 150e8)
 
 def test_single_maturity_high_leverage_success(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH

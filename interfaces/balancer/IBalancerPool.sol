@@ -8,6 +8,14 @@ interface IBalancerPool is IERC20 {
     function getPoolId() external view returns (bytes32); 
 }
 
+interface ILinearPool is IBalancerPool {
+    function getMainIndex() external view returns (uint256);
+    function getWrappedIndex() external view returns (uint256);
+    function getSwapFeePercentage() external view returns (uint256);
+    function getVirtualSupply() external view returns (uint256);
+    function getTargets() external view returns (uint256 lowerTarget, uint256 upperTarget);
+}
+
 interface IBoostedPool is IBalancerPool {
     function getMainToken() external view returns (address);   
     function getWrappedToken() external view returns (address);   

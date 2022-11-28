@@ -17,6 +17,7 @@ import {Errors} from "../../../../global/Errors.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {StableMath} from "../math/StableMath.sol";
+import {LinearMath} from "../math/LinearMath.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
@@ -205,7 +206,7 @@ library Boosted3TokenPoolUtils {
         // to calculate the value of 1 BPT. Then, we scale it to the BPT
         // amount to get the value in terms of the primary currency.
         // Use virtual total supply and zero swap fees for joins
-        primaryAmount = StableMath._calcTokenOutGivenExactBptIn({
+        uint256 linearBPTAmount = StableMath._calcTokenOutGivenExactBptIn({
             amp: oracleContext.ampParam, 
             balances: balances, 
             tokenIndex: 0, 
@@ -214,6 +215,26 @@ library Boosted3TokenPoolUtils {
             swapFeePercentage: 0, 
             currentInvariant: invariant
         });
+
+        // TODO: remove fee amount before downscaling
+
+        // Downscale BPT out
+        linearBPTAmount = linearBPTAmount * BalancerConstants.BALANCER_PRECISION / poolContext.basePool.primaryScaleFactor;
+
+        // Convert from linear pool BPT to primary Amount
+        primaryAmount = LinearMath._calcMainOutPerBptIn({
+            bptIn: linearBPTAmount,
+            mainBalance: oracleContext.primaryUnderlyingPool.mainBalance,
+            wrappedBalance: oracleContext.primaryUnderlyingPool.wrappedBalance,
+            bptSupply: oracleContext.primaryUnderlyingPool.virtualSupply,
+            params: LinearMath.Params({
+                fee: oracleContext.primaryUnderlyingPool.fee,
+                lowerTarget: oracleContext.primaryUnderlyingPool.lowerTarget,
+                upperTarget: oracleContext.primaryUnderlyingPool.upperTarget
+            }) 
+        });
+
+        // TODO: apply linear pool scale factor (downscale)
 
         uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
         primaryAmount = (primaryAmount * bptAmount * primaryPrecision) / BalancerConstants.BALANCER_PRECISION_SQUARED;
