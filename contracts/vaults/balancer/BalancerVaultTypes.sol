@@ -70,8 +70,9 @@ struct StableOracleContext {
 }
 
 struct UnderlyingPoolContext {
-    uint256 scaleFactor;
+    uint256 mainScaleFactor;
     uint256 mainBalance;
+    uint256 wrappedScaleFactor;
     uint256 wrappedBalance;
     uint256 virtualSupply;
     uint256 fee;
@@ -84,8 +85,6 @@ struct BoostedOracleContext {
     uint256 ampParam;
     /// @notice BPT balance in the pool
     uint256 bptBalance;
-    /// @notice Protocol fee amount used to calculate the virtual supply
-    uint256 dueProtocolFeeBptAmount;
     /// @notice Underlying linear pool for the primary token
     UnderlyingPoolContext primaryUnderlyingPool;
 }

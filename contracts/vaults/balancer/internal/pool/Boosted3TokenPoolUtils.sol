@@ -5,6 +5,7 @@ import {
     ThreeTokenPoolContext,
     TwoTokenPoolContext,
     BoostedOracleContext,
+    UnderlyingPoolContext,
     AuraStakingContext,
     StrategyContext,
     StrategyVaultSettings,
@@ -22,7 +23,7 @@ import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
-import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
+import {ILinearPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
 import {FixedPoint} from "../math/FixedPoint.sol";
@@ -107,9 +108,9 @@ library Boosted3TokenPoolUtils {
         uint256 ampParam,
         uint256 invariant
     ) private view {
-        address primaryUnderlying = IBoostedPool(address(poolContext.basePool.primaryToken)).getMainToken();
-        address secondaryUnderlying = IBoostedPool(address(poolContext.basePool.secondaryToken)).getMainToken();
-        address tertiaryUnderlying = IBoostedPool(address(poolContext.tertiaryToken)).getMainToken();
+        address primaryUnderlying = ILinearPool(address(poolContext.basePool.primaryToken)).getMainToken();
+        address secondaryUnderlying = ILinearPool(address(poolContext.basePool.secondaryToken)).getMainToken();
+        address tertiaryUnderlying = ILinearPool(address(poolContext.tertiaryToken)).getMainToken();
 
         _validateSpotPrice({
             context: strategyContext,
@@ -137,27 +138,26 @@ library Boosted3TokenPoolUtils {
     function _getVirtualSupply(
         ThreeTokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext
-    ) internal pure returns (uint256 virtualSupply) {
-        // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
-        // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-        // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
-        //
-        // However, since this Pool never mints or burns BPT outside of the initial supply (except in the event of an
-        // emergency pause), we can simply use `_MAX_TOKEN_BALANCE` instead of `totalSupply()` and save
-        // gas.
-        virtualSupply = _MAX_TOKEN_BALANCE - oracleContext.bptBalance + oracleContext.dueProtocolFeeBptAmount;
+    ) internal view returns (uint256 virtualSupply) {
+        // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in
+        // the vault. So the virtualSupply (the amount of BPT supply in circulation) is defined as:
+        // virtualSupply = totalSupply() - _balances[_bptIndex]
+        virtualSupply = poolContext.basePool.basePool.pool.totalSupply() - oracleContext.bptBalance;
     }
 
     function _getVirtualSupplyAndBalances(
         ThreeTokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext
-    ) private pure returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
+    ) private view returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
         virtualSupply = _getVirtualSupply(poolContext, oracleContext);
 
         amountsWithoutBpt = new uint256[](3);
-        amountsWithoutBpt[0] = poolContext.basePool.primaryBalance;
-        amountsWithoutBpt[1] = poolContext.basePool.secondaryBalance;
-        amountsWithoutBpt[2] = poolContext.tertiaryBalance;
+        amountsWithoutBpt[0] = poolContext.basePool.primaryBalance * poolContext.basePool.primaryScaleFactor 
+            / BalancerConstants.BALANCER_PRECISION;
+        amountsWithoutBpt[1] = poolContext.basePool.secondaryBalance * poolContext.basePool.secondaryScaleFactor
+            / BalancerConstants.BALANCER_PRECISION;
+        amountsWithoutBpt[2] = poolContext.tertiaryBalance * poolContext.tertiaryScaleFactor
+            / BalancerConstants.BALANCER_PRECISION;
     }
 
     function _getValidatedPoolData(
@@ -220,17 +220,23 @@ library Boosted3TokenPoolUtils {
 
         // Downscale BPT out
         linearBPTAmount = linearBPTAmount * BalancerConstants.BALANCER_PRECISION / poolContext.basePool.primaryScaleFactor;
+        UnderlyingPoolContext memory underlyingPool = oracleContext.primaryUnderlyingPool;
+
+        uint256 scaledMainBalance = underlyingPool.mainBalance * underlyingPool.mainScaleFactor /
+            BalancerConstants.BALANCER_PRECISION;
+        uint256 scaledWrappedBalance = underlyingPool.wrappedBalance * underlyingPool.wrappedScaleFactor /
+            BalancerConstants.BALANCER_PRECISION;
 
         // Convert from linear pool BPT to primary Amount
         primaryAmount = LinearMath._calcMainOutPerBptIn({
             bptIn: linearBPTAmount,
-            mainBalance: oracleContext.primaryUnderlyingPool.mainBalance,
-            wrappedBalance: oracleContext.primaryUnderlyingPool.wrappedBalance,
-            bptSupply: oracleContext.primaryUnderlyingPool.virtualSupply,
+            mainBalance: scaledMainBalance,
+            wrappedBalance: scaledWrappedBalance,
+            bptSupply: underlyingPool.virtualSupply,
             params: LinearMath.Params({
-                fee: oracleContext.primaryUnderlyingPool.fee,
-                lowerTarget: oracleContext.primaryUnderlyingPool.lowerTarget,
-                upperTarget: oracleContext.primaryUnderlyingPool.upperTarget
+                fee: underlyingPool.fee,
+                lowerTarget: underlyingPool.lowerTarget,
+                upperTarget: underlyingPool.upperTarget
             }) 
         });
 
@@ -247,14 +253,14 @@ library Boosted3TokenPoolUtils {
 
         // For boosted pools, the tokens inside pool context are AaveLinearPool tokens.
         // So, we need to approve the _underlyingToken (primary borrow currency) for trading.
-        IBoostedPool underlyingPool = IBoostedPool(poolContext.basePool.primaryToken);
+        ILinearPool underlyingPool = ILinearPool(poolContext.basePool.primaryToken);
         address primaryUnderlyingAddress = BalancerUtils.getTokenAddress(underlyingPool.getMainToken());
         IERC20(primaryUnderlyingAddress).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
     }
 
     function _joinPoolExactTokensIn(ThreeTokenPoolContext memory context, uint256 primaryAmount, uint256 minBPT)
         private returns (uint256 bptAmount) {
-        IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
+        ILinearPool underlyingPool = ILinearPool(address(context.basePool.primaryToken));
 
         // Swap underlyingToken for LinearPool BPT
         uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
@@ -277,7 +283,7 @@ library Boosted3TokenPoolUtils {
 
     function _exitPoolExactBPTIn(ThreeTokenPoolContext memory context, uint256 bptExitAmount, uint256 minPrimary)
         private returns (uint256 primaryBalance) {
-        IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
+        ILinearPool underlyingPool = ILinearPool(address(context.basePool.primaryToken));
 
         // Swap Boosted BPT for LinearPool BPT
         uint256 linearPoolBPT = BalancerUtils._swapGivenIn({

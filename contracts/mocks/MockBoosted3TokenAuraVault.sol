@@ -67,4 +67,11 @@ contract MockBoosted3TokenAuraVault is Boosted3TokenPoolMixin {
             context.poolContext, context.baseStrategy, context.stakingContext, context.oracleContext, primaryAmount, minBPT
         );
     }
+
+    function getTimeWeightedPrimaryBalance(uint256 bptAmount) external view returns (uint256) {
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        return Boosted3TokenPoolUtils._getTimeWeightedPrimaryBalance(
+            context.poolContext, context.oracleContext, context.baseStrategy, bptAmount
+        );
+    }
 }

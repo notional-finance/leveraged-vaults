@@ -23,7 +23,8 @@ contract nMockProxy is ERC1967Proxy {
         if (msg.sig == IMockVault.joinPoolAndStake.selector ||
             msg.sig == IMockVault.convertStrategyToUnderlying.selector ||
             msg.sig == IMockVault.setValuationFactor.selector ||
-            msg.sig == IMockVault.valuationFactors.selector) {
+            msg.sig == IMockVault.valuationFactors.selector ||
+            msg.sig == IMockVault.getTimeWeightedPrimaryBalance.selector) {
             return MOCK_IMPL;
         }
         return super._implementation();

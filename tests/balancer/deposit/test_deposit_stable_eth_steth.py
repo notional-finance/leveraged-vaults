@@ -4,7 +4,7 @@ from brownie import accounts
 from brownie.network.state import Chain
 from brownie.convert import to_bytes
 from tests.fixtures import *
-from tests.balancer.acceptance import deposit_tests, ETHPrimaryContext
+from tests.balancer.acceptance import deposit_test, ETHPrimaryContext
 from tests.balancer.helpers import (
     enterMaturity,
     snapshot_invariants,
@@ -22,8 +22,8 @@ from scripts.common import (
 
 chain = Chain()
 
-def test_acceptance(StratStableETHstETH):
-    deposit_tests(ETHPrimaryContext(*StratStableETHstETH), 100e18, 150e8)
+def test_single_maturity_low_leverage_success(StratStableETHstETH):
+    deposit_test(ETHPrimaryContext(*StratStableETHstETH), 100e18, 150e8)
 
 def test_single_maturity_high_leverage_success(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH

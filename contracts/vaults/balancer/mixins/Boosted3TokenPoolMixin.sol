@@ -7,9 +7,12 @@ import {
     BoostedOracleContext,
     UnderlyingPoolContext,
     AuraVaultDeploymentParams,
-    Boosted3TokenAuraStrategyContext
+    Boosted3TokenAuraStrategyContext,
+    StrategyContext,
+    AuraStakingContext
 } from "../BalancerVaultTypes.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
+import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {IBalancerPool, IBoostedPool, ILinearPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
@@ -18,6 +21,7 @@ import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
 abstract contract Boosted3TokenPoolMixin is PoolMixin {
+
     error InvalidPrimaryToken(address token);
 
     uint8 internal constant NOT_FOUND = type(uint8).max;
@@ -59,7 +63,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             // Skip pool token
             if (tokens[i] == address(BALANCER_POOL_TOKEN)) {
                 bptIndex = uint8(i);
-            } else if (IBoostedPool(tokens[i]).getMainToken() == primaryAddress) {
+            } else if (ILinearPool(tokens[i]).getMainToken() == primaryAddress) {
                 primaryIndex = uint8(i);
             } else {
                 if (secondaryIndex == NOT_FOUND) {
@@ -124,14 +128,18 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         ) = Deployments.BALANCER_VAULT.getPoolTokens(underlyingPool.getPoolId());
 
         uint256[] memory underlyingScalingFactors = underlyingPool.getScalingFactors();
+        // The wrapped token's scaling factor is not constant, but increases over time as the wrapped token increases in
+        // value.
+        uint256 wrappedScaleFactor = underlyingScalingFactors[mainIndex] * underlyingPool.getWrappedTokenRate() /
+            BalancerConstants.BALANCER_PRECISION;
 
         return BoostedOracleContext({
             ampParam: value,
             bptBalance: balances[BPT_INDEX],
-            dueProtocolFeeBptAmount: pool.getDueProtocolFeeBptAmount(),
             primaryUnderlyingPool: UnderlyingPoolContext({
-                scaleFactor: underlyingScalingFactors[mainIndex],
+                mainScaleFactor: underlyingScalingFactors[mainIndex],
                 mainBalance: underlyingBalances[mainIndex],
+                wrappedScaleFactor: wrappedScaleFactor,
                 wrappedBalance: underlyingBalances[wrappedIndex],
                 virtualSupply: underlyingPool.getVirtualSupply(),
                 fee: underlyingPool.getSwapFeePercentage(),
@@ -168,9 +176,11 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
     function _strategyContext() internal view returns (Boosted3TokenAuraStrategyContext memory) {
         (uint256[] memory balances, uint256[] memory scalingFactors) = _getBalancesAndScaleFactors();
 
+        BoostedOracleContext memory oracleContext = _boostedOracleContext(balances);
+
         return Boosted3TokenAuraStrategyContext({
             poolContext: _threeTokenPoolContext(balances, scalingFactors),
-            oracleContext: _boostedOracleContext(balances),
+            oracleContext: oracleContext,
             stakingContext: _auraStakingContext(),
             baseStrategy: _baseStrategyContext()
         });

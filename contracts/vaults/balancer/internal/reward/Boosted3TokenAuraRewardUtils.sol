@@ -15,7 +15,7 @@ import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
-import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
+import {ILinearPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 
 library Boosted3TokenAuraRewardUtils {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
@@ -30,7 +30,7 @@ library Boosted3TokenAuraRewardUtils {
         if (!context._isValidRewardToken(params.sellToken)) {
             revert Errors.InvalidRewardToken(params.sellToken);
         }
-        if (params.buyToken != IBoostedPool(primaryToken).getMainToken()) {
+        if (params.buyToken != ILinearPool(primaryToken).getMainToken()) {
             revert Errors.InvalidRewardToken(params.buyToken);
         }
     }

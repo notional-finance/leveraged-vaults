@@ -27,7 +27,7 @@ StrategyConfig = {
                 flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
                 currencyId=1,
                 minAccountBorrowSize=1,
-                maxBorrowMarketIndex=3,
+                maxBorrowMarketIndex=2,
                 secondaryBorrowCurrencies=[0,0]
             ),
             "secondaryBorrowCurrency": None,
@@ -37,7 +37,6 @@ StrategyConfig = {
             "poolId": "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080",
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
             "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
-            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 2000e18, # 20 ETH
             "maxBalancerPoolShare": Wei(1.5e3), # 15%
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
@@ -57,10 +56,9 @@ StrategyConfig = {
             "maxPrimaryBorrowCapacity": 100_000_000e8,
             "name": "Balancer Boosted Pool Strategy",
             "primaryCurrency": 2, # DAI
-            "poolId": "0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb20000000000000000000000fe",
-            "liquidityGauge": "0x68d019f64a7aa97e2d4e7363aee42251d08124fb",
-            "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
-            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
+            "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
+            "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
+            "auraRewardPool": "0x1e9f147241da9009417811ad5858f22ed1f9f9fd",
             "maxUnderlyingSurplus": 10000e18, # 10000 DAI
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
@@ -80,12 +78,10 @@ StrategyConfig = {
             "maxPrimaryBorrowCapacity": 100_000_000e8,
             "name": "Balancer Boosted Pool Strategy",
             "primaryCurrency": 3, # USDC
-            "poolId": "0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb20000000000000000000000fe",
-            "liquidityGauge": "0x68d019f64a7aa97e2d4e7363aee42251d08124fb",
-            "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
-            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
+            "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
+            "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
+            "auraRewardPool": "0x1e9f147241da9009417811ad5858f22ed1f9f9fd",
             "maxUnderlyingSurplus": 10000e6, # 10000 USDC
-            "oracleWindowInSeconds": 0,
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement

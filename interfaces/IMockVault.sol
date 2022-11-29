@@ -10,4 +10,5 @@ interface IMockVault {
         uint256 strategyTokenAmount,
         uint256 maturity
     ) external view returns (int256 underlyingValue);
+    function getTimeWeightedPrimaryBalance(uint256 bptAmount) external view returns (uint256);
 }

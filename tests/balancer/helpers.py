@@ -35,8 +35,6 @@ def convert_to_underlying(env, currencyId, assetCash):
 def enterMaturity(
     env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, account, callStatic=False, depositParams=None
 ):
-    print(vault)
-    print(currencyId)
     value = 0
     if currencyId == 1:
         value = depositAmount
