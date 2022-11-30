@@ -102,7 +102,10 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             context.baseStrategy.vaultState.lastSettlementTimestamp,
             context.baseStrategy.vaultSettings.settlementCoolDownInMinutes
         );
-        RedeemParams memory params = abi.decode(data, (RedeemParams));
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
+            data
+        );
         MetaStable2TokenAuraHelper.settleVault(
             context, maturity, strategyTokensToRedeem, params
         );
@@ -119,7 +122,10 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             revert Errors.HasNotMatured();
         }
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        RedeemParams memory params = abi.decode(data, (RedeemParams));
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
+            data
+        );
         MetaStable2TokenAuraHelper.settleVault(
             context, maturity, strategyTokensToRedeem, params
         );
