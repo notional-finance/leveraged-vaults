@@ -39,9 +39,9 @@ StrategyConfig = {
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 2000e18, # 2000 ETH
             "maxBalancerPoolShare": Wei(1.5e3), # 15%
-            "settlementSlippageLimitPercent": Wei(0.15e6), # 0.15%
-            "postMaturitySettlementSlippageLimitPercent": Wei(0.4e6), # 0.4%
-            "emergencySettlementSlippageLimitPercent": Wei(0.3e6), # 0.3%
+            "settlementSlippageLimitPercent": Wei(3e6), # 3%
+            "postMaturitySettlementSlippageLimitPercent": Wei(3e6), # 3%
+            "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
             "settlementWindow": 172800,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 200, # +/- 2%

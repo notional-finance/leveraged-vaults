@@ -89,7 +89,10 @@ library Boosted3TokenAuraHelper {
         uint256 maturity, 
         bytes calldata data
     ) external {
-        RedeemParams memory params = abi.decode(data, (RedeemParams));
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
+            data
+        );
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
