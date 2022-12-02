@@ -37,8 +37,11 @@ StrategyConfig = {
             "poolId": "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080",
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
             "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
-            "maxUnderlyingSurplus": 2000e18, # 20 ETH
+            "maxUnderlyingSurplus": 2000e18, # 2000 ETH
             "maxBalancerPoolShare": Wei(1.5e3), # 15%
+            "settlementSlippageLimitPercent": Wei(3e6), # 3%
+            "postMaturitySettlementSlippageLimitPercent": Wei(3e6), # 3%
+            "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
             "settlementWindow": 172800,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 200, # +/- 2%
@@ -61,6 +64,9 @@ StrategyConfig = {
             "auraRewardPool": "0x1e9f147241da9009417811ad5858f22ed1f9f9fd",
             "maxUnderlyingSurplus": 10000e18, # 10000 DAI
             "maxBalancerPoolShare": 2e3, # 20%
+            "settlementSlippageLimitPercent": 5e6, # 5%
+            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
+            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -83,6 +89,9 @@ StrategyConfig = {
             "auraRewardPool": "0x1e9f147241da9009417811ad5858f22ed1f9f9fd",
             "maxUnderlyingSurplus": 10000e6, # 10000 USDC
             "maxBalancerPoolShare": 2e3, # 20%
+            "settlementSlippageLimitPercent": 5e6, # 5%
+            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
+            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -107,6 +116,9 @@ class BalancerEnvironment(Environment):
                 stratConfig["primaryCurrency"],
                 [
                     stratConfig["maxUnderlyingSurplus"],
+                    stratConfig["settlementSlippageLimitPercent"], 
+                    stratConfig["postMaturitySettlementSlippageLimitPercent"], 
+                    stratConfig["emergencySettlementSlippageLimitPercent"], 
                     stratConfig["maxBalancerPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
@@ -160,6 +172,9 @@ class BalancerEnvironment(Environment):
                 stratConfig["primaryCurrency"],
                 [
                     stratConfig["maxUnderlyingSurplus"],
+                    stratConfig["settlementSlippageLimitPercent"], 
+                    stratConfig["postMaturitySettlementSlippageLimitPercent"], 
+                    stratConfig["emergencySettlementSlippageLimitPercent"], 
                     stratConfig["maxBalancerPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],

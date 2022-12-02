@@ -92,6 +92,9 @@ def set_flags(flags, **kwargs):
 def get_updated_vault_settings(settings, **kwargs):
     return [
         kwargs.get("maxUnderlyingSurplus", settings["maxUnderlyingSurplus"]), 
+        kwargs.get("settlementSlippageLimitPercent", settings["settlementSlippageLimitPercent"]), 
+        kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
+        kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
         kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),

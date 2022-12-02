@@ -35,6 +35,9 @@ def StratStableETHstETH():
     stratConfig = env.getStratConfig(strat)
     settingsData = vault.setStrategyVaultSettings.encode_input([
         stratConfig["maxUnderlyingSurplus"],
+        stratConfig["settlementSlippageLimitPercent"], 
+        stratConfig["postMaturitySettlementSlippageLimitPercent"], 
+        stratConfig["emergencySettlementSlippageLimitPercent"], 
         stratConfig["maxBalancerPoolShare"],
         stratConfig["settlementCoolDownInMinutes"],
         stratConfig["oraclePriceDeviationLimitPercent"],

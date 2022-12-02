@@ -180,6 +180,12 @@ struct ReinvestRewardParams {
 struct StrategyVaultSettings {
     uint256 maxUnderlyingSurplus;
     /// @notice Slippage limit for normal settlement
+    uint32 settlementSlippageLimitPercent;
+    /// @notice Slippage limit for post maturity settlement
+    uint32 postMaturitySettlementSlippageLimitPercent;
+    /// @notice Slippage limit for emergency settlement (vault owns too much of the Balancer pool)
+    uint32 emergencySettlementSlippageLimitPercent;
+    /// @notice Slippage limit for normal settlement
     uint16 maxBalancerPoolShare;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;

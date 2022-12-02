@@ -146,7 +146,7 @@ library TwoTokenPoolUtils {
             sellToken: poolContext.primaryToken, 
             buyToken: poolContext.secondaryToken, 
             amount: params.tradeAmount,
-            useDynamicSlippage: false
+            useDynamicSlippage: true
         });
     }
 
@@ -202,7 +202,7 @@ library TwoTokenPoolUtils {
                 sellToken: poolContext.secondaryToken,
                 buyToken: poolContext.primaryToken,
                 amount: secondaryBalance,
-                useDynamicSlippage: false
+                useDynamicSlippage: true
             });
     }
 

@@ -34,7 +34,7 @@ def test_normal_single_maturity(StratStableETHstETH):
     # Disable oracle freshness check
     env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
     redeemParams = get_redeem_params(
-        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(100e18), True, bytes(0))
+        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(3e6), True, bytes(0))
     )
     tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * 0.5)
 
@@ -46,6 +46,12 @@ def test_normal_single_maturity(StratStableETHstETH):
     with brownie.reverts():
         vault.grantRole.call(vault.getRoles()["normalSettlement"], accounts[1], {"from": accounts[2]})
     vault.grantRole(vault.getRoles()["normalSettlement"], accounts[1], {"from": env.notional.owner()})
+
+    # Can't settle with bad slippage setting
+    with brownie.reverts():
+        vault.settleVaultNormal.call(maturity, tokensToRedeem, get_redeem_params(
+            0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(5e6), True, bytes(0))
+        ), {"from": accounts[1]})
 
     # Test settlement (settle half)
     vaultState = env.notional.getVaultState(vault.address, maturity)
@@ -105,7 +111,7 @@ def test_post_maturity_single_maturity(StratStableETHstETH):
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
     tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * 0.5)
     redeemParams = get_redeem_params(
-        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(100e18), True, bytes(0))
+        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(3e6), True, bytes(0))
     )
 
     # Can't call settleVaultPostMaturity before maturity
@@ -129,6 +135,12 @@ def test_post_maturity_single_maturity(StratStableETHstETH):
     with brownie.reverts():
         vault.grantRole.call(vault.getRoles()["postMaturitySettlement"], accounts[1], {"from": accounts[2]})
     vault.grantRole(vault.getRoles()["postMaturitySettlement"], accounts[1], {"from": env.notional.owner()})
+
+    # Can't settle with bad slippage setting
+    with brownie.reverts():
+        vault.settleVaultPostMaturity.call(maturity, tokensToRedeem, get_redeem_params(
+            0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(5e6), True, bytes(0))
+        ), {"from": accounts[1]})
 
     vaultState = env.notional.getVaultState(vault.address, maturity)
     underlyingCashBefore = vault.convertStrategyToUnderlying(accounts[0], vaultState["totalStrategyTokens"], maturity)
@@ -159,7 +171,7 @@ def test_emergency_single_maturity(StratStableETHstETH):
     maturity = env.notional.getActiveMarkets(currencyId)[0][1]
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
     redeemParams = get_redeem_params(
-        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(100e18), True, bytes(0))
+        0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(4e6), True, bytes(0))
     )
 
     # Role check
@@ -170,6 +182,12 @@ def test_emergency_single_maturity(StratStableETHstETH):
     with brownie.reverts():
         vault.grantRole.call(vault.getRoles()["emergencySettlement"], accounts[1], {"from": accounts[2]})
     vault.grantRole(vault.getRoles()["emergencySettlement"], accounts[1], {"from": env.notional.owner()})
+
+    # Can't settle with bad slippage setting
+    with brownie.reverts():
+        vault.settleVaultEmergency.call(maturity, get_redeem_params(
+            0, 0, get_dynamic_trade_params(DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(5e6), True, bytes(0))
+        ), {"from": accounts[1]})
 
     # Cannot get emergency settlement amount if we are below the threshold
     with brownie.reverts():
