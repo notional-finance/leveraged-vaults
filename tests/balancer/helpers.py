@@ -121,7 +121,7 @@ def check_invariants(env, vault, accounts, maturities, snapshot=None):
         auraBalance -= snapshot["auraBalance"]
     assert vaultTotalfCash == accountTotalfCash
     assert vaultTotalVaultShares == accountTotalVaultShares
-    assert pytest.approx(vaultTotalStrategyTokens, rel=1e-3) == auraBalance
+    assert pytest.approx(vault.convertStrategyTokensToBPTClaim(vaultTotalStrategyTokens) / 1e10, rel=1e-5) == auraBalance
     assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"] == auraPool.balanceOf(vault)
     if snapshot != None:
         vaultTotalStrategyTokens += snapshot["totalStrategyTokens"]
@@ -166,7 +166,7 @@ def get_expected_bpt_amount(context, depositAmount, expectedBorrowAmount, primar
         secondaryAmount = env.tokens["wstETH"].balanceOf(env.tradingModule)
         env.tokens["wstETH"].transfer(vault, secondaryAmount, {"from": env.tradingModule})
         undoCount += 4
-    expectedBPTAmount = vault.joinPoolAndStake.call(primaryAmount, secondaryAmount, 0) / 1e10
+    expectedBPTAmount = vault.joinPoolAndStake.call(primaryAmount, secondaryAmount, 0)
     if undoCount > 0:
         chain.undo(undoCount)
     return expectedBPTAmount

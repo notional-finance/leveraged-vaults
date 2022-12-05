@@ -136,6 +136,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         return BoostedOracleContext({
             ampParam: value,
             bptBalance: balances[BPT_INDEX],
+            swapFeePercentage: pool.getSwapFeePercentage(),
             primaryUnderlyingPool: UnderlyingPoolContext({
                 mainScaleFactor: underlyingScalingFactors[mainIndex],
                 mainBalance: underlyingBalances[mainIndex],

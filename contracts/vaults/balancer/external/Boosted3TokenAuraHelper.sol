@@ -185,4 +185,15 @@ library Boosted3TokenAuraHelper {
 
         emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
     }
+
+    function convertStrategyToUnderlying(
+        Boosted3TokenAuraStrategyContext memory context,
+        uint256 strategyTokenAmount
+    ) external view returns (int256 underlyingValue) {
+        underlyingValue = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
+            oracleContext: context.oracleContext,
+            strategyTokenAmount: strategyTokenAmount
+        });
+    }
 }

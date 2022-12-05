@@ -85,6 +85,8 @@ struct BoostedOracleContext {
     uint256 ampParam;
     /// @notice BPT balance in the pool
     uint256 bptBalance;
+    /// @notice Boosted pool swap fee
+    uint256 swapFeePercentage;
     /// @notice Underlying linear pool for the primary token
     UnderlyingPoolContext primaryUnderlyingPool;
 }

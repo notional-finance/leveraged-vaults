@@ -212,11 +212,9 @@ library Boosted3TokenPoolUtils {
             tokenIndex: 0, 
             bptAmountIn: BalancerConstants.BALANCER_PRECISION, // 1 BPT 
             bptTotalSupply: virtualSupply, 
-            swapFeePercentage: 0, 
+            swapFeePercentage: oracleContext.swapFeePercentage, 
             currentInvariant: invariant
         });
-
-        // TODO: remove fee amount before downscaling
 
         // Downscale BPT out
         linearBPTAmount = linearBPTAmount * BalancerConstants.BALANCER_PRECISION / poolContext.basePool.primaryScaleFactor;
@@ -239,8 +237,6 @@ library Boosted3TokenPoolUtils {
                 upperTarget: underlyingPool.upperTarget
             }) 
         });
-
-        // TODO: apply linear pool scale factor (downscale)
 
         uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
         primaryAmount = (primaryAmount * bptAmount * primaryPrecision) / BalancerConstants.BALANCER_PRECISION_SQUARED;

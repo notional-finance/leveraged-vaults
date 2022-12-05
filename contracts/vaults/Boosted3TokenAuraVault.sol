@@ -139,11 +139,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         uint256 maturity
     ) public view virtual override returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        underlyingValue = context.poolContext._convertStrategyToUnderlying({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
-            strategyTokenAmount: strategyTokenAmount
-        });
+        underlyingValue = context.convertStrategyToUnderlying(strategyTokenAmount);
     }
 
     /// @notice Updates the vault settings
