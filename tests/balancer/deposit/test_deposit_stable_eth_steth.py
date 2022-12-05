@@ -1,5 +1,3 @@
-import pytest
-import brownie
 from brownie import accounts
 from brownie.network.state import Chain
 from brownie.convert import to_bytes
@@ -10,16 +8,9 @@ from tests.balancer.acceptance import (
     balancer_share_too_high,
     ETHPrimaryContext
 )
-from tests.balancer.helpers import (
-    enterMaturity,
-    snapshot_invariants,
-    check_invariants, 
-    get_expected_borrow_amount, 
-    get_expected_bpt_amount
-)
+from tests.balancer.helpers import get_expected_borrow_amount
 from scripts.common import (
     get_deposit_params, 
-    get_updated_vault_settings, 
     get_deposit_trade_params,
     DEX_ID,
     TRADE_TYPE
