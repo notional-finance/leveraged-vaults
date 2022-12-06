@@ -215,18 +215,21 @@ def main():
     env = BalancerEnvironment(networkName)
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    vault1 = env.deployBalancerVault(
+    vault1Impl = env.deployBalancerVault(
         "StratStableETHstETH", 
         MetaStable2TokenAuraVault,
         [MetaStable2TokenAuraHelper]
     )
-    vault2 = env.deployBalancerVault(
+    vault1 = env.deployVaultProxy("StratBoostedPoolDAIPrimary", vault1Impl, MetaStable2TokenAuraVault)
+    vault2Impl = env.deployBalancerVault(
         "StratBoostedPoolDAIPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-    vault3 = env.deployBalancerVault(
+    vault2 = env.deployVaultProxy("StratBoostedPoolDAIPrimary", vault2Impl, Boosted3TokenAuraVault)
+    vault3Impl = env.deployBalancerVault(
         "StratBoostedPoolUSDCPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
+    vault3 = env.deployVaultProxy("StratBoostedPoolUSDCPrimary", vault3Impl, Boosted3TokenAuraVault)
