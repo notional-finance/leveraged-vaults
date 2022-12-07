@@ -59,6 +59,19 @@ library Boosted3TokenPoolUtils {
         }
     }
 
+    function _getPrecision(
+        ThreeTokenPoolContext memory poolContext,
+        uint8 tokenIndex
+    ) private pure returns(uint256 precision) {
+        if (tokenIndex == 0) {
+            precision = 10**poolContext.basePool.primaryDecimals;
+        } else if (tokenIndex == 1) {
+            precision = 10**poolContext.basePool.secondaryDecimals;
+        } else if (tokenIndex == 2) {
+            precision = 10**poolContext.tertiaryDecimals;
+        }
+    }
+
     /// @notice Spot price is always expressed in terms of the primary currency
     function _getSpotPrice(
         ThreeTokenPoolContext memory poolContext, 
@@ -140,7 +153,9 @@ library Boosted3TokenPoolUtils {
         uint8 tokenIndex
     ) private pure returns (uint256 spotPrice) {
         // Trade 1 unit of tokenIn for tokenOut to get the spot price
-        uint256 amountIn = BalancerConstants.BALANCER_PRECISION;
+        // AmountIn needs to be in underlying precision because mainScaleFactor
+        // will convert it to 1e18
+        uint256 amountIn = _getPrecision(poolContext, tokenIndex);
 
         UnderlyingPoolContext memory inPool = oracleContext.underlyingPools[tokenIndex];
         amountIn = amountIn * inPool.mainScaleFactor / BalancerConstants.BALANCER_PRECISION;
@@ -162,6 +177,10 @@ library Boosted3TokenPoolUtils {
         UnderlyingPoolContext memory outPool = oracleContext.underlyingPools[0];
         spotPrice = _getUnderlyingMainOut(outPool, linearBPTOut);
         spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / outPool.mainScaleFactor;
+
+        // Convert precision back to 1e18 after downscaling by mainScaleFactor
+        // primary currency = index 0
+        spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / _getPrecision(poolContext, 0);
     }
 
     function _validateSpotPrice(
@@ -311,7 +330,7 @@ library Boosted3TokenPoolUtils {
         uint256 linearBPTAmount = StableMath._calcTokenOutGivenExactBptIn({
             amp: oracleContext.ampParam, 
             balances: balances, 
-            tokenIndex: 0, 
+            tokenIndex: 0, // Primary index
             bptAmountIn: BalancerConstants.BALANCER_PRECISION, // 1 BPT 
             bptTotalSupply: virtualSupply, 
             swapFeePercentage: oracleContext.swapFeePercentage, 
