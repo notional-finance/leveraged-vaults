@@ -154,4 +154,9 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     function getStrategyContext() external view returns (Boosted3TokenAuraStrategyContext memory) {
         return _strategyContext();
     }
+
+    function getSpotPrice(uint8 tokenIndexIn, uint8 tokenIndexOut) external view returns (uint256 spotPrice) {
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        spotPrice = Boosted3TokenAuraHelper.getSpotPrice(context, tokenIndexIn, tokenIndexOut);
+    }
 }

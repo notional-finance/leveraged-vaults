@@ -106,17 +106,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         TERTIARY_DECIMALS = uint8(tertiaryDecimals);
     }
 
-    function _boostedOracleContext(uint256[] memory balances) internal view returns (BoostedOracleContext memory) {
-        IBoostedPool pool = IBoostedPool(address(BALANCER_POOL_TOKEN));
-
-        (
-            uint256 value,
-            /* bool isUpdating */,
-            uint256 precision
-        ) = pool.getAmplificationParameter();
-        require(precision == StableMath._AMP_PRECISION);
-
-        ILinearPool underlyingPool = ILinearPool(address(PRIMARY_TOKEN));
+    function _underlyingPoolContext(ILinearPool underlyingPool) private view returns (UnderlyingPoolContext memory) {
         (uint256 lowerTarget, uint256 upperTarget) = underlyingPool.getTargets();
         uint256 mainIndex = underlyingPool.getMainIndex();
         uint256 wrappedIndex = underlyingPool.getWrappedIndex();
@@ -133,21 +123,39 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         uint256 wrappedScaleFactor = underlyingScalingFactors[mainIndex] * underlyingPool.getWrappedTokenRate() /
             BalancerConstants.BALANCER_PRECISION;
 
-        return BoostedOracleContext({
+        return UnderlyingPoolContext({
+            mainScaleFactor: underlyingScalingFactors[mainIndex],
+            mainBalance: underlyingBalances[mainIndex],
+            wrappedScaleFactor: wrappedScaleFactor,
+            wrappedBalance: underlyingBalances[wrappedIndex],
+            virtualSupply: underlyingPool.getVirtualSupply(),
+            fee: underlyingPool.getSwapFeePercentage(),
+            lowerTarget: lowerTarget,
+            upperTarget: upperTarget    
+        });
+    }
+
+    function _boostedOracleContext(uint256[] memory balances) 
+        internal view returns (BoostedOracleContext memory boostedPoolContext) {
+        IBoostedPool pool = IBoostedPool(address(BALANCER_POOL_TOKEN));
+
+        (
+            uint256 value,
+            /* bool isUpdating */,
+            uint256 precision
+        ) = pool.getAmplificationParameter();
+        require(precision == StableMath._AMP_PRECISION);
+
+        boostedPoolContext = BoostedOracleContext({
             ampParam: value,
             bptBalance: balances[BPT_INDEX],
             swapFeePercentage: pool.getSwapFeePercentage(),
-            primaryUnderlyingPool: UnderlyingPoolContext({
-                mainScaleFactor: underlyingScalingFactors[mainIndex],
-                mainBalance: underlyingBalances[mainIndex],
-                wrappedScaleFactor: wrappedScaleFactor,
-                wrappedBalance: underlyingBalances[wrappedIndex],
-                virtualSupply: underlyingPool.getVirtualSupply(),
-                fee: underlyingPool.getSwapFeePercentage(),
-                lowerTarget: lowerTarget,
-                upperTarget: upperTarget    
-            })
+            underlyingPools: new UnderlyingPoolContext[](3)
         });
+
+        boostedPoolContext.underlyingPools[0] = _underlyingPoolContext(ILinearPool(address(PRIMARY_TOKEN)));
+        boostedPoolContext.underlyingPools[1] = _underlyingPoolContext(ILinearPool(address(SECONDARY_TOKEN)));
+        boostedPoolContext.underlyingPools[2] = _underlyingPoolContext(ILinearPool(address(TERTIARY_TOKEN)));
     }
 
     function _threeTokenPoolContext(uint256[] memory balances, uint256[] memory scalingFactors) 

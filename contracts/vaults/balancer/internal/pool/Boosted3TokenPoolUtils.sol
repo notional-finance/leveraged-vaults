@@ -46,24 +46,126 @@ library Boosted3TokenPoolUtils {
     // actually owned by some entity) instead.
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
+    function _getScaleFactor(
+        ThreeTokenPoolContext memory poolContext,
+        uint8 tokenIndex
+    ) private view returns(uint256 scaleFactor) {
+        if (tokenIndex == poolContext.tertiaryIndex) {
+            scaleFactor = poolContext.tertiaryScaleFactor;
+        } else if (tokenIndex == poolContext.basePool.secondaryIndex) {
+            scaleFactor = poolContext.basePool.secondaryScaleFactor;
+        } else if (tokenIndex == poolContext.basePool.primaryIndex) {
+            scaleFactor = poolContext.basePool.primaryScaleFactor;
+        }
+    }
+
+    function _validateTokenIndex(ThreeTokenPoolContext memory poolContext, uint8 tokenIndex) private pure {
+        if (
+            tokenIndex != poolContext.basePool.primaryIndex && 
+            tokenIndex != poolContext.basePool.secondaryIndex && 
+            tokenIndex != poolContext.tertiaryIndex
+        ) {
+            revert Errors.InvalidTokenIndex(tokenIndex);
+        }
+    }
+
     function _getSpotPrice(
-        uint256 ampParam,
+        ThreeTokenPoolContext memory poolContext, 
+        BoostedOracleContext memory oracleContext,
+        uint8 tokenIndexIn, 
+        uint8 tokenIndexOut
+    ) internal pure returns (uint256 spotPrice) {
+        _validateTokenIndex(poolContext, tokenIndexIn);
+        _validateTokenIndex(poolContext, tokenIndexOut);
+
+        uint256[] memory balances = _getScaledBalances(poolContext);
+        uint256 invariant = StableMath._calculateInvariant(
+            oracleContext.ampParam, balances, true // roundUp = true
+        );
+        spotPrice = _getSpotPriceWithInvariant({
+            poolContext: poolContext,
+            oracleContext: oracleContext,
+            balances: balances, 
+            invariant: invariant,
+            tokenIndexIn: tokenIndexIn, // Primary index
+            tokenIndexOut: tokenIndexOut // Secondary index
+        });
+    }
+
+    function _getUnderlyingBPTOut(
+        UnderlyingPoolContext memory pool,
+        uint256 mainIn
+    ) private pure returns (uint256) {
+        uint256 scaledMainBalance = pool.mainBalance * pool.mainScaleFactor /
+            BalancerConstants.BALANCER_PRECISION;
+        uint256 scaledWrappedBalance = pool.wrappedBalance * pool.wrappedScaleFactor /
+            BalancerConstants.BALANCER_PRECISION;
+
+        // Convert from linear pool BPT to primary Amount
+        return LinearMath._calcBptOutPerMainIn({
+            mainIn: mainIn,
+            mainBalance: scaledMainBalance,
+            wrappedBalance: scaledWrappedBalance,
+            bptSupply: pool.virtualSupply,
+            params: LinearMath.Params({
+                fee: pool.fee,
+                lowerTarget: pool.lowerTarget,
+                upperTarget: pool.upperTarget
+            }) 
+        });
+    }
+
+    function _getUnderlyingMainOut(
+        UnderlyingPoolContext memory pool,
+        uint256 bptIn
+    ) private pure returns (uint256) {
+        uint256 scaledMainBalance = pool.mainBalance * pool.mainScaleFactor /
+            BalancerConstants.BALANCER_PRECISION;
+        uint256 scaledWrappedBalance = pool.wrappedBalance * pool.wrappedScaleFactor /
+            BalancerConstants.BALANCER_PRECISION;
+
+        // Convert from linear pool BPT to primary Amount
+        return LinearMath._calcMainOutPerBptIn({
+            bptIn: bptIn,
+            mainBalance: scaledMainBalance,
+            wrappedBalance: scaledWrappedBalance,
+            bptSupply: pool.virtualSupply,
+            params: LinearMath.Params({
+                fee: pool.fee,
+                lowerTarget: pool.lowerTarget,
+                upperTarget: pool.upperTarget
+            }) 
+        });
+    }
+
+    function _getSpotPriceWithInvariant(
+        ThreeTokenPoolContext memory poolContext, 
+        BoostedOracleContext memory oracleContext,
+        uint256[] memory balances,
         uint256 invariant,
-        uint256[] memory balances, 
         uint8 tokenIndexIn, 
         uint8 tokenIndexOut
     ) private pure returns (uint256 spotPrice) {
         // Trade 1 unit of tokenIn for tokenOut to get the spot price
         uint256 amountIn = BalancerConstants.BALANCER_PRECISION;
-        uint256 amountOut = StableMath._calcOutGivenIn({
-            amplificationParameter: ampParam,
+
+        UnderlyingPoolContext memory inPool = oracleContext.underlyingPools[tokenIndexIn];
+        amountIn = amountIn * inPool.mainScaleFactor / BalancerConstants.BALANCER_PRECISION;
+        uint256 linearBPTIn = _getUnderlyingBPTOut(inPool, amountIn);
+
+        uint256 linearBPTOut = StableMath._calcOutGivenIn({
+            amplificationParameter: oracleContext.ampParam,
             balances: balances,
             tokenIndexIn: tokenIndexIn,
             tokenIndexOut: tokenIndexOut,
-            tokenAmountIn: amountIn,
+            tokenAmountIn: linearBPTIn,
             invariant: invariant
         });
-        spotPrice = amountOut;
+
+        UnderlyingPoolContext memory outPool = oracleContext.underlyingPools[tokenIndexOut];
+
+        spotPrice = _getUnderlyingMainOut(outPool, linearBPTOut);
+        spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / outPool.mainScaleFactor;
     }
 
     function _validateSpotPrice(
@@ -79,13 +181,13 @@ library Boosted3TokenPoolUtils {
         (int256 answer, int256 decimals) = context.tradingModule.getOraclePrice(tokenOut, tokenIn);
         require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
         
-        uint256 spotPrice = _getSpotPrice({
+        uint256 spotPrice = 0; /*_getSpotPriceWithInvariant({
             ampParam: ampParam,
             invariant: invariant,
             balances: balances, 
             tokenIndexIn: tokenIndexIn, // Primary index
             tokenIndexOut: tokenIndexOut // Secondary index
-        }); 
+        }); */
 
         uint256 oraclePrice = answer.toUint();
         uint256 lowerLimit = (oraclePrice * 
@@ -145,19 +247,23 @@ library Boosted3TokenPoolUtils {
         virtualSupply = poolContext.basePool.basePool.pool.totalSupply() - oracleContext.bptBalance;
     }
 
-    function _getVirtualSupplyAndBalances(
-        ThreeTokenPoolContext memory poolContext, 
-        BoostedOracleContext memory oracleContext
-    ) private view returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
-        virtualSupply = _getVirtualSupply(poolContext, oracleContext);
-
+    function _getScaledBalances(ThreeTokenPoolContext memory poolContext) 
+        private pure returns (uint256[] memory amountsWithoutBpt) {
         amountsWithoutBpt = new uint256[](3);
         amountsWithoutBpt[0] = poolContext.basePool.primaryBalance * poolContext.basePool.primaryScaleFactor 
             / BalancerConstants.BALANCER_PRECISION;
         amountsWithoutBpt[1] = poolContext.basePool.secondaryBalance * poolContext.basePool.secondaryScaleFactor
             / BalancerConstants.BALANCER_PRECISION;
         amountsWithoutBpt[2] = poolContext.tertiaryBalance * poolContext.tertiaryScaleFactor
-            / BalancerConstants.BALANCER_PRECISION;
+            / BalancerConstants.BALANCER_PRECISION;        
+    }
+
+    function _getVirtualSupplyAndBalances(
+        ThreeTokenPoolContext memory poolContext, 
+        BoostedOracleContext memory oracleContext
+    ) private view returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
+        virtualSupply = _getVirtualSupply(poolContext, oracleContext);
+        amountsWithoutBpt = _getScaledBalances(poolContext);
     }
 
     function _getValidatedPoolData(
@@ -218,25 +324,9 @@ library Boosted3TokenPoolUtils {
 
         // Downscale BPT out
         linearBPTAmount = linearBPTAmount * BalancerConstants.BALANCER_PRECISION / poolContext.basePool.primaryScaleFactor;
-        UnderlyingPoolContext memory underlyingPool = oracleContext.primaryUnderlyingPool;
 
-        uint256 scaledMainBalance = underlyingPool.mainBalance * underlyingPool.mainScaleFactor /
-            BalancerConstants.BALANCER_PRECISION;
-        uint256 scaledWrappedBalance = underlyingPool.wrappedBalance * underlyingPool.wrappedScaleFactor /
-            BalancerConstants.BALANCER_PRECISION;
-
-        // Convert from linear pool BPT to primary Amount
-        primaryAmount = LinearMath._calcMainOutPerBptIn({
-            bptIn: linearBPTAmount,
-            mainBalance: scaledMainBalance,
-            wrappedBalance: scaledWrappedBalance,
-            bptSupply: underlyingPool.virtualSupply,
-            params: LinearMath.Params({
-                fee: underlyingPool.fee,
-                lowerTarget: underlyingPool.lowerTarget,
-                upperTarget: underlyingPool.upperTarget
-            }) 
-        });
+        // Primary underlying pool = index 0
+        primaryAmount = _getUnderlyingMainOut(oracleContext.underlyingPools[0], linearBPTAmount);
 
         uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
         primaryAmount = (primaryAmount * bptAmount * primaryPrecision) / BalancerConstants.BALANCER_PRECISION_SQUARED;

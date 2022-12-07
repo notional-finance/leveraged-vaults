@@ -20,4 +20,5 @@ library Errors {
     error BalancerPoolShareTooHigh(uint256 totalBPTHeld, uint256 bptThreshold);
     error StakeFailed();
     error UnstakeFailed();
+    error InvalidTokenIndex(uint8 tokenIndex);
 }

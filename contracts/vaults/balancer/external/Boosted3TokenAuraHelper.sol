@@ -196,4 +196,12 @@ library Boosted3TokenAuraHelper {
             strategyTokenAmount: strategyTokenAmount
         });
     }
+
+    function getSpotPrice(
+        Boosted3TokenAuraStrategyContext memory context,
+        uint8 tokenIndexIn,
+        uint8 tokenIndexOut
+    ) external view returns (uint256 spotPrice) {
+        spotPrice = context.poolContext._getSpotPrice(context.oracleContext, tokenIndexIn, tokenIndexOut);
+    }
 }

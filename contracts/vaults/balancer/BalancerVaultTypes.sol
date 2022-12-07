@@ -88,7 +88,7 @@ struct BoostedOracleContext {
     /// @notice Boosted pool swap fee
     uint256 swapFeePercentage;
     /// @notice Underlying linear pool for the primary token
-    UnderlyingPoolContext primaryUnderlyingPool;
+    UnderlyingPoolContext[] underlyingPools;
 }
 
 /// @notice Balancer pool related fields

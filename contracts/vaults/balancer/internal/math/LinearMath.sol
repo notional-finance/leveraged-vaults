@@ -31,6 +31,29 @@ library LinearMath {
         return mainBalance.sub(newMainBalance);
     }
 
+    function _calcBptOutPerMainIn(
+        uint256 mainIn,
+        uint256 mainBalance,
+        uint256 wrappedBalance,
+        uint256 bptSupply,
+        Params memory params
+    ) internal pure returns (uint256) {
+        // Amount out, so we round down overall.
+
+        if (bptSupply == 0) {
+            // BPT typically grows in the same ratio the invariant does. The first time liquidity is added however, the
+            // BPT supply is initialized to equal the invariant (which in this case is just the nominal main balance as
+            // there is no wrapped balance).
+            return _toNominal(mainIn, params);
+        }
+
+        uint256 previousNominalMain = _toNominal(mainBalance, params);
+        uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn), params);
+        uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
+        uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
+        return Math.divDown(Math.mul(bptSupply, deltaNominalMain), invariant);
+    }
+
     function _toNominal(uint256 real, Params memory params) private pure returns (uint256) {
         // Fees are always rounded down: either direction would work but we need to be consistent, and rounding down
         // uses less gas.
