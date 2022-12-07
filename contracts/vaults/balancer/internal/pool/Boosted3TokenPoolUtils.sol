@@ -59,19 +59,6 @@ library Boosted3TokenPoolUtils {
         }
     }
 
-    function _getPrecision(
-        ThreeTokenPoolContext memory poolContext,
-        uint8 tokenIndex
-    ) private pure returns(uint256 precision) {
-        if (tokenIndex == 0) {
-            precision = 10**poolContext.basePool.primaryDecimals;
-        } else if (tokenIndex == 1) {
-            precision = 10**poolContext.basePool.secondaryDecimals;
-        } else if (tokenIndex == 2) {
-            precision = 10*poolContext.tertiaryDecimals;
-        }
-    }
-
     /// @notice Spot price is always expressed in terms of the primary currency
     function _getSpotPrice(
         ThreeTokenPoolContext memory poolContext, 
