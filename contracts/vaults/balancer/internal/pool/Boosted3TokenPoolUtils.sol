@@ -72,16 +72,16 @@ library Boosted3TokenPoolUtils {
         }
     }
 
+    /// @notice Spot price is always expressed in terms of the primary currency
     function _getSpotPrice(
         ThreeTokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext,
-        uint8 tokenIndexIn, 
-        uint8 tokenIndexOut
+        uint8 tokenIndex
     ) internal pure returns (uint256 spotPrice) {
-        require(tokenIndexIn < 3);  /// @dev invalid token index
-        require(tokenIndexOut < 3); /// @dev invalid token index
+        require(tokenIndex < 3);  /// @dev invalid token index
 
-        if (tokenIndexIn == tokenIndexOut) {
+        // Exchange rate of primary currency = 1
+        if (tokenIndex == 0) {
             return BalancerConstants.BALANCER_PRECISION;
         }
 
@@ -94,8 +94,7 @@ library Boosted3TokenPoolUtils {
             oracleContext: oracleContext,
             balances: balances, 
             invariant: invariant,
-            tokenIndexIn: tokenIndexIn, // Primary index
-            tokenIndexOut: tokenIndexOut // Secondary index
+            tokenIndex: tokenIndex
         });
     }
 
@@ -145,38 +144,35 @@ library Boosted3TokenPoolUtils {
         });
     }
 
+    /// @notice Spot price is always expressed in terms of the primary currency
     function _getSpotPriceWithInvariant(
         ThreeTokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext,
         uint256[] memory balances,
         uint256 invariant,
-        uint8 tokenIndexIn, 
-        uint8 tokenIndexOut
+        uint8 tokenIndex
     ) private pure returns (uint256 spotPrice) {
         // Trade 1 unit of tokenIn for tokenOut to get the spot price
-        uint256 precisionIn = _getPrecision(poolContext, tokenIndexIn);
-        uint256 precisionOut = _getPrecision(poolContext, tokenIndexOut);
         uint256 amountIn = BalancerConstants.BALANCER_PRECISION;
 
-        UnderlyingPoolContext memory inPool = oracleContext.underlyingPools[tokenIndexIn];
+        UnderlyingPoolContext memory inPool = oracleContext.underlyingPools[tokenIndex];
         amountIn = amountIn * inPool.mainScaleFactor / BalancerConstants.BALANCER_PRECISION;
         uint256 linearBPTIn = _getUnderlyingBPTOut(inPool, amountIn);
 
-        linearBPTIn = linearBPTIn * _getScaleFactor(poolContext, tokenIndexIn) / BalancerConstants.BALANCER_PRECISION;
+        linearBPTIn = linearBPTIn * _getScaleFactor(poolContext, tokenIndex) / BalancerConstants.BALANCER_PRECISION;
 
         uint256 linearBPTOut = StableMath._calcOutGivenIn({
             amplificationParameter: oracleContext.ampParam,
             balances: balances,
-            tokenIndexIn: tokenIndexIn,
-            tokenIndexOut: tokenIndexOut,
+            tokenIndexIn: tokenIndex,
+            tokenIndexOut: 0, // Primary index
             tokenAmountIn: linearBPTIn,
             invariant: invariant
         });
 
-        linearBPTOut = linearBPTOut * BalancerConstants.BALANCER_PRECISION / _getScaleFactor(poolContext, tokenIndexOut);
+        linearBPTOut = linearBPTOut * BalancerConstants.BALANCER_PRECISION / _getScaleFactor(poolContext, 0);
 
-        UnderlyingPoolContext memory outPool = oracleContext.underlyingPools[tokenIndexOut];
-
+        UnderlyingPoolContext memory outPool = oracleContext.underlyingPools[0];
         spotPrice = _getUnderlyingMainOut(outPool, linearBPTOut);
         spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / outPool.mainScaleFactor;
     }
@@ -186,9 +182,8 @@ library Boosted3TokenPoolUtils {
         BoostedOracleContext memory oracleContext,
         StrategyContext memory context,
         address tokenIn,
-        uint8 tokenIndexIn,
         address tokenOut,
-        uint8 tokenIndexOut,
+        uint8 tokenIndex,
         uint256[] memory balances,
         uint256 invariant
     ) private view {
@@ -200,8 +195,7 @@ library Boosted3TokenPoolUtils {
             oracleContext: oracleContext,
             balances: balances, 
             invariant: invariant,
-            tokenIndexIn: tokenIndexIn, // Primary index
-            tokenIndexOut: tokenIndexOut // Secondary index
+            tokenIndex: tokenIndex
         });
 
         uint256 oraclePrice = answer.toUint();
@@ -234,9 +228,8 @@ library Boosted3TokenPoolUtils {
             oracleContext: oracleContext,
             context: strategyContext,
             tokenIn: primaryUnderlying,
-            tokenIndexIn: 0, // primary index
             tokenOut: secondaryUnderlying,
-            tokenIndexOut: 1, // secondary index
+            tokenIndex: 1, // secondary index
             balances: balances,
             invariant: invariant
         });
@@ -246,9 +239,8 @@ library Boosted3TokenPoolUtils {
             oracleContext: oracleContext,
             context: strategyContext,
             tokenIn: primaryUnderlying,
-            tokenIndexIn: 0, // primary index
             tokenOut: tertiaryUnderlying,
-            tokenIndexOut: 2, // secondary index
+            tokenIndex: 2, // tertiary index
             balances: balances,
             invariant: invariant
         });

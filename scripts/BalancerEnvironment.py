@@ -220,7 +220,7 @@ def main():
         MetaStable2TokenAuraVault,
         [MetaStable2TokenAuraHelper]
     )
-    vault1 = env.deployVaultProxy("StratBoostedPoolDAIPrimary", vault1Impl, MetaStable2TokenAuraVault)
+    vault1 = env.deployVaultProxy("StratStableETHstETH", vault1Impl, MetaStable2TokenAuraVault)
     vault2Impl = env.deployBalancerVault(
         "StratBoostedPoolDAIPrimary", 
         Boosted3TokenAuraVault,
