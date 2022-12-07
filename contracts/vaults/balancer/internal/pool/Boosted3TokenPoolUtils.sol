@@ -49,23 +49,26 @@ library Boosted3TokenPoolUtils {
     function _getScaleFactor(
         ThreeTokenPoolContext memory poolContext,
         uint8 tokenIndex
-    ) private view returns(uint256 scaleFactor) {
-        if (tokenIndex == poolContext.tertiaryIndex) {
-            scaleFactor = poolContext.tertiaryScaleFactor;
-        } else if (tokenIndex == poolContext.basePool.secondaryIndex) {
-            scaleFactor = poolContext.basePool.secondaryScaleFactor;
-        } else if (tokenIndex == poolContext.basePool.primaryIndex) {
+    ) private pure returns(uint256 scaleFactor) {
+        if (tokenIndex == 0) {
             scaleFactor = poolContext.basePool.primaryScaleFactor;
+        } else if (tokenIndex == 1) {
+            scaleFactor = poolContext.basePool.secondaryScaleFactor;
+        } else if (tokenIndex == 2) {
+            scaleFactor = poolContext.tertiaryScaleFactor;
         }
     }
 
-    function _validateTokenIndex(ThreeTokenPoolContext memory poolContext, uint8 tokenIndex) private pure {
-        if (
-            tokenIndex != poolContext.basePool.primaryIndex && 
-            tokenIndex != poolContext.basePool.secondaryIndex && 
-            tokenIndex != poolContext.tertiaryIndex
-        ) {
-            revert Errors.InvalidTokenIndex(tokenIndex);
+    function _getPrecision(
+        ThreeTokenPoolContext memory poolContext,
+        uint8 tokenIndex
+    ) private pure returns(uint256 precision) {
+        if (tokenIndex == 0) {
+            precision = 10**poolContext.basePool.primaryDecimals;
+        } else if (tokenIndex == 1) {
+            precision = 10**poolContext.basePool.secondaryDecimals;
+        } else if (tokenIndex == 2) {
+            precision = 10*poolContext.tertiaryDecimals;
         }
     }
 
@@ -75,8 +78,12 @@ library Boosted3TokenPoolUtils {
         uint8 tokenIndexIn, 
         uint8 tokenIndexOut
     ) internal pure returns (uint256 spotPrice) {
-        _validateTokenIndex(poolContext, tokenIndexIn);
-        _validateTokenIndex(poolContext, tokenIndexOut);
+        require(tokenIndexIn < 3);  /// @dev invalid token index
+        require(tokenIndexOut < 3); /// @dev invalid token index
+
+        if (tokenIndexIn == tokenIndexOut) {
+            return BalancerConstants.BALANCER_PRECISION;
+        }
 
         uint256[] memory balances = _getScaledBalances(poolContext);
         uint256 invariant = StableMath._calculateInvariant(
@@ -147,11 +154,15 @@ library Boosted3TokenPoolUtils {
         uint8 tokenIndexOut
     ) private pure returns (uint256 spotPrice) {
         // Trade 1 unit of tokenIn for tokenOut to get the spot price
+        uint256 precisionIn = _getPrecision(poolContext, tokenIndexIn);
+        uint256 precisionOut = _getPrecision(poolContext, tokenIndexOut);
         uint256 amountIn = BalancerConstants.BALANCER_PRECISION;
 
         UnderlyingPoolContext memory inPool = oracleContext.underlyingPools[tokenIndexIn];
         amountIn = amountIn * inPool.mainScaleFactor / BalancerConstants.BALANCER_PRECISION;
         uint256 linearBPTIn = _getUnderlyingBPTOut(inPool, amountIn);
+
+        linearBPTIn = linearBPTIn * _getScaleFactor(poolContext, tokenIndexIn) / BalancerConstants.BALANCER_PRECISION;
 
         uint256 linearBPTOut = StableMath._calcOutGivenIn({
             amplificationParameter: oracleContext.ampParam,
@@ -162,6 +173,8 @@ library Boosted3TokenPoolUtils {
             invariant: invariant
         });
 
+        linearBPTOut = linearBPTOut * BalancerConstants.BALANCER_PRECISION / _getScaleFactor(poolContext, tokenIndexOut);
+
         UnderlyingPoolContext memory outPool = oracleContext.underlyingPools[tokenIndexOut];
 
         spotPrice = _getUnderlyingMainOut(outPool, linearBPTOut);
@@ -169,25 +182,27 @@ library Boosted3TokenPoolUtils {
     }
 
     function _validateSpotPrice(
+        ThreeTokenPoolContext memory poolContext, 
+        BoostedOracleContext memory oracleContext,
         StrategyContext memory context,
         address tokenIn,
         uint8 tokenIndexIn,
         address tokenOut,
         uint8 tokenIndexOut,
         uint256[] memory balances,
-        uint256 ampParam,
         uint256 invariant
     ) private view {
         (int256 answer, int256 decimals) = context.tradingModule.getOraclePrice(tokenOut, tokenIn);
         require(decimals == int256(BalancerConstants.BALANCER_PRECISION));
         
-        uint256 spotPrice = 0; /*_getSpotPriceWithInvariant({
-            ampParam: ampParam,
-            invariant: invariant,
+        uint256 spotPrice = _getSpotPriceWithInvariant({
+            poolContext: poolContext,
+            oracleContext: oracleContext,
             balances: balances, 
+            invariant: invariant,
             tokenIndexIn: tokenIndexIn, // Primary index
             tokenIndexOut: tokenIndexOut // Secondary index
-        }); */
+        });
 
         uint256 oraclePrice = answer.toUint();
         uint256 lowerLimit = (oraclePrice * 
@@ -205,9 +220,9 @@ library Boosted3TokenPoolUtils {
 
     function _validateTokenPrices(
         ThreeTokenPoolContext memory poolContext, 
+        BoostedOracleContext memory oracleContext,
         StrategyContext memory strategyContext,
         uint256[] memory balances,
-        uint256 ampParam,
         uint256 invariant
     ) private view {
         address primaryUnderlying = ILinearPool(address(poolContext.basePool.primaryToken)).getMainToken();
@@ -215,24 +230,26 @@ library Boosted3TokenPoolUtils {
         address tertiaryUnderlying = ILinearPool(address(poolContext.tertiaryToken)).getMainToken();
 
         _validateSpotPrice({
+            poolContext: poolContext,
+            oracleContext: oracleContext,
             context: strategyContext,
             tokenIn: primaryUnderlying,
             tokenIndexIn: 0, // primary index
             tokenOut: secondaryUnderlying,
             tokenIndexOut: 1, // secondary index
             balances: balances,
-            ampParam: ampParam,
             invariant: invariant
         });
 
         _validateSpotPrice({
+            poolContext: poolContext,
+            oracleContext: oracleContext,
             context: strategyContext,
             tokenIn: primaryUnderlying,
             tokenIndexIn: 0, // primary index
             tokenOut: tertiaryUnderlying,
             tokenIndexOut: 2, // secondary index
             balances: balances,
-            ampParam: ampParam,
             invariant: invariant
         });
     }
@@ -282,9 +299,9 @@ library Boosted3TokenPoolUtils {
         // validate spot prices against oracle prices
         _validateTokenPrices({
             poolContext: poolContext,
+            oracleContext: oracleContext,
             strategyContext: strategyContext,
             balances: balances,
-            ampParam: oracleContext.ampParam,
             invariant: invariant
         });
     }

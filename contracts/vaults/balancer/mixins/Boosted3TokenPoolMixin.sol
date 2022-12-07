@@ -110,6 +110,8 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         (uint256 lowerTarget, uint256 upperTarget) = underlyingPool.getTargets();
         uint256 mainIndex = underlyingPool.getMainIndex();
         uint256 wrappedIndex = underlyingPool.getWrappedIndex();
+        uint256 mainPrecision = 10**IERC20(underlyingPool.getMainToken()).decimals();
+        uint256 wrappedPrecision = 10**IERC20(underlyingPool.getWrappedToken()).decimals();
 
         (
             /* address[] memory tokens */,
@@ -125,9 +127,9 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
 
         return UnderlyingPoolContext({
             mainScaleFactor: underlyingScalingFactors[mainIndex],
-            mainBalance: underlyingBalances[mainIndex],
+            mainBalance: underlyingBalances[mainIndex] * BalancerConstants.BALANCER_PRECISION / mainPrecision,
             wrappedScaleFactor: wrappedScaleFactor,
-            wrappedBalance: underlyingBalances[wrappedIndex],
+            wrappedBalance: underlyingBalances[wrappedIndex] * BalancerConstants.BALANCER_PRECISION / wrappedPrecision,
             virtualSupply: underlyingPool.getVirtualSupply(),
             fee: underlyingPool.getSwapFeePercentage(),
             lowerTarget: lowerTarget,
