@@ -1,14 +1,16 @@
+import math
 import pytest
 import brownie
 from brownie import ZERO_ADDRESS, accounts
 from brownie.network.state import Chain
-from scripts.common import get_updated_vault_settings
+from scripts.common import get_updated_vault_settings, get_redeem_params, get_dynamic_trade_params
 from tests.balancer.helpers import (
     snapshot_invariants, 
     check_invariants, 
     check_account,
     enterMaturity, 
     exitVaultPercent,
+    convert_to_underlying,
     get_expected_bpt_amount,
     get_expected_borrow_amount
 )
@@ -23,7 +25,7 @@ class ETHPrimaryContext:
         self.currencyId = 1
         self.token = ZERO_ADDRESS
         self.whale = env.whales["ETH"]
-        self.primaryDecimals = 18
+        self.primaryPrecision = 1e18
     def balance(self, account):
         return account.balance()
     def approve(self, account, target):
@@ -40,7 +42,7 @@ class DAIPrimaryContext:
         self.token = env.tokens["DAI"]
         self.whale = env.whales["DAI_EOA"]
         self.token.approve(env.notional.address, 2**256-1, {"from": self.whale})
-        self.primaryDecimals = self.token.decimals()
+        self.primaryPrecision = 10**self.token.decimals()
     def balance(self, account):
         return self.token.balanceOf(account)
     def approve(self, account, target):
@@ -57,7 +59,7 @@ class USDCPrimaryContext:
         self.token = env.tokens["USDC"]
         self.whale = env.whales["USDC"]
         self.token.approve(env.notional.address, 2**256-1, {"from": self.whale})
-        self.primaryDecimals = self.token.decimals()
+        self.primaryPrecision = 10**self.token.decimals()
     def balance(self, account):
         return self.token.balanceOf(account)
     def approve(self, account, target):
@@ -70,7 +72,7 @@ def deposit(context, ops):
     notional = env.notional
     vault = context.vault
     currencyId = context.currencyId
-    primaryPrecision = 10**context.primaryDecimals
+    primaryPrecision = context.primaryPrecision
     maturities = [m[1] for m in notional.getActiveMarkets(currencyId)]
     snapshot = snapshot_invariants(env, vault, maturities)
     depositors = set()
@@ -78,7 +80,7 @@ def deposit(context, ops):
         depositAmount = op[0]
         primaryBorrowAmount = op[1]
         depositor = op[2]
-        context.approve(depositor, otional.address)
+        context.approve(depositor, notional.address)
         context.transfer(depositor, depositAmount)
         if depositor not in depositors:
             depositors.add(depositor)
@@ -135,29 +137,236 @@ def redeem(context, ops):
             firstRedeem = False
     check_invariants(env, vault, depositors, maturities, snapshot)
 
-def normal_settlement(context, depositAmount, primaryBorrowAmount):
+def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex, depositor, operator, redeemParams, percent):
     env = context.env
     notional = env.notional
     vault = context.vault
     currencyId = context.currencyId
-    depositor = context.depositor
-    primaryPrecision = 10**context.primaryDecimals
+    maturity = env.notional.getActiveMarkets(currencyId)[maturityIndex][1]
+    context.approve(depositor, notional.address)
+    context.transfer(depositor, depositAmount)
+    context.approve(operator, notional.address)
+    context.transfer(operator, depositAmount)
+    enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
 
-def post_maturity_settlement(context, depositAmount, primaryBorrowAmount):
-    env = context.env
-    notional = env.notional
-    vault = context.vault
-    currencyId = context.currencyId
-    depositor = context.depositor
-    primaryPrecision = 10**context.primaryDecimals
+    # Enter settlement window
+    settlementWindow = vault.getStrategyContext()["baseStrategy"]["settlementPeriodInSeconds"]
+    chain.sleep(maturity - settlementWindow + 1 - chain.time())
+    chain.mine(5)
+    # Disable oracle freshness check
+    env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
 
-def emergency_settlement(context, depositAmount, primaryBorrowAmount):
+    tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * percent)
+    tradeParams = redeemParams[2]
+    redeemParamsEncoded = get_redeem_params(
+        redeemParams[0], 
+        redeemParams[1], 
+        get_dynamic_trade_params(
+            tradeParams[0], tradeParams[1], tradeParams[2], tradeParams[3], tradeParams[4]
+        )
+    )
+    # Can't settle without the proper role
+    with brownie.reverts():
+        vault.settleVaultNormal.call(maturity, tokensToRedeem, redeemParamsEncoded, {"from": operator})
+
+    # Only Notional owner can grant roles
+    with brownie.reverts():
+        vault.grantRole.call(vault.getRoles()["normalSettlement"], operator, {"from": context.whale})
+    vault.grantRole(vault.getRoles()["normalSettlement"], operator, {"from": env.notional.owner()})
+
+    # Can't settle with bad slippage setting
+    with brownie.reverts():
+        badSlippage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["settlementSlippageLimitPercent"] + 1
+        vault.settleVaultNormal.call(maturity, tokensToRedeem, get_redeem_params(
+            redeemParams[0], 
+            redeemParams[1], 
+            get_dynamic_trade_params(
+                tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
+            )
+        ), {"from": operator})
+
+    # Test settlement (settle half)
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    underlyingCashBefore = vault.convertStrategyToUnderlying(depositor, vaultState["totalStrategyTokens"], maturity)
+    vault.settleVaultNormal(maturity, tokensToRedeem, redeemParamsEncoded, {"from": operator})
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    totalUnderlyingCash = convert_to_underlying(env, currencyId, vaultState["totalAssetCash"], context.primaryPrecision)
+    assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore * percent
+    assert vaultState["totalStrategyTokens"] == vaultState["totalVaultShares"] - tokensToRedeem
+
+    # Can't deposit during settlement (totalAssetCash > 0)
+    with brownie.reverts():
+        enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, operator, True)
+
+    # Redeem is allowed
+    redeemParamsEncoded2 = get_redeem_params(
+        redeemParams[0], 
+        redeemParams[1], 
+        get_dynamic_trade_params(
+            tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
+        )
+    )
+    exitVaultPercent(env, vault, depositor, 1.0, redeemParamsEncoded2)
+    chain.undo()
+
+    tokensToRedeem = env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"]
+
+    # Settlement cool down
+    with brownie.reverts():
+        vault.settleVaultNormal.call(maturity, tokensToRedeem, redeemParamsEncoded, {"from": operator})
+
+    chain.sleep(3600 * 10)
+    chain.mine(5)    
+
+    # Can't redeem beyond maxUnderlyingSurplus
+    settings = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]
+    oldMaxUnderlyingSurplus = settings["maxUnderlyingSurplus"]
+    vault.setStrategyVaultSettings(
+        get_updated_vault_settings(settings, maxUnderlyingSurplus=0), {"from": env.notional.owner()}
+    )
+    with brownie.reverts():
+        vault.settleVaultNormal.call(maturity, tokensToRedeem, redeemParamsEncoded, {"from": operator})
+    vault.setStrategyVaultSettings(
+        get_updated_vault_settings(settings, maxUnderlyingSurplus=oldMaxUnderlyingSurplus), {"from": env.notional.owner()}
+    )
+
+    # Complete settlement
+    vault.settleVaultNormal(maturity, tokensToRedeem, redeemParamsEncoded, {"from": operator})
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    assert vaultState["totalStrategyTokens"] == 0
+    assert vaultState["isSettled"] == False
+    totalUnderlyingCash = convert_to_underlying(env, currencyId, vaultState["totalAssetCash"], context.primaryPrecision)
+    assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore
+
+def post_maturity_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex, depositor, operator, redeemParams, percent):
     env = context.env
     notional = env.notional
     vault = context.vault
     currencyId = context.currencyId
-    depositor = context.depositor
-    primaryPrecision = 10**context.primaryDecimals
+    maturity = env.notional.getActiveMarkets(currencyId)[maturityIndex][1]
+    context.approve(depositor, notional.address)
+    context.transfer(depositor, depositAmount)
+    context.approve(operator, notional.address)
+    context.transfer(operator, depositAmount)
+    enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
+
+    tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * percent)
+    tradeParams = redeemParams[2]
+    redeemParamsEncoded = get_redeem_params(
+        redeemParams[0], 
+        redeemParams[1], 
+        get_dynamic_trade_params(
+            tradeParams[0], tradeParams[1], tradeParams[2], tradeParams[3], tradeParams[4]
+        )
+    )
+
+    # Can't call settleVaultPostMaturity before maturity
+    with brownie.reverts():
+        vault.settleVaultPostMaturity.call(maturity, tokensToRedeem, redeemParamsEncoded, {"from": env.notional.owner()})
+
+    chain.sleep(maturity + 1 - chain.time())
+    chain.mine(5)
+    # Disable oracle freshness check
+    env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
+
+    # Can't call settleVaultPostNormal after maturity
+    with brownie.reverts():
+        vault.grantRole.call(vault.getRoles()["normalSettlement"], operator, {"from": env.notional.owner()})
+        vault.settleVaultNormal.call(maturity, tokensToRedeem, redeemParamsEncoded, {"from": operator})
+
+    # Only Notional owner can grant roles
+    with brownie.reverts():
+        vault.grantRole.call(vault.getRoles()["postMaturitySettlement"], operator, {"from": context.whale})
+    vault.grantRole(vault.getRoles()["postMaturitySettlement"], operator, {"from": env.notional.owner()})
+
+    # Can't settle with bad slippage setting
+    with brownie.reverts():
+        badSlippage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["postMaturitySettlementSlippageLimitPercent"] + 1
+        vault.settleVaultPostMaturity.call(maturity, tokensToRedeem, get_redeem_params(
+            redeemParams[0], 
+            redeemParams[1], 
+            get_dynamic_trade_params(
+                tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
+            )
+        ), {"from": operator})
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    underlyingCashBefore = vault.convertStrategyToUnderlying(depositor, vaultState["totalStrategyTokens"], maturity)
+
+    vault.settleVaultPostMaturity(maturity, tokensToRedeem, redeemParamsEncoded, {"from": operator})
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    totalUnderlyingCash = convert_to_underlying(env, currencyId, vaultState["totalAssetCash"], context.primaryPrecision)
+    assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore * percent
+    assert vaultState["totalStrategyTokens"] == vaultState["totalVaultShares"] - tokensToRedeem
+    assert vaultState["isSettled"] == False
+
+    tokensToRedeem = env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"]
+
+    # Complete settlement
+    vault.settleVaultPostMaturity(maturity, tokensToRedeem - 1e8, redeemParamsEncoded, {"from": operator})
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    assert vaultState["totalStrategyTokens"] == 1e8
+    assert vaultState["isSettled"] == True
+    totalUnderlyingCash = convert_to_underlying(env, currencyId, vaultState["totalAssetCash"], context.primaryPrecision)
+    assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore
+
+def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex, depositor, operator, redeemParams):
+    env = context.env
+    notional = env.notional
+    vault = context.vault
+    currencyId = context.currencyId
+    maturity = env.notional.getActiveMarkets(currencyId)[maturityIndex][1]
+    context.approve(depositor, notional.address)
+    context.transfer(depositor, depositAmount)
+    context.approve(operator, notional.address)
+    context.transfer(operator, depositAmount)
+    enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
+
+    tradeParams = redeemParams[2]
+    redeemParamsEncoded = get_redeem_params(
+        redeemParams[0], 
+        redeemParams[1], 
+        get_dynamic_trade_params(
+            tradeParams[0], tradeParams[1], tradeParams[2], tradeParams[3], tradeParams[4]
+        )
+    )
+
+    # Role check
+    with brownie.reverts():
+        vault.settleVaultEmergency.call(maturity, redeemParamsEncoded, {"from": operator})
+
+    # Only Notional owner can grant roles
+    with brownie.reverts():
+        vault.grantRole.call(vault.getRoles()["emergencySettlement"], operator, {"from": context.whale})
+    vault.grantRole(vault.getRoles()["emergencySettlement"], operator, {"from": env.notional.owner()})
+
+    # Can't settle with bad slippage setting
+    with brownie.reverts():
+        badSlippage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["emergencySettlementSlippageLimitPercent"] + 1
+        vault.settleVaultEmergency.call(maturity, get_redeem_params(
+            redeemParams[0], 
+            redeemParams[1], 
+            get_dynamic_trade_params(
+                tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
+            )
+        ), {"from": operator})
+
+    # Cannot get emergency settlement amount if we are below the threshold
+    with brownie.reverts():
+        vault.getEmergencySettlementBPTAmount(maturity)
+
+    settings = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]
+    vault.setStrategyVaultSettings(get_updated_vault_settings(settings, maxBalancerPoolShare=0), {"from": env.notional.owner()})
+
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    assert vault.getEmergencySettlementBPTAmount(maturity) == vault.convertStrategyTokensToBPTClaim(vaultState["totalStrategyTokens"])
+    underlyingCashBefore = vault.convertStrategyToUnderlying(depositor, vaultState["totalStrategyTokens"], maturity)
+
+    vault.settleVaultEmergency(maturity, redeemParamsEncoded, {"from": operator})
+
+    vaultState = env.notional.getVaultState(vault.address, maturity)
+    assert vaultState["totalStrategyTokens"] <= 1 # Rounding error?
+    totalUnderlyingCash = convert_to_underlying(env, currencyId, vaultState["totalAssetCash"], context.primaryPrecision)
+    assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore
 
 def roll(context, depositAmount, primaryBorrowAmount):
     env = context.env
@@ -165,7 +374,7 @@ def roll(context, depositAmount, primaryBorrowAmount):
     vault = context.vault
     currencyId = context.currencyId
     depositor = context.depositor
-    primaryPrecision = 10**context.primaryDecimals
+    primaryPrecision = context.primaryPrecision
 
 def leverage_ratio_too_high(context, depositAmount, primaryBorrowAmount):
     env = context.env

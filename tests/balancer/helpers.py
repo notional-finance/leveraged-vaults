@@ -28,9 +28,9 @@ def get_expected_borrow_amount(env, currencyId, maturity, primaryBorrowAmount):
     )["borrowAmountUnderlying"]
     return expectedBorrowAmount
 
-def convert_to_underlying(env, currencyId, assetCash):
+def convert_to_underlying(env, currencyId, assetCash, underlyingPrecision):
     assetRate = env.notional.getCurrencyAndRates(currencyId)["assetRate"]
-    return assetRate["rate"] * assetCash / assetRate["underlyingDecimals"]
+    return (assetCash * assetRate["rate"] / 1e10 / assetRate["underlyingDecimals"]) * underlyingPrecision / 1e8
 
 def enterMaturity(
     env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, account, callStatic=False, depositParams=None

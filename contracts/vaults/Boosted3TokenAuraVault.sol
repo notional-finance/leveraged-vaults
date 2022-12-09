@@ -27,10 +27,12 @@ import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.so
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
+import {IERC20} from "../../interfaces/IERC20.sol";
 
 contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
+    using SettlementUtils for StrategyContext;
     using BalancerVaultStorage for StrategyVaultState;
     using Boosted3TokenAuraHelper for Boosted3TokenAuraStrategyContext;
 
@@ -158,5 +160,13 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     function getSpotPrice(uint8 tokenIndex) external view returns (uint256 spotPrice) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         spotPrice = Boosted3TokenAuraHelper.getSpotPrice(context, tokenIndex);
+    }
+
+    function getEmergencySettlementBPTAmount(uint256 maturity) external view returns (uint256 bptToSettle) {
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        bptToSettle = context.baseStrategy._getEmergencySettlementParams({
+            maturity: maturity, 
+            totalBPTSupply: IERC20(context.poolContext.basePool.basePool.pool).totalSupply()
+        });
     }
 }

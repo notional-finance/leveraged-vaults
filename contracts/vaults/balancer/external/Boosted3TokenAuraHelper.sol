@@ -123,7 +123,7 @@ library Boosted3TokenAuraHelper {
         uint256 bptToSettle,
         uint256 redeemStrategyTokenAmount,
         RedeemParams memory params
-    ) private {
+    ) private {        
         // Calculate minPrimary using Chainlink oracle data
         params.minPrimary = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, strategyContext, bptToSettle

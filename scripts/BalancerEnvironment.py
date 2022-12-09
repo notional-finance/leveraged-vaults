@@ -40,7 +40,7 @@ StrategyConfig = {
             "maxUnderlyingSurplus": 2000e18, # 2000 ETH
             "maxBalancerPoolShare": Wei(1.5e3), # 15%
             "settlementSlippageLimitPercent": Wei(3e6), # 3%
-            "postMaturitySettlementSlippageLimitPercent": Wei(3e6), # 3%
+            "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 5%
             "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
             "settlementWindow": 172800,  # 1-week settlement
@@ -62,11 +62,11 @@ StrategyConfig = {
             "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
             "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
             "auraRewardPool": "0x1e9f147241da9009417811ad5858f22ed1f9f9fd",
-            "maxUnderlyingSurplus": 10000e18, # 10000 DAI
+            "maxUnderlyingSurplus": 50000e18, # 50000 DAI
             "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 5e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
-            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
+            "settlementSlippageLimitPercent": 3e6, # 3%
+            "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
+            "emergencySettlementSlippageLimitPercent": 4e6, # 4%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -87,11 +87,11 @@ StrategyConfig = {
             "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
             "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
             "auraRewardPool": "0x1e9f147241da9009417811ad5858f22ed1f9f9fd",
-            "maxUnderlyingSurplus": 10000e6, # 10000 USDC
+            "maxUnderlyingSurplus": 50000e6, # 50000 USDC
             "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 5e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
-            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
+            "settlementSlippageLimitPercent": 3e6, # 5%
+            "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
+            "emergencySettlementSlippageLimitPercent": 4e6, # 4%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
