@@ -1,5 +1,4 @@
 from brownie import accounts, Wei
-from brownie.network.state import Chain
 from tests.fixtures import *
 from tests.balancer.acceptance import (
     ETHPrimaryContext, 
@@ -8,8 +7,6 @@ from tests.balancer.acceptance import (
     emergency_settlement
 )
 from scripts.common import DEX_ID, TRADE_TYPE
-
-chain = Chain()
 
 def test_normal_single_maturity(StratStableETHstETH):
     redeemParams = [0, 0, [DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(3e6), True, bytes(0)]]

@@ -3,7 +3,12 @@ import pytest
 import brownie
 from brownie import ZERO_ADDRESS, accounts
 from brownie.network.state import Chain
-from scripts.common import get_updated_vault_settings, get_redeem_params, get_dynamic_trade_params
+from scripts.common import (
+    get_updated_vault_settings, 
+    get_deposit_params, 
+    get_redeem_params, 
+    get_dynamic_trade_params
+)
 from tests.balancer.helpers import (
     snapshot_invariants, 
     check_invariants, 
@@ -368,13 +373,29 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
     totalUnderlyingCash = convert_to_underlying(env, currencyId, vaultState["totalAssetCash"], context.primaryPrecision)
     assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore
 
-def roll(context, depositAmount, primaryBorrowAmount):
+def roll(context, depositAmount, primaryBorrowAmount, depositor, maturityIndex1, maturityIndex2):
     env = context.env
     notional = env.notional
     vault = context.vault
     currencyId = context.currencyId
-    depositor = context.depositor
-    primaryPrecision = context.primaryPrecision
+    maturity1 = env.notional.getActiveMarkets(currencyId)[maturityIndex1][1]
+    maturity2 = env.notional.getActiveMarkets(currencyId)[maturityIndex2][1]
+    snapshot = snapshot_invariants(env, vault, [maturity1, maturity2])
+    context.approve(depositor, notional.address)
+    context.transfer(depositor, depositAmount)
+    enterMaturity(env, vault, currencyId, maturity1, depositAmount, primaryBorrowAmount, depositor)
+    notional.rollVaultPosition(
+        depositor,
+        vault.address,
+        primaryBorrowAmount * 1.1,
+        maturity2,
+        0,
+        0,
+        0,
+        get_deposit_params(),
+        {"from": depositor}
+    )
+    check_invariants(env, vault, [depositor], [maturity1, maturity2], snapshot)
 
 def leverage_ratio_too_high(context, depositAmount, primaryBorrowAmount):
     env = context.env

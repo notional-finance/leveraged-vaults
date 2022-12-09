@@ -1,14 +1,11 @@
 from brownie import accounts
 from brownie.convert import to_bytes
-from brownie.network.state import Chain
 from tests.fixtures import *
 from tests.balancer.acceptance import (
     redeem,
     ETHPrimaryContext
 )
 from scripts.common import get_dynamic_trade_params, get_redeem_params, DEX_ID, TRADE_TYPE
-
-chain = Chain()
 
 def test_single_maturity_full_redemption_unwrapped_success(StratStableETHstETH):
     redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(

@@ -1,5 +1,4 @@
 from brownie import accounts
-from brownie.network.state import Chain
 from brownie.convert import to_bytes
 from tests.fixtures import *
 from tests.balancer.acceptance import (
@@ -15,8 +14,6 @@ from scripts.common import (
     DEX_ID,
     TRADE_TYPE
 )
-
-chain = Chain()
 
 def test_single_maturity_low_leverage_success(StratStableETHstETH):
     deposit(

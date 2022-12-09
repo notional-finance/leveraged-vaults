@@ -1,5 +1,4 @@
 from brownie import accounts, Wei
-from brownie.network.state import Chain
 from tests.fixtures import *
 from tests.balancer.acceptance import (
     USDCPrimaryContext, 
@@ -12,8 +11,6 @@ from scripts.common import (
     DEX_ID,
     TRADE_TYPE
 )
-
-chain = Chain()
 
 def test_normal_single_maturity(StratBoostedPoolUSDCPrimary):
     redeemParams = [0, 0, [DEX_ID["UNISWAP_V3"], TRADE_TYPE["EXACT_IN_SINGLE"], Wei(3e6), True, get_univ3_single_data(3000)]]
