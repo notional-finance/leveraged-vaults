@@ -93,6 +93,12 @@ def StratBoostedPoolDAIPrimary():
     impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
     vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
 
+    env.tradingModule.setTokenPermissions(
+        vault.address, 
+        env.tokens["BAL"].address, 
+        [True, set_dex_flags(0, UNISWAP_V3=True), set_trade_type_flags(0, EXACT_IN_BATCH=True)], 
+        {"from": env.notional.owner()})
+
     mockImpl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
     mock = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault, mockImpl)
     mock = Contract.from_abi("MockDAIBoostedVault", mock.address, MockBoosted3TokenAuraVault.abi)
@@ -105,6 +111,12 @@ def StratBoostedPoolUSDCPrimary():
     strat = "StratBoostedPoolUSDCPrimary"
     impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
     vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
+
+    env.tradingModule.setTokenPermissions(
+        vault.address, 
+        env.tokens["BAL"].address, 
+        [True, set_dex_flags(0, UNISWAP_V3=True), set_trade_type_flags(0, EXACT_IN_BATCH=True)], 
+        {"from": env.notional.owner()})
 
     mockImpl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
     mock = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault, mockImpl)

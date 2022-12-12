@@ -1,57 +1,36 @@
-import pytest
-import brownie
 from brownie import ZERO_ADDRESS, Wei, accounts
 from tests.fixtures import *
-from tests.balancer.helpers import enterMaturity, get_metastable_amounts
+from tests.balancer.helpers import get_metastable_amounts
+from tests.balancer.acceptance import ETHPrimaryContext, claim_rewards, reinvest_reward
 from scripts.common import (
     get_univ3_single_data, 
     get_univ3_batch_data, 
     DEX_ID, 
-    TRADE_TYPE,
-    set_dex_flags,
-    set_trade_type_flags
+    TRADE_TYPE
 )
 
 chain = Chain()
 
-def test_claim_rewards_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
-    currencyId = 1
-    primaryBorrowAmount = 100e8
-    depositAmount = 50e18
-    maturity = env.notional.getActiveMarkets(currencyId)[0][1]
-    enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, accounts[0])
-    chain.sleep(3600 * 24 * 365)
-    chain.mine()
-    assert env.tokens["BAL"].balanceOf(vault.address) == 0
-    assert env.tokens["AURA"].balanceOf(vault.address) == 0
+def test_claim_rewards(StratStableETHstETH):
+    claim_rewards(ETHPrimaryContext(*StratStableETHstETH), 
+        50e18,
+        100e8, 
+        accounts[0],
+        {
+            "BAL": 140021066496559459622,
+            "AURA": 510423166313462670862
+        }
+    )
 
-    # Cannot claim without the proper role assigned
-    with brownie.reverts():
-        vault.claimRewardTokens.call({"from": accounts[1]})
-
-    # Only Notional owner can grant roles
-    with brownie.reverts():
-        vault.grantRole.call(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
-    vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": env.notional.owner()})
-    
-    txn = vault.claimRewardTokens({"from": accounts[1]})
-
-    assert txn.return_value[0] == env.tokens["BAL"].balanceOf(vault.address)
-    assert txn.return_value[1] == env.tokens["AURA"].balanceOf(vault.address)
-    assert pytest.approx(env.tokens["BAL"].balanceOf(vault.address), rel=1e-2) == 82947726591360320852
-    assert pytest.approx(env.tokens["AURA"].balanceOf(vault.address), rel=1e-2) == 305248161917312885590
-
-def test_reinvest_rewards_success(StratStableETHstETH):
-    (env, vault, mock) = StratStableETHstETH
+def test_reinvest_reward(StratStableETHstETH):
+    context = ETHPrimaryContext(*StratStableETHstETH)
+    env = context.env
     rewardAmount = Wei(50e18)
-    env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
-
     tradeParams = "(uint16,uint8,uint256,bool,bytes)"
     singleSidedRewardTradeParams = "(address,address,uint256,{})".format(tradeParams)
     balanced2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
-    (primaryAmount, secondaryAmount) = get_metastable_amounts(vault.getStrategyContext()["poolContext"], rewardAmount)
-    bptBefore = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
+    (primaryAmount, secondaryAmount) = get_metastable_amounts(context.vault.getStrategyContext()["poolContext"], rewardAmount)
+    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
     rewardParams = [eth_abi.encode_abi(
         [balanced2TokenRewardTradeParams],
         [[
@@ -84,16 +63,4 @@ def test_reinvest_rewards_success(StratStableETHstETH):
         ]]
     ), 0]
 
-    # Cannot reinvest without the proper role assigned
-    with brownie.reverts():
-        vault.reinvestReward.call(rewardParams, {"from": accounts[1]})
-
-    # Only Notional owner can grant roles
-    with brownie.reverts():
-        vault.grantRole.call(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": accounts[2]})
-    vault.grantRole(vault.getRoles()["rewardReinvestment"], accounts[1], {"from": env.notional.owner()})
-
-    vault.reinvestReward(rewardParams, {"from": accounts[1]})
-
-    bptAfter = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
-    assert pytest.approx(bptAfter - bptBefore, rel=1e-2) == 209476561588413989
+    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 209476561588413989)
