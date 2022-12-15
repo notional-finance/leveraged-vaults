@@ -30,6 +30,7 @@ library BalancerVaultStorage {
         require(settings.postMaturitySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.emergencySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.oraclePriceDeviationLimitPercent <= BalancerConstants.VAULT_PERCENT_BASIS);
+        require(settings.balancerPoolSlippageLimitPercent <= BalancerConstants.VAULT_PERCENT_BASIS);
 
         mapping(uint256 => StrategyVaultSettings) storage store = _settings();
         // Hardcode to the zero slot

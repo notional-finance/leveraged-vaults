@@ -408,8 +408,9 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
     chain.sleep(3600 * 24 * 365)
     chain.mine()
+    currentBalances = {}
     for key in expectedRewardTokenAmounts:
-        assert env.tokens[key].balanceOf(vault.address) == 0
+        currentBalances[key] = env.tokens[key].balanceOf(vault.address)
 
     # Cannot claim without the proper role assigned
     with brownie.reverts():
@@ -425,8 +426,8 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
 
     i = 0
     for key in expectedRewardTokenAmounts:
-        assert env.tokens[key].balanceOf(vault.address) >= expectedRewardTokenAmounts[key]
-        assert ret[i] == env.tokens[key].balanceOf(vault.address)
+        assert env.tokens[key].balanceOf(vault.address) - currentBalances[key] >= expectedRewardTokenAmounts[key]
+        assert ret[i] == env.tokens[key].balanceOf(vault.address) - currentBalances[key]
         i += 1
 
 def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, expectedBPTAmount):

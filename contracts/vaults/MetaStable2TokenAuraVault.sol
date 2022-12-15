@@ -41,6 +41,8 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     using TokenUtils for IERC20;
 
     IAuraRewardPool internal immutable OLD_REWARD_POOL;
+
+    event AuraPoolMigrated(address indexed oldPool, address indexed newPool, uint256 amount);
     
     constructor(
         NotionalProxy notional_, 
@@ -188,20 +190,22 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     }
 
     function migrateAura() external onlyNotionalOwner {
-        uint256 amount = OLD_REWARD_POOL.balanceOf(address(this));
+        uint256 oldAmount = OLD_REWARD_POOL.balanceOf(address(this));
         
-        bool success = OLD_REWARD_POOL.withdrawAndUnwrap(amount, true);
+        bool success = OLD_REWARD_POOL.withdrawAndUnwrap(oldAmount, true);
         if (!success) revert Errors.UnstakeFailed();
 
         IERC20(address(BALANCER_POOL_TOKEN)).checkApprove(address(AURA_BOOSTER), type(uint256).max);
 
-        amount = BALANCER_POOL_TOKEN.balanceOf(address(this));
+        uint256 bptAmount = BALANCER_POOL_TOKEN.balanceOf(address(this));
 
-        success = AURA_BOOSTER.deposit(AURA_POOL_ID, amount, true);
+        success = AURA_BOOSTER.deposit(AURA_POOL_ID, bptAmount, true);
         if (!success) revert Errors.StakeFailed();
 
         // New amount should equal to old amount
-        require(amount == AURA_REWARD_POOL.balanceOf(address(this)));
+        require(oldAmount == AURA_REWARD_POOL.balanceOf(address(this)));
+
+        emit AuraPoolMigrated(address(OLD_REWARD_POOL), address(AURA_REWARD_POOL), oldAmount);
     }
 }
 

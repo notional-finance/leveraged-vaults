@@ -1,6 +1,6 @@
 import pytest
-import eth_abi
 from brownie import (
+    interface,
     ZERO_ADDRESS,
     MetaStable2TokenAuraVault,
     MockMetaStable2TokenAuraVault,
@@ -59,7 +59,7 @@ def StratStableETHstETH():
     # Deploy mock contract necessary for liquidation tests
     mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
     mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
-    mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, MockMetaStable2TokenAuraVault.abi)
+    mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IMetaStableMockVault.abi)
     env.tradingModule.setTokenPermissions(
         mock.address, 
         env.tokens["wstETH"].address, 
