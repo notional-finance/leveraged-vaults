@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import {AuraVaultDeploymentParams, MetaStable2TokenAuraStrategyContext} from "../BalancerVaultTypes.sol";
 import {IMetaStablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {StableOracleContext} from "../BalancerVaultTypes.sol";
 import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
-import {AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
@@ -28,6 +28,15 @@ abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin {
         
         return StableOracleContext({
             ampParam: value
+        });
+    }
+
+    function _strategyContext() internal view returns (MetaStable2TokenAuraStrategyContext memory) {
+        return MetaStable2TokenAuraStrategyContext({
+            poolContext: _twoTokenPoolContext(),
+            oracleContext: _stableOracleContext(),
+            stakingContext: _auraStakingContext(),
+            baseStrategy: _baseStrategyContext()
         });
     }
 

@@ -6,7 +6,8 @@ from brownie import (
     Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
     MetaStable2TokenAuraHelper,
-    FlashLiquidator
+    FlashLiquidator,
+    nMockProxy
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -35,7 +36,7 @@ StrategyConfig = {
             "primaryCurrency": 1, # ETH
             "poolId": "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080",
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
-            "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
+            "auraRewardPool": "0xe4683fe8f53da14ca5dac4251eadfb3aa614d528",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 20e18, # 20 ETH
             "maxBalancerPoolShare": Wei(1.5e3), # 15%
@@ -111,6 +112,9 @@ class BalancerEnvironment(Environment):
         Environment.__init__(self, network)
         self.liquidator = self.deployLiquidator()
 
+    def getStratConfig(self, strat):
+        return StrategyConfig["balancer2TokenStrats"][strat]
+
     def initializeBalancerVault(self, vault, strat):
         stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
         vault.initialize(
@@ -122,7 +126,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
-                    stratConfig["maxRewardTradeSlippageLimitPercent"],
                     stratConfig["maxBalancerPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
@@ -147,7 +150,7 @@ class BalancerEnvironment(Environment):
             for lib in libs:
                 lib.deploy({"from": self.deployer})
 
-        impl = vaultContract.deploy(
+        return vaultContract.deploy(
             self.addresses["notional"],
             [
                 stratConfig["auraRewardPool"],
@@ -159,32 +162,18 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementWindow"]
                 ]
             ],
+            "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4", # Old aura pool
             {"from": self.deployer}
         )
 
-        proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+    def deployVaultProxy(self, strat, impl, vaultContract, mockImpl=None):
+        stratConfig = StrategyConfig["balancer2TokenStrats"][strat]
+
+        if mockImpl == None:
+            proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+        else:
+            proxy = nMockProxy.deploy(impl.address, bytes(0), mockImpl, {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, vaultContract.abi)
-
-        print(
-            vaultProxy.initialize.encode_input(
-                [
-                    stratConfig["name"],
-                    stratConfig["primaryCurrency"],
-                    [
-                        stratConfig["maxUnderlyingSurplus"],
-                        stratConfig["settlementSlippageLimitPercent"], 
-                        stratConfig["postMaturitySettlementSlippageLimitPercent"], 
-                        stratConfig["emergencySettlementSlippageLimitPercent"], 
-                        stratConfig["maxRewardTradeSlippageLimitPercent"],
-                        stratConfig["maxBalancerPoolShare"],
-                        stratConfig["settlementCoolDownInMinutes"],
-                        stratConfig["oraclePriceDeviationLimitPercent"],
-                        stratConfig["balancerPoolSlippageLimitPercent"]
-                    ]
-                ]
-            )
-        )
-
         vaultProxy.initialize(
             [
                 stratConfig["name"],
@@ -194,7 +183,7 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
-                    stratConfig["maxRewardTradeSlippageLimitPercent"],
+                    stratConfig["maxRewardTradeSlippageLimitPercent"], 
                     stratConfig["maxBalancerPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],

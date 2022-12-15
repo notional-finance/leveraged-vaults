@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {Errors} from "../global/Errors.sol";
+import {TokenUtils} from "../utils/TokenUtils.sol";
 import {
     DepositParams,
     RedeemParams,
@@ -28,6 +29,7 @@ import {Stable2TokenOracleMath} from "./balancer/internal/math/Stable2TokenOracl
 import {MetaStable2TokenAuraHelper} from "./balancer/external/MetaStable2TokenAuraHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
+import {IAuraRewardPool} from "../../interfaces/aura/IAuraRewardPool.sol";
 
 contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     using BalancerVaultStorage for StrategyVaultSettings;
@@ -36,10 +38,18 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     using SettlementUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using MetaStable2TokenAuraHelper for MetaStable2TokenAuraStrategyContext;
+    using TokenUtils for IERC20;
+
+    IAuraRewardPool internal immutable OLD_REWARD_POOL;
     
-    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
+    constructor(
+        NotionalProxy notional_, 
+        AuraVaultDeploymentParams memory params,
+        IAuraRewardPool oldRewardPool_) 
         MetaStable2TokenVaultMixin(notional_, params)
-    {}
+    {
+        OLD_REWARD_POOL = oldRewardPool_;
+    }
 
     function strategy() external override view returns (bytes4) {
         return bytes4(keccak256("MetaStable2TokenAura"));
@@ -153,15 +163,6 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     {
         BalancerVaultStorage.setStrategyVaultSettings(settings);
     }
-
-    function _strategyContext() internal view returns (MetaStable2TokenAuraStrategyContext memory) {
-        return MetaStable2TokenAuraStrategyContext({
-            poolContext: _twoTokenPoolContext(),
-            oracleContext: _stableOracleContext(),
-            stakingContext: _auraStakingContext(),
-            baseStrategy: _baseStrategyContext()
-        });
-    }
     
     function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory) {
         return _strategyContext();
@@ -184,6 +185,23 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             maturity: maturity, 
             totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
         });
+    }
+
+    function migrateAura() external onlyNotionalOwner {
+        uint256 amount = OLD_REWARD_POOL.balanceOf(address(this));
+        
+        bool success = OLD_REWARD_POOL.withdrawAndUnwrap(amount, true);
+        if (!success) revert Errors.UnstakeFailed();
+
+        IERC20(address(BALANCER_POOL_TOKEN)).checkApprove(address(AURA_BOOSTER), type(uint256).max);
+
+        amount = BALANCER_POOL_TOKEN.balanceOf(address(this));
+
+        success = AURA_BOOSTER.deposit(AURA_POOL_ID, amount, true);
+        if (!success) revert Errors.StakeFailed();
+
+        // New amount should equal to old amount
+        require(amount == AURA_REWARD_POOL.balanceOf(address(this)));
     }
 }
 
