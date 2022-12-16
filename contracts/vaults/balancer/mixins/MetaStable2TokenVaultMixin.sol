@@ -10,13 +10,7 @@ import {StableMath} from "../internal/math/StableMath.sol";
 
 abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin {
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
-        TwoTokenPoolMixin(notional_, params)
-    {
-        // The oracle is required for the vault to behave properly
-        (/* */, /* */, /* */, /* */, bool oracleEnabled) = 
-            IMetaStablePool(address(BALANCER_POOL_TOKEN)).getOracleMiscData();
-        require(oracleEnabled);
-    }
+        TwoTokenPoolMixin(notional_, params) { }
 
     function _stableOracleContext() internal view returns (StableOracleContext memory) {
         (
