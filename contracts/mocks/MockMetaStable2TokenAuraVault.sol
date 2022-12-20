@@ -1,25 +1,51 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {AuraVaultDeploymentParams, MetaStable2TokenAuraStrategyContext} from "../vaults/balancer/BalancerVaultTypes.sol";
-import {MetaStable2TokenAuraVault} from "../vaults/MetaStable2TokenAuraVault.sol";
+import {
+    AuraVaultDeploymentParams, 
+    MetaStable2TokenAuraStrategyContext, 
+    TwoTokenPoolContext
+} from "../vaults/balancer/BalancerVaultTypes.sol";
+import {MetaStable2TokenVaultMixin} from "../vaults/balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {TwoTokenPoolUtils} from "../vaults/balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {Stable2TokenOracleMath} from "../vaults/balancer/internal/math/Stable2TokenOracleMath.sol";
 import {BalancerConstants} from "../vaults/balancer/internal/BalancerConstants.sol";
+import {IAuraRewardPool} from "../../interfaces/aura/IAuraRewardPool.sol";
 
-contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
+contract MockMetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
+    using TwoTokenPoolUtils for TwoTokenPoolContext;
+
     mapping(address => uint256) public valuationFactors;
 
     constructor(
         NotionalProxy notional_, 
-        AuraVaultDeploymentParams memory params
-    ) MetaStable2TokenAuraVault(notional_, params) {
+        AuraVaultDeploymentParams memory params,
+        IAuraRewardPool oldRewardPool_
+    ) MetaStable2TokenVaultMixin(notional_, params) {
     }
 
     function setValuationFactor(address account, uint256 valuationFactor_) external {
         valuationFactors[account] = valuationFactor_;
     }
+
+    function strategy() external override view returns (bytes4) {
+        return bytes4(keccak256("MetaStable2TokenAuraVault"));
+    }
+
+    function _depositFromNotional(
+        address /* account */,
+        uint256 deposit,
+        uint256 maturity,
+        bytes calldata data
+    ) internal override returns (uint256 strategyTokensMinted) {}
+
+    function _redeemFromNotional(
+        address account,
+        uint256 strategyTokens,
+        uint256 maturity,
+        bytes calldata data
+    ) internal override returns (uint256 finalPrimaryBalance) {}
 
     function convertStrategyToUnderlying(
         address account,
@@ -27,7 +53,12 @@ contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         uint256 valuationFactor = valuationFactors[account];
-        underlyingValue = super.convertStrategyToUnderlying(account, strategyTokenAmount, maturity);
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        underlyingValue = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
+            oracleContext: context.oracleContext,
+            strategyTokenAmount: strategyTokenAmount
+        });
         if (valuationFactor > 0) {
             underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;            
         }
@@ -38,6 +69,13 @@ contract MockMetaStable2TokenAuraVault is MetaStable2TokenAuraVault {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
         return TwoTokenPoolUtils._joinPoolAndStake(
             context.poolContext, context.baseStrategy, context.stakingContext, primaryAmount, secondaryAmount, minBPT
+        );
+    }
+
+    function getTimeWeightedPrimaryBalance(uint256 bptAmount) external view returns (uint256) {
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        return TwoTokenPoolUtils._getTimeWeightedPrimaryBalance(
+            context.poolContext, context.oracleContext, context.baseStrategy, bptAmount
         );
     }
 }

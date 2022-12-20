@@ -1,22 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import {AuraVaultDeploymentParams, MetaStable2TokenAuraStrategyContext} from "../BalancerVaultTypes.sol";
 import {IMetaStablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {StableOracleContext} from "../BalancerVaultTypes.sol";
 import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
-import {AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
 abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin {
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
-        TwoTokenPoolMixin(notional_, params)
-    {
-        // The oracle is required for the vault to behave properly
-        (/* */, /* */, /* */, /* */, bool oracleEnabled) = 
-            IMetaStablePool(address(BALANCER_POOL_TOKEN)).getOracleMiscData();
-        require(oracleEnabled);
-    }
+        TwoTokenPoolMixin(notional_, params) { }
 
     function _stableOracleContext() internal view returns (StableOracleContext memory) {
         (
@@ -28,6 +22,15 @@ abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin {
         
         return StableOracleContext({
             ampParam: value
+        });
+    }
+
+    function _strategyContext() internal view returns (MetaStable2TokenAuraStrategyContext memory) {
+        return MetaStable2TokenAuraStrategyContext({
+            poolContext: _twoTokenPoolContext(),
+            oracleContext: _stableOracleContext(),
+            stakingContext: _auraStakingContext(),
+            baseStrategy: _baseStrategyContext()
         });
     }
 
