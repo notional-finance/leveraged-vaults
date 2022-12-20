@@ -182,7 +182,7 @@ def test_ETH_to_USDC_to_DAI_exact_in_dynamic_slippage():
 
     env.whales["ETH_EOA"].transfer(mockVault, 1e18)
 
-    tradePath = [env.tokens["WETH"].address, 3000, env.tokens["USDC"].address, 3000, env.tokens["DAI"].address]
+    tradePath = [env.tokens["WETH"].address, 3000, env.tokens["USDC"].address, 100, env.tokens["DAI"].address]
     trade = univ3_trade_exact_in_batch(ZERO_ADDRESS, env.tokens["DAI"].address, mockVault.balance(), tradePath)
 
     # Vault does not have permission to sell ETH
