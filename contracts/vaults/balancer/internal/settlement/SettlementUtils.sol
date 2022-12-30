@@ -42,7 +42,7 @@ library SettlementUtils {
             revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercentOrLimit, slippageLimitPercent);
         }
     }
-    
+
     /// @notice Validates that the settlement is past a specified cool down period.
     /// @param lastSettlementTimestamp the last time the vault was settled
     /// @param coolDownInMinutes configured length of time required between settlements to ensure that
