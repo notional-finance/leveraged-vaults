@@ -18,4 +18,8 @@ interface ICurvePool {
         uint256 dx,
         uint256 minDy
     ) external payable returns (uint256);
+
+    function lp_token() external view returns (address);
+
+    function balances(uint256 i) external view returns (uint256);
 }
