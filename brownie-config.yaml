@@ -10,10 +10,10 @@ networks:
   default: development
 
 networks:
-  default: mainnet-fork
-  mainnet-fork:
+  default: hardhat-fork
+  hardhat-fork:
     cmd_settings:
-      fork_block: 16180050
+      fork_block: 16350543
   
 reports:
   exclude_paths:

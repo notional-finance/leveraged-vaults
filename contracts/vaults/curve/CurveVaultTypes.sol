@@ -2,15 +2,15 @@
 pragma solidity 0.8.17;
 
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
-import {ICurvePool} from "../../../interfaces/curve/ICurvePool.sol";
 import {ICurveGauge} from "../../../interfaces/curve/ICurveGauge.sol";
+import {ICurvePool} from "../../../interfaces/curve/ICurvePool.sol";
 import {IConvexBooster} from "../../../interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardPool} from "../../../interfaces/convex/IConvexRewardPool.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 
 struct DeploymentParams {
     uint16 primaryBorrowCurrencyId;
-    ICurvePool pool;
+    address pool;
     ITradingModule tradingModule;
     uint32 settlementPeriodInSeconds;
 }

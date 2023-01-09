@@ -19,7 +19,7 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
         ConvexStakingMixin(notional_, params) {
 
-        CURVE_POOL = params.baseParams.pool;
+        CURVE_POOL = ICurvePool(params.baseParams.pool);
         CURVE_POOL_TOKEN = IERC20(CURVE_POOL.lp_token());
     }
 

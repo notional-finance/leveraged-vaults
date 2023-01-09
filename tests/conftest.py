@@ -6,11 +6,13 @@ from brownie import (
     MockMetaStable2TokenAuraVault,
     MockBoosted3TokenAuraVault,
     MetaStable2TokenAuraHelper,
-    Boosted3TokenAuraHelper
+    Boosted3TokenAuraHelper,
+    Curve2TokenConvexVault
 )
 from brownie.network import Chain
 from brownie import network, Contract
 from scripts.BalancerEnvironment import getEnvironment
+from scripts.CurveEnvironment import getCurveEnvironment
 from scripts.common import set_dex_flags, set_trade_type_flags
 
 chain = Chain()
@@ -93,4 +95,11 @@ def StratBoostedPoolDAIPrimary():
 def StratBoostedPoolUSDCPrimary():
     env = getEnvironment(network.show_active())
     vault = env.deployBalancerVault("StratBoostedPoolUSDCPrimary", MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    return (env, vault)
+
+@pytest.fixture()
+def StratCurveStableETHstETH():
+    env = getCurveEnvironment(network.show_active())
+    impl = env.deployVault("StratStableETHstETH", Curve2TokenConvexVault)
+    vault = env.deployVaultProxy("StratStableETHstETH", impl, Curve2TokenConvexVault)
     return (env, vault)

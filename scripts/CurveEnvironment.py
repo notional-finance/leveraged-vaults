@@ -27,7 +27,7 @@ StrategyConfig = {
     }
 }
 
-class ConvexEnvironment(Environment):
+class CurveEnvironment(Environment):
     def __init__(self, network) -> None:
         Environment.__init__(self, network)
 
@@ -78,11 +78,16 @@ class ConvexEnvironment(Environment):
 
         return vaultProxy
 
+def getCurveEnvironment(network = "mainnet"):
+    if network == "mainnet-fork" or network == "hardhat-fork":
+        network = "mainnet"
+    return CurveEnvironment(network)
+
 def main():
     networkName = network.show_active()
     if networkName == "hardhat-fork":
         networkName = "mainnet"
-    env = ConvexEnvironment(networkName)
+    env = CurveEnvironment(networkName)
 
     impl = env.deployVault("StratStableETHstETH", Curve2TokenConvexVault)
     vault1 = env.deployVaultProxy("StratStableETHstETH", impl, Curve2TokenConvexVault)
