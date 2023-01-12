@@ -78,7 +78,8 @@ class Environment:
     def deployTradingModule(self, useFresh=False):
         if useFresh == False:
             self.tradingModule = Contract.from_abi("TradingModule", self.addresses["trading"]["proxy"], TradingModule.abi)
-            self.tradingModule.initialize(3600 * 24, {"from": self.notional.owner()})
+            # TODO: remove after mainnet upgrade
+            self.tradingModule.upgradeTo("0x2bEfB976E954116A53fEbD7c243cB88Ce869a671", {"from": self.notional.owner()})
         else:
             emptyImpl = EmptyProxy.deploy({"from": self.deployer})
             self.proxy = nProxy.deploy(emptyImpl.address, bytes(0), {"from": self.deployer})
