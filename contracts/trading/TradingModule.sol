@@ -279,8 +279,8 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         // prettier-ignore
         (int256 oraclePrice, int256 oracleDecimals) = getOraclePrice(sellToken, buyToken);
 
-        require(oraclePrice >= 0); /// @dev Chainlink rate error
-        require(oracleDecimals >= 0); /// @dev Chainlink decimals error
+        require(oraclePrice > 0); /// @dev Chainlink rate error
+        require(oracleDecimals > 0); /// @dev Chainlink decimals error
 
         limitAmount = TradingUtils._getLimitAmount({
             tradeType: tradeType,
