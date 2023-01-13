@@ -117,12 +117,6 @@ library Stable2TokenOracleMath {
         /// the pool is not being manipulated
         _checkPriceLimit(strategyContext, oraclePrice, spotPrice);
 
-        /// @notice Balancer math functions expect all amounts to be in BALANCER_PRECISION
-        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
-        uint256 secondaryPrecision = 10 ** poolContext.secondaryDecimals;
-        primaryAmount = primaryAmount * BalancerConstants.BALANCER_PRECISION / primaryPrecision;
-        secondaryAmount = secondaryAmount * BalancerConstants.BALANCER_PRECISION / secondaryPrecision;
-
         uint256 calculatedPairPrice = _getSpotPrice({
             oracleContext: oracleContext,
             poolContext: poolContext,
