@@ -60,6 +60,9 @@ library TwoTokenPoolUtils {
         if (isJoin && assets[context.primaryIndex] == IAsset(Deployments.ETH_ADDRESS)) {
             msgValue = amounts[context.primaryIndex];
         }
+        if (isJoin && assets[context.secondaryIndex] == IAsset(Deployments.ETH_ADDRESS)) {
+            msgValue = amounts[context.secondaryIndex];
+        }
 
         return PoolParams(assets, amounts, msgValue);
     }
