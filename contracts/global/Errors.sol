@@ -21,4 +21,6 @@ library Errors {
     error StakeFailed();
     error UnstakeFailed();
     error InvalidTokenIndex(uint8 tokenIndex);
+    error ZeroPoolClaim();
+    error ZeroStrategyTokens();
 }

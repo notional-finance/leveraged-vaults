@@ -96,7 +96,7 @@ library Boosted3TokenAuraHelper {
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalBPTSupply: context.poolContext._getVirtualSupply(context.oracleContext)
+            totalBPTSupply: context.oracleContext.virtualSupply
         });
 
         uint256 redeemStrategyTokenAmount 

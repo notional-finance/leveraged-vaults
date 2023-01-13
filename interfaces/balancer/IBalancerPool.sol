@@ -25,6 +25,7 @@ interface IBoostedPool is IBalancerPool {
         bool isUpdating,
         uint256 precision
     );
+    function getActualSupply() external view returns (uint256);
 }
 
 interface IMetaStablePool is IBalancerPool {

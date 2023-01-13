@@ -23,7 +23,7 @@ import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
-import {ILinearPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
+import {IBoostedPool, ILinearPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
 import {FixedPoint} from "../math/FixedPoint.sol";
@@ -252,16 +252,6 @@ library Boosted3TokenPoolUtils {
         });
     }
 
-    function _getVirtualSupply(
-        ThreeTokenPoolContext memory poolContext, 
-        BoostedOracleContext memory oracleContext
-    ) internal view returns (uint256 virtualSupply) {
-        // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in
-        // the vault. So the virtualSupply (the amount of BPT supply in circulation) is defined as:
-        // virtualSupply = totalSupply() - _balances[_bptIndex]
-        virtualSupply = poolContext.basePool.basePool.pool.totalSupply() - oracleContext.bptBalance;
-    }
-
     function _getScaledBalances(ThreeTokenPoolContext memory poolContext) 
         private pure returns (uint256[] memory amountsWithoutBpt) {
         amountsWithoutBpt = new uint256[](3);
@@ -273,25 +263,16 @@ library Boosted3TokenPoolUtils {
             / BalancerConstants.BALANCER_PRECISION;        
     }
 
-    function _getVirtualSupplyAndBalances(
-        ThreeTokenPoolContext memory poolContext, 
-        BoostedOracleContext memory oracleContext
-    ) private view returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt) {
-        virtualSupply = _getVirtualSupply(poolContext, oracleContext);
-        amountsWithoutBpt = _getScaledBalances(poolContext);
-    }
-
     function _getValidatedPoolData(
         ThreeTokenPoolContext memory poolContext,
         BoostedOracleContext memory oracleContext,
         StrategyContext memory strategyContext
-    ) internal view returns (uint256 virtualSupply, uint256[] memory balances, uint256 invariant) {
-        (virtualSupply, balances) = 
-            _getVirtualSupplyAndBalances(poolContext, oracleContext);
+    ) internal view returns (uint256[] memory balances, uint256 invariant) {
+        balances = _getScaledBalances(poolContext);
 
         // Get the current and new invariants. Since we need a bigger new invariant, we round the current one up.
         invariant = StableMath._calculateInvariant(
-            oracleContext.ampParam, balances, true // roundUp = true
+            oracleContext.ampParam, balances, false // roundUp = false
         );
 
         // validate spot prices against oracle prices
@@ -317,7 +298,6 @@ library Boosted3TokenPoolUtils {
         uint256 bptAmount
     ) internal view returns (uint256 primaryAmount) {
         (
-           uint256 virtualSupply, 
            uint256[] memory balances, 
            uint256 invariant
         ) = _getValidatedPoolData(poolContext, oracleContext, strategyContext);
@@ -332,7 +312,7 @@ library Boosted3TokenPoolUtils {
             balances: balances, 
             tokenIndex: 0, // Primary index
             bptAmountIn: BalancerConstants.BALANCER_PRECISION, // 1 BPT 
-            bptTotalSupply: virtualSupply, 
+            bptTotalSupply: oracleContext.virtualSupply, 
             swapFeePercentage: oracleContext.swapFeePercentage, 
             currentInvariant: invariant
         });
@@ -423,6 +403,10 @@ library Boosted3TokenPoolUtils {
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
+        if (strategyTokensMinted == 0) {
+            revert Errors.ZeroStrategyTokens();
+        }
+
         strategyContext.vaultState.totalBPTHeld += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
@@ -438,7 +422,9 @@ library Boosted3TokenPoolUtils {
     ) internal returns (uint256 finalPrimaryBalance) {
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
 
-        if (bptClaim == 0) return 0;
+        if (bptClaim == 0) {
+            revert Errors.ZeroPoolClaim();
+        }
 
         finalPrimaryBalance = _unstakeAndExitPool({
             stakingContext: stakingContext,
@@ -465,7 +451,7 @@ library Boosted3TokenPoolUtils {
         // Check BPT threshold to make sure our share of the pool is
         // below maxBalancerPoolShare
         uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
-            poolContext._getVirtualSupply(oracleContext)
+            oracleContext.virtualSupply
         );
         uint256 bptHeldAfterJoin = strategyContext.vaultState.totalBPTHeld + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)

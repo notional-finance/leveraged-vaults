@@ -77,7 +77,7 @@ library TwoTokenPoolUtils {
             poolContext.primaryToken, poolContext.secondaryToken
         );
         require(rate > 0);
-        require(decimals >= 0);
+        require(decimals > 0);
 
         if (uint256(decimals) != BalancerConstants.BALANCER_PRECISION) {
             rate = (rate * int256(BalancerConstants.BALANCER_PRECISION)) / decimals;
@@ -179,6 +179,10 @@ library TwoTokenPoolUtils {
 
         strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
 
+        if (strategyTokensMinted == 0) {
+            revert Errors.ZeroStrategyTokens();
+        }
+
         strategyContext.vaultState.totalBPTHeld += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
@@ -215,7 +219,9 @@ library TwoTokenPoolUtils {
     ) internal returns (uint256 finalPrimaryBalance) {
         uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
 
-        if (bptClaim == 0) return 0;
+        if (bptClaim == 0) {
+            revert Errors.ZeroPoolClaim();
+        }
 
         // Underlying token balances from exiting the pool
         (uint256 primaryBalance, uint256 secondaryBalance)
