@@ -118,15 +118,11 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
         ) = Deployments.BALANCER_VAULT.getPoolTokens(underlyingPool.getPoolId());
 
         uint256[] memory underlyingScalingFactors = underlyingPool.getScalingFactors();
-        // The wrapped token's scaling factor is not constant, but increases over time as the wrapped token increases in
-        // value.
-        uint256 wrappedScaleFactor = underlyingScalingFactors[mainIndex] * underlyingPool.getWrappedTokenRate() /
-            BalancerConstants.BALANCER_PRECISION;
 
         return UnderlyingPoolContext({
             mainScaleFactor: underlyingScalingFactors[mainIndex],
             mainBalance: underlyingBalances[mainIndex],
-            wrappedScaleFactor: wrappedScaleFactor,
+            wrappedScaleFactor: underlyingScalingFactors[wrappedIndex],
             wrappedBalance: underlyingBalances[wrappedIndex],
             virtualSupply: underlyingPool.getVirtualSupply(),
             fee: underlyingPool.getSwapFeePercentage(),
@@ -150,6 +146,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
             ampParam: value,
             bptBalance: balances[BPT_INDEX],
             swapFeePercentage: pool.getSwapFeePercentage(),
+            virtualSupply: pool.getActualSupply(),
             underlyingPools: new UnderlyingPoolContext[](3)
         });
 
