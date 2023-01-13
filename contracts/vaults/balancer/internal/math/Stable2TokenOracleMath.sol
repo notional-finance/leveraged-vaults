@@ -48,6 +48,20 @@ library Stable2TokenOracleMath {
             poolContext.secondaryScaleFactor * BalancerConstants.BALANCER_PRECISION / poolContext.primaryScaleFactor :
             poolContext.primaryScaleFactor * BalancerConstants.BALANCER_PRECISION / poolContext.secondaryScaleFactor;
         spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / scaleFactor;
+
+        // Convert precision back to 1e18 after downscaling by scaleFactor
+        spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / _getPrecision(poolContext, tokenIndex);
+    }
+
+    function _getPrecision(
+        TwoTokenPoolContext memory poolContext,
+        uint256 tokenIndex
+    ) private pure returns(uint256 precision) {
+        if (tokenIndex == 0) {
+            precision = 10**poolContext.primaryDecimals;
+        } else if (tokenIndex == 1) {
+            precision = 10**poolContext.secondaryDecimals;
+        }
     }
 
     function _checkPriceLimit(
