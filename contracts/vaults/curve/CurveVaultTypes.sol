@@ -26,6 +26,18 @@ struct InitParams {
     StrategyVaultSettings settings;
 }
 
+struct DepositParams {
+    uint256 minPoolClaim;
+    bytes tradeData;
+}
+
+struct TwoTokenRedeemParams {
+    uint256 minPrimary;
+    uint256 minSecondary;
+    bool redeemSingleSided;
+    bytes secondaryTradeParams;
+}
+
 /// @notice Curve pool related fields
 struct PoolContext {
     ICurvePool pool;

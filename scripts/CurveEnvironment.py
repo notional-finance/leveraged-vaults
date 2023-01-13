@@ -91,4 +91,5 @@ def main():
 
     impl = env.deployVault("StratStableETHstETH", Curve2TokenConvexVault)
     vault1 = env.deployVaultProxy("StratStableETHstETH", impl, Curve2TokenConvexVault)
+    
 

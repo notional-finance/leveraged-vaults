@@ -4,6 +4,8 @@ pragma solidity 0.8.17;
 import {
     ConvexVaultDeploymentParams, 
     InitParams, 
+    DepositParams,
+    TwoTokenRedeemParams,
     StrategyContext,
     StrategyVaultState,
     Curve2TokenConvexStrategyContext
@@ -69,7 +71,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         require(success);
 
         context.baseStrategy.vaultState.totalStrategyTokenGlobal += strategyTokensMinted;
-        context.baseStrategy.vaultState.totalPoolClaim += CONVEX_REWARD_POOL.balanceOf(address(this));
+        context.baseStrategy.vaultState.totalPoolClaim = CONVEX_REWARD_POOL.balanceOf(address(this));
         context.baseStrategy.vaultState.setStrategyVaultState();
     }
 
@@ -79,7 +81,30 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        uint256 poolClaim = CurveStrategyUtils._convertStrategyTokensToPoolClaim(context.baseStrategy, strategyTokens);
 
+        bool success = CONVEX_REWARD_POOL.withdrawAndUnwrap(poolClaim, false); // claim = false
+        require(success);
+
+        TwoTokenRedeemParams memory params = abi.decode(data, (TwoTokenRedeemParams));
+
+        if (params.redeemSingleSided) {
+            finalPrimaryBalance = ICurve2TokenPool(address(CURVE_POOL)).remove_liquidity_one_coin(
+                poolClaim, int8(PRIMARY_INDEX), params.minPrimary
+            );
+        } else {
+            uint256[2] memory minAmounts;
+            minAmounts[PRIMARY_INDEX] = params.minPrimary;
+            minAmounts[SECONDARY_INDEX] = params.minSecondary;
+            ICurve2TokenPool(address(CURVE_POOL)).remove_liquidity(poolClaim, minAmounts);
+
+            // TODO: sell secondary for primary
+        }
+
+        context.baseStrategy.vaultState.totalStrategyTokenGlobal -= strategyTokens;
+        context.baseStrategy.vaultState.totalPoolClaim = CONVEX_REWARD_POOL.balanceOf(address(this));
+        context.baseStrategy.vaultState.setStrategyVaultState();
     }   
 
     function convertStrategyToUnderlying(

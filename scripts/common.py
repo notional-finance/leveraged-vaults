@@ -170,6 +170,17 @@ def get_redeem_params(minPrimary, minSecondary, trade):
         ]]
     )
 
+def get_two_token_redeem_params(minPrimary, minSecondary, redeemSingleSided, trade):
+    return eth_abi.encode_abi(
+        ['(uint256,uint256,bool,bytes)'],
+        [[
+            Wei(minPrimary),
+            Wei(minSecondary),
+            redeemSingleSided,
+            trade
+        ]]
+    )
+
 def set_dex_flags(flags, **kwargs):
     binList = list(format(flags, "b").rjust(16, "0"))
     if "UNISWAP_V2" in kwargs:
