@@ -28,14 +28,6 @@ interface IBoostedPool is IBalancerPool {
 }
 
 interface IMetaStablePool is IBalancerPool {
-    function getOracleMiscData() external view returns (
-        int256 logInvariant, 
-        int256 logTotalSupply, 
-        uint256 oracleSampleCreationTimestamp, 
-        int256 oracleIndex, 
-        bool oracleEnabled
-    );
-
     function getAmplificationParameter() external view returns (
         uint256 value,
         bool isUpdating,
