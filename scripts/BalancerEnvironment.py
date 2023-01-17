@@ -7,7 +7,8 @@ from brownie import (
     Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
     MetaStable2TokenAuraHelper,
-    FlashLiquidator
+    FlashLiquidator,
+    nMockProxy
 )
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
@@ -36,7 +37,7 @@ StrategyConfig = {
             "primaryCurrency": 1, # ETH
             "poolId": "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080",
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
-            "auraRewardPool": "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4",
+            "auraRewardPool": "0xe4683fe8f53da14ca5dac4251eadfb3aa614d528",
             "maxUnderlyingSurplus": 2000e18, # 2000 ETH
             "maxBalancerPoolShare": Wei(1.5e3), # 15%
             "settlementSlippageLimitPercent": Wei(3e6), # 3%
@@ -155,6 +156,7 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementWindow"]
                 ]
             ],
+            "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4", # Old aura pool
             {"from": self.deployer}
         )
 

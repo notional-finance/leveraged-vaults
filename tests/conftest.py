@@ -1,6 +1,6 @@
 import pytest
-import eth_abi
 from brownie import (
+    interface,
     ZERO_ADDRESS,
     MetaStable2TokenAuraVault,
     MockMetaStable2TokenAuraVault,
@@ -31,9 +31,9 @@ def StratStableETHstETH():
         "0xF049B944eC83aBb50020774D48a8cf40790996e6", 
         MetaStable2TokenAuraVault.abi
     )
-    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+
     stratConfig = env.getStratConfig(strat)
-    settingsData = vault.setStrategyVaultSettings.encode_input([
+    vault.setStrategyVaultSettings([
         stratConfig["maxUnderlyingSurplus"],
         stratConfig["settlementSlippageLimitPercent"], 
         stratConfig["postMaturitySettlementSlippageLimitPercent"], 
@@ -42,8 +42,8 @@ def StratStableETHstETH():
         stratConfig["settlementCoolDownInMinutes"],
         stratConfig["oraclePriceDeviationLimitPercent"],
         stratConfig["balancerPoolSlippageLimitPercent"]
-    ])
-    vault.upgradeToAndCall(impl, settingsData, {"from": env.notional.owner()})
+    ], {"from": env.notional.owner()})
+
     # Increase capacity
     # TODO: remove after mainnet capacity increase
     env.notional.updateVault(
@@ -54,8 +54,11 @@ def StratStableETHstETH():
     )
 
     # Deploy mock contract necessary for liquidation tests
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
     mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
-    mock = env.deployVaultProxy(strat, mockImpl, MockMetaStable2TokenAuraVault)
+    mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IMetaStableMockVault.abi)
+
     env.tradingModule.setTokenPermissions(
         mock.address, 
         env.tokens["wstETH"].address, 

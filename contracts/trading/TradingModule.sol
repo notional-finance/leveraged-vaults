@@ -215,6 +215,8 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             return BalancerV2Adapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.CURVE) {
             return CurveAdapter.getExecutionData(from, trade);
+        } else if (DexId(dexId) == DexId.ZERO_EX) {
+            return ZeroExAdapter.getExecutionData(from, trade);
         }
 
         revert UnknownDEX();

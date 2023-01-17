@@ -408,8 +408,10 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
     chain.sleep(3600 * 24 * 365)
     chain.mine()
+
+    currentBalances = {}
     for key in expectedRewardTokenAmounts:
-        assert env.tokens[key].balanceOf(vault.address) == 0
+        currentBalances[key] = env.tokens[key].balanceOf(vault.address)
 
     # Cannot claim without the proper role assigned
     with brownie.reverts():
@@ -425,11 +427,11 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
 
     i = 0
     for key in expectedRewardTokenAmounts:
-        assert env.tokens[key].balanceOf(vault.address) >= expectedRewardTokenAmounts[key]
-        assert ret[i] == env.tokens[key].balanceOf(vault.address)
+        assert env.tokens[key].balanceOf(vault.address) - currentBalances[key] >= expectedRewardTokenAmounts[key]
+        assert ret[i] == env.tokens[key].balanceOf(vault.address) - currentBalances[key]
         i += 1
 
-def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, expectedBPTAmount):
+def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, expectedBPTAmount, shouldRevert=False):
     env = context.env
     vault = context.vault
     env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
@@ -442,12 +444,16 @@ def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, e
     with brownie.reverts():
         vault.grantRole.call(vault.getRoles()["rewardReinvestment"], depositor, {"from": context.whale})
     vault.grantRole(vault.getRoles()["rewardReinvestment"], depositor, {"from": env.notional.owner()})
+    
+    if shouldRevert == True:
+        with brownie.reverts():
+            vault.reinvestReward.call(rewardParams, {"from": depositor})
+    else:
+        vault.reinvestReward(rewardParams, {"from": depositor})
+        bptAfter = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
+        assert bptAfter - bptBefore >= expectedBPTAmount
 
-    vault.reinvestReward(rewardParams, {"from": depositor})
-
-    bptAfter = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
-    assert bptAfter - bptBefore >= expectedBPTAmount
-
+    vault.revokeRole(vault.getRoles()["rewardReinvestment"], depositor, {"from": env.notional.owner()})
 
 def leverage_ratio_too_high(context, depositAmount, primaryBorrowAmount):
     env = context.env
@@ -475,4 +481,3 @@ def balancer_share_too_high(context, depositAmount, primaryBorrowAmount):
     )
     with brownie.reverts():
         enterMaturity(env, vault, 2, 0, depositAmount, primaryBorrowAmount, env.whales["DAI_EOA"], True)
-
