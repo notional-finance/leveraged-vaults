@@ -226,6 +226,10 @@ library TwoTokenPoolUtils {
             revert Errors.ZeroPoolClaim();
         }
 
+        strategyContext.vaultState.totalBPTHeld -= bptClaim;
+        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
+
         // Underlying token balances from exiting the pool
         (uint256 primaryBalance, uint256 secondaryBalance)
             = _unstakeAndExitPool(
@@ -240,11 +244,6 @@ library TwoTokenPoolUtils {
 
             finalPrimaryBalance += primaryPurchased;
         }
-
-        strategyContext.vaultState.totalBPTHeld -= bptClaim;
-        // Update global strategy token balance
-        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
-        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _joinPoolAndStake(

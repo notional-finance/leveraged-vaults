@@ -426,16 +426,16 @@ library Boosted3TokenPoolUtils {
             revert Errors.ZeroPoolClaim();
         }
 
+        strategyContext.vaultState.totalBPTHeld -= bptClaim;
+        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
+
         finalPrimaryBalance = _unstakeAndExitPool({
             stakingContext: stakingContext,
             poolContext: poolContext,
             bptClaim: bptClaim,
             minPrimary: minPrimary
         });
-
-        strategyContext.vaultState.totalBPTHeld -= bptClaim;
-        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
-        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _joinPoolAndStake(
