@@ -6,14 +6,16 @@ import {
     StableOracleContext, 
     PoolParams,
     DepositParams,
-    TradeParams,
     DepositTradeParams,
     RedeemParams,
-    AuraStakingContext,
+    AuraStakingContext
+} from "../../BalancerVaultTypes.sol";
+import {
+    TradeParams,
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState
-} from "../../BalancerVaultTypes.sol";
+} from "../../../common/VaultTypes.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
@@ -24,8 +26,8 @@ import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {Stable2TokenOracleMath} from "../math/Stable2TokenOracleMath.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
-import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
-import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {VaultStorage} from "../../../common/VaultStorage.sol";
+import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
 import {ITradingModule, Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
@@ -37,8 +39,8 @@ library TwoTokenPoolUtils {
     using TypeConvert for uint256;
     using StrategyUtils for StrategyContext;
     using AuraStakingUtils for AuraStakingContext;
-    using BalancerVaultStorage for StrategyVaultSettings;
-    using BalancerVaultStorage for StrategyVaultState;
+    using VaultStorage for StrategyVaultSettings;
+    using VaultStorage for StrategyVaultState;
     using Stable2TokenOracleMath for StableOracleContext;
 
     /// @notice Returns parameters for joining and exiting Balancer pools
@@ -177,9 +179,9 @@ library TwoTokenPoolUtils {
             minBPT: params.minBPT
         });
 
-        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
+        strategyTokensMinted = strategyContext._convertPoolClaimToStrategyTokens(bptMinted);
 
-        strategyContext.vaultState.totalBPTHeld += bptMinted;
+        strategyContext.vaultState.totalPoolClaim += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -213,7 +215,7 @@ library TwoTokenPoolUtils {
         uint256 strategyTokens,
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
+        uint256 bptClaim = strategyContext._convertStrategyTokensToPoolClaim(strategyTokens);
 
         if (bptClaim == 0) return 0;
 
@@ -232,7 +234,7 @@ library TwoTokenPoolUtils {
             finalPrimaryBalance += primaryPurchased;
         }
 
-        strategyContext.vaultState.totalBPTHeld -= bptClaim;
+        strategyContext.vaultState.totalPoolClaim -= bptClaim;
         // Update global strategy token balance
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -261,10 +263,10 @@ library TwoTokenPoolUtils {
 
         // Check BPT threshold to make sure our share of the pool is
         // below maxBalancerPoolShare
-        uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
+        uint256 bptThreshold = strategyContext.vaultSettings._poolClaimThreshold(
             poolContext.basePool.pool.totalSupply()
         );
-        uint256 bptHeldAfterJoin = strategyContext.vaultState.totalBPTHeld + bptMinted;
+        uint256 bptHeldAfterJoin = strategyContext.vaultState.totalPoolClaim + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)
             revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 
@@ -308,7 +310,7 @@ library TwoTokenPoolUtils {
     ) internal view returns (int256 underlyingValue) {
         
         uint256 bptClaim 
-            = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
+            = strategyContext._convertStrategyTokensToPoolClaim(strategyTokenAmount);
 
         underlyingValue 
             = poolContext._getTimeWeightedPrimaryBalance(oracleContext, strategyContext, bptClaim).toInt();

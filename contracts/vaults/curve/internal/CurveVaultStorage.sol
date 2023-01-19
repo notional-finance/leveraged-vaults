@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {StrategyVaultSettings, StrategyVaultState} from "../CurveVaultTypes.sol";
+import {StrategyVaultSettings, StrategyVaultState} from "../../common/VaultTypes.sol";
 import {CurveEvents} from "../CurveEvents.sol";
 import {CurveConstants} from "./CurveConstants.sol";
 

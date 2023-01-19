@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.7.6;
 
-import {StrategyVaultSettings} from "./BalancerVaultTypes.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 
 library BalancerEvents {
@@ -17,8 +16,6 @@ library BalancerEvents {
         uint256 bptToSettle,
         uint256 redeemStrategyTokenAmount
     );
-
-    event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
 
     event ClaimedRewardTokens(IERC20[] rewardTokens, uint256[] claimedBalances);
 }

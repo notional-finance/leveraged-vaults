@@ -5,11 +5,14 @@ import {
     ConvexVaultDeploymentParams, 
     InitParams, 
     DepositParams,
+    ReinvestRewardParams,
     TwoTokenRedeemParams,
-    StrategyContext,
-    StrategyVaultState,
     Curve2TokenConvexStrategyContext
 } from "./curve/CurveVaultTypes.sol";
+import {
+    StrategyContext,
+    StrategyVaultState
+} from "./common/VaultTypes.sol";
 import {Constants} from "../global/Constants.sol";
 import {TypeConvert} from "../global/TypeConvert.sol";
 import {Deployments} from "../global/Deployments.sol";
@@ -17,7 +20,7 @@ import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {Curve2TokenVaultMixin} from "./curve/mixins/Curve2TokenVaultMixin.sol";
 import {CurveVaultStorage} from "./curve/internal/CurveVaultStorage.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {CurveStrategyUtils} from "./curve/internal/strategy/CurveStrategyUtils.sol";
+import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {ICurve2TokenPool} from "../../interfaces/curve/ICurvePool.sol";
 
 contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
@@ -65,12 +68,12 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
             msgValue = deposit;
         }
         uint256 poolClaim = ICurve2TokenPool(address(CURVE_POOL)).add_liquidity{value: msgValue}(amounts, 0);
-        strategyTokensMinted = CurveStrategyUtils._convertPoolClaimToStrategyTokens(context.baseStrategy, poolClaim);
+        strategyTokensMinted = StrategyUtils._convertPoolClaimToStrategyTokens(context.baseStrategy, poolClaim);
 
         bool success = CONVEX_BOOSTER.deposit(CONVEX_POOL_ID, poolClaim, true); // stake = true
         require(success);
 
-        context.baseStrategy.vaultState.totalStrategyTokenGlobal += strategyTokensMinted;
+        context.baseStrategy.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         context.baseStrategy.vaultState.totalPoolClaim = CONVEX_REWARD_POOL.balanceOf(address(this));
         context.baseStrategy.vaultState.setStrategyVaultState();
     }
@@ -82,7 +85,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        uint256 poolClaim = CurveStrategyUtils._convertStrategyTokensToPoolClaim(context.baseStrategy, strategyTokens);
+        uint256 poolClaim = StrategyUtils._convertStrategyTokensToPoolClaim(context.baseStrategy, strategyTokens);
 
         bool success = CONVEX_REWARD_POOL.withdrawAndUnwrap(poolClaim, false); // claim = false
         require(success);
@@ -102,10 +105,15 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
             // TODO: sell secondary for primary
         }
 
-        context.baseStrategy.vaultState.totalStrategyTokenGlobal -= strategyTokens;
+        context.baseStrategy.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         context.baseStrategy.vaultState.totalPoolClaim = CONVEX_REWARD_POOL.balanceOf(address(this));
         context.baseStrategy.vaultState.setStrategyVaultState();
     }   
+
+    function reinvestReward(ReinvestRewardParams calldata params) 
+        external onlyRole(REWARD_REINVESTMENT_ROLE) {
+        
+    }
 
     function convertStrategyToUnderlying(
         address account,
@@ -123,7 +131,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         uint256 oraclePrecision = decimals.toUint();
 
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        uint256 poolClaim = CurveStrategyUtils._convertStrategyTokensToPoolClaim(context.baseStrategy, strategyTokenAmount);
+        uint256 poolClaim = StrategyUtils._convertStrategyTokensToPoolClaim(context.baseStrategy, strategyTokenAmount);
         uint256 totalSupply = CURVE_POOL_TOKEN.totalSupply();
 
         // TODO: handle precision

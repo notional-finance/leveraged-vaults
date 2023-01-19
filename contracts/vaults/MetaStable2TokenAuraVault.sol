@@ -10,19 +10,21 @@ import {
     AuraVaultDeploymentParams,
     InitParams,
     ReinvestRewardParams,
-    StrategyVaultSettings,
-    StrategyVaultState,
     PoolContext,
     TwoTokenPoolContext,
     StableOracleContext,
-    MetaStable2TokenAuraStrategyContext,
-    StrategyContext
+    MetaStable2TokenAuraStrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
+import {
+    StrategyContext,
+    StrategyVaultSettings,
+    StrategyVaultState
+} from "./common/VaultTypes.sol";
 import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
-import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol";
-import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
+import {VaultStorage} from "./common/VaultStorage.sol";
+import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
 import {Stable2TokenOracleMath} from "./balancer/internal/math/Stable2TokenOracleMath.sol";
@@ -32,8 +34,8 @@ import {IERC20} from "../../interfaces/IERC20.sol";
 import {IAuraRewardPool} from "../../interfaces/aura/IAuraRewardPool.sol";
 
 contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
-    using BalancerVaultStorage for StrategyVaultSettings;
-    using BalancerVaultStorage for StrategyVaultState;
+    using VaultStorage for StrategyVaultSettings;
+    using VaultStorage for StrategyVaultState;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
@@ -63,7 +65,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        BalancerVaultStorage.setStrategyVaultSettings(params.settings);
+        VaultStorage.setStrategyVaultSettings(params.settings);
         _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
@@ -163,7 +165,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         external
         onlyNotionalOwner
     {
-        BalancerVaultStorage.setStrategyVaultSettings(settings);
+        VaultStorage.setStrategyVaultSettings(settings);
     }
     
     function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory) {

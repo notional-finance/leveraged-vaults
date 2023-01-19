@@ -4,21 +4,23 @@ pragma solidity 0.8.17;
 import {
     MetaStable2TokenAuraStrategyContext,
     StableOracleContext,
-    StrategyContext,
     TwoTokenPoolContext,
     DepositParams,
     RedeemParams,
-    ReinvestRewardParams,
+    ReinvestRewardParams
+} from "../BalancerVaultTypes.sol";
+import {
+    StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState
-} from "../BalancerVaultTypes.sol";
+} from "../../common/VaultTypes.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
-import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
+import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../internal/pool/TwoTokenPoolUtils.sol";
 import {TwoTokenAuraRewardUtils} from "../internal/reward/TwoTokenAuraRewardUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
-import {BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
+import {VaultStorage} from "../../common/VaultStorage.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
 library MetaStable2TokenAuraHelper {
@@ -27,8 +29,8 @@ library MetaStable2TokenAuraHelper {
     using Stable2TokenOracleMath for StableOracleContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
-    using BalancerVaultStorage for StrategyVaultSettings;
-    using BalancerVaultStorage for StrategyVaultState;
+    using VaultStorage for StrategyVaultSettings;
+    using VaultStorage for StrategyVaultState;
 
     function deposit(
         MetaStable2TokenAuraStrategyContext memory context,
@@ -66,7 +68,7 @@ library MetaStable2TokenAuraHelper {
         uint256 strategyTokensToRedeem,
         RedeemParams memory params
     ) external {
-        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToPoolClaim(strategyTokensToRedeem);
         
         _executeSettlement({
             strategyContext: context.baseStrategy,
@@ -97,7 +99,7 @@ library MetaStable2TokenAuraHelper {
         });
 
         uint256 redeemStrategyTokenAmount = 
-            context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);
+            context.baseStrategy._convertPoolClaimToStrategyTokens(bptToSettle);
 
         _executeSettlement({
             strategyContext: context.baseStrategy,
@@ -183,7 +185,7 @@ library MetaStable2TokenAuraHelper {
             minBPT: params.minBPT        
         });
 
-        strategyContext.vaultState.totalBPTHeld += bptAmount;
+        strategyContext.vaultState.totalPoolClaim += bptAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
         emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 

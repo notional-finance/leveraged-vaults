@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {PoolContext, ConvexVaultDeploymentParams, StrategyContext} from "../CurveVaultTypes.sol";
+import {StrategyContext} from "../../common/VaultTypes.sol";
+import {PoolContext, ConvexVaultDeploymentParams} from "../CurveVaultTypes.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {ICurvePool} from "../../../../interfaces/curve/ICurvePool.sol";
 import {ConvexStakingMixin} from "./ConvexStakingMixin.sol";
 import {CurveVaultStorage} from "../internal/CurveVaultStorage.sol";
-import {CurveStrategyUtils} from "../internal/strategy/CurveStrategyUtils.sol";
+import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
+import {CurveConstants} from "../internal/CurveConstants.sol";
 
 abstract contract CurvePoolMixin is ConvexStakingMixin {
-    using CurveStrategyUtils for StrategyContext;
+    using StrategyUtils for StrategyContext;
 
     ICurvePool internal immutable CURVE_POOL;
     IERC20 internal immutable CURVE_POOL_TOKEN;
@@ -35,7 +37,8 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
             settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
             tradingModule: TRADING_MODULE,
             vaultSettings: CurveVaultStorage.getStrategyVaultSettings(),
-            vaultState: CurveVaultStorage.getStrategyVaultState()
+            vaultState: CurveVaultStorage.getStrategyVaultState(),
+            poolClaimPrecision: CurveConstants.CURVE_PRECISION
         });
     }
 

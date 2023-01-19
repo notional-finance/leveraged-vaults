@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {StrategyVaultSettings, StrategyVaultState} from "../BalancerVaultTypes.sol";
-import {BalancerEvents} from "../BalancerEvents.sol";
-import {BalancerConstants} from "./BalancerConstants.sol";
+import {StrategyVaultSettings, StrategyVaultState} from "./VaultTypes.sol";
+import {VaultEvents} from "./VaultEvents.sol";
+import {VaultConstants} from "./VaultConstants.sol";
 
-library BalancerVaultStorage {
+library VaultStorage {
     uint256 private constant STRATEGY_VAULT_SETTINGS_SLOT = 1000001;
     uint256 private constant STRATEGY_VAULT_STATE_SLOT    = 1000002;
 
@@ -23,20 +23,20 @@ library BalancerVaultStorage {
     }
 
     function setStrategyVaultSettings(StrategyVaultSettings memory settings) internal {
-        require(settings.settlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
-        require(settings.maxRewardTradeSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
-        require(settings.maxBalancerPoolShare <= BalancerConstants.VAULT_PERCENT_BASIS);
-        require(settings.settlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
-        require(settings.postMaturitySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
-        require(settings.emergencySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
-        require(settings.oraclePriceDeviationLimitPercent <= BalancerConstants.VAULT_PERCENT_BASIS);
-        require(settings.balancerPoolSlippageLimitPercent <= BalancerConstants.VAULT_PERCENT_BASIS);
+        require(settings.settlementCoolDownInMinutes <= VaultConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
+        require(settings.maxRewardTradeSlippageLimitPercent <= VaultConstants.SLIPPAGE_LIMIT_PRECISION);
+        require(settings.maxPoolShare <= VaultConstants.VAULT_PERCENT_BASIS);
+        require(settings.settlementSlippageLimitPercent <= VaultConstants.SLIPPAGE_LIMIT_PRECISION);
+        require(settings.postMaturitySettlementSlippageLimitPercent <= VaultConstants.SLIPPAGE_LIMIT_PRECISION);
+        require(settings.emergencySettlementSlippageLimitPercent <= VaultConstants.SLIPPAGE_LIMIT_PRECISION);
+        require(settings.oraclePriceDeviationLimitPercent <= VaultConstants.VAULT_PERCENT_BASIS);
+        require(settings.poolSlippageLimitPercent <= VaultConstants.VAULT_PERCENT_BASIS);
 
         mapping(uint256 => StrategyVaultSettings) storage store = _settings();
         // Hardcode to the zero slot
         store[0] = settings;
 
-        emit BalancerEvents.StrategyVaultSettingsUpdated(settings);
+        emit VaultEvents.StrategyVaultSettingsUpdated(settings);
     }
 
     function getStrategyVaultState() internal view returns (StrategyVaultState memory) {
@@ -50,8 +50,8 @@ library BalancerVaultStorage {
         store[0] = state;
     }
 
-    function _bptThreshold(StrategyVaultSettings memory strategyVaultSettings, uint256 totalBPTSupply) 
+    function _poolClaimThreshold(StrategyVaultSettings memory strategyVaultSettings, uint256 totalPoolSupply) 
         internal pure returns (uint256) {
-        return (totalBPTSupply * strategyVaultSettings.maxBalancerPoolShare) / BalancerConstants.VAULT_PERCENT_BASIS;
+        return (totalPoolSupply * strategyVaultSettings.maxPoolShare) / VaultConstants.VAULT_PERCENT_BASIS;
     }
 }

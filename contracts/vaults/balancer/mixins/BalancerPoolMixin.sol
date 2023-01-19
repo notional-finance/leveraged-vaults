@@ -2,14 +2,16 @@
 pragma solidity 0.8.17;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {PoolContext, AuraVaultDeploymentParams, StrategyContext} from "../BalancerVaultTypes.sol";
+import {StrategyContext} from "../../common/VaultTypes.sol";
+import {PoolContext, AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {AuraStakingMixin} from "./AuraStakingMixin.sol";
-import {BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
-import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
+import {VaultStorage} from "../../common/VaultStorage.sol";
+import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
+import {BalancerConstants} from "../internal/BalancerConstants.sol";
 
-abstract contract PoolMixin is AuraStakingMixin {
+abstract contract BalancerPoolMixin is AuraStakingMixin {
     using StrategyUtils for StrategyContext;
 
     bytes32 internal immutable BALANCER_POOL_ID;
@@ -33,21 +35,22 @@ abstract contract PoolMixin is AuraStakingMixin {
         return StrategyContext({
             settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
             tradingModule: TRADING_MODULE,
-            vaultSettings: BalancerVaultStorage.getStrategyVaultSettings(),
-            vaultState: BalancerVaultStorage.getStrategyVaultState()
+            vaultSettings: VaultStorage.getStrategyVaultSettings(),
+            vaultState: VaultStorage.getStrategyVaultState(),
+            poolClaimPrecision: BalancerConstants.BALANCER_PRECISION
         });
     }
 
     /// @notice Converts BPT to strategy tokens
     function convertBPTClaimToStrategyTokens(uint256 bptClaim)
         external view returns (uint256 strategyTokenAmount) {
-        return _baseStrategyContext()._convertBPTClaimToStrategyTokens(bptClaim);
+        return _baseStrategyContext()._convertPoolClaimToStrategyTokens(bptClaim);
     }
 
     /// @notice Converts strategy tokens to BPT
     function convertStrategyTokensToBPTClaim(uint256 strategyTokenAmount) 
         external view returns (uint256 bptClaim) {
-        return _baseStrategyContext()._convertStrategyTokensToBPTClaim(strategyTokenAmount);
+        return _baseStrategyContext()._convertStrategyTokensToPoolClaim(strategyTokenAmount);
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

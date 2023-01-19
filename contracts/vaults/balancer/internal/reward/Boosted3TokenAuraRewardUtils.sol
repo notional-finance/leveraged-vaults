@@ -12,7 +12,7 @@ import {BalancerEvents} from "../../BalancerEvents.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
-import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";

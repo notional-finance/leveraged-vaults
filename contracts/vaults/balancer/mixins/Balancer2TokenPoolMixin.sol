@@ -6,11 +6,11 @@ import {Deployments} from "../../../global/Deployments.sol";
 import {TwoTokenPoolContext, AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
-import {PoolMixin} from "./PoolMixin.sol";
+import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 
-abstract contract TwoTokenPoolMixin is PoolMixin {
+abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin {
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
 
@@ -24,7 +24,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
     constructor(
         NotionalProxy notional_, 
         AuraVaultDeploymentParams memory params
-    ) PoolMixin(notional_, params) {
+    ) BalancerPoolMixin(notional_, params) {
         PRIMARY_TOKEN = IERC20(_getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId));
         address primaryAddress = BalancerUtils.getTokenAddress(address(PRIMARY_TOKEN));
 

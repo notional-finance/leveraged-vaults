@@ -5,12 +5,15 @@ import {
     ThreeTokenPoolContext,
     TwoTokenPoolContext,
     BoostedOracleContext,
-    AuraStakingContext,
+    AuraStakingContext
+} from "../../BalancerVaultTypes.sol";
+import {
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState
-} from "../../BalancerVaultTypes.sol";
+} from "../../../common/VaultTypes.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
+import {VaultConstants} from "../../../common/VaultConstants.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Errors} from "../../../../global/Errors.sol";
@@ -18,8 +21,8 @@ import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {StableMath} from "../math/StableMath.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
-import {StrategyUtils} from "../strategy/StrategyUtils.sol";
-import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
+import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
+import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
@@ -35,8 +38,8 @@ library Boosted3TokenPoolUtils {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
     using StrategyUtils for StrategyContext;
-    using BalancerVaultStorage for StrategyVaultSettings;
-    using BalancerVaultStorage for StrategyVaultState;
+    using VaultStorage for StrategyVaultSettings;
+    using VaultStorage for StrategyVaultState;
 
     // Preminted BPT is sometimes called Phantom BPT, as the preminted BPT (which is deposited in the Vault as balance of
     // the Pool) doesn't belong to any entity until transferred out of the Pool. The Pool's arithmetic behaves as if it
@@ -87,11 +90,11 @@ library Boosted3TokenPoolUtils {
 
         uint256 oraclePrice = answer.toUint();
         uint256 lowerLimit = (oraclePrice * 
-            (BalancerConstants.VAULT_PERCENT_BASIS - context.vaultSettings.oraclePriceDeviationLimitPercent)) / 
-            BalancerConstants.VAULT_PERCENT_BASIS;
+            (VaultConstants.VAULT_PERCENT_BASIS - context.vaultSettings.oraclePriceDeviationLimitPercent)) / 
+            VaultConstants.VAULT_PERCENT_BASIS;
         uint256 upperLimit = (oraclePrice * 
-            (BalancerConstants.VAULT_PERCENT_BASIS + context.vaultSettings.oraclePriceDeviationLimitPercent)) / 
-            BalancerConstants.VAULT_PERCENT_BASIS;
+            (VaultConstants.VAULT_PERCENT_BASIS + context.vaultSettings.oraclePriceDeviationLimitPercent)) / 
+            VaultConstants.VAULT_PERCENT_BASIS;
 
         // Check spot price against oracle price to make sure it hasn't been manipulated
         if (spotPrice < lowerLimit || upperLimit < spotPrice) {
@@ -293,9 +296,9 @@ library Boosted3TokenPoolUtils {
             minBPT: minBPT
         });
 
-        strategyTokensMinted = strategyContext._convertBPTClaimToStrategyTokens(bptMinted);
+        strategyTokensMinted = strategyContext._convertPoolClaimToStrategyTokens(bptMinted);
 
-        strategyContext.vaultState.totalBPTHeld += bptMinted;
+        strategyContext.vaultState.totalPoolClaim += bptMinted;
         // Update global supply count
         strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
@@ -308,7 +311,7 @@ library Boosted3TokenPoolUtils {
         uint256 strategyTokens,
         uint256 minPrimary
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokens);
+        uint256 bptClaim = strategyContext._convertStrategyTokensToPoolClaim(strategyTokens);
 
         if (bptClaim == 0) return 0;
 
@@ -319,7 +322,7 @@ library Boosted3TokenPoolUtils {
             minPrimary: minPrimary
         });
 
-        strategyContext.vaultState.totalBPTHeld -= bptClaim;
+        strategyContext.vaultState.totalPoolClaim -= bptClaim;
         strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
@@ -336,10 +339,10 @@ library Boosted3TokenPoolUtils {
 
         // Check BPT threshold to make sure our share of the pool is
         // below maxBalancerPoolShare
-        uint256 bptThreshold = strategyContext.vaultSettings._bptThreshold(
+        uint256 bptThreshold = strategyContext.vaultSettings._poolClaimThreshold(
             poolContext._getVirtualSupply(oracleContext)
         );
-        uint256 bptHeldAfterJoin = strategyContext.vaultState.totalBPTHeld + bptMinted;
+        uint256 bptHeldAfterJoin = strategyContext.vaultState.totalPoolClaim + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)
             revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 
@@ -373,7 +376,7 @@ library Boosted3TokenPoolUtils {
         BoostedOracleContext memory oracleContext,
         uint256 strategyTokenAmount
     ) internal view returns (int256 underlyingValue) {
-        uint256 bptClaim = strategyContext._convertStrategyTokensToBPTClaim(strategyTokenAmount);
+        uint256 bptClaim = strategyContext._convertStrategyTokensToPoolClaim(strategyTokenAmount);
         
         underlyingValue = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, strategyContext, bptClaim
@@ -416,8 +419,8 @@ library Boosted3TokenPoolUtils {
             minBPT -= _getDueProtocolFeeByBpt(minBPT, swapFeePercentage);
         }
 
-        minBPT = minBPT * strategyContext.vaultSettings.balancerPoolSlippageLimitPercent / 
-            uint256(BalancerConstants.VAULT_PERCENT_BASIS);
+        minBPT = minBPT * strategyContext.vaultSettings.poolSlippageLimitPercent / 
+            uint256(VaultConstants.VAULT_PERCENT_BASIS);
     }
 
     function _addSwapFeeAmount(uint256 amount, uint256 protocolSwapFeePercentage) private view returns (uint256) {

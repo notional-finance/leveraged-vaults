@@ -1,28 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {
-    RedeemParams, 
-    TradeParams,
-    StrategyContext,
-    PoolContext,
-    StrategyVaultSettings,
-    StrategyVaultState
-} from "../../BalancerVaultTypes.sol";
+import {TradeParams, StrategyContext} from "../../../common/VaultTypes.sol";
+import {RedeemParams, PoolContext} from "../../BalancerVaultTypes.sol";
 import {VaultState} from "../../../../global/Types.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Constants} from "../../../../global/Constants.sol";
+import {VaultConstants} from "../../../common/VaultConstants.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
-import {StrategyUtils} from "../strategy/StrategyUtils.sol";
-import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
+import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
+import {VaultStorage, StrategyVaultSettings, StrategyVaultState} from "../../../common/VaultStorage.sol";
 
 library SettlementUtils {
     using TypeConvert for uint256;
     using TypeConvert for int256;
     using StrategyUtils for StrategyContext;
-    using BalancerVaultStorage for StrategyVaultSettings;
+    using VaultStorage for StrategyVaultSettings;
 
     /// @notice Validates that the slippage passed in by the caller
     /// does not exceed the designated threshold.
@@ -62,10 +57,10 @@ library SettlementUtils {
     ) private pure returns (uint256 bptToSettle) {
         // desiredPoolShare = maxPoolShare * bufferPercentage
         uint256 desiredPoolShare = (maxBalancerPoolShare *
-            BalancerConstants.BALANCER_POOL_SHARE_BUFFER) /
-            BalancerConstants.VAULT_PERCENT_BASIS;
+            VaultConstants.POOL_SHARE_BUFFER) /
+            VaultConstants.VAULT_PERCENT_BASIS;
         uint256 desiredBPTAmount = (bptTotalSupply * desiredPoolShare) /
-            BalancerConstants.VAULT_PERCENT_BASIS;
+            VaultConstants.VAULT_PERCENT_BASIS;
         
         bptToSettle = totalBPTHeld - desiredBPTAmount;
 
@@ -92,21 +87,21 @@ library SettlementUtils {
         StrategyVaultState memory state = strategyContext.vaultState;
 
         // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
-        uint256 emergencyBPTWithdrawThreshold = settings._bptThreshold(totalBPTSupply);
+        uint256 emergencyBPTWithdrawThreshold = settings._poolClaimThreshold(totalBPTSupply);
 
-        if (strategyContext.vaultState.totalBPTHeld <= emergencyBPTWithdrawThreshold)
+        if (strategyContext.vaultState.totalPoolClaim <= emergencyBPTWithdrawThreshold)
             revert Errors.InvalidEmergencySettlement();
 
         uint256 bptHeldInMaturity = _getBPTHeldInMaturity(
             state,
             _totalSupplyInMaturity(maturity),
-            strategyContext.vaultState.totalBPTHeld
+            strategyContext.vaultState.totalPoolClaim
         );
 
         bptToSettle = _getEmergencySettlementBPTAmount({
             bptTotalSupply: totalBPTSupply,
-            maxBalancerPoolShare: settings.maxBalancerPoolShare,
-            totalBPTHeld: strategyContext.vaultState.totalBPTHeld,
+            maxBalancerPoolShare: settings.maxPoolShare,
+            totalBPTHeld: strategyContext.vaultState.totalPoolClaim,
             bptHeldInMaturity: bptHeldInMaturity
         });
     }

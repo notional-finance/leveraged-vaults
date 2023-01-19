@@ -11,11 +11,11 @@ import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {IBoostedPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
-import {PoolMixin} from "./PoolMixin.sol";
+import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
-abstract contract Boosted3TokenPoolMixin is PoolMixin {
+abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
     error InvalidPrimaryToken(address token);
 
     uint8 internal constant NOT_FOUND = type(uint8).max;
@@ -34,7 +34,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
     constructor(
         NotionalProxy notional_, 
         AuraVaultDeploymentParams memory params
-    ) PoolMixin(notional_, params) {
+    ) BalancerPoolMixin(notional_, params) {
         address primaryAddress = BalancerUtils.getTokenAddress(
             _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId)
         );

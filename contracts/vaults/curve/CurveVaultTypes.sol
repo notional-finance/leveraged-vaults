@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import {StrategyContext, StrategyVaultSettings, TradeParams} from "../common/VaultTypes.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {ICurveGauge} from "../../../interfaces/curve/ICurveGauge.sol";
 import {ICurvePool} from "../../../interfaces/curve/ICurvePool.sol";
@@ -44,6 +45,11 @@ struct PoolContext {
     IERC20 poolToken;
 }
 
+struct ReinvestRewardParams {
+    bytes tradeData;
+    uint256 minPoolClaim;
+}
+
 struct TwoTokenPoolContext {
     address primaryToken;
     address secondaryToken;
@@ -63,24 +69,8 @@ struct ConvexStakingContext {
     IERC20[] rewardTokens;
 }
 
-struct StrategyVaultSettings {
-    /// @notice Cool down in minutes for normal settlement
-    uint16 settlementCoolDownInMinutes;
-}
-
-struct StrategyVaultState {
-    uint256 totalPoolClaim;
-    uint256 totalStrategyTokenGlobal;
-}
-
-struct StrategyContext {
-    uint32 settlementPeriodInSeconds;
-    ITradingModule tradingModule;
-    StrategyVaultSettings vaultSettings;
-    StrategyVaultState vaultState;
-}
-
 struct Curve2TokenConvexStrategyContext {
     StrategyContext baseStrategy;
     TwoTokenPoolContext poolContext;
+    ConvexStakingContext stakingContext;
 }

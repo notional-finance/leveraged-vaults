@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import {StrategyContext, StrategyVaultSettings, TradeParams} from "../common/VaultTypes.sol";
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../../interfaces/notional/IVaultController.sol";
 import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
@@ -9,8 +10,8 @@ import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {ILiquidityGauge} from "../../../interfaces/balancer/ILiquidityGauge.sol";
 import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
-import {IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
+import {IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 
 struct DeploymentParams {
@@ -46,15 +47,6 @@ struct RedeemParams {
     uint256 minPrimary;
     uint256 minSecondary;
     bytes secondaryTradeParams;
-}
-
-/// @notice Parameters for trades
-struct TradeParams {
-    uint16 dexId;
-    TradeType tradeType;
-    uint256 oracleSlippagePercentOrLimit;
-    bool tradeUnwrapped;
-    bytes exchangeData;
 }
 
 /// @notice Parameters for joining/exiting Balancer pools
@@ -114,13 +106,6 @@ struct ThreeTokenPoolContext {
     TwoTokenPoolContext basePool;
 }
 
-struct StrategyContext {
-    uint32 settlementPeriodInSeconds;
-    ITradingModule tradingModule;
-    StrategyVaultSettings vaultSettings;
-    StrategyVaultState vaultState;
-}
-
 struct MetaStable2TokenAuraStrategyContext {
     TwoTokenPoolContext poolContext;
     StableOracleContext oracleContext;
@@ -163,30 +148,4 @@ struct SingleSidedRewardTradeParams {
 struct ReinvestRewardParams {
     bytes tradeData;
     uint256 minBPT;
-}
-
-struct StrategyVaultSettings {
-    uint256 maxUnderlyingSurplus;
-    /// @notice Slippage limit for normal settlement
-    uint32 settlementSlippageLimitPercent;
-    /// @notice Slippage limit for post maturity settlement
-    uint32 postMaturitySettlementSlippageLimitPercent;
-    /// @notice Slippage limit for emergency settlement (vault owns too much of the Balancer pool)
-    uint32 emergencySettlementSlippageLimitPercent;
-    /// @notice Slippage limit for selling reward tokens
-    uint32 maxRewardTradeSlippageLimitPercent;
-    uint16 maxBalancerPoolShare;
-    /// @notice Cool down in minutes for normal settlement
-    uint16 settlementCoolDownInMinutes;
-    /// @notice Limits the amount of allowable deviation from the oracle price
-    uint16 oraclePriceDeviationLimitPercent;
-    /// @notice Slippage limit for joining/exiting Balancer pools
-    uint16 balancerPoolSlippageLimitPercent;
-}
-
-struct StrategyVaultState {
-    uint256 totalBPTHeld;
-    /// @notice Total number of strategy tokens across all maturities
-    uint80 totalStrategyTokenGlobal;
-    uint32 lastSettlementTimestamp;
 }

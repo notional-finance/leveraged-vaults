@@ -2,5 +2,5 @@
 pragma solidity =0.8.17;
 
 library CurveConstants {
-    uint256 internal constant POOL_TOKEN_PRECISION = 1e18;
+    uint256 internal constant CURVE_PRECISION = 1e18;
 }

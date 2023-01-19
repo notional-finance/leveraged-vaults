@@ -3,24 +3,27 @@ pragma solidity 0.8.17;
 
 import {
     Boosted3TokenAuraStrategyContext, 
-    StrategyContext,
     DepositParams,
     RedeemParams,
     ReinvestRewardParams,
     ThreeTokenPoolContext,
     StrategyContext,
     AuraStakingContext,
-    BoostedOracleContext,
+    BoostedOracleContext
+} from "../BalancerVaultTypes.sol";
+import {
+    StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState
-} from "../BalancerVaultTypes.sol";
+} from "../../common/VaultTypes.sol";
+import {VaultConstants} from "../../common/VaultConstants.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
-import {StrategyUtils} from "../internal/strategy/StrategyUtils.sol";
+import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {Boosted3TokenPoolUtils} from "../internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraRewardUtils} from "../internal/reward/Boosted3TokenAuraRewardUtils.sol";
-import {BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
+import {VaultStorage} from "../../common/VaultStorage.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
 library Boosted3TokenAuraHelper {
@@ -28,8 +31,8 @@ library Boosted3TokenAuraHelper {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
-    using BalancerVaultStorage for StrategyVaultSettings;
-    using BalancerVaultStorage for StrategyVaultState;
+    using VaultStorage for StrategyVaultSettings;
+    using VaultStorage for StrategyVaultState;
 
     function deposit(
         Boosted3TokenAuraStrategyContext memory context,
@@ -69,7 +72,7 @@ library Boosted3TokenAuraHelper {
         uint256 strategyTokensToRedeem,
         RedeemParams memory params
     ) external {
-        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToBPTClaim(strategyTokensToRedeem);
+        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToPoolClaim(strategyTokensToRedeem);
 
         _executeSettlement({
             strategyContext: context.baseStrategy,
@@ -100,7 +103,7 @@ library Boosted3TokenAuraHelper {
         });
 
         uint256 redeemStrategyTokenAmount 
-            = context.baseStrategy._convertBPTClaimToStrategyTokens(bptToSettle);
+            = context.baseStrategy._convertPoolClaimToStrategyTokens(bptToSettle);
         
         _executeSettlement({
             strategyContext: context.baseStrategy,
@@ -128,8 +131,8 @@ library Boosted3TokenAuraHelper {
         params.minPrimary = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, strategyContext, bptToSettle
         );
-        params.minPrimary = params.minPrimary * strategyContext.vaultSettings.balancerPoolSlippageLimitPercent / 
-            uint256(BalancerConstants.VAULT_PERCENT_BASIS);
+        params.minPrimary = params.minPrimary * strategyContext.vaultSettings.poolSlippageLimitPercent / 
+            uint256(VaultConstants.VAULT_PERCENT_BASIS);
 
         int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
             strategyContext: strategyContext,
@@ -172,7 +175,7 @@ library Boosted3TokenAuraHelper {
             minBPT: minBPT
         });
 
-        strategyContext.vaultState.totalBPTHeld += bptAmount;
+        strategyContext.vaultState.totalPoolClaim += bptAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
         emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 

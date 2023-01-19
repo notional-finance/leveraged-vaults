@@ -12,7 +12,8 @@ abstract contract Curve2TokenVaultMixin is Curve2TokenPoolMixin {
     function _strategyContext() internal view returns (Curve2TokenConvexStrategyContext memory) {
         return Curve2TokenConvexStrategyContext({
             baseStrategy: _baseStrategyContext(),
-            poolContext: _twoTokenPoolContext()
+            poolContext: _twoTokenPoolContext(),
+            stakingContext: _convexStakingContext()
         });
     }
 

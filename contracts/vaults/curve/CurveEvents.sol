@@ -6,4 +6,6 @@ import {IERC20} from "../../../interfaces/IERC20.sol";
 
 library CurveEvents {
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
+
+    event ClaimedRewardTokens(IERC20[] rewardTokens, uint256[] claimedBalances);
 }

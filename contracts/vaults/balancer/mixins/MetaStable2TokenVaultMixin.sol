@@ -4,13 +4,13 @@ pragma solidity 0.8.17;
 import {AuraVaultDeploymentParams, MetaStable2TokenAuraStrategyContext} from "../BalancerVaultTypes.sol";
 import {IMetaStablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {StableOracleContext} from "../BalancerVaultTypes.sol";
-import {TwoTokenPoolMixin} from "./TwoTokenPoolMixin.sol";
+import {Balancer2TokenPoolMixin} from "./Balancer2TokenPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
-abstract contract MetaStable2TokenVaultMixin is TwoTokenPoolMixin {
+abstract contract MetaStable2TokenVaultMixin is Balancer2TokenPoolMixin {
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
-        TwoTokenPoolMixin(notional_, params) { }
+        Balancer2TokenPoolMixin(notional_, params) { }
 
     function _stableOracleContext() internal view returns (StableOracleContext memory) {
         (

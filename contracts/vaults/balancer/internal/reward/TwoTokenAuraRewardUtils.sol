@@ -16,7 +16,7 @@ import {BalancerConstants} from "../BalancerConstants.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
-import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 
 library TwoTokenAuraRewardUtils {

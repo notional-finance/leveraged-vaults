@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import {StableOracleContext, TwoTokenPoolContext, StrategyContext} from "../../BalancerVaultTypes.sol";
+import {VaultConstants} from "../../../common/VaultConstants.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
@@ -56,11 +57,11 @@ library Stable2TokenOracleMath {
         uint256 poolPrice
     ) internal view {
         uint256 lowerLimit = (oraclePrice * 
-            (BalancerConstants.VAULT_PERCENT_BASIS - strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
-            BalancerConstants.VAULT_PERCENT_BASIS;
+            (VaultConstants.VAULT_PERCENT_BASIS - strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
+            VaultConstants.VAULT_PERCENT_BASIS;
         uint256 upperLimit = (oraclePrice * 
-            (BalancerConstants.VAULT_PERCENT_BASIS + strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
-            BalancerConstants.VAULT_PERCENT_BASIS;
+            (VaultConstants.VAULT_PERCENT_BASIS + strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
+            VaultConstants.VAULT_PERCENT_BASIS;
 
         if (poolPrice < lowerLimit || upperLimit < poolPrice) {
             revert Errors.InvalidPrice(oraclePrice, poolPrice);
@@ -89,11 +90,11 @@ library Stable2TokenOracleMath {
         // min amounts are calculated based on the share of the Balancer pool with a small discount applied
         uint256 totalBPTSupply = poolContext.basePool.pool.totalSupply();
         minPrimary = (poolContext.primaryBalance * bptAmount * 
-            strategyContext.vaultSettings.balancerPoolSlippageLimitPercent) / 
-            (totalBPTSupply * uint256(BalancerConstants.VAULT_PERCENT_BASIS));
+            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
+            (totalBPTSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
         minSecondary = (poolContext.secondaryBalance * bptAmount * 
-            strategyContext.vaultSettings.balancerPoolSlippageLimitPercent) / 
-            (totalBPTSupply * uint256(BalancerConstants.VAULT_PERCENT_BASIS));
+            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
+            (totalBPTSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
     }
 
     function _validateSpotPriceAndPairPrice(

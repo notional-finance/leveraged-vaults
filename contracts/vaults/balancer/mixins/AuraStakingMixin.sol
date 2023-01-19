@@ -7,7 +7,6 @@ import {IAuraBooster} from "../../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../../interfaces/aura/IAuraRewardPool.sol";
 import {IAuraStakingProxy} from "../../../../interfaces/aura/IAuraStakingProxy.sol";
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
-import {StrategyVaultSettings, BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";

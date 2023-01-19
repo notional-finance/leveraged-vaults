@@ -9,20 +9,22 @@ import {
     AuraVaultDeploymentParams,
     InitParams,
     ReinvestRewardParams,
-    StrategyVaultSettings,
-    StrategyVaultState,
     PoolContext,
     ThreeTokenPoolContext,
-    Boosted3TokenAuraStrategyContext,
-    StrategyContext
+    Boosted3TokenAuraStrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
+import {
+    StrategyContext,
+    StrategyVaultSettings,
+    StrategyVaultState
+} from "./common/VaultTypes.sol";
+import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol";
-import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
+import {VaultStorage} from "./common/VaultStorage.sol";
 import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
 import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
@@ -31,7 +33,7 @@ import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
-    using BalancerVaultStorage for StrategyVaultState;
+    using VaultStorage for StrategyVaultState;
     using Boosted3TokenAuraHelper for Boosted3TokenAuraStrategyContext;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
@@ -48,7 +50,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        BalancerVaultStorage.setStrategyVaultSettings(params.settings);
+        VaultStorage.setStrategyVaultSettings(params.settings);
         (uint256[] memory balances, uint256[] memory scalingFactors) = _getScaledBalances();
 
         _threeTokenPoolContext(balances, scalingFactors)._approveBalancerTokens(
@@ -152,7 +154,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         external
         onlyNotionalOwner
     {
-        BalancerVaultStorage.setStrategyVaultSettings(settings);
+        VaultStorage.setStrategyVaultSettings(settings);
     }
 
     function _getScaledBalances() private view returns (uint256[] memory balances, uint256[] memory scalingFactors) {
