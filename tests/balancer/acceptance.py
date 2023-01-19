@@ -7,7 +7,9 @@ from scripts.common import (
     get_updated_vault_settings, 
     get_deposit_params, 
     get_redeem_params, 
-    get_dynamic_trade_params
+    get_dynamic_trade_params,
+    get_all_maturities,
+    get_all_active_maturities
 )
 from tests.balancer.helpers import (
     snapshot_invariants, 
@@ -78,8 +80,8 @@ def deposit(context, ops):
     vault = context.vault
     currencyId = context.currencyId
     primaryPrecision = context.primaryPrecision
-    maturities = [m[1] for m in notional.getActiveMarkets(currencyId)]
-    snapshot = snapshot_invariants(env, vault, maturities)
+    maturities = get_all_active_maturities(notional, currencyId)
+    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
     depositors = set()
     for op in ops:
         depositAmount = op[0]
@@ -101,16 +103,16 @@ def deposit(context, ops):
         assert pytest.approx(vault.convertStrategyTokensToBPTClaim(strategyTokens), rel=1e-5) == expectedBptAmount
         underlyingValue = vault.convertStrategyToUnderlying(depositor, vaultAccount["vaultShares"], maturity)
         assert pytest.approx(underlyingValue, rel=5e-2) == depositAmount + primaryBorrowAmount * primaryPrecision / 1e8
-    check_invariants(env, vault, list(depositors), maturities, snapshot)
+    check_invariants(env, vault, list(depositors), get_all_maturities(notional, currencyId), snapshot)
 
 def redeem(context, ops):
     env = context.env
     notional = env.notional
     vault = context.vault
     currencyId = context.currencyId
-    maturities = [m[1] for m in notional.getActiveMarkets(currencyId)]
+    maturities = get_all_active_maturities(notional, currencyId)
     maturity = maturities[0]
-    snapshot = snapshot_invariants(env, vault, maturities)
+    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
     depositors = set()
     for op in ops:
         depositAmount = op[0]
@@ -140,7 +142,7 @@ def redeem(context, ops):
             check_account(env, vault, depositor, vaultShares - sharesRedeemed, primaryBorrowAmount - totalfCashRepaid)
             assert pytest.approx(context.balance(depositor) - primaryAmountBefore, rel=5e-2) == depositAmount * percentage
             firstRedeem = False
-    check_invariants(env, vault, depositors, maturities, snapshot)
+    check_invariants(env, vault, depositors, get_all_maturities(notional, currencyId), snapshot)
 
 def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex, depositor, operator, redeemParams, percent):
     env = context.env

@@ -1,12 +1,14 @@
 import pytest
 from brownie import (
     interface,
+    accounts,
     ZERO_ADDRESS,
     MetaStable2TokenAuraVault,
     MockMetaStable2TokenAuraVault,
     MockBoosted3TokenAuraVault,
     MetaStable2TokenAuraHelper,
-    Boosted3TokenAuraHelper
+    Boosted3TokenAuraHelper,
+    MetaStable2TokenPatchFix1
 )
 from brownie.network import Chain
 from brownie import network, Contract
@@ -31,6 +33,17 @@ def StratStableETHstETH():
         MetaStable2TokenAuraVault.abi
     )
 
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])    
+    patchFix = MetaStable2TokenPatchFix1.deploy(
+        env.notional, 
+        "0xe4683fe8f53da14ca5dac4251eadfb3aa614d528", 
+        impl, 
+        {"from": accounts[0]}
+    )
+    patchCall = patchFix.patch.encode_input()
+
+    vault.upgradeToAndCall(patchFix, patchCall, {"from": env.notional.owner()})
+
     stratConfig = env.getStratConfig(strat)
     vault.setStrategyVaultSettings([
         stratConfig["maxUnderlyingSurplus"],
@@ -54,7 +67,6 @@ def StratStableETHstETH():
     )
 
     # Deploy mock contract necessary for liquidation tests
-    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
     mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
     mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
     mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IMetaStableMockVault.abi)

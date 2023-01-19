@@ -197,3 +197,10 @@ def set_trade_type_flags(flags, **kwargs):
     if "EXACT_OUT_BATCH" in kwargs:
         binList[3] = "1"
     return int("".join(reversed(binList)), 2)
+
+def get_all_maturities(notional, currencyId):
+    # Includes past maturities
+    return [1671840000] + get_all_active_maturities(notional, currencyId)
+
+def get_all_active_maturities(notional, currencyId):
+    return [m[1] for m in notional.getActiveMarkets(currencyId)]
