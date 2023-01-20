@@ -199,8 +199,13 @@ def set_trade_type_flags(flags, **kwargs):
     return int("".join(reversed(binList)), 2)
 
 def get_all_maturities(notional, currencyId):
-    # Includes past maturities
-    return [1671840000] + get_all_active_maturities(notional, currencyId)
+    res = []
+    activeMaturities = get_all_active_maturities(notional, currencyId)
+    i = 1671840000
+    while i < activeMaturities[0]:
+        res.append(i)
+        i += 3600 * 24 * 90
+    return res + activeMaturities
 
 def get_all_active_maturities(notional, currencyId):
     return [m[1] for m in notional.getActiveMarkets(currencyId)]

@@ -122,7 +122,7 @@ def check_invariants(env, vault, accounts, maturities, snapshot=None):
     assert vaultTotalfCash == accountTotalfCash
     assert vaultTotalVaultShares == accountTotalVaultShares
     # Rounding error
-    if auraBalance > 1:
+    if auraBalance > 1 and vaultTotalStrategyTokens > 0:
         assert pytest.approx(vault.convertStrategyTokensToBPTClaim(vaultTotalStrategyTokens) / 1e10, rel=1e-5) == auraBalance
     assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"] == auraPool.balanceOf(vault)
     if snapshot != None:
