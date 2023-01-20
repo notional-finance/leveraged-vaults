@@ -37,11 +37,13 @@ contract MetaStable2TokenPatchFix1 is UUPSUpgradeable {
         return state.totalStrategyTokens.toUint80();
     }
 
-    function patch() external {
+    function patch(uint256 expectedTotalStrategyTokens) external {
         require(msg.sender == NOTIONAL.owner());
         uint80 totalStrategyTokens = _getStrategyTokenAmount(MATURITY_DEC_2022) +
             _getStrategyTokenAmount(MATURITY_MAR_2023) +
             _getStrategyTokenAmount(MATURITY_JUN_2023);
+
+        require(totalStrategyTokens == expectedTotalStrategyTokens);
 
         StrategyVaultState memory state = BalancerVaultStorage
             .getStrategyVaultState();

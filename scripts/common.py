@@ -198,6 +198,12 @@ def set_trade_type_flags(flags, **kwargs):
         binList[3] = "1"
     return int("".join(reversed(binList)), 2)
 
+def get_total_strategy_tokens(notional, vault, maturities):
+    total = 0
+    for m in maturities:
+        total += notional.getVaultState(vault.address, m)["totalStrategyTokens"]
+    return total
+
 def get_all_maturities(notional, currencyId):
     res = []
     activeMaturities = get_all_active_maturities(notional, currencyId)

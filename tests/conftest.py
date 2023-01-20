@@ -13,7 +13,7 @@ from brownie import (
 from brownie.network import Chain
 from brownie import network, Contract
 from scripts.BalancerEnvironment import getEnvironment
-from scripts.common import set_dex_flags, set_trade_type_flags
+from scripts.common import set_dex_flags, set_trade_type_flags, get_total_strategy_tokens, get_all_maturities
 
 chain = Chain()
 
@@ -35,7 +35,9 @@ def StratStableETHstETH():
 
     impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])    
     patchFix = MetaStable2TokenPatchFix1.deploy(impl, {"from": accounts[0]})
-    patchCall = patchFix.patch.encode_input()
+
+    totalStrategyTokens = get_total_strategy_tokens(env.notional, vault, get_all_maturities(env.notional, 1))
+    patchCall = patchFix.patch.encode_input(totalStrategyTokens)
 
     vault.upgradeToAndCall(patchFix, patchCall, {"from": env.notional.owner()})
 
