@@ -1,4 +1,3 @@
-import brownie
 from brownie import ZERO_ADDRESS, Wei, accounts
 from brownie.convert import to_bytes
 from tests.fixtures import *
@@ -67,7 +66,7 @@ def test_reinvest_reward(StratStableETHstETH):
         ]]
     ), 0]
 
-    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 209476561588413989)
+    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 200916107796947076)
 
 def test_reinvest_0x_trade(StratStableETHstETH):
     context = ETHPrimaryContext(*StratStableETHstETH)

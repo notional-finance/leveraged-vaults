@@ -12,13 +12,16 @@ import {TypeConvert} from "../../../global/TypeConvert.sol";
 contract MetaStable2TokenPatchFix1 is UUPSUpgradeable {
     using TypeConvert for uint256;
 
-    NotionalProxy public immutable NOTIONAL;
-    IAuraRewardPool public immutable AURA_REWARD_POOL;
+    NotionalProxy public constant NOTIONAL =
+        NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
+    IAuraRewardPool public constant AURA_REWARD_POOL =
+        IAuraRewardPool(0xe4683Fe8F53da14cA5DAc4251EaDFb3aa614d528);
+    uint256 public constant MATURITY_DEC_2022 = 1671840000;
+    uint256 public constant MATURITY_MAR_2023 = 1679616000;
+    uint256 public constant MATURITY_JUN_2023 = 1687392000;
     address public immutable NEW_IMPL;
 
-    constructor(NotionalProxy notional_, IAuraRewardPool auraPool_, address newImpl_) {
-        NOTIONAL = notional_;
-        AURA_REWARD_POOL = auraPool_;
+    constructor(address newImpl_) {
         NEW_IMPL = newImpl_;
     }
 
@@ -36,9 +39,9 @@ contract MetaStable2TokenPatchFix1 is UUPSUpgradeable {
 
     function patch() external {
         require(msg.sender == NOTIONAL.owner());
-        uint80 totalStrategyTokens = _getStrategyTokenAmount(1671840000) +
-            _getStrategyTokenAmount(1679616000) +
-            _getStrategyTokenAmount(1687392000);
+        uint80 totalStrategyTokens = _getStrategyTokenAmount(MATURITY_DEC_2022) +
+            _getStrategyTokenAmount(MATURITY_MAR_2023) +
+            _getStrategyTokenAmount(MATURITY_JUN_2023);
 
         StrategyVaultState memory state = BalancerVaultStorage
             .getStrategyVaultState();

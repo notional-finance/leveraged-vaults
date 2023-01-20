@@ -34,12 +34,7 @@ def StratStableETHstETH():
     )
 
     impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])    
-    patchFix = MetaStable2TokenPatchFix1.deploy(
-        env.notional, 
-        "0xe4683fe8f53da14ca5dac4251eadfb3aa614d528", 
-        impl, 
-        {"from": accounts[0]}
-    )
+    patchFix = MetaStable2TokenPatchFix1.deploy(impl, {"from": accounts[0]})
     patchCall = patchFix.patch.encode_input()
 
     vault.upgradeToAndCall(patchFix, patchCall, {"from": env.notional.owner()})
