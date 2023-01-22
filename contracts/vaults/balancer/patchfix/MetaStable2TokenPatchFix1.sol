@@ -23,7 +23,7 @@ contract MetaStable2TokenPatchFix1 is UUPSUpgradeable {
         IERC20(0x32296969Ef14EB0c6d29669C550D4a0449130230);
     IAuraBooster public constant AURA_BOOSTER = 
         IAuraBooster(0xA57b8d98dAE62B26Ec3bcC4a365338157060B234);
-    uint80 public constant DEC_2023_REMAINING_STRATEGY_TOKENS = 1842560288;
+    uint80 public constant DEC_2022_REMAINING_STRATEGY_TOKENS = 1842560288;
     uint256 public constant MATURITY_MAR_2023 = 1679616000;
     uint256 public constant MATURITY_JUN_2023 = 1687392000;
     address public immutable NEW_IMPL;
@@ -49,7 +49,7 @@ contract MetaStable2TokenPatchFix1 is UUPSUpgradeable {
 
         BPT.transferFrom(bptWallet, address(this), BPT.balanceOf(bptWallet));
         AURA_BOOSTER.deposit(29, BPT.balanceOf(address(this)), true);
-        uint80 totalStrategyTokens = DEC_2023_REMAINING_STRATEGY_TOKENS +
+        uint80 totalStrategyTokens = DEC_2022_REMAINING_STRATEGY_TOKENS +
             _getStrategyTokenAmount(MATURITY_MAR_2023) +
             _getStrategyTokenAmount(MATURITY_JUN_2023);
 
