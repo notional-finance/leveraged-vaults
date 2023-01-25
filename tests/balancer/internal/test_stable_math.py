@@ -48,9 +48,9 @@ def test_spot_price_within_1_perc_of_pair_price_after_trading(StratStableETHstET
     for i in range(0,10):
         env.tokens["wstETH"].transfer(env.tradingModule, 1e18, {"from": env.whales["wstETH"]})
         tradeCallData = balancer_trade_exact_in_single(env.tokens["wstETH"].address, env.tokens["WETH"].address, 1e18, 0, poolId)
-        env.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 5e6, {"from": env.whales["wstETH"]})
+        env.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 10e6, {"from": env.whales["wstETH"]})
         tradeCallData = balancer_trade_exact_in_single(env.tokens["WETH"].address, env.tokens["wstETH"].address, 1e18, 0, poolId)
-        env.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 5e6, {"from": env.whales["wstETH"]})
+        env.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 10e6, {"from": env.whales["wstETH"]})
         chain.sleep(60)
 
     secondaryScaleFactor = vault.getStrategyContext()["poolContext"]["secondaryScaleFactor"]/1e18

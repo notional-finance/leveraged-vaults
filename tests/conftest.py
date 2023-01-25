@@ -1,6 +1,7 @@
 import pytest
 from brownie import (
     interface,
+    accounts,
     ZERO_ADDRESS,
     MetaStable2TokenAuraVault,
     MockMetaStable2TokenAuraVault,
@@ -32,10 +33,7 @@ def StratStableETHstETH():
         "0xF049B944eC83aBb50020774D48a8cf40790996e6", 
         MetaStable2TokenAuraVault.abi
     )
-    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
-    migrateData = impl.migrateAura.encode_input()
-    vault.upgradeToAndCall(impl, migrateData, {"from": env.notional.owner()})
-
+ 
     stratConfig = env.getStratConfig(strat)
     vault.setStrategyVaultSettings([
         stratConfig["maxUnderlyingSurplus"],
@@ -59,6 +57,7 @@ def StratStableETHstETH():
     )
 
     # Deploy mock contract necessary for liquidation tests
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])    
     mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
     mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
     mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IMetaStableMockVault.abi)

@@ -13,7 +13,7 @@ networks:
   default: hardhat-fork
   hardhat-fork:
     cmd_settings:
-      fork_block: 16350543
+      fork_block: 16477976
   
 reports:
   exclude_paths:

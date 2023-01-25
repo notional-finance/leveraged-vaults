@@ -41,19 +41,11 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using MetaStable2TokenAuraHelper for MetaStable2TokenAuraStrategyContext;
     using TokenUtils for IERC20;
-
-    IAuraRewardPool internal immutable OLD_REWARD_POOL;
-
-    event AuraPoolMigrated(address indexed oldPool, address indexed newPool, uint256 amount);
     
     constructor(
         NotionalProxy notional_, 
-        AuraVaultDeploymentParams memory params,
-        IAuraRewardPool oldRewardPool_) 
-        MetaStable2TokenVaultMixin(notional_, params)
-    {
-        OLD_REWARD_POOL = oldRewardPool_;
-    }
+        AuraVaultDeploymentParams memory params) 
+        MetaStable2TokenVaultMixin(notional_, params) {}
 
     function strategy() external override view returns (bytes4) {
         return bytes4(keccak256("MetaStable2TokenAura"));
@@ -112,10 +104,15 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             revert Errors.NotInSettlementWindow();
         }
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+
         SettlementUtils._validateCoolDown(
             context.baseStrategy.vaultState.lastSettlementTimestamp,
             context.baseStrategy.vaultSettings.settlementCoolDownInMinutes
         );
+
+        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
+        context.baseStrategy.vaultState.setStrategyVaultState();
+
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
             data
@@ -123,8 +120,6 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         MetaStable2TokenAuraHelper.settleVault(
             context, maturity, strategyTokensToRedeem, params
         );
-        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
-        context.baseStrategy.vaultState.setStrategyVaultState();
     }
 
     function settleVaultPostMaturity(
@@ -190,24 +185,4 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
         });
     }
-
-    function migrateAura() external onlyNotionalOwner {
-        uint256 oldAmount = OLD_REWARD_POOL.balanceOf(address(this));
-        
-        bool success = OLD_REWARD_POOL.withdrawAndUnwrap(oldAmount, true);
-        if (!success) revert Errors.UnstakeFailed();
-
-        IERC20(address(BALANCER_POOL_TOKEN)).checkApprove(address(AURA_BOOSTER), type(uint256).max);
-
-        uint256 bptAmount = BALANCER_POOL_TOKEN.balanceOf(address(this));
-
-        success = AURA_BOOSTER.deposit(AURA_POOL_ID, bptAmount, true);
-        if (!success) revert Errors.StakeFailed();
-
-        // New amount should equal to old amount
-        require(oldAmount == AURA_REWARD_POOL.balanceOf(address(this)));
-
-        emit AuraPoolMigrated(address(OLD_REWARD_POOL), address(AURA_REWARD_POOL), oldAmount);
-    }
 }
-
