@@ -9,7 +9,10 @@ from scripts.common import (
     DEX_ID,
     get_deposit_params, 
     set_trade_type_flags, 
-    set_dex_flags
+    set_dex_flags,
+    get_all_past_maturities,
+    get_all_active_maturities,
+    get_remaining_strategy_tokens
 )
 
 chain = Chain()
@@ -79,11 +82,20 @@ def exitVaultPercent(env, vault, account, percent, redeemParams, callStatic=Fals
         )
     return (sharesToRedeem, fCashToRepay)
 
-def snapshot_invariants(env, vault, maturities):
+def snapshot_invariants(env, vault, currencyId):
+    activeMaturities = get_all_active_maturities(env.notional, currencyId)
+    pastMaturities = get_all_past_maturities(env.notional, currencyId)
     vaultTotalfCash = 0
     vaultTotalVaultShares = 0
-    vaultTotalStrategyTokens = 0
-    for maturity in maturities:
+    data = get_remaining_strategy_tokens()
+    vaultTotalStrategyTokens = data["amount"]
+    for maturity in pastMaturities:
+        vaultState = env.notional.getVaultState(vault.address, maturity)
+        vaultTotalfCash += vaultState["totalfCash"]
+        vaultTotalVaultShares += vaultState["totalVaultShares"]
+        if maturity not in data["maturities"]:
+            vaultTotalStrategyTokens += vaultState["totalStrategyTokens"]        
+    for maturity in activeMaturities:
         vaultState = env.notional.getVaultState(vault.address, maturity)
         vaultTotalfCash += vaultState["totalfCash"]
         vaultTotalVaultShares += vaultState["totalVaultShares"]
@@ -97,7 +109,9 @@ def snapshot_invariants(env, vault, maturities):
         "auraBalance": auraBalance
     }
     
-def check_invariants(env, vault, accounts, maturities, snapshot=None):
+def check_invariants(env, vault, accounts, currencyId, snapshot=None):
+    auraPool = interface.IAuraRewardPool(vault.getStrategyContext()["stakingContext"]["auraRewardPool"])
+    current = snapshot_invariants(env, vault, currencyId)
     accountTotalfCash = 0
     accountTotalVaultShares = 0
     for account in accounts:
@@ -107,27 +121,19 @@ def check_invariants(env, vault, accounts, maturities, snapshot=None):
     vaultTotalfCash = 0
     vaultTotalVaultShares = 0
     vaultTotalStrategyTokens = 0
-    for maturity in maturities:
-        vaultState = env.notional.getVaultState(vault.address, maturity)
-        vaultTotalfCash += vaultState["totalfCash"]
-        vaultTotalVaultShares += vaultState["totalVaultShares"]
-        vaultTotalStrategyTokens += vaultState["totalStrategyTokens"]
-    auraPool = interface.IAuraRewardPool(vault.getStrategyContext()["stakingContext"]["auraRewardPool"])
-    auraBalance = math.floor(auraPool.balanceOf(vault.address) / 1e10)
+    auraBalance = 0
     if snapshot != None:
-        vaultTotalfCash -= snapshot["totalfCash"]
-        vaultTotalVaultShares -= snapshot["totalVaultShares"]
-        vaultTotalStrategyTokens -= snapshot["totalStrategyTokens"]
-        auraBalance -= snapshot["auraBalance"]
+        vaultTotalfCash = current["totalfCash"] - snapshot["totalfCash"]
+        vaultTotalVaultShares = current["totalVaultShares"] - snapshot["totalVaultShares"]
+        vaultTotalStrategyTokens = current["totalStrategyTokens"] - snapshot["totalStrategyTokens"]
+        auraBalance = current["auraBalance"] - snapshot["auraBalance"]
     assert vaultTotalfCash == accountTotalfCash
     assert vaultTotalVaultShares == accountTotalVaultShares
     # Rounding error
-    if auraBalance > 1:
+    if auraBalance > 1 and vaultTotalStrategyTokens > 0:
         assert pytest.approx(vault.convertStrategyTokensToBPTClaim(vaultTotalStrategyTokens) / 1e10, rel=1e-5) == auraBalance
     assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"] == auraPool.balanceOf(vault)
-    if snapshot != None:
-        vaultTotalStrategyTokens += snapshot["totalStrategyTokens"]
-    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalStrategyTokenGlobal"] == vaultTotalStrategyTokens
+    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalStrategyTokenGlobal"] == current["totalStrategyTokens"]
 
 def check_account(env, vault, account, vaultShares, fCash):
     vaultAccount = env.notional.getVaultAccount(account, vault.address)

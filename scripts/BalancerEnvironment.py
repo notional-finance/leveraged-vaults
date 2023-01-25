@@ -156,7 +156,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementWindow"]
                 ]
             ],
-            "0xdcee1c640cc270121faf145f231fd8ff1d8d5cd4", # Old aura pool
             {"from": self.deployer}
         )
 

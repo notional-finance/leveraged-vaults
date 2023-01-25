@@ -41,6 +41,7 @@ with open("v2.goerli.json", "r") as f:
 
 class Environment:
     def __init__(self, network) -> None:
+        self.forkBlockNumber = chain.height
         self.network = network
         addresses = networks[network]
         self.addresses = addresses
