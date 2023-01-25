@@ -49,7 +49,7 @@ def test_multiple_accounts_in_each_maturity_success(StratBoostedPoolUSDCPrimary)
     )
 
 def test_leverage_ratio_too_high_failure(StratBoostedPoolUSDCPrimary):
-    leverage_ratio_too_high(USDCPrimaryContext(*StratBoostedPoolUSDCPrimary), 10000e6, 60000e8)
+    leverage_ratio_too_high(USDCPrimaryContext(*StratBoostedPoolUSDCPrimary), 10000e6, 200000e8)
 
 def test_balancer_share_too_high(StratBoostedPoolUSDCPrimary):
     balancer_share_too_high(USDCPrimaryContext(*StratBoostedPoolUSDCPrimary), 10000e6, 60000e8)

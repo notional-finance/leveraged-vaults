@@ -62,7 +62,7 @@ StrategyConfig = {
             "primaryCurrency": 2, # DAI
             "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
             "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
-            "auraRewardPool": "0x1e9f147241da9009417811ad5858f22ed1f9f9fd",
+            "auraRewardPool": "0xfb6b1c1a1ea5618b3cfc20f81a11a97e930fa46b",
             "maxUnderlyingSurplus": 50000e18, # 50000 DAI
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimitPercent": 3e6, # 3%
@@ -87,7 +87,7 @@ StrategyConfig = {
             "primaryCurrency": 3, # USDC
             "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
             "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
-            "auraRewardPool": "0x1e9f147241da9009417811ad5858f22ed1f9f9fd",
+            "auraRewardPool": "0xfb6b1c1a1ea5618b3cfc20f81a11a97e930fa46b",
             "maxUnderlyingSurplus": 50000e6, # 50000 USDC
             "maxBalancerPoolShare": 2e3, # 20%
             "settlementSlippageLimitPercent": 3e6, # 5%

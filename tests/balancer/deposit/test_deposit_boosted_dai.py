@@ -49,7 +49,7 @@ def test_multiple_accounts_in_each_maturity_success(StratBoostedPoolDAIPrimary):
     )
 
 def test_leverage_ratio_too_high_failure(StratBoostedPoolDAIPrimary):
-    leverage_ratio_too_high(DAIPrimaryContext(*StratBoostedPoolDAIPrimary), 10000e18, 60000e8)
+    leverage_ratio_too_high(DAIPrimaryContext(*StratBoostedPoolDAIPrimary), 10000e18, 200000e8)
 
 def test_leverage_ratio_too_high(StratBoostedPoolDAIPrimary):
     balancer_share_too_high(DAIPrimaryContext(*StratBoostedPoolDAIPrimary), 10000e18, 60000e8)

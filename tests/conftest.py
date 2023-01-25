@@ -1,7 +1,6 @@
 import pytest
 from brownie import (
     interface,
-    accounts,
     ZERO_ADDRESS,
     MetaStable2TokenAuraVault,
     MockMetaStable2TokenAuraVault,
@@ -9,12 +8,11 @@ from brownie import (
     MockBoosted3TokenAuraVault,
     MetaStable2TokenAuraHelper,
     Boosted3TokenAuraHelper,
-    MetaStable2TokenPatchFix1
 )
 from brownie.network import Chain
 from brownie import network, Contract
 from scripts.BalancerEnvironment import getEnvironment
-from scripts.common import set_dex_flags, set_trade_type_flags, get_total_strategy_tokens, get_all_active_maturities
+from scripts.common import set_dex_flags, set_trade_type_flags
 
 chain = Chain()
 
@@ -33,13 +31,13 @@ def StratStableETHstETH():
         "0xF049B944eC83aBb50020774D48a8cf40790996e6", 
         MetaStable2TokenAuraVault.abi
     )
- 
+
     stratConfig = env.getStratConfig(strat)
     vault.setStrategyVaultSettings([
         stratConfig["maxUnderlyingSurplus"],
         stratConfig["settlementSlippageLimitPercent"], 
         stratConfig["postMaturitySettlementSlippageLimitPercent"], 
-        stratConfig["emergencySettlementSlippageLimitPercent"], 
+        stratConfig["emergencySettlementSlippageLimitPercent"],
         stratConfig["maxBalancerPoolShare"],
         stratConfig["settlementCoolDownInMinutes"],
         stratConfig["oraclePriceDeviationLimitPercent"],
@@ -59,7 +57,7 @@ def StratStableETHstETH():
     impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])    
     mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
     mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
-    mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IMetaStableMockVault.abi)
+    mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IMockVault.abi)
 
     env.tradingModule.setTokenPermissions(
         mock.address, 

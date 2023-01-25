@@ -57,11 +57,12 @@ library TwoTokenPoolUtils {
         amounts[context.secondaryIndex] = secondaryAmount;
 
         uint256 msgValue;
-        if (isJoin && assets[context.primaryIndex] == IAsset(Deployments.ETH_ADDRESS)) {
-            msgValue = amounts[context.primaryIndex];
-        }
-        if (isJoin && assets[context.secondaryIndex] == IAsset(Deployments.ETH_ADDRESS)) {
-            msgValue = amounts[context.secondaryIndex];
+        if (isJoin) {
+            if (assets[context.primaryIndex] == IAsset(Deployments.ETH_ADDRESS)) {
+                msgValue = amounts[context.primaryIndex];
+            } else if (assets[context.secondaryIndex] == IAsset(Deployments.ETH_ADDRESS)) {
+                msgValue = amounts[context.secondaryIndex];
+            }
         }
 
         return PoolParams(assets, amounts, msgValue);
