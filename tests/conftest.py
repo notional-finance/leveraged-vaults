@@ -32,20 +32,7 @@ def StratStableETHstETH():
         "0xF049B944eC83aBb50020774D48a8cf40790996e6", 
         MetaStable2TokenAuraVault.abi
     )
-
-    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])    
-    patchFix = MetaStable2TokenPatchFix1.deploy("0xd051dF78a70f8881B2da73757193C7fb73eeCbe0", {"from": accounts[0]})
-
-    burnerWallet = accounts.at("0x0177AfA3A679771232537b6bb4Ded64D5E815587", force=True)
-
-    bpt = interface.IERC20("0x32296969Ef14EB0c6d29669C550D4a0449130230")
-    bpt.approve("0xF049B944eC83aBb50020774D48a8cf40790996e6", 2**256-1, {"from": burnerWallet})
-
-    totalStrategyTokens = get_total_strategy_tokens(env.notional, vault, get_all_active_maturities(env.notional, 1))
-    patchCall = patchFix.patch.encode_input(burnerWallet, 1842560288 + totalStrategyTokens)
-
-    vault.upgradeToAndCall(patchFix, patchCall, {"from": env.notional.owner()})
-
+ 
     stratConfig = env.getStratConfig(strat)
     vault.setStrategyVaultSettings([
         stratConfig["maxUnderlyingSurplus"],
@@ -69,6 +56,7 @@ def StratStableETHstETH():
     )
 
     # Deploy mock contract necessary for liquidation tests
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])    
     mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
     mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
     mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IMetaStableMockVault.abi)

@@ -9,7 +9,10 @@ from scripts.common import (
     DEX_ID,
     get_deposit_params, 
     set_trade_type_flags, 
-    set_dex_flags
+    set_dex_flags,
+    get_all_past_maturities,
+    get_all_active_maturities,
+    get_remaining_strategy_tokens
 )
 
 chain = Chain()
@@ -79,11 +82,12 @@ def exitVaultPercent(env, vault, account, percent, redeemParams, callStatic=Fals
         )
     return (sharesToRedeem, fCashToRepay)
 
-def snapshot_invariants(env, vault, maturities):
+def snapshot_invariants(env, vault, currencyId):
+    activeMaturities = get_all_active_maturities(env.notional, currencyId)
     vaultTotalfCash = 0
     vaultTotalVaultShares = 0
-    vaultTotalStrategyTokens = 0
-    for maturity in maturities:
+    vaultTotalStrategyTokens = get_remaining_strategy_tokens()
+    for maturity in activeMaturities:
         vaultState = env.notional.getVaultState(vault.address, maturity)
         vaultTotalfCash += vaultState["totalfCash"]
         vaultTotalVaultShares += vaultState["totalVaultShares"]
@@ -97,7 +101,8 @@ def snapshot_invariants(env, vault, maturities):
         "auraBalance": auraBalance
     }
     
-def check_invariants(env, vault, accounts, maturities, snapshot=None):
+def check_invariants(env, vault, accounts, currencyId, snapshot=None):
+    activeMaturities = get_all_active_maturities(env.notional, currencyId)
     accountTotalfCash = 0
     accountTotalVaultShares = 0
     for account in accounts:
@@ -106,8 +111,8 @@ def check_invariants(env, vault, accounts, maturities, snapshot=None):
         accountTotalVaultShares += vaultAccount["vaultShares"]
     vaultTotalfCash = 0
     vaultTotalVaultShares = 0
-    vaultTotalStrategyTokens = 0
-    for maturity in maturities:
+    vaultTotalStrategyTokens = get_remaining_strategy_tokens()
+    for maturity in activeMaturities:
         vaultState = env.notional.getVaultState(vault.address, maturity)
         vaultTotalfCash += vaultState["totalfCash"]
         vaultTotalVaultShares += vaultState["totalVaultShares"]

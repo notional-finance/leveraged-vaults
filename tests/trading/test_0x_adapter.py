@@ -1,7 +1,7 @@
 
 import pytest
 import brownie
-from brownie import Wei, accounts, network, TradingModule
+from brownie import Wei, accounts, network
 from brownie.network.state import Chain
 from scripts.common import (
     DEX_ID, 
@@ -10,6 +10,7 @@ from scripts.common import (
     set_trade_type_flags
 )
 from scripts.EnvironmentConfig import getEnvironment
+from tests.zeroex.helpers import load_test_data, save_test_data, fetch_0x_data
 
 chain = Chain()
 
@@ -19,14 +20,23 @@ def run_around_tests():
     yield
     chain.revert()
 
-def test_COMP_to_WETH_exact_in():
+def test_COMP_to_WETH_exact_in(request):
     env = getEnvironment(network.show_active())
     amount = Wei(200e18)
     env.tokens["COMP"].transfer(env.tradingModule, amount, {"from": env.whales["COMP"]})
 
-    # To generate this trade data after advancing the block number
-    # Call https://api.0x.org/swap/v1/quote?sellToken=0xc00e94cb662c3520282e6f5717214004a7f26888&buyToken=0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2&sellAmount=200000000000000000000&slippagePercentage=0.3
-    tradeData = "0xd9627aa4000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000ad78ebc5ac62000000000000000000000000000000000000000000000000000003b08e34cff7fa87800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c00e94cb662c3520282e6f5717214004a7f26888000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2869584cd000000000000000000000000100000000000000000000000000000000000001100000000000000000000000000000000000000000000006da367599763cad70e"
+    testData = load_test_data(request.node.name)
+    if env.forkBlockNumber > testData["blockNumber"]:
+        tradeData = fetch_0x_data(
+            env.tokens["COMP"],
+            env.tokens["WETH"],
+            amount,
+            0.3
+        )
+        save_test_data(request.node.name, env.forkBlockNumber, [tradeData])
+    else:
+        tradeData = testData["params"][0]
+
     trade = [
         TRADE_TYPE["EXACT_IN_SINGLE"], 
         env.tokens["COMP"], 

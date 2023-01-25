@@ -11,6 +11,7 @@ from scripts.common import (
     DEX_ID, 
     TRADE_TYPE
 )
+from tests.zeroex.helpers import load_test_data, save_test_data, fetch_0x_data
 
 chain = Chain()
 
@@ -68,7 +69,7 @@ def test_reinvest_reward(StratStableETHstETH):
 
     reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 200916107796947076)
 
-def test_reinvest_0x_trade(StratStableETHstETH):
+def test_reinvest_0x_trade(StratStableETHstETH, request):
     context = ETHPrimaryContext(*StratStableETHstETH)
     env = context.env
     rewardAmount = Wei(50e18)
@@ -77,11 +78,25 @@ def test_reinvest_0x_trade(StratStableETHstETH):
     balanced2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
     (primaryAmount, secondaryAmount) = get_metastable_amounts(context.vault.getStrategyContext()["poolContext"], rewardAmount)
 
-    # To generate this trade data after advancing the block number
-    # Call https://api.0x.org/swap/v1/quote?sellToken=0xba100000625a3754423978a60c9317c58a424e3D&buyToken=ETH&sellAmount=24409825087058625000&slippagePercentage=0.3
-    ethTradeData = "0x803ba26d000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000152c11e967f8c41e80000000000000000000000000000000000000000000000000101077b5995ccda0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002bba100000625a3754423978a60c9317c58a424e3d000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000869584cd000000000000000000000000100000000000000000000000000000000000001100000000000000000000000000000000000000000000008dc687795c63cad972"
-    # Call https://api.0x.org/swap/v1/quote?sellToken=0xba100000625a3754423978a60c9317c58a424e3D&buyToken=0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0&sellAmount=25590174912941375000&slippagePercentage=0.3
-    stETHTradeData = "0x6af479b200000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000016322908031fbbe1800000000000000000000000000000000000000000000000000f43b159d71100300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000042ba100000625a3754423978a60c9317c58a424e3d000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f47f39c581f595b53c5cb19bd0b3f8da6c935e2ca0000000000000000000000000000000000000000000000000000000000000869584cd00000000000000000000000010000000000000000000000000000000000000110000000000000000000000000000000000000000000000571da288c963cad987"
+    testData = load_test_data(request.node.name)
+    if env.forkBlockNumber > testData["blockNumber"]:
+        ethTradeData = fetch_0x_data(
+            env.tokens["BAL"],
+            "ETH",
+            primaryAmount,
+            0.3
+        )
+        wstETHTradeData = fetch_0x_data(
+            env.tokens["BAL"],
+            env.tokens["wstETH"],
+            secondaryAmount,
+            0.3
+        )
+        save_test_data(request.node.name, env.forkBlockNumber, [ethTradeData, wstETHTradeData])
+    else:
+        ethTradeData = testData["params"][0]
+        wstETHTradeData = testData["params"][1]
+
     bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
     rewardParams = [eth_abi.encode_abi(
         [balanced2TokenRewardTradeParams],
@@ -107,7 +122,7 @@ def test_reinvest_0x_trade(StratStableETHstETH):
                     TRADE_TYPE["EXACT_IN_SINGLE"],
                     0,
                     False,
-                    to_bytes(stETHTradeData, "bytes")
+                    to_bytes(wstETHTradeData, "bytes")
                 ]
             ]
         ]]

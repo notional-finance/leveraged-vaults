@@ -1,6 +1,7 @@
 import json
 import re
 import eth_abi
+import requests
 from brownie import network, Contract, Wei
 from brownie.network.state import Chain
 
@@ -204,14 +205,26 @@ def get_total_strategy_tokens(notional, vault, maturities):
         total += notional.getVaultState(vault.address, m)["totalStrategyTokens"]
     return total
 
-def get_all_maturities(notional, currencyId):
+def get_all_past_maturities(notional, currencyId):
     res = []
     activeMaturities = get_all_active_maturities(notional, currencyId)
     i = 1671840000
     while i < activeMaturities[0]:
         res.append(i)
         i += 3600 * 24 * 90
-    return res + activeMaturities
+    return res
 
 def get_all_active_maturities(notional, currencyId):
     return [m[1] for m in notional.getActiveMarkets(currencyId)]
+
+def get_remaining_strategy_tokens():
+    resp = requests.post("https://api.thegraph.com/subgraphs/name/notional-finance/mainnet-v2",
+        json={
+            "query":"{\n  leveragedVaultMaturities {\n    id\n    remainingSettledStrategyTokens\n  }\n}",
+        })
+    return sum(list(map(lambda x: Wei(x), filter(
+        lambda x: x != None, map(
+            lambda x: x["remainingSettledStrategyTokens"], resp.json()["data"]["leveragedVaultMaturities"]
+        )
+    ))))
+    

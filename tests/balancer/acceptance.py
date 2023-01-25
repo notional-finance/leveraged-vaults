@@ -8,7 +8,6 @@ from scripts.common import (
     get_deposit_params, 
     get_redeem_params, 
     get_dynamic_trade_params,
-    get_all_maturities,
     get_all_active_maturities
 )
 from tests.balancer.helpers import (
@@ -81,7 +80,7 @@ def deposit(context, ops):
     currencyId = context.currencyId
     primaryPrecision = context.primaryPrecision
     maturities = get_all_active_maturities(notional, currencyId)
-    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
+    snapshot = snapshot_invariants(env, vault, currencyId)
     depositors = set()
     for op in ops:
         depositAmount = op[0]
@@ -103,7 +102,7 @@ def deposit(context, ops):
         assert pytest.approx(vault.convertStrategyTokensToBPTClaim(strategyTokens), rel=1e-5) == expectedBptAmount
         underlyingValue = vault.convertStrategyToUnderlying(depositor, vaultAccount["vaultShares"], maturity)
         assert pytest.approx(underlyingValue, rel=5e-2) == depositAmount + primaryBorrowAmount * primaryPrecision / 1e8
-    check_invariants(env, vault, list(depositors), get_all_maturities(notional, currencyId), snapshot)
+    check_invariants(env, vault, list(depositors), currencyId, snapshot)
 
 def redeem(context, ops):
     env = context.env
@@ -112,7 +111,7 @@ def redeem(context, ops):
     currencyId = context.currencyId
     maturities = get_all_active_maturities(notional, currencyId)
     maturity = maturities[0]
-    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
+    snapshot = snapshot_invariants(env, vault, currencyId)
     depositors = set()
     for op in ops:
         depositAmount = op[0]
@@ -142,7 +141,7 @@ def redeem(context, ops):
             check_account(env, vault, depositor, vaultShares - sharesRedeemed, primaryBorrowAmount - totalfCashRepaid)
             assert pytest.approx(context.balance(depositor) - primaryAmountBefore, rel=5e-2) == depositAmount * percentage
             firstRedeem = False
-    check_invariants(env, vault, depositors, get_all_maturities(notional, currencyId), snapshot)
+    check_invariants(env, vault, depositors, currencyId, snapshot)
 
 def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex, depositor, operator, redeemParams, percent):
     env = context.env
@@ -154,7 +153,7 @@ def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex
     context.transfer(depositor, depositAmount)
     context.approve(operator, notional.address)
     context.transfer(operator, depositAmount)
-    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
+    snapshot = snapshot_invariants(env, vault, currencyId)
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
 
     # Enter settlement window
@@ -245,7 +244,7 @@ def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex
     assert vaultState["isSettled"] == False
     totalUnderlyingCash = convert_to_underlying(env, currencyId, vaultState["totalAssetCash"], context.primaryPrecision)
     assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore
-    check_invariants(env, vault, [depositor], get_all_maturities(notional, currencyId), snapshot)
+    check_invariants(env, vault, [depositor], currencyId, snapshot)
 
 def post_maturity_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex, depositor, operator, redeemParams, percent):
     env = context.env
@@ -257,7 +256,7 @@ def post_maturity_settlement(context, depositAmount, primaryBorrowAmount, maturi
     context.transfer(depositor, depositAmount)
     context.approve(operator, notional.address)
     context.transfer(operator, depositAmount)
-    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
+    snapshot = snapshot_invariants(env, vault, currencyId)
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
 
     tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * percent)
@@ -318,7 +317,7 @@ def post_maturity_settlement(context, depositAmount, primaryBorrowAmount, maturi
     assert vaultState["isSettled"] == True
     totalUnderlyingCash = convert_to_underlying(env, currencyId, vaultState["totalAssetCash"], context.primaryPrecision)
     assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore
-    check_invariants(env, vault, [depositor], get_all_maturities(notional, currencyId), snapshot)
+    check_invariants(env, vault, [depositor], currencyId, snapshot)
 
 def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex, depositor, operator, redeemParams):
     env = context.env
@@ -330,7 +329,7 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
     context.transfer(depositor, depositAmount)
     context.approve(operator, notional.address)
     context.transfer(operator, depositAmount)
-    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
+    snapshot = snapshot_invariants(env, vault, currencyId)
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
 
     tradeParams = redeemParams[2]
@@ -379,7 +378,7 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
     assert vaultState["totalStrategyTokens"] <= 1 # Rounding error?
     totalUnderlyingCash = convert_to_underlying(env, currencyId, vaultState["totalAssetCash"], context.primaryPrecision)
     assert pytest.approx(totalUnderlyingCash, rel=1e-2) == underlyingCashBefore
-    check_invariants(env, vault, [depositor], get_all_maturities(notional, currencyId), snapshot)
+    check_invariants(env, vault, [depositor], currencyId, snapshot)
 
 def roll(context, depositAmount, primaryBorrowAmount, depositor, maturityIndex1, maturityIndex2):
     env = context.env
@@ -388,7 +387,7 @@ def roll(context, depositAmount, primaryBorrowAmount, depositor, maturityIndex1,
     currencyId = context.currencyId
     maturity1 = env.notional.getActiveMarkets(currencyId)[maturityIndex1][1]
     maturity2 = env.notional.getActiveMarkets(currencyId)[maturityIndex2][1]
-    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
+    snapshot = snapshot_invariants(env, vault, currencyId)
     context.approve(depositor, notional.address)
     context.transfer(depositor, depositAmount)
     enterMaturity(env, vault, currencyId, maturity1, depositAmount, primaryBorrowAmount, depositor)
@@ -403,7 +402,7 @@ def roll(context, depositAmount, primaryBorrowAmount, depositor, maturityIndex1,
         get_deposit_params(),
         {"from": depositor}
     )
-    check_invariants(env, vault, [depositor], get_all_maturities(notional, currencyId), snapshot)
+    check_invariants(env, vault, [depositor], currencyId, snapshot)
 
 def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expectedRewardTokenAmounts):
     env = context.env
@@ -413,7 +412,7 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
     maturity = notional.getActiveMarkets(currencyId)[0][1]
     context.approve(depositor, notional.address)
     context.transfer(depositor, depositAmount)
-    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
+    snapshot = snapshot_invariants(env, vault, currencyId)
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
     chain.sleep(3600 * 24 * 365)
     chain.mine()
@@ -438,7 +437,7 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
         assert env.tokens[key].balanceOf(vault.address) - currentBalances[key] >= expectedRewardTokenAmounts[key]
         assert ret[i] == env.tokens[key].balanceOf(vault.address) - currentBalances[key]
         i += 1
-    check_invariants(env, vault, [depositor], get_all_maturities(notional, currencyId), snapshot)
+    check_invariants(env, vault, [depositor], currencyId, snapshot)
 
 def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, expectedBPTAmount, shouldRevert=False):
     env = context.env
@@ -446,7 +445,7 @@ def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, e
     vault = context.vault
     currencyId = context.currencyId   
     env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
-    snapshot = snapshot_invariants(env, vault, get_all_maturities(notional, currencyId))
+    snapshot = snapshot_invariants(env, vault, currencyId)
 
     # Cannot reinvest without the proper role assigned
     with brownie.reverts():
@@ -466,7 +465,7 @@ def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, e
         assert bptAfter - bptBefore >= expectedBPTAmount
 
     vault.revokeRole(vault.getRoles()["rewardReinvestment"], depositor, {"from": env.notional.owner()})
-    check_invariants(env, vault, [], get_all_maturities(notional, currencyId), snapshot)
+    check_invariants(env, vault, [], currencyId, snapshot)
 
 def leverage_ratio_too_high(context, depositAmount, primaryBorrowAmount):
     env = context.env
