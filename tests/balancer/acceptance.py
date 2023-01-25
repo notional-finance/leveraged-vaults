@@ -441,7 +441,6 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
 
 def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, expectedBPTAmount, shouldRevert=False):
     env = context.env
-    notional = env.notional
     vault = context.vault
     currencyId = context.currencyId   
     env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})

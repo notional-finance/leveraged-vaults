@@ -222,9 +222,14 @@ def get_remaining_strategy_tokens():
         json={
             "query":"{\n  leveragedVaultMaturities {\n    id\n    remainingSettledStrategyTokens\n  }\n}",
         })
-    return sum(list(map(lambda x: Wei(x), filter(
-        lambda x: x != None, map(
-            lambda x: x["remainingSettledStrategyTokens"], resp.json()["data"]["leveragedVaultMaturities"]
-        )
-    ))))
-    
+    data = list(filter(
+        lambda x: x["remainingSettledStrategyTokens"] != None, resp.json()["data"]["leveragedVaultMaturities"]
+    ))
+    maturities = list(map(
+        lambda x: Wei(x["id"].split(":")[1]), data
+    ))
+    amount = sum(list(map(lambda x: Wei(x["remainingSettledStrategyTokens"]), data)))
+    return {
+        "maturities": maturities,
+        "amount": amount
+    }
