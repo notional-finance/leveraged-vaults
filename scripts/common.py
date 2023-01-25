@@ -1,6 +1,7 @@
 import json
 import re
 import eth_abi
+import requests
 from brownie import network, Contract, Wei
 from brownie.network.state import Chain
 
@@ -197,3 +198,38 @@ def set_trade_type_flags(flags, **kwargs):
     if "EXACT_OUT_BATCH" in kwargs:
         binList[3] = "1"
     return int("".join(reversed(binList)), 2)
+
+def get_total_strategy_tokens(notional, vault, maturities):
+    total = 0
+    for m in maturities:
+        total += notional.getVaultState(vault.address, m)["totalStrategyTokens"]
+    return total
+
+def get_all_past_maturities(notional, currencyId):
+    res = []
+    activeMaturities = get_all_active_maturities(notional, currencyId)
+    i = 1671840000
+    while i < activeMaturities[0]:
+        res.append(i)
+        i += 3600 * 24 * 90
+    return res
+
+def get_all_active_maturities(notional, currencyId):
+    return [m[1] for m in notional.getActiveMarkets(currencyId)]
+
+def get_remaining_strategy_tokens():
+    resp = requests.post("https://api.thegraph.com/subgraphs/name/notional-finance/mainnet-v2",
+        json={
+            "query":"{\n  leveragedVaultMaturities {\n    id\n    remainingSettledStrategyTokens\n  }\n}",
+        })
+    data = list(filter(
+        lambda x: x["remainingSettledStrategyTokens"] != None, resp.json()["data"]["leveragedVaultMaturities"]
+    ))
+    maturities = list(map(
+        lambda x: Wei(x["id"].split(":")[1]), data
+    ))
+    amount = sum(list(map(lambda x: Wei(x["remainingSettledStrategyTokens"]), data)))
+    return {
+        "maturities": maturities,
+        "amount": amount
+    }
