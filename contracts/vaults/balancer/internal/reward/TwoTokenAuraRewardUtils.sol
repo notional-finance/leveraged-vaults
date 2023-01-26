@@ -6,21 +6,19 @@ import {
     SingleSidedRewardTradeParams,
     ReinvestRewardParams,
     StrategyContext,
-    PoolContext,
-    AuraStakingContext,
-    TwoTokenPoolContext
+    AuraStakingContext
 } from "../../BalancerVaultTypes.sol";
+import {TwoTokenPoolContext} from "../../../common/VaultTypes.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerEvents} from "../../BalancerEvents.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
-import {TwoTokenPoolUtils} from "../pool/TwoTokenPoolUtils.sol";
+import {Balancer2TokenPoolUtils} from "../pool/Balancer2TokenPoolUtils.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 
 library TwoTokenAuraRewardUtils {
-    using TwoTokenPoolUtils for TwoTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
 
     function _validateTrades(

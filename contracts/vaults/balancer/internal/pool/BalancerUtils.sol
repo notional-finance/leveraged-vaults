@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
-import {PoolContext, PoolParams} from "../../BalancerVaultTypes.sol";
+import {PoolParams} from "../../BalancerVaultTypes.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
@@ -47,13 +47,14 @@ library BalancerUtils {
 
     /// @notice Joins a balancer pool using exact tokens in
     function _joinPoolExactTokensIn(
-        PoolContext memory context,
+        bytes32 poolId,
+        IERC20 poolToken,
         PoolParams memory params,
         uint256 minBPT
     ) internal returns (uint256 bptAmount) {
-        bptAmount = IERC20(address(context.pool)).balanceOf(address(this));
+        bptAmount = poolToken.balanceOf(address(this));
         Deployments.BALANCER_VAULT.joinPool{value: params.msgValue}(
-            context.poolId,
+            poolId,
             address(this),
             address(this),
             IBalancerVault.JoinPoolRequest(
@@ -67,14 +68,13 @@ library BalancerUtils {
                 false // Don't use internal balances
             )
         );
-        bptAmount =
-            IERC20(address(context.pool)).balanceOf(address(this)) -
-            bptAmount;
+        bptAmount = poolToken.balanceOf(address(this)) - bptAmount;
     }
 
     /// @notice Exits a balancer pool using exact BPT in
     function _exitPoolExactBPTIn(
-        PoolContext memory context,
+        bytes32 poolId,
+        IERC20 poolToken,
         PoolParams memory params,
         uint256 bptExitAmount
     ) internal returns (uint256[] memory exitBalances) {
@@ -86,7 +86,7 @@ library BalancerUtils {
         }
 
         Deployments.BALANCER_VAULT.exitPool(
-            context.poolId,
+            poolId,
             address(this),
             payable(address(this)), // Vault will receive the underlying assets
             IBalancerVault.ExitPoolRequest(

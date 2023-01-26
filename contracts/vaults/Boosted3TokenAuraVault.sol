@@ -9,14 +9,14 @@ import {
     AuraVaultDeploymentParams,
     InitParams,
     ReinvestRewardParams,
-    PoolContext,
-    ThreeTokenPoolContext,
+    Balancer3TokenPoolContext,
     Boosted3TokenAuraStrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {
     StrategyContext,
     StrategyVaultSettings,
-    StrategyVaultState
+    StrategyVaultState,
+    ThreeTokenPoolContext
 } from "./common/VaultTypes.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
@@ -26,12 +26,13 @@ import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
 import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
-import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
+import {Balancer3TokenBoostedPoolUtils} from "./balancer/internal/pool/Balancer3TokenBoostedPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 
 contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
-    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
+    using Balancer3TokenBoostedPoolUtils for Balancer3TokenPoolContext;
+    using Balancer3TokenBoostedPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using VaultStorage for StrategyVaultState;
     using Boosted3TokenAuraHelper for Boosted3TokenAuraStrategyContext;
@@ -53,7 +54,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         VaultStorage.setStrategyVaultSettings(params.settings);
         (uint256[] memory balances, uint256[] memory scalingFactors) = _getScaledBalances();
 
-        _threeTokenPoolContext(balances, scalingFactors)._approveBalancerTokens(
+        _threeTokenPoolContext(balances, scalingFactors).basePool._approveBalancerTokens(
             address(_auraStakingContext().auraBooster)
         );
     }

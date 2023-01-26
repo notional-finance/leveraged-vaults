@@ -3,7 +3,8 @@ pragma solidity 0.8.17;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {Deployments} from "../../../global/Deployments.sol";
-import {TwoTokenPoolContext, ConvexVaultDeploymentParams} from "../CurveVaultTypes.sol";
+import {TwoTokenPoolContext} from "../../common/VaultTypes.sol";
+import {Curve2TokenPoolContext, ConvexVaultDeploymentParams} from "../CurveVaultTypes.sol";
 import {CurveConstants} from "../internal/CurveConstants.sol";
 import {CurvePoolMixin} from "./CurvePoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
@@ -69,18 +70,21 @@ abstract contract Curve2TokenPoolMixin is CurvePoolMixin {
         SECONDARY_DECIMALS = uint8(secondaryDecimals);
     }
 
-    function _twoTokenPoolContext() internal view returns (TwoTokenPoolContext memory) {
-        return TwoTokenPoolContext({
-            primaryToken: PRIMARY_TOKEN,
-            secondaryToken: SECONDARY_TOKEN,
-            primaryIndex: PRIMARY_INDEX,
-            secondaryIndex: SECONDARY_INDEX,
-            primaryDecimals: PRIMARY_DECIMALS,
-            secondaryDecimals: SECONDARY_DECIMALS,
-            primaryBalance: CURVE_POOL.balances(PRIMARY_INDEX),
-            secondaryBalance: CURVE_POOL.balances(SECONDARY_INDEX),
-            basePool: _poolContext()
-        });
+    function _twoTokenPoolContext() internal view returns (Curve2TokenPoolContext memory) {
+        return Curve2TokenPoolContext({
+            basePool: TwoTokenPoolContext({
+                primaryToken: PRIMARY_TOKEN,
+                secondaryToken: SECONDARY_TOKEN,
+                primaryIndex: PRIMARY_INDEX,
+                secondaryIndex: SECONDARY_INDEX,
+                primaryDecimals: PRIMARY_DECIMALS,
+                secondaryDecimals: SECONDARY_DECIMALS,
+                primaryBalance: CURVE_POOL.balances(PRIMARY_INDEX),
+                secondaryBalance: CURVE_POOL.balances(SECONDARY_INDEX),
+                poolToken: CURVE_POOL_TOKEN      
+            }),
+            curvePool: CURVE_POOL
+        });   
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

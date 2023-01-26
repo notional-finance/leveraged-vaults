@@ -10,15 +10,15 @@ import {
     AuraVaultDeploymentParams,
     InitParams,
     ReinvestRewardParams,
-    PoolContext,
-    TwoTokenPoolContext,
     StableOracleContext,
+    Balancer2TokenPoolContext,
     MetaStable2TokenAuraStrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {
     StrategyContext,
     StrategyVaultSettings,
-    StrategyVaultState
+    StrategyVaultState,
+    TwoTokenPoolContext
 } from "./common/VaultTypes.sol";
 import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
@@ -26,7 +26,7 @@ import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
-import {TwoTokenPoolUtils} from "./balancer/internal/pool/TwoTokenPoolUtils.sol";
+import {Balancer2TokenPoolUtils} from "./balancer/internal/pool/Balancer2TokenPoolUtils.sol";
 import {Stable2TokenOracleMath} from "./balancer/internal/math/Stable2TokenOracleMath.sol";
 import {MetaStable2TokenAuraHelper} from "./balancer/external/MetaStable2TokenAuraHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -38,7 +38,8 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     using VaultStorage for StrategyVaultState;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
-    using TwoTokenPoolUtils for TwoTokenPoolContext;
+    using Balancer2TokenPoolUtils for Balancer2TokenPoolContext;
+    using Balancer2TokenPoolUtils for TwoTokenPoolContext;
     using MetaStable2TokenAuraHelper for MetaStable2TokenAuraStrategyContext;
     using TokenUtils for IERC20;
     
@@ -58,7 +59,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         VaultStorage.setStrategyVaultSettings(params.settings);
-        _twoTokenPoolContext()._approveBalancerTokens(address(_auraStakingContext().auraBooster));
+        _twoTokenPoolContext().basePool._approveBalancerTokens(address(_auraStakingContext().auraBooster));
     }
 
     function _depositFromNotional(
@@ -172,8 +173,8 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         spotPrice = Stable2TokenOracleMath._getSpotPrice(
             context.oracleContext, 
             context.poolContext, 
-            context.poolContext.primaryBalance,
-            context.poolContext.secondaryBalance,
+            context.poolContext.basePool.primaryBalance,
+            context.poolContext.basePool.secondaryBalance,
             tokenIndex
         );
     }
@@ -182,7 +183,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
         bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
+            totalBPTSupply: context.poolContext.basePool.poolToken.totalSupply()
         });
     }
 }

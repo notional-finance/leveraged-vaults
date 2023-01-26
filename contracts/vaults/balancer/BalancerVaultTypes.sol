@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {StrategyContext, StrategyVaultSettings, TradeParams} from "../common/VaultTypes.sol";
+import {
+    StrategyContext, 
+    StrategyVaultSettings, 
+    TradeParams,
+    TwoTokenPoolContext,
+    ThreeTokenPoolContext
+} from "../common/VaultTypes.sol";
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../../interfaces/notional/IVaultController.sol";
 import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
@@ -70,12 +76,6 @@ struct BoostedOracleContext {
     uint256 dueProtocolFeeBptAmount;
 }
 
-/// @notice Balancer pool related fields
-struct PoolContext {
-    IERC20 pool;
-    bytes32 poolId;
-}
-
 struct AuraStakingContext {
     ILiquidityGauge liquidityGauge;
     IAuraBooster auraBooster;
@@ -84,37 +84,29 @@ struct AuraStakingContext {
     IERC20[] rewardTokens;
 }
 
-struct TwoTokenPoolContext {
-    address primaryToken;
-    address secondaryToken;
-    uint8 primaryIndex;
-    uint8 secondaryIndex;
-    uint8 primaryDecimals;
-    uint8 secondaryDecimals;
-    uint256 primaryBalance;
-    uint256 secondaryBalance;
+struct Balancer2TokenPoolContext {
+    TwoTokenPoolContext basePool;
     uint256 primaryScaleFactor;
     uint256 secondaryScaleFactor;
-    PoolContext basePool;
+    bytes32 poolId;
 }
 
-struct ThreeTokenPoolContext {
-    address tertiaryToken;
-    uint8 tertiaryIndex;
-    uint8 tertiaryDecimals;
-    uint256 tertiaryBalance;
-    TwoTokenPoolContext basePool;
+struct Balancer3TokenPoolContext {
+    ThreeTokenPoolContext basePool;
+    uint256 primaryScaleFactor;
+    uint256 secondaryScaleFactor;
+    bytes32 poolId;
 }
 
 struct MetaStable2TokenAuraStrategyContext {
-    TwoTokenPoolContext poolContext;
+    Balancer2TokenPoolContext poolContext;
     StableOracleContext oracleContext;
     AuraStakingContext stakingContext;
     StrategyContext baseStrategy;
 }
 
 struct Boosted3TokenAuraStrategyContext {
-    ThreeTokenPoolContext poolContext;
+    Balancer3TokenPoolContext poolContext;
     BoostedOracleContext oracleContext;
     AuraStakingContext stakingContext;
     StrategyContext baseStrategy;

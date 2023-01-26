@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {StableOracleContext, TwoTokenPoolContext, StrategyContext} from "../../BalancerVaultTypes.sol";
+import {StableOracleContext, Balancer2TokenPoolContext, StrategyContext} from "../../BalancerVaultTypes.sol";
+import {TwoTokenPoolContext} from "../../../common/VaultTypes.sol";
 import {VaultConstants} from "../../../common/VaultConstants.sol";
+import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
@@ -12,10 +14,11 @@ import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.s
 library Stable2TokenOracleMath {
     using TypeConvert for int256;
     using Stable2TokenOracleMath for StableOracleContext;
+    using StrategyUtils for StrategyContext;
 
     function _getSpotPrice(
         StableOracleContext memory oracleContext, 
-        TwoTokenPoolContext memory poolContext, 
+        Balancer2TokenPoolContext memory poolContext, 
         uint256 primaryBalance,
         uint256 secondaryBalance,
         uint256 tokenIndex
@@ -51,27 +54,10 @@ library Stable2TokenOracleMath {
         spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / scaleFactor;
     }
 
-    function _checkPriceLimit(
-        StrategyContext memory strategyContext,
-        uint256 oraclePrice,
-        uint256 poolPrice
-    ) internal view {
-        uint256 lowerLimit = (oraclePrice * 
-            (VaultConstants.VAULT_PERCENT_BASIS - strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
-            VaultConstants.VAULT_PERCENT_BASIS;
-        uint256 upperLimit = (oraclePrice * 
-            (VaultConstants.VAULT_PERCENT_BASIS + strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
-            VaultConstants.VAULT_PERCENT_BASIS;
-
-        if (poolPrice < lowerLimit || upperLimit < poolPrice) {
-            revert Errors.InvalidPrice(oraclePrice, poolPrice);
-        }
-    }
-
     /// @notice calculates the expected min exit amounts for a given BPT amount
     function _getMinExitAmounts(
         StableOracleContext calldata oracleContext,
-        TwoTokenPoolContext calldata poolContext,
+        Balancer2TokenPoolContext calldata poolContext,
         StrategyContext calldata strategyContext,
         uint256 oraclePrice,
         uint256 bptAmount
@@ -81,25 +67,26 @@ library Stable2TokenOracleMath {
         uint256 spotPrice = _getSpotPrice({
             oracleContext: oracleContext,
             poolContext: poolContext,
-            primaryBalance: poolContext.primaryBalance,
-            secondaryBalance: poolContext.secondaryBalance,
+            primaryBalance: poolContext.basePool.primaryBalance,
+            secondaryBalance: poolContext.basePool.secondaryBalance,
             tokenIndex: 0
         });
-        _checkPriceLimit(strategyContext, oraclePrice, spotPrice);
+
+        strategyContext._checkPriceLimit(oraclePrice, spotPrice);
 
         // min amounts are calculated based on the share of the Balancer pool with a small discount applied
-        uint256 totalBPTSupply = poolContext.basePool.pool.totalSupply();
-        minPrimary = (poolContext.primaryBalance * bptAmount * 
+        uint256 totalBPTSupply = poolContext.basePool.poolToken.totalSupply();
+        minPrimary = (poolContext.basePool.primaryBalance * bptAmount * 
             strategyContext.vaultSettings.poolSlippageLimitPercent) / 
             (totalBPTSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
-        minSecondary = (poolContext.secondaryBalance * bptAmount * 
+        minSecondary = (poolContext.basePool.secondaryBalance * bptAmount * 
             strategyContext.vaultSettings.poolSlippageLimitPercent) / 
             (totalBPTSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
     }
 
     function _validateSpotPriceAndPairPrice(
         StableOracleContext calldata oracleContext,
-        TwoTokenPoolContext calldata poolContext,
+        Balancer2TokenPoolContext calldata poolContext,
         StrategyContext memory strategyContext,
         uint256 oraclePrice,
         uint256 primaryAmount, 
@@ -109,18 +96,18 @@ library Stable2TokenOracleMath {
         uint256 spotPrice = _getSpotPrice({
             oracleContext: oracleContext,
             poolContext: poolContext,
-            primaryBalance: poolContext.primaryBalance,
-            secondaryBalance: poolContext.secondaryBalance,
+            primaryBalance: poolContext.basePool.primaryBalance,
+            secondaryBalance: poolContext.basePool.secondaryBalance,
             tokenIndex: 0
         });
 
         /// @notice Check spotPrice against oracle price to make sure that 
         /// the pool is not being manipulated
-        _checkPriceLimit(strategyContext, oraclePrice, spotPrice);
+        strategyContext._checkPriceLimit(oraclePrice, spotPrice);
 
         /// @notice Balancer math functions expect all amounts to be in BALANCER_PRECISION
-        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
-        uint256 secondaryPrecision = 10 ** poolContext.secondaryDecimals;
+        uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
+        uint256 secondaryPrecision = 10 ** poolContext.basePool.secondaryDecimals;
         primaryAmount = primaryAmount * BalancerConstants.BALANCER_PRECISION / primaryPrecision;
         secondaryAmount = secondaryAmount * BalancerConstants.BALANCER_PRECISION / secondaryPrecision;
 
@@ -134,6 +121,6 @@ library Stable2TokenOracleMath {
 
         /// @notice Check the calculated primary/secondary price against the oracle price
         /// to make sure that we are joining the pool proportionally
-        _checkPriceLimit(strategyContext, oraclePrice, calculatedPairPrice);
+        strategyContext._checkPriceLimit(oraclePrice, calculatedPairPrice);
     }
 }

@@ -2,15 +2,17 @@
 pragma solidity 0.8.17;
 
 import {
-    ThreeTokenPoolContext,
-    TwoTokenPoolContext,
+    Balancer2TokenPoolContext,
+    Balancer3TokenPoolContext,
     BoostedOracleContext,
     AuraStakingContext
 } from "../../BalancerVaultTypes.sol";
 import {
     StrategyContext,
     StrategyVaultSettings,
-    StrategyVaultState
+    StrategyVaultState,
+    TwoTokenPoolContext,
+    ThreeTokenPoolContext
 } from "../../../common/VaultTypes.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {VaultConstants} from "../../../common/VaultConstants.sol";
@@ -18,7 +20,6 @@ import {BalancerConstants} from "../BalancerConstants.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
-import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
 import {StableMath} from "../math/StableMath.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
@@ -26,16 +27,17 @@ import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
-import {TwoTokenPoolUtils} from "./TwoTokenPoolUtils.sol";
+import {Balancer2TokenPoolUtils} from "./Balancer2TokenPoolUtils.sol";
 import {FixedPoint} from "../math/FixedPoint.sol";
 
-library Boosted3TokenPoolUtils {
+library Balancer3TokenBoostedPoolUtils {
     using TypeConvert for uint256;
     using FixedPoint for uint256;
     using TypeConvert for int256;
     using TokenUtils for IERC20;
-    using TwoTokenPoolUtils for TwoTokenPoolContext;
-    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
+    using Balancer2TokenPoolUtils for Balancer2TokenPoolContext;
+    using Balancer2TokenPoolUtils for TwoTokenPoolContext;
+    using Balancer3TokenBoostedPoolUtils for Balancer3TokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
     using StrategyUtils for StrategyContext;
     using VaultStorage for StrategyVaultSettings;
@@ -163,12 +165,12 @@ library Boosted3TokenPoolUtils {
     }
 
     function _getValidatedPoolData(
-        ThreeTokenPoolContext memory poolContext,
+        Balancer3TokenPoolContext memory poolContext,
         BoostedOracleContext memory oracleContext,
         StrategyContext memory strategyContext
     ) internal view returns (uint256 virtualSupply, uint256[] memory balances, uint256 invariant) {
         (virtualSupply, balances) = 
-            _getVirtualSupplyAndBalances(poolContext, oracleContext);
+            _getVirtualSupplyAndBalances(poolContext.basePool, oracleContext);
 
         // Get the current and new invariants. Since we need a bigger new invariant, we round the current one up.
         invariant = StableMath._calculateInvariant(
@@ -177,7 +179,7 @@ library Boosted3TokenPoolUtils {
 
         // validate spot prices against oracle prices
         _validateTokenPrices({
-            poolContext: poolContext,
+            poolContext: poolContext.basePool,
             strategyContext: strategyContext,
             balances: balances,
             ampParam: oracleContext.ampParam,
@@ -192,7 +194,7 @@ library Boosted3TokenPoolUtils {
     /// @param bptAmount amount of balancer pool lp tokens
     /// @return primaryAmount primary token balance
     function _getTimeWeightedPrimaryBalance(
-        ThreeTokenPoolContext memory poolContext,
+        Balancer3TokenPoolContext memory poolContext,
         BoostedOracleContext memory oracleContext,
         StrategyContext memory strategyContext,
         uint256 bptAmount
@@ -218,7 +220,7 @@ library Boosted3TokenPoolUtils {
             currentInvariant: invariant
         });
 
-        uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
+        uint256 primaryPrecision = 10 ** poolContext.basePool.basePool.primaryDecimals;
         primaryAmount = (primaryAmount * bptAmount * primaryPrecision) / BalancerConstants.BALANCER_PRECISION_SQUARED;
     }
 
@@ -234,9 +236,9 @@ library Boosted3TokenPoolUtils {
         IERC20(primaryUnderlyingAddress).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
     }
 
-    function _joinPoolExactTokensIn(ThreeTokenPoolContext memory context, uint256 primaryAmount, uint256 minBPT)
+    function _joinPoolExactTokensIn(Balancer3TokenPoolContext memory context, uint256 primaryAmount, uint256 minBPT)
         private returns (uint256 bptAmount) {
-        IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
+        IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.basePool.primaryToken));
 
         // Swap underlyingToken for LinearPool BPT
         uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
@@ -249,22 +251,22 @@ library Boosted3TokenPoolUtils {
 
         // Swap LinearPool BPT for Boosted BPT
         bptAmount = BalancerUtils._swapGivenIn({
-            poolId: context.basePool.basePool.poolId,
+            poolId: context.poolId,
             tokenIn: address(underlyingPool),
-            tokenOut: address(context.basePool.basePool.pool), // Boosted pool
+            tokenOut: address(context.basePool.basePool.poolToken), // Boosted pool
             amountIn: linearPoolBPT,
             limit: minBPT
         });
     }
 
-    function _exitPoolExactBPTIn(ThreeTokenPoolContext memory context, uint256 bptExitAmount, uint256 minPrimary)
+    function _exitPoolExactBPTIn(Balancer3TokenPoolContext memory context, uint256 bptExitAmount, uint256 minPrimary)
         private returns (uint256 primaryBalance) {
-        IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.primaryToken));
+        IBoostedPool underlyingPool = IBoostedPool(address(context.basePool.basePool.primaryToken));
 
         // Swap Boosted BPT for LinearPool BPT
         uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
-            poolId: context.basePool.basePool.poolId,
-            tokenIn: address(context.basePool.basePool.pool), // Boosted pool
+            poolId: context.poolId,
+            tokenIn: address(context.basePool.basePool.poolToken), // Boosted pool
             tokenOut: address(underlyingPool),
             amountIn: bptExitAmount,
             limit: 0 // slippage checked on the second swap
@@ -281,7 +283,7 @@ library Boosted3TokenPoolUtils {
     }
 
     function _deposit(
-        ThreeTokenPoolContext memory poolContext,
+        Balancer3TokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         BoostedOracleContext memory oracleContext,
@@ -305,7 +307,7 @@ library Boosted3TokenPoolUtils {
     }
 
     function _redeem(
-        ThreeTokenPoolContext memory poolContext,
+        Balancer3TokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         uint256 strategyTokens,
@@ -328,7 +330,7 @@ library Boosted3TokenPoolUtils {
     }
 
     function _joinPoolAndStake(
-        ThreeTokenPoolContext memory poolContext,
+        Balancer3TokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         BoostedOracleContext memory oracleContext,
@@ -340,7 +342,7 @@ library Boosted3TokenPoolUtils {
         // Check BPT threshold to make sure our share of the pool is
         // below maxBalancerPoolShare
         uint256 bptThreshold = strategyContext.vaultSettings._poolClaimThreshold(
-            poolContext._getVirtualSupply(oracleContext)
+            _getVirtualSupply(poolContext.basePool, oracleContext)
         );
         uint256 bptHeldAfterJoin = strategyContext.vaultState.totalPoolClaim + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)
@@ -352,7 +354,7 @@ library Boosted3TokenPoolUtils {
     }
 
     function _unstakeAndExitPool(
-        ThreeTokenPoolContext memory poolContext,
+        Balancer3TokenPoolContext memory poolContext,
         AuraStakingContext memory stakingContext,
         uint256 bptClaim,
         uint256 minPrimary
@@ -371,7 +373,7 @@ library Boosted3TokenPoolUtils {
     /// @param strategyTokenAmount amount of strategy tokens
     /// @return underlyingValue underlying value of strategy tokens
     function _convertStrategyToUnderlying(
-        ThreeTokenPoolContext memory poolContext,
+        Balancer3TokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
         BoostedOracleContext memory oracleContext,
         uint256 strategyTokenAmount
@@ -384,7 +386,7 @@ library Boosted3TokenPoolUtils {
     }
 
     function _getMinBPT(
-        ThreeTokenPoolContext calldata poolContext,
+        Balancer3TokenPoolContext calldata poolContext,
         BoostedOracleContext calldata oracleContext,
         StrategyContext memory strategyContext,
         uint256 primaryAmount
@@ -400,7 +402,7 @@ library Boosted3TokenPoolUtils {
         // _getValidatedPoolData rearranges the balances so that primary is always in the
         // zero index spot
         /// @notice Balancer math functions expect all amounts to be in BALANCER_PRECISION
-        uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
+        uint256 primaryPrecision = 10 ** poolContext.basePool.basePool.primaryDecimals;
         amountsIn[0] = primaryAmount * BalancerConstants.BALANCER_PRECISION / primaryPrecision;
 
         minBPT = StableMath._calcBptOutGivenExactTokensIn({
@@ -412,7 +414,7 @@ library Boosted3TokenPoolUtils {
             currentInvariant: invariant
         });
 
-        uint256 swapFeePercentage = IBoostedPool(address(poolContext.basePool.basePool.pool))
+        uint256 swapFeePercentage = IBoostedPool(address(poolContext.basePool.basePool.poolToken))
             .getCachedProtocolSwapFeePercentage();
 
         if (swapFeePercentage > 0) {

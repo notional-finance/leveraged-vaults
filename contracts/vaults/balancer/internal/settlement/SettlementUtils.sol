@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import {TradeParams, StrategyContext} from "../../../common/VaultTypes.sol";
-import {RedeemParams, PoolContext} from "../../BalancerVaultTypes.sol";
+import {RedeemParams} from "../../BalancerVaultTypes.sol";
 import {VaultState} from "../../../../global/Types.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {Deployments} from "../../../../global/Deployments.sol";

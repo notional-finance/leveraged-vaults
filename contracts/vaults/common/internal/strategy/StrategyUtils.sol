@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import {Errors} from "../../../../global/Errors.sol";
+import {VaultConstants} from "../../VaultConstants.sol";
 import {StrategyContext, TradeParams} from "../../VaultTypes.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
@@ -11,6 +13,23 @@ import {ITradingModule, Trade, TradeType} from "../../../../../interfaces/tradin
 library StrategyUtils {
     using TradeHandler for Trade;
     using TokenUtils for IERC20;
+
+    function _checkPriceLimit(
+        StrategyContext memory strategyContext,
+        uint256 oraclePrice,
+        uint256 poolPrice
+    ) internal pure {
+        uint256 lowerLimit = (oraclePrice * 
+            (VaultConstants.VAULT_PERCENT_BASIS - strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
+            VaultConstants.VAULT_PERCENT_BASIS;
+        uint256 upperLimit = (oraclePrice * 
+            (VaultConstants.VAULT_PERCENT_BASIS + strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
+            VaultConstants.VAULT_PERCENT_BASIS;
+
+        if (poolPrice < lowerLimit || upperLimit < poolPrice) {
+            revert Errors.InvalidPrice(oraclePrice, poolPrice);
+        }
+    }
 
     /// @notice Converts strategy tokens to LP tokens
     function _convertStrategyTokensToPoolClaim(StrategyContext memory context, uint256 strategyTokenAmount)

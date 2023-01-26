@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
+import {IERC20} from "../../../interfaces/IERC20.sol";
 
 /// @notice Parameters for trades
 struct TradeParams {
@@ -45,4 +46,24 @@ struct StrategyVaultState {
     /// @notice Total number of strategy tokens across all maturities
     uint80 totalStrategyTokenGlobal;
     uint32 lastSettlementTimestamp;
+}
+
+struct TwoTokenPoolContext {
+    address primaryToken;
+    address secondaryToken;
+    uint8 primaryIndex;
+    uint8 secondaryIndex;
+    uint8 primaryDecimals;
+    uint8 secondaryDecimals;
+    uint256 primaryBalance;
+    uint256 secondaryBalance;
+    IERC20 poolToken;
+}
+
+struct ThreeTokenPoolContext {
+    address tertiaryToken;
+    uint8 tertiaryIndex;
+    uint8 tertiaryDecimals;
+    uint256 tertiaryBalance;
+    TwoTokenPoolContext basePool;
 }

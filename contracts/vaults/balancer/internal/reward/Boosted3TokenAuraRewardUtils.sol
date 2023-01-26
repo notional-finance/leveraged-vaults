@@ -4,21 +4,20 @@ pragma solidity 0.8.17;
 import {
     SingleSidedRewardTradeParams,
     ReinvestRewardParams,
-    ThreeTokenPoolContext,
     AuraStakingContext,
     BoostedOracleContext
 } from "../../BalancerVaultTypes.sol";
+import {ThreeTokenPoolContext} from "../../../common/VaultTypes.sol";
 import {BalancerEvents} from "../../BalancerEvents.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
-import {Boosted3TokenPoolUtils} from "../pool/Boosted3TokenPoolUtils.sol";
+import {Balancer3TokenBoostedPoolUtils} from "../pool/Balancer3TokenBoostedPoolUtils.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 
 library Boosted3TokenAuraRewardUtils {
-    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
     using AuraStakingUtils for AuraStakingContext;
 
     function _validateTrade(

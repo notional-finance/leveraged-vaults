@@ -6,7 +6,7 @@ import {
     DepositParams,
     RedeemParams,
     ReinvestRewardParams,
-    ThreeTokenPoolContext,
+    Balancer3TokenPoolContext,
     StrategyContext,
     AuraStakingContext,
     BoostedOracleContext
@@ -14,21 +14,24 @@ import {
 import {
     StrategyContext,
     StrategyVaultSettings,
-    StrategyVaultState
+    StrategyVaultState,
+    ThreeTokenPoolContext
 } from "../../common/VaultTypes.sol";
 import {VaultConstants} from "../../common/VaultConstants.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
-import {Boosted3TokenPoolUtils} from "../internal/pool/Boosted3TokenPoolUtils.sol";
+import {Balancer3TokenBoostedPoolUtils} from "../internal/pool/Balancer3TokenBoostedPoolUtils.sol";
 import {Boosted3TokenAuraRewardUtils} from "../internal/reward/Boosted3TokenAuraRewardUtils.sol";
 import {VaultStorage} from "../../common/VaultStorage.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
 library Boosted3TokenAuraHelper {
+    using Boosted3TokenAuraRewardUtils for Balancer3TokenPoolContext;
     using Boosted3TokenAuraRewardUtils for ThreeTokenPoolContext;
-    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
+    using Balancer3TokenBoostedPoolUtils for Balancer3TokenPoolContext;
+    using Balancer3TokenBoostedPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
     using VaultStorage for StrategyVaultSettings;
@@ -99,7 +102,7 @@ library Boosted3TokenAuraHelper {
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalBPTSupply: context.poolContext._getVirtualSupply(context.oracleContext)
+            totalBPTSupply: context.poolContext.basePool._getVirtualSupply(context.oracleContext)
         });
 
         uint256 redeemStrategyTokenAmount 
@@ -121,7 +124,7 @@ library Boosted3TokenAuraHelper {
     function _executeSettlement(
         StrategyContext calldata strategyContext,
         BoostedOracleContext calldata oracleContext,
-        ThreeTokenPoolContext calldata poolContext,
+        Balancer3TokenPoolContext calldata poolContext,
         uint256 maturity,
         uint256 bptToSettle,
         uint256 redeemStrategyTokenAmount,
@@ -156,7 +159,7 @@ library Boosted3TokenAuraHelper {
         BoostedOracleContext calldata oracleContext = context.oracleContext;
         AuraStakingContext calldata stakingContext = context.stakingContext;
 
-        (address rewardToken, uint256 primaryAmount) = context.poolContext._executeRewardTrades({
+        (address rewardToken, uint256 primaryAmount) = context.poolContext.basePool._executeRewardTrades({
             stakingContext: stakingContext,
             tradingModule: strategyContext.tradingModule,
             data: params.tradeData,

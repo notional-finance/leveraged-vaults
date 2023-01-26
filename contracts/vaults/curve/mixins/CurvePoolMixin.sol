@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import {StrategyContext} from "../../common/VaultTypes.sol";
-import {PoolContext, ConvexVaultDeploymentParams} from "../CurveVaultTypes.sol";
+import {ConvexVaultDeploymentParams} from "../CurveVaultTypes.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
@@ -23,13 +23,6 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
 
         CURVE_POOL = ICurvePool(params.baseParams.pool);
         CURVE_POOL_TOKEN = IERC20(CURVE_POOL.lp_token());
-    }
-
-    function _poolContext() internal view returns (PoolContext memory) {
-        return PoolContext({
-            pool: CURVE_POOL,
-            poolToken: CURVE_POOL_TOKEN
-        });
     }
 
     function _baseStrategyContext() internal view returns(StrategyContext memory) {

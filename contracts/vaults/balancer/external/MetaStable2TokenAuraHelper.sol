@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import {
     MetaStable2TokenAuraStrategyContext,
     StableOracleContext,
-    TwoTokenPoolContext,
+    Balancer2TokenPoolContext,
     DepositParams,
     RedeemParams,
     ReinvestRewardParams
@@ -12,19 +12,24 @@ import {
 import {
     StrategyContext,
     StrategyVaultSettings,
-    StrategyVaultState
+    StrategyVaultState,
+    TwoTokenPoolContext
 } from "../../common/VaultTypes.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
 import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
+import {TwoTokenPoolUtils} from "../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
-import {TwoTokenPoolUtils} from "../internal/pool/TwoTokenPoolUtils.sol";
+import {Balancer2TokenPoolUtils} from "../internal/pool/Balancer2TokenPoolUtils.sol";
 import {TwoTokenAuraRewardUtils} from "../internal/reward/TwoTokenAuraRewardUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 import {VaultStorage} from "../../common/VaultStorage.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
 library MetaStable2TokenAuraHelper {
+    using TwoTokenAuraRewardUtils for Balancer2TokenPoolContext;
     using TwoTokenAuraRewardUtils for TwoTokenPoolContext;
+    using Balancer2TokenPoolUtils for Balancer2TokenPoolContext;
+    using Balancer2TokenPoolUtils for TwoTokenPoolContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using Stable2TokenOracleMath for StableOracleContext;
     using StrategyUtils for StrategyContext;
@@ -95,7 +100,7 @@ library MetaStable2TokenAuraHelper {
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalBPTSupply: IERC20(context.poolContext.basePool.pool).totalSupply()
+            totalBPTSupply: context.poolContext.basePool.poolToken.totalSupply()
         });
 
         uint256 redeemStrategyTokenAmount = 
@@ -117,13 +122,13 @@ library MetaStable2TokenAuraHelper {
     function _executeSettlement(
         StrategyContext calldata strategyContext,
         StableOracleContext calldata oracleContext,
-        TwoTokenPoolContext calldata poolContext,
+        Balancer2TokenPoolContext calldata poolContext,
         uint256 maturity,
         uint256 bptToSettle,
         uint256 redeemStrategyTokenAmount,
         RedeemParams memory params
     ) private {
-        uint256 oraclePrice = poolContext._getOraclePairPrice(strategyContext.tradingModule);
+        uint256 oraclePrice = poolContext.basePool._getOraclePairPrice(strategyContext);
 
         /// @notice params.minPrimary and params.minSecondary are not required for this strategy vault
         (params.minPrimary, params.minSecondary) = oracleContext._getMinExitAmounts({
@@ -152,14 +157,14 @@ library MetaStable2TokenAuraHelper {
         ReinvestRewardParams calldata params
     ) external {
         StrategyContext memory strategyContext = context.baseStrategy;
-        TwoTokenPoolContext calldata poolContext = context.poolContext; 
+        Balancer2TokenPoolContext calldata poolContext = context.poolContext; 
         StableOracleContext calldata oracleContext = context.oracleContext;
 
         (
             address rewardToken, 
             uint256 primaryAmount, 
             uint256 secondaryAmount
-        ) = poolContext._executeRewardTrades(
+        ) = poolContext.basePool._executeRewardTrades(
             context.stakingContext,
             strategyContext.tradingModule,
             params.tradeData,
@@ -170,7 +175,7 @@ library MetaStable2TokenAuraHelper {
         oracleContext._validateSpotPriceAndPairPrice({
             poolContext: poolContext,
             strategyContext: strategyContext,
-            oraclePrice: poolContext._getOraclePairPrice(strategyContext.tradingModule),
+            oraclePrice: poolContext.basePool._getOraclePairPrice(strategyContext),
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount
         });

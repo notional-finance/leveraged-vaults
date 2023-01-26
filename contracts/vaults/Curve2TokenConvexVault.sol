@@ -7,6 +7,7 @@ import {
     DepositParams,
     ReinvestRewardParams,
     TwoTokenRedeemParams,
+    Curve2TokenPoolContext,
     Curve2TokenConvexStrategyContext
 } from "./curve/CurveVaultTypes.sol";
 import {
@@ -19,6 +20,7 @@ import {Deployments} from "../global/Deployments.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {Curve2TokenVaultMixin} from "./curve/mixins/Curve2TokenVaultMixin.sol";
 import {CurveVaultStorage} from "./curve/internal/CurveVaultStorage.sol";
+import {Curve2TokenPoolUtils} from "./curve/internal/pool/Curve2TokenPoolUtils.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {ICurve2TokenPool} from "../../interfaces/curve/ICurvePool.sol";
@@ -28,6 +30,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     using TypeConvert for int256;
     using TokenUtils for IERC20;
     using CurveVaultStorage for StrategyVaultState;
+    using Curve2TokenPoolUtils for Curve2TokenPoolContext;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) Curve2TokenVaultMixin(notional_, params) {
     }
@@ -120,42 +123,16 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         uint256 strategyTokenAmount,
         uint256 maturity
     ) public view virtual override returns (int256 underlyingValue) {
-        // Validate spot price against oracle price
-        // Always get spot price as PRIMARY/SECONDARY
-        uint256 spotPrice = _getSpotPrice(0);
-        (int256 answer, int256 decimals) = TRADING_MODULE.getOraclePrice(
-            PRIMARY_TOKEN == Deployments.ALT_ETH_ADDRESS ? Deployments.ETH_ADDRESS : PRIMARY_TOKEN,
-            SECONDARY_TOKEN == Deployments.ALT_ETH_ADDRESS ? Deployments.ETH_ADDRESS : SECONDARY_TOKEN
-        );
-        uint256 oraclePrice = answer.toUint();
-        uint256 oraclePrecision = decimals.toUint();
-
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        uint256 poolClaim = StrategyUtils._convertStrategyTokensToPoolClaim(context.baseStrategy, strategyTokenAmount);
-        uint256 totalSupply = CURVE_POOL_TOKEN.totalSupply();
-
-        // TODO: handle precision
-        uint256 primaryPrecision = 10**context.poolContext.primaryDecimals;
-        uint256 secondaryPrecision = 10**context.poolContext.secondaryDecimals;
-        uint256 primaryAmount = context.poolContext.primaryBalance * poolClaim / totalSupply;
-        uint256 secondaryAmount = context.poolContext.secondaryBalance * poolClaim / totalSupply;
-
-        underlyingValue = (primaryAmount + secondaryAmount * oraclePrice / oraclePrecision).toInt();
-
-        underlyingValue = 5e18;
+        underlyingValue = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
+            strategyTokenAmount: strategyTokenAmount
+        });
     } 
 
-    function _getSpotPrice(uint256 tokenIndex) internal view returns (uint256 spotPrice) {
-        require(tokenIndex < 2);
-        if (tokenIndex == 0) {
-            spotPrice = CURVE_POOL.get_dy(int8(PRIMARY_INDEX), int8(SECONDARY_INDEX), 10**PRIMARY_DECIMALS);
-        } else {
-            spotPrice = CURVE_POOL.get_dy(int8(SECONDARY_INDEX), int8(PRIMARY_INDEX), 10**SECONDARY_DECIMALS);
-        }
-    }
-
     function getSpotPrice(uint256 tokenIndex) external view returns (uint256 spotPrice) {
-        spotPrice = _getSpotPrice(tokenIndex);
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        spotPrice = context.poolContext._getSpotPrice(tokenIndex);
     }
 
     function getStrategyContext() external view returns (Curve2TokenConvexStrategyContext memory) {

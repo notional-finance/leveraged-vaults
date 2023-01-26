@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {StrategyContext} from "../../common/VaultTypes.sol";
-import {PoolContext, AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
+import {AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {AuraStakingMixin} from "./AuraStakingMixin.sol";
@@ -22,13 +22,6 @@ abstract contract BalancerPoolMixin is AuraStakingMixin {
         BALANCER_POOL_ID = params.baseParams.balancerPoolId;
         (address pool, /* */) = Deployments.BALANCER_VAULT.getPool(params.baseParams.balancerPoolId);
         BALANCER_POOL_TOKEN = IERC20(pool);
-    }
-
-    function _poolContext() internal view returns (PoolContext memory) {
-        return PoolContext({
-            pool: BALANCER_POOL_TOKEN,
-            poolId: BALANCER_POOL_ID
-        });
     }
 
     function _baseStrategyContext() internal view returns(StrategyContext memory) {
