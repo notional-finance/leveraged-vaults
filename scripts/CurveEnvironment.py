@@ -1,8 +1,10 @@
 from brownie import (
     network, 
     Contract,
+    Wei,
     Curve2TokenConvexVault,
-    nProxy
+    nProxy,
+    nMockProxy
 )
 from scripts.common import get_vault_config, set_flags
 from scripts.EnvironmentConfig import Environment
@@ -23,7 +25,17 @@ StrategyConfig = {
         "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
         "settlementWindow": 172800,  # 1-week settlement
         "cvxRewardPool": "0x0A760466E1B4621579a82a39CB56Dda2F4E70f03",
-        "pool": "0xdc24316b9ae028f1497c275eb9192a3ea0f67022"
+        "pool": "0xdc24316b9ae028f1497c275eb9192a3ea0f67022",
+        "maxUnderlyingSurplus": 2000e18, # 2000 ETH
+        "maxPoolShare": Wei(1.5e3), # 15%
+        "settlementSlippageLimitPercent": Wei(3e6), # 3%
+        "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 5%
+        "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
+        "maxRewardTradeSlippageLimitPercent": 2e6, # 2%
+        "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
+        "settlementWindow": 172800,  # 1-week settlement
+        "oraclePriceDeviationLimitPercent": 200, # +/- 2%
+        "poolSlippageLimitPercent": 9975, # 0.25%
     }
 }
 
@@ -53,17 +65,28 @@ class CurveEnvironment(Environment):
             {"from": self.deployer}
         )
 
-    def deployVaultProxy(self, strat, impl, vaultContract):
+    def deployVaultProxy(self, strat, impl, vaultContract, mockImpl=None):
         stratConfig = StrategyConfig[strat]
 
-        proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+        if mockImpl == None:
+            proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+        else:
+            proxy = nMockProxy.deploy(impl.address, bytes(0), mockImpl, {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, vaultContract.abi)
         vaultProxy.initialize(
             [
                 stratConfig["name"],
                 stratConfig["primaryCurrency"],
                 [
-                    stratConfig["settlementCoolDownInMinutes"]
+                    stratConfig["maxUnderlyingSurplus"],
+                    stratConfig["settlementSlippageLimitPercent"], 
+                    stratConfig["postMaturitySettlementSlippageLimitPercent"], 
+                    stratConfig["emergencySettlementSlippageLimitPercent"], 
+                    stratConfig["maxRewardTradeSlippageLimitPercent"], 
+                    stratConfig["maxPoolShare"],
+                    stratConfig["settlementCoolDownInMinutes"],
+                    stratConfig["oraclePriceDeviationLimitPercent"],
+                    stratConfig["poolSlippageLimitPercent"]
                 ]
             ],
             {"from": self.notional.owner()}

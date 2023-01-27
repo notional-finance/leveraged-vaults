@@ -13,6 +13,11 @@ struct TradeParams {
     bytes exchangeData;
 }
 
+struct DepositTradeParams {
+    uint256 tradeAmount;
+    TradeParams tradeParams;
+}
+
 struct StrategyContext {
     uint32 settlementPeriodInSeconds;
     ITradingModule tradingModule;

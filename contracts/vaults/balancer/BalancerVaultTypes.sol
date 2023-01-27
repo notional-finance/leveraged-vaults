@@ -44,11 +44,6 @@ struct DepositParams {
     bytes tradeData;
 }
 
-struct DepositTradeParams {
-    uint256 tradeAmount;
-    TradeParams tradeParams;
-}
-
 struct RedeemParams {
     uint256 minPrimary;
     uint256 minSecondary;

@@ -6,8 +6,10 @@ from brownie import (
     MetaStable2TokenAuraVault,
     MockMetaStable2TokenAuraVault,
     MockBoosted3TokenAuraVault,
+    MockCurve2TokenConvexVault,
     MetaStable2TokenAuraHelper,
     Boosted3TokenAuraHelper,
+    Curve2TokenConvexHelper,
     Curve2TokenConvexVault
 )
 from brownie.network import Chain
@@ -41,10 +43,10 @@ def StratStableETHstETH():
         stratConfig["postMaturitySettlementSlippageLimitPercent"], 
         stratConfig["emergencySettlementSlippageLimitPercent"], 
         stratConfig["maxRewardTradeSlippageLimitPercent"],
-        stratConfig["maxBalancerPoolShare"],
+        stratConfig["maxPoolShare"],
         stratConfig["settlementCoolDownInMinutes"],
         stratConfig["oraclePriceDeviationLimitPercent"],
-        stratConfig["balancerPoolSlippageLimitPercent"]
+        stratConfig["poolSlippageLimitPercent"]
     ], {"from": env.notional.owner()})
 
     # Increase capacity
@@ -99,6 +101,43 @@ def StratBoostedPoolUSDCPrimary():
 @pytest.fixture()
 def StratCurveStableETHstETH():
     env = getCurveEnvironment(network.show_active())
-    impl = env.deployVault("StratStableETHstETH", Curve2TokenConvexVault)
-    vault = env.deployVaultProxy("StratStableETHstETH", impl, Curve2TokenConvexVault)
+    strat = "StratStableETHstETH"
+    impl = env.deployVault(strat, Curve2TokenConvexVault, [Curve2TokenConvexHelper])    
+    vault = env.deployVaultProxy(strat, impl, Curve2TokenConvexVault)
+    env.tradingModule.setTokenPermissions(
+        vault.address,
+        "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+        [True, set_dex_flags(0, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.notional.owner()})
+
+    # Deploy mock contract necessary for liquidation tests
+    mockImpl = env.deployVault(strat, MockCurve2TokenConvexVault, [Curve2TokenConvexHelper])
+    mock = env.deployVaultProxy(strat, impl, Curve2TokenConvexVault, mockImpl)
+    mock = Contract.from_abi("MockCurve2TokenAuraVault", mock.address, interface.IMetaStableMockVault.abi)
+    env.tradingModule.setTokenPermissions(
+        mock.address,
+        "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+        [True, set_dex_flags(0, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.notional.owner()})
+    env.tradingModule.setTokenPermissions(
+        mock.address, 
+        env.tokens["wstETH"].address, 
+        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.notional.owner()})
+    env.tradingModule.setTokenPermissions(
+        mock.address, 
+        env.tokens["stETH"].address, 
+        [True, set_dex_flags(0, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.notional.owner()})
+    env.tradingModule.setTokenPermissions(
+        mock.address, 
+        env.tokens["WETH"].address, 
+        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.notional.owner()})
+    env.tradingModule.setTokenPermissions(
+        mock.address, 
+        ZERO_ADDRESS, 
+        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.notional.owner()})
+
     return (env, vault)

@@ -39,7 +39,7 @@ StrategyConfig = {
             "auraRewardPool": "0xe4683fe8f53da14ca5dac4251eadfb3aa614d528",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 2000e18, # 2000 ETH
-            "maxBalancerPoolShare": Wei(1.5e3), # 15%
+            "maxPoolShare": Wei(1.5e3), # 15%
             "settlementSlippageLimitPercent": Wei(3e6), # 3%
             "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 5%
             "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
@@ -47,7 +47,7 @@ StrategyConfig = {
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
             "settlementWindow": 172800,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 200, # +/- 2%
-            "balancerPoolSlippageLimitPercent": 9975, # 0.25%
+            "poolSlippageLimitPercent": 9975, # 0.25%
         },
         "StratBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
@@ -66,7 +66,7 @@ StrategyConfig = {
             "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 10000e18, # 10000 DAI
-            "maxBalancerPoolShare": 2e3, # 20%
+            "maxPoolShare": 2e3, # 20%
             "settlementSlippageLimitPercent": 5e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
@@ -74,7 +74,7 @@ StrategyConfig = {
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
-            "balancerPoolSlippageLimitPercent": 9900, # 1%
+            "poolSlippageLimitPercent": 9900, # 1%
         },
         "StratBoostedPoolUSDCPrimary": {
             "vaultConfig": get_vault_config(
@@ -94,7 +94,7 @@ StrategyConfig = {
             "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 10000e6, # 10000 USDC
             "oracleWindowInSeconds": 0,
-            "maxBalancerPoolShare": 2e3, # 20%
+            "maxPoolShare": 2e3, # 20%
             "settlementSlippageLimitPercent": 5e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
             "emergencySettlementSlippageLimitPercent": 10e6, # 10%
@@ -102,7 +102,7 @@ StrategyConfig = {
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
-            "balancerPoolSlippageLimitPercent": 9900, # 1%
+            "poolSlippageLimitPercent": 9900, # 1%
         }
     }
 }
@@ -126,10 +126,11 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
-                    stratConfig["maxBalancerPoolShare"],
+                    stratConfig["maxRewardTradeSlippageLimitPercent"],
+                    stratConfig["maxPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
-                    stratConfig["balancerPoolSlippageLimitPercent"]
+                    stratConfig["poolSlippageLimitPercent"]
                 ]
             ],
             {"from": self.notional.owner()}
@@ -183,10 +184,10 @@ class BalancerEnvironment(Environment):
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
                     stratConfig["maxRewardTradeSlippageLimitPercent"], 
-                    stratConfig["maxBalancerPoolShare"],
+                    stratConfig["maxPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
-                    stratConfig["balancerPoolSlippageLimitPercent"]
+                    stratConfig["poolSlippageLimitPercent"]
                 ]
             ],
             {"from": self.notional.owner()}

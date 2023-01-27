@@ -21,9 +21,9 @@ import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {Curve2TokenVaultMixin} from "./curve/mixins/Curve2TokenVaultMixin.sol";
 import {CurveVaultStorage} from "./curve/internal/CurveVaultStorage.sol";
 import {Curve2TokenPoolUtils} from "./curve/internal/pool/Curve2TokenPoolUtils.sol";
+import {Curve2TokenConvexHelper} from "./curve/external/Curve2TokenConvexHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
-import {ICurve2TokenPool} from "../../interfaces/curve/ICurvePool.sol";
 
 contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     using TypeConvert for uint256;
@@ -31,9 +31,10 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     using TokenUtils for IERC20;
     using CurveVaultStorage for StrategyVaultState;
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
+    using Curve2TokenConvexHelper for Curve2TokenConvexStrategyContext;
 
-    constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) Curve2TokenVaultMixin(notional_, params) {
-    }
+    constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
+        Curve2TokenVaultMixin(notional_, params) {}
 
     function strategy() external override view returns (bytes4) {
         return bytes4(keccak256("Curve2TokenConvexVault"));
@@ -63,22 +64,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
-        Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        uint256[2] memory amounts;
-        uint256 msgValue;
-        amounts[PRIMARY_INDEX] = deposit;
-        if (PRIMARY_TOKEN == Deployments.ALT_ETH_ADDRESS) {
-            msgValue = deposit;
-        }
-        uint256 poolClaim = ICurve2TokenPool(address(CURVE_POOL)).add_liquidity{value: msgValue}(amounts, 0);
-        strategyTokensMinted = StrategyUtils._convertPoolClaimToStrategyTokens(context.baseStrategy, poolClaim);
-
-        bool success = CONVEX_BOOSTER.deposit(CONVEX_POOL_ID, poolClaim, true); // stake = true
-        require(success);
-
-        context.baseStrategy.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
-        context.baseStrategy.vaultState.totalPoolClaim = CONVEX_REWARD_POOL.balanceOf(address(this));
-        context.baseStrategy.vaultState.setStrategyVaultState();
+        strategyTokensMinted = _strategyContext().deposit(deposit, data);
     }
 
     function _redeemFromNotional(
@@ -87,7 +73,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
-        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        /*Curve2TokenConvexStrategyContext memory context = _strategyContext();
         uint256 poolClaim = StrategyUtils._convertStrategyTokensToPoolClaim(context.baseStrategy, strategyTokens);
 
         bool success = CONVEX_REWARD_POOL.withdrawAndUnwrap(poolClaim, false); // claim = false
@@ -110,7 +96,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
 
         context.baseStrategy.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
         context.baseStrategy.vaultState.totalPoolClaim = CONVEX_REWARD_POOL.balanceOf(address(this));
-        context.baseStrategy.vaultState.setStrategyVaultState();
+        context.baseStrategy.vaultState.setStrategyVaultState(); */
     }   
 
     function reinvestReward(ReinvestRewardParams calldata params) 

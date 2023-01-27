@@ -6,7 +6,7 @@ import {MetaStable2TokenAuraStrategyContext} from "../contracts/vaults/balancer/
 interface IMockVault {
     function valuationFactors(address account) external view returns (uint256);
     function setValuationFactor(address account, uint256 valuationFactor_) external;
-    function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 minBPT) external returns (uint256);
+    function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 poolClaim) external returns (uint256);
     function convertStrategyToUnderlying(
         address account,
         uint256 strategyTokenAmount,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {TwoTokenPoolContext, StrategyContext} from "../../VaultTypes.sol";
+import {TwoTokenPoolContext, StrategyContext, DepositTradeParams} from "../../VaultTypes.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 
@@ -52,5 +52,23 @@ library TwoTokenPoolUtils {
         // Make sure primaryAmount is reported in primaryPrecision
         uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
         primaryAmount = (primaryBalance + secondaryAmountInPrimary) * primaryPrecision / strategyContext.poolClaimPrecision;
+    }
+
+    /// @notice Trade primary currency for secondary if the trade is specified
+    function _tradePrimaryForSecondary(
+        TwoTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        bytes memory data
+    ) internal returns (uint256 primarySold, uint256 secondaryBought) {
+        (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
+
+        (primarySold, secondaryBought) = StrategyUtils._executeTradeExactIn({
+            params: params.tradeParams, 
+            tradingModule: strategyContext.tradingModule, 
+            sellToken: poolContext.primaryToken, 
+            buyToken: poolContext.secondaryToken, 
+            amount: params.tradeAmount,
+            useDynamicSlippage: true
+        });
     }
 }

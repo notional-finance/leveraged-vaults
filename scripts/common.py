@@ -97,10 +97,10 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
         kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
         kwargs.get("maxRewardTradeSlippageLimitPercent", settings["maxRewardTradeSlippageLimitPercent"]),
-        kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
+        kwargs.get("maxPoolShare", settings["maxPoolShare"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
-        kwargs.get("balancerPoolSlippageLimitPercent", settings["balancerPoolSlippageLimitPercent"])
+        kwargs.get("poolSlippageLimitPercent", settings["poolSlippageLimitPercent"])
     ]
 
 def get_univ2_data(path):

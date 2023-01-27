@@ -2,16 +2,54 @@
 pragma solidity 0.8.17;
 
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
-import {StrategyContext, TwoTokenPoolContext} from "../../../common/VaultTypes.sol";
-import {Curve2TokenPoolContext} from "../../CurveVaultTypes.sol";
+import {Deployments} from "../../../../global/Deployments.sol";
+import {StrategyContext, TwoTokenPoolContext, StrategyVaultState} from "../../../common/VaultTypes.sol";
+import {Curve2TokenPoolContext, ConvexStakingContext, DepositParams} from "../../CurveVaultTypes.sol";
 import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
+import {VaultStorage} from "../../../common/VaultStorage.sol";
+import {ICurve2TokenPool} from "../../../../../interfaces/curve/ICurvePool.sol";
 
 library Curve2TokenPoolUtils {
     using StrategyUtils for StrategyContext;
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using TypeConvert for uint256;
+    using VaultStorage for StrategyVaultState;
+
+    function _deposit(
+        Curve2TokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        ConvexStakingContext memory stakingContext,
+        uint256 deposit,
+        DepositParams memory params
+    ) internal returns (uint256 strategyTokensMinted) {
+        uint256 secondaryAmount;
+        if (params.tradeData.length != 0) {
+            // Allows users to trade on a different DEX instead of Balancer when joining
+            (uint256 primarySold, uint256 secondaryBought) = poolContext.basePool._tradePrimaryForSecondary({
+                strategyContext: strategyContext,
+                data: params.tradeData
+            });
+            deposit -= primarySold;
+            secondaryAmount = secondaryBought;
+        }
+
+        uint256 poolClaimMinted = poolContext._joinPoolAndStake({
+            strategyContext: strategyContext,
+            stakingContext: stakingContext,
+            primaryAmount: deposit,
+            secondaryAmount: secondaryAmount,
+            minPoolClaim: params.minPoolClaim
+        });
+
+        strategyTokensMinted = strategyContext._convertPoolClaimToStrategyTokens(poolClaimMinted);
+
+        strategyContext.vaultState.totalPoolClaim += poolClaimMinted;
+        // Update global supply count
+        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
+    }
 
     function _getSpotPrice(
         Curve2TokenPoolContext memory poolContext, 
@@ -76,4 +114,31 @@ library Curve2TokenPoolUtils {
         underlyingValue 
             = poolContext._getTimeWeightedPrimaryBalance(strategyContext, poolClaim).toInt();
     }   
+
+    function _joinPoolAndStake(
+        Curve2TokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        ConvexStakingContext memory stakingContext,
+        uint256 primaryAmount,
+        uint256 secondaryAmount,
+        uint256 minPoolClaim
+    ) internal returns (uint256 poolClaimMinted) {
+        uint256[2] memory amounts;
+        uint256 msgValue;
+        amounts[poolContext.basePool.primaryIndex] = primaryAmount;
+        amounts[poolContext.basePool.secondaryIndex] = secondaryAmount;
+
+        if (poolContext.basePool.primaryToken == Deployments.ALT_ETH_ADDRESS) {
+            msgValue = primaryAmount;
+        } else if (poolContext.basePool.secondaryToken == Deployments.ALT_ETH_ADDRESS) {
+            msgValue = secondaryAmount;
+        }
+
+        poolClaimMinted = ICurve2TokenPool(address(poolContext.curvePool)).add_liquidity{value: msgValue}(
+            amounts, minPoolClaim
+        );
+
+        bool success = stakingContext.cvxBooster.deposit(stakingContext.cvxPoolId, poolClaimMinted, true); // stake = true
+        require(success);    
+    }
 }

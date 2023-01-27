@@ -6,7 +6,6 @@ import {
     StableOracleContext, 
     PoolParams,
     DepositParams,
-    DepositTradeParams,
     RedeemParams,
     AuraStakingContext
 } from "../../BalancerVaultTypes.sol";
@@ -107,24 +106,6 @@ library Balancer2TokenPoolUtils {
         poolContext.poolToken.checkApprove(bptSpender, type(uint256).max);
     }
 
-    /// @notice Trade primary currency for secondary if the trade is specified
-    function _tradePrimaryForSecondary(
-        TwoTokenPoolContext memory poolContext,
-        StrategyContext memory strategyContext,
-        bytes memory data
-    ) private returns (uint256 primarySold, uint256 secondaryBought) {
-        (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
-
-        (primarySold, secondaryBought) = StrategyUtils._executeTradeExactIn({
-            params: params.tradeParams, 
-            tradingModule: strategyContext.tradingModule, 
-            sellToken: poolContext.primaryToken, 
-            buyToken: poolContext.secondaryToken, 
-            amount: params.tradeAmount,
-            useDynamicSlippage: true
-        });
-    }
-
     function _deposit(
         Balancer2TokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
@@ -135,8 +116,7 @@ library Balancer2TokenPoolUtils {
         uint256 secondaryAmount;
         if (params.tradeData.length != 0) {
             // Allows users to trade on a different DEX instead of Balancer when joining
-            (uint256 primarySold, uint256 secondaryBought) = _tradePrimaryForSecondary({
-                poolContext: poolContext.basePool,
+            (uint256 primarySold, uint256 secondaryBought) = poolContext.basePool._tradePrimaryForSecondary({
                 strategyContext: strategyContext,
                 data: params.tradeData
             });

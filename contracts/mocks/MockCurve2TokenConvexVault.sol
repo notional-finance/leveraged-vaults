@@ -2,32 +2,31 @@
 pragma solidity 0.8.17;
 
 import {
-    AuraVaultDeploymentParams, 
-    MetaStable2TokenAuraStrategyContext, 
-    Balancer2TokenPoolContext
-} from "../vaults/balancer/BalancerVaultTypes.sol";
-import {MetaStable2TokenVaultMixin} from "../vaults/balancer/mixins/MetaStable2TokenVaultMixin.sol";
+    ConvexVaultDeploymentParams, 
+    Curve2TokenConvexStrategyContext, 
+    Curve2TokenPoolContext
+} from "../vaults/curve/CurveVaultTypes.sol";
+import {Curve2TokenVaultMixin} from "../vaults/curve/mixins/Curve2TokenVaultMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {Balancer2TokenPoolUtils} from "../vaults/balancer/internal/pool/Balancer2TokenPoolUtils.sol";
-import {Stable2TokenOracleMath} from "../vaults/balancer/internal/math/Stable2TokenOracleMath.sol";
+import {Curve2TokenPoolUtils} from "../vaults/curve/internal/pool/Curve2TokenPoolUtils.sol";
 import {BalancerConstants} from "../vaults/balancer/internal/BalancerConstants.sol";
 
-contract MockMetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
-    using Balancer2TokenPoolUtils for Balancer2TokenPoolContext;
+contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
+    using Curve2TokenPoolUtils for Curve2TokenPoolContext;
 
     mapping(address => uint256) public valuationFactors;
 
     constructor(
         NotionalProxy notional_, 
-        AuraVaultDeploymentParams memory params
-    ) MetaStable2TokenVaultMixin(notional_, params) { }
+        ConvexVaultDeploymentParams memory params
+    ) Curve2TokenVaultMixin(notional_, params) { }
 
     function setValuationFactor(address account, uint256 valuationFactor_) external {
         valuationFactors[account] = valuationFactor_;
     }
 
     function strategy() external override view returns (bytes4) {
-        return bytes4(keccak256("MetaStable2TokenAuraVault"));
+        return bytes4(keccak256("Curve2TokenConvexVault"));
     }
 
     function _depositFromNotional(
@@ -50,10 +49,9 @@ contract MockMetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         uint256 valuationFactor = valuationFactors[account];
-        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
             strategyTokenAmount: strategyTokenAmount
         });
         if (valuationFactor > 0) {
@@ -61,18 +59,18 @@ contract MockMetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         }
     }
 
-    function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 minBPT) 
+    function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 minPoolClaim) 
         external returns (uint256) {
-        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        return Balancer2TokenPoolUtils._joinPoolAndStake(
-            context.poolContext, context.baseStrategy, context.stakingContext, primaryAmount, secondaryAmount, minBPT
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        return Curve2TokenPoolUtils._joinPoolAndStake(
+            context.poolContext, context.baseStrategy, context.stakingContext, primaryAmount, secondaryAmount, minPoolClaim
         );
     }
 
     function getTimeWeightedPrimaryBalance(uint256 bptAmount) external view returns (uint256) {
-        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        return Balancer2TokenPoolUtils._getTimeWeightedPrimaryBalance(
-            context.poolContext, context.oracleContext, context.baseStrategy, bptAmount
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        return Curve2TokenPoolUtils._getTimeWeightedPrimaryBalance(
+            context.poolContext, context.baseStrategy, bptAmount
         );
     }
 }
