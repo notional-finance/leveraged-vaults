@@ -228,13 +228,15 @@ def get_all_past_maturities(notional, currencyId):
 def get_all_active_maturities(notional, currencyId):
     return [m[1] for m in notional.getActiveMarkets(currencyId)]
 
-def get_remaining_strategy_tokens():
+def get_remaining_strategy_tokens(address):
     resp = requests.post("https://api.thegraph.com/subgraphs/name/notional-finance/mainnet-v2",
         json={
             "query":"{\n  leveragedVaultMaturities {\n    id\n    remainingSettledStrategyTokens\n  }\n}",
         })
     data = list(filter(
-        lambda x: x["remainingSettledStrategyTokens"] != None, resp.json()["data"]["leveragedVaultMaturities"]
+        lambda x: 
+            x["id"].split(":")[0] == address and x["remainingSettledStrategyTokens"] != None, 
+        resp.json()["data"]["leveragedVaultMaturities"]
     ))
     maturities = list(map(
         lambda x: Wei(x["id"].split(":")[1]), data

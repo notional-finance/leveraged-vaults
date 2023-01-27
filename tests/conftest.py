@@ -140,4 +140,4 @@ def StratCurveStableETHstETH():
         [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
         {"from": env.notional.owner()})
 
-    return (env, vault)
+    return (env, vault, mock)

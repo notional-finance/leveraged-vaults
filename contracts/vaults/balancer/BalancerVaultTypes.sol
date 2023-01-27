@@ -29,7 +29,7 @@ struct DeploymentParams {
 }
 
 struct AuraVaultDeploymentParams {
-    IAuraRewardPool auraRewardPool;
+    IAuraRewardPool rewardPool;
     DeploymentParams baseParams;
 }
 
@@ -73,9 +73,9 @@ struct BoostedOracleContext {
 
 struct AuraStakingContext {
     ILiquidityGauge liquidityGauge;
-    IAuraBooster auraBooster;
-    IAuraRewardPool auraRewardPool;
-    uint256 auraPoolId;
+    IAuraBooster booster;
+    IAuraRewardPool rewardPool;
+    uint256 poolId;
     IERC20[] rewardTokens;
 }
 

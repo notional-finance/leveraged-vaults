@@ -138,7 +138,7 @@ library Curve2TokenPoolUtils {
             amounts, minPoolClaim
         );
 
-        bool success = stakingContext.cvxBooster.deposit(stakingContext.cvxPoolId, poolClaimMinted, true); // stake = true
+        bool success = stakingContext.booster.deposit(stakingContext.poolId, poolClaimMinted, true); // stake = true
         require(success);    
     }
 }

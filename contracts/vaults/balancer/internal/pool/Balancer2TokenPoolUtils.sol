@@ -222,10 +222,10 @@ library Balancer2TokenPoolUtils {
         );
         uint256 bptHeldAfterJoin = strategyContext.vaultState.totalPoolClaim + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)
-            revert Errors.BalancerPoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
+            revert Errors.PoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 
         // Transfer token to Aura protocol for boosted staking
-        bool success = stakingContext.auraBooster.deposit(stakingContext.auraPoolId, bptMinted, true); // stake = true
+        bool success = stakingContext.booster.deposit(stakingContext.poolId, bptMinted, true); // stake = true
         if (!success) revert Errors.StakeFailed();
     }
 
@@ -237,7 +237,7 @@ library Balancer2TokenPoolUtils {
         uint256 minSecondary
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
         // Withdraw BPT tokens back to the vault for redemption
-        bool success = stakingContext.auraRewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+        bool success = stakingContext.rewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
         if (!success) revert Errors.UnstakeFailed();
 
         uint256[] memory exitBalances = BalancerUtils._exitPoolExactBPTIn({

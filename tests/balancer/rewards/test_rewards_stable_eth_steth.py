@@ -34,7 +34,7 @@ def test_reinvest_reward(StratStableETHstETH):
     singleSidedRewardTradeParams = "(address,address,uint256,{})".format(tradeParams)
     balanced2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
     (primaryAmount, secondaryAmount) = get_metastable_amounts(context.vault.getStrategyContext()["poolContext"], rewardAmount)
-    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
+    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
     rewardParams = [eth_abi.encode_abi(
         [balanced2TokenRewardTradeParams],
         [[
@@ -97,7 +97,7 @@ def test_reinvest_0x_trade(StratStableETHstETH, request):
         ethTradeData = testData["params"][0]
         wstETHTradeData = testData["params"][1]
 
-    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
+    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
     rewardParams = [eth_abi.encode_abi(
         [balanced2TokenRewardTradeParams],
         [[

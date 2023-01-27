@@ -59,7 +59,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         VaultStorage.setStrategyVaultSettings(params.settings);
-        _twoTokenPoolContext().basePool._approveBalancerTokens(address(_auraStakingContext().auraBooster));
+        _twoTokenPoolContext().basePool._approveBalancerTokens(address(_auraStakingContext().booster));
     }
 
     function _depositFromNotional(

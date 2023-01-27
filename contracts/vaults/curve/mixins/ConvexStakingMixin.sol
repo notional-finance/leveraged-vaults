@@ -27,7 +27,7 @@ abstract contract ConvexStakingMixin is CurveStrategyBase {
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
         CurveStrategyBase(notional_, params.baseParams) {
-        CONVEX_REWARD_POOL = params.cvxRewardPool;
+        CONVEX_REWARD_POOL = params.rewardPool;
         CONVEX_BOOSTER = IConvexBooster(CONVEX_REWARD_POOL.operator());
         CONVEX_POOL_ID = CONVEX_REWARD_POOL.pid();
 
@@ -48,9 +48,9 @@ abstract contract ConvexStakingMixin is CurveStrategyBase {
 
     function _convexStakingContext() internal view returns (ConvexStakingContext memory) {
         return ConvexStakingContext({
-            cvxBooster: CONVEX_BOOSTER,
-            cvxRewardPool: CONVEX_REWARD_POOL,
-            cvxPoolId: CONVEX_POOL_ID,
+            booster: CONVEX_BOOSTER,
+            rewardPool: CONVEX_REWARD_POOL,
+            poolId: CONVEX_POOL_ID,
             rewardTokens: _rewardTokens()
         });
     }

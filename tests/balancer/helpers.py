@@ -87,7 +87,7 @@ def snapshot_invariants(env, vault, currencyId):
     pastMaturities = get_all_past_maturities(env.notional, currencyId)
     vaultTotalfCash = 0
     vaultTotalVaultShares = 0
-    data = get_remaining_strategy_tokens()
+    data = get_remaining_strategy_tokens(vault.address)
     vaultTotalStrategyTokens = data["amount"]
     for maturity in pastMaturities:
         vaultState = env.notional.getVaultState(vault.address, maturity)
@@ -100,17 +100,17 @@ def snapshot_invariants(env, vault, currencyId):
         vaultTotalfCash += vaultState["totalfCash"]
         vaultTotalVaultShares += vaultState["totalVaultShares"]
         vaultTotalStrategyTokens += vaultState["totalStrategyTokens"]
-    auraPool = interface.IAuraRewardPool(vault.getStrategyContext()["stakingContext"]["auraRewardPool"])
-    auraBalance = math.floor(auraPool.balanceOf(vault.address) / 1e10)
+    rewardPool = interface.IRewardPool(vault.getStrategyContext()["stakingContext"]["rewardPool"])
+    poolBalance = math.floor(rewardPool.balanceOf(vault.address) / 1e10)
     return {
         "totalfCash": vaultTotalfCash,
         "totalVaultShares": vaultTotalVaultShares,
         "totalStrategyTokens": vaultTotalStrategyTokens,
-        "auraBalance": auraBalance
+        "poolBalance": poolBalance
     }
     
 def check_invariants(env, vault, accounts, currencyId, snapshot=None):
-    auraPool = interface.IAuraRewardPool(vault.getStrategyContext()["stakingContext"]["auraRewardPool"])
+    rewardPool = interface.IRewardPool(vault.getStrategyContext()["stakingContext"]["rewardPool"])
     current = snapshot_invariants(env, vault, currencyId)
     accountTotalfCash = 0
     accountTotalVaultShares = 0
@@ -121,18 +121,18 @@ def check_invariants(env, vault, accounts, currencyId, snapshot=None):
     vaultTotalfCash = 0
     vaultTotalVaultShares = 0
     vaultTotalStrategyTokens = 0
-    auraBalance = 0
+    poolBalance = 0
     if snapshot != None:
         vaultTotalfCash = current["totalfCash"] - snapshot["totalfCash"]
         vaultTotalVaultShares = current["totalVaultShares"] - snapshot["totalVaultShares"]
         vaultTotalStrategyTokens = current["totalStrategyTokens"] - snapshot["totalStrategyTokens"]
-        auraBalance = current["auraBalance"] - snapshot["auraBalance"]
+        poolBalance = current["poolBalance"] - snapshot["poolBalance"]
     assert vaultTotalfCash == accountTotalfCash
     assert vaultTotalVaultShares == accountTotalVaultShares
     # Rounding error
-    if auraBalance > 1 and vaultTotalStrategyTokens > 0:
-        assert pytest.approx(vault.convertStrategyTokensToBPTClaim(vaultTotalStrategyTokens) / 1e10, rel=1e-5) == auraBalance
-    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"] == auraPool.balanceOf(vault)
+    if poolBalance > 1 and vaultTotalStrategyTokens > 0:
+        assert pytest.approx(vault.convertStrategyTokensToPoolClaim(vaultTotalStrategyTokens) / 1e10, rel=1e-5) == poolBalance
+    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"] == rewardPool.balanceOf(vault)
     assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalStrategyTokenGlobal"] == current["totalStrategyTokens"]
 
 def check_account(env, vault, account, vaultShares, fCash):
@@ -140,7 +140,7 @@ def check_account(env, vault, account, vaultShares, fCash):
     assert vaultAccount["vaultShares"] == vaultShares
     assert vaultAccount['fCash'] == -fCash
 
-def get_expected_bpt_amount(context, depositAmount, expectedBorrowAmount, primaryPercent=1):
+def get_expected_pool_claim_amount(context, depositAmount, expectedBorrowAmount, primaryPercent=1):
     env = context.env
     vault = context.mock
     totalJoinAmount = depositAmount + expectedBorrowAmount
@@ -174,7 +174,7 @@ def get_expected_bpt_amount(context, depositAmount, expectedBorrowAmount, primar
         secondaryAmount = env.tokens["wstETH"].balanceOf(env.tradingModule)
         env.tokens["wstETH"].transfer(vault, secondaryAmount, {"from": env.tradingModule})
         undoCount += 4
-    expectedBPTAmount = vault.joinPoolAndStake.call(primaryAmount, secondaryAmount, 0)
+    expectedPoolClaimAmount = vault.joinPoolAndStake.call(primaryAmount, secondaryAmount, 0)
     if undoCount > 0:
         chain.undo(undoCount)
-    return expectedBPTAmount
+    return expectedPoolClaimAmount

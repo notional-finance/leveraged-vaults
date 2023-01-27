@@ -55,7 +55,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         (uint256[] memory balances, uint256[] memory scalingFactors) = _getScaledBalances();
 
         _threeTokenPoolContext(balances, scalingFactors).basePool._approveBalancerTokens(
-            address(_auraStakingContext().auraBooster)
+            address(_auraStakingContext().booster)
         );
     }
 

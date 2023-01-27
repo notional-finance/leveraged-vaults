@@ -22,7 +22,7 @@ struct DeploymentParams {
 }
 
 struct ConvexVaultDeploymentParams {
-    IConvexRewardPool cvxRewardPool;
+    IConvexRewardPool rewardPool;
     DeploymentParams baseParams;
 }
 
@@ -55,9 +55,9 @@ struct Curve2TokenPoolContext {
 }
 
 struct ConvexStakingContext {
-    IConvexBooster cvxBooster;
-    IConvexRewardPool cvxRewardPool;
-    uint256 cvxPoolId;
+    IConvexBooster booster;
+    IConvexRewardPool rewardPool;
+    uint256 poolId;
     IERC20[] rewardTokens;
 }
 

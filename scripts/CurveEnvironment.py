@@ -24,7 +24,7 @@ StrategyConfig = {
         "primaryCurrency": 1, # ETH
         "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
         "settlementWindow": 172800,  # 1-week settlement
-        "cvxRewardPool": "0x0A760466E1B4621579a82a39CB56Dda2F4E70f03",
+        "rewardPool": "0x0A760466E1B4621579a82a39CB56Dda2F4E70f03",
         "pool": "0xdc24316b9ae028f1497c275eb9192a3ea0f67022",
         "maxUnderlyingSurplus": 2000e18, # 2000 ETH
         "maxPoolShare": Wei(1.5e3), # 15%
@@ -54,7 +54,7 @@ class CurveEnvironment(Environment):
         return vaultContract.deploy(
             self.addresses["notional"],
             [
-                stratConfig["cvxRewardPool"],
+                stratConfig["rewardPool"],
                 [
                     stratConfig["primaryCurrency"],
                     stratConfig["pool"],
