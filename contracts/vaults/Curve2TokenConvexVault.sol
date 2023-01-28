@@ -117,8 +117,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     } 
 
     function getSpotPrice(uint256 tokenIndex) external view returns (uint256 spotPrice) {
-        Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        spotPrice = context.poolContext._getSpotPrice(tokenIndex);
+        spotPrice = _strategyContext().poolContext._getSpotPrice(tokenIndex);
     }
 
     function getStrategyContext() external view returns (Curve2TokenConvexStrategyContext memory) {
