@@ -2,6 +2,7 @@ import eth_abi
 from brownie import (
     network, 
     nProxy,
+    nMockProxy,
     MetaStable2TokenAuraVault,
     Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
@@ -37,13 +38,11 @@ StrategyConfig = {
             "poolId": "0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080",
             "liquidityGauge": "0xcd4722b7c24c29e0413bdcd9e51404b4539d14ae",
             "auraRewardPool": "0xe4683fe8f53da14ca5dac4251eadfb3aa614d528",
-            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
             "maxUnderlyingSurplus": 2000e18, # 2000 ETH
             "maxBalancerPoolShare": Wei(1.5e3), # 15%
             "settlementSlippageLimitPercent": Wei(3e6), # 3%
             "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 5%
             "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
-            "maxRewardTradeSlippageLimitPercent": 2e6, # 2%
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
             "settlementWindow": 172800,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 200, # +/- 2%
@@ -61,16 +60,14 @@ StrategyConfig = {
             "maxPrimaryBorrowCapacity": 100_000_000e8,
             "name": "Balancer Boosted Pool Strategy",
             "primaryCurrency": 2, # DAI
-            "poolId": "0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb20000000000000000000000fe",
-            "liquidityGauge": "0x68d019f64a7aa97e2d4e7363aee42251d08124fb",
-            "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
-            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 10000e18, # 10000 DAI
+            "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
+            "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
+            "auraRewardPool": "0xfb6b1c1a1ea5618b3cfc20f81a11a97e930fa46b",
+            "maxUnderlyingSurplus": 50000e18, # 50000 DAI
             "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 5e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
-            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
-            "maxRewardTradeSlippageLimitPercent": 5e6,
+            "settlementSlippageLimitPercent": 3e6, # 3%
+            "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
+            "emergencySettlementSlippageLimitPercent": 4e6, # 4%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -88,17 +85,14 @@ StrategyConfig = {
             "maxPrimaryBorrowCapacity": 100_000_000e8,
             "name": "Balancer Boosted Pool Strategy",
             "primaryCurrency": 3, # USDC
-            "poolId": "0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb20000000000000000000000fe",
-            "liquidityGauge": "0x68d019f64a7aa97e2d4e7363aee42251d08124fb",
-            "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
-            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 10000e6, # 10000 USDC
-            "oracleWindowInSeconds": 0,
+            "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
+            "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
+            "auraRewardPool": "0xfb6b1c1a1ea5618b3cfc20f81a11a97e930fa46b",
+            "maxUnderlyingSurplus": 50000e6, # 50000 USDC
             "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 5e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
-            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
-            "maxRewardTradeSlippageLimitPercent": 5e6,
+            "settlementSlippageLimitPercent": 3e6, # 5%
+            "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
+            "emergencySettlementSlippageLimitPercent": 4e6, # 4%
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -182,7 +176,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
-                    stratConfig["maxRewardTradeSlippageLimitPercent"], 
                     stratConfig["maxBalancerPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
@@ -223,18 +216,21 @@ def main():
     env = BalancerEnvironment(networkName)
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    vault1 = env.deployBalancerVault(
+    vault1Impl = env.deployBalancerVault(
         "StratStableETHstETH", 
         MetaStable2TokenAuraVault,
         [MetaStable2TokenAuraHelper]
     )
-    vault2 = env.deployBalancerVault(
+    vault1 = env.deployVaultProxy("StratStableETHstETH", vault1Impl, MetaStable2TokenAuraVault)
+    vault2Impl = env.deployBalancerVault(
         "StratBoostedPoolDAIPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-    vault3 = env.deployBalancerVault(
+    vault2 = env.deployVaultProxy("StratBoostedPoolDAIPrimary", vault2Impl, Boosted3TokenAuraVault)
+    vault3Impl = env.deployBalancerVault(
         "StratBoostedPoolUSDCPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
+    vault3 = env.deployVaultProxy("StratBoostedPoolUSDCPrimary", vault3Impl, Boosted3TokenAuraVault)

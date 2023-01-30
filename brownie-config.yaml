@@ -10,8 +10,8 @@ networks:
   default: development
 
 networks:
-  default: mainnet-fork
-  mainnet-fork:
+  default: hardhat-fork
+  hardhat-fork:
     cmd_settings:
       fork_block: 16477976
   

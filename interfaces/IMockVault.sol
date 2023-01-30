@@ -13,8 +13,5 @@ interface IMockVault {
         uint256 maturity
     ) external view returns (int256 underlyingValue);
     function getTimeWeightedPrimaryBalance(uint256 bptAmount) external view returns (uint256);
-}
-
-interface IMetaStableMockVault is IMockVault {
     function getStrategyContext() external view returns (MetaStable2TokenAuraStrategyContext memory);
 }

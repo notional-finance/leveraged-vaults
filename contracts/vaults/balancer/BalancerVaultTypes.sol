@@ -69,13 +69,28 @@ struct StableOracleContext {
     uint256 ampParam;
 }
 
+struct UnderlyingPoolContext {
+    uint256 mainScaleFactor;
+    uint256 mainBalance;
+    uint256 wrappedScaleFactor;
+    uint256 wrappedBalance;
+    uint256 virtualSupply;
+    uint256 fee;
+    uint256 lowerTarget;
+    uint256 upperTarget;
+}
+
 struct BoostedOracleContext {
     /// @notice Amplification parameter
     uint256 ampParam;
     /// @notice BPT balance in the pool
     uint256 bptBalance;
-    /// @notice Protocol fee amount used to calculate the virtual supply
-    uint256 dueProtocolFeeBptAmount;
+    /// @notice Boosted pool swap fee
+    uint256 swapFeePercentage;
+    /// @notice Virtual supply
+    uint256 virtualSupply;
+    /// @notice Underlying linear pool for the primary token
+    UnderlyingPoolContext[] underlyingPools;
 }
 
 /// @notice Balancer pool related fields
@@ -111,6 +126,7 @@ struct ThreeTokenPoolContext {
     uint8 tertiaryIndex;
     uint8 tertiaryDecimals;
     uint256 tertiaryBalance;
+    uint256 tertiaryScaleFactor;
     TwoTokenPoolContext basePool;
 }
 
@@ -173,8 +189,7 @@ struct StrategyVaultSettings {
     uint32 postMaturitySettlementSlippageLimitPercent;
     /// @notice Slippage limit for emergency settlement (vault owns too much of the Balancer pool)
     uint32 emergencySettlementSlippageLimitPercent;
-    /// @notice Slippage limit for selling reward tokens
-    uint32 maxRewardTradeSlippageLimitPercent;
+    /// @notice Slippage limit for normal settlement
     uint16 maxBalancerPoolShare;
     /// @notice Cool down in minutes for normal settlement
     uint16 settlementCoolDownInMinutes;

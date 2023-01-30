@@ -24,7 +24,6 @@ library BalancerVaultStorage {
 
     function setStrategyVaultSettings(StrategyVaultSettings memory settings) internal {
         require(settings.settlementCoolDownInMinutes <= BalancerConstants.MAX_SETTLEMENT_COOLDOWN_IN_MINUTES);
-        require(settings.maxRewardTradeSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.maxBalancerPoolShare <= BalancerConstants.VAULT_PERCENT_BASIS);
         require(settings.settlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.postMaturitySettlementSlippageLimitPercent <= BalancerConstants.SLIPPAGE_LIMIT_PRECISION);
