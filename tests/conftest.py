@@ -36,8 +36,10 @@ def StratStableETHstETH():
         MetaStable2TokenAuraVault.abi
     )
 
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])   
+
     stratConfig = env.getStratConfig(strat)
-    vault.setStrategyVaultSettings([
+    settingsCalldata = vault.setStrategyVaultSettings.encode_input([
         stratConfig["maxUnderlyingSurplus"],
         stratConfig["settlementSlippageLimitPercent"], 
         stratConfig["postMaturitySettlementSlippageLimitPercent"], 
@@ -46,7 +48,9 @@ def StratStableETHstETH():
         stratConfig["settlementCoolDownInMinutes"],
         stratConfig["oraclePriceDeviationLimitPercent"],
         stratConfig["poolSlippageLimitPercent"]
-    ], {"from": env.notional.owner()})
+    ])
+
+    vault.upgradeToAndCall(impl.address, settingsCalldata, {"from": env.notional.owner()})
 
     # Increase capacity
     # TODO: remove after mainnet capacity increase
@@ -58,7 +62,6 @@ def StratStableETHstETH():
     )
 
     # Deploy mock contract necessary for liquidation tests
-    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])    
     mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
     mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
     mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IMockVault.abi)

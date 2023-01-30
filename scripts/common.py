@@ -234,7 +234,7 @@ def get_remaining_strategy_tokens(address):
         })
     data = list(filter(
         lambda x: 
-            x["id"].split(":")[0] == address and x["remainingSettledStrategyTokens"] != None, 
+            x["id"].split(":")[0].lower() == address.lower() and x["remainingSettledStrategyTokens"] != None, 
         resp.json()["data"]["leveragedVaultMaturities"]
     ))
     maturities = list(map(
