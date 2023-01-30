@@ -4,19 +4,19 @@ pragma solidity 0.8.17;
 import {
     MetaStable2TokenAuraStrategyContext,
     StableOracleContext,
-    Balancer2TokenPoolContext,
-    DepositParams,
-    RedeemParams,
-    ReinvestRewardParams
+    Balancer2TokenPoolContext
 } from "../BalancerVaultTypes.sol";
 import {
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState,
-    TwoTokenPoolContext
+    TwoTokenPoolContext,
+    DepositParams,
+    RedeemParams,
+    ReinvestRewardParams
 } from "../../common/VaultTypes.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
-import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
+import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.sol";
 import {TwoTokenPoolUtils} from "../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {Balancer2TokenPoolUtils} from "../internal/pool/Balancer2TokenPoolUtils.sol";
@@ -100,7 +100,7 @@ library MetaStable2TokenAuraHelper {
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalBPTSupply: context.poolContext.basePool.poolToken.totalSupply()
+            totalPoolSupply: context.poolContext.basePool.poolToken.totalSupply()
         });
 
         uint256 redeemStrategyTokenAmount = 
@@ -187,7 +187,7 @@ library MetaStable2TokenAuraHelper {
             secondaryAmount: secondaryAmount,
             /// @notice minBPT is not required to be set by the caller because primaryAmount
             /// and secondaryAmount are already validated
-            minBPT: params.minBPT        
+            minBPT: params.minPoolClaim      
         });
 
         strategyContext.vaultState.totalPoolClaim += bptAmount;

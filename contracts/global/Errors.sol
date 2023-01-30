@@ -20,4 +20,6 @@ library Errors {
     error PoolShareTooHigh(uint256 totalPoolClaim, uint256 poolClaimThreshold);
     error StakeFailed();
     error UnstakeFailed();
+    error ZeroPoolClaim();
+    error ZeroStrategyTokens();
 }

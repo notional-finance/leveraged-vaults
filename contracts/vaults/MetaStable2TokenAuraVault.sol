@@ -5,11 +5,8 @@ import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {Errors} from "../global/Errors.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
 import {
-    DepositParams,
-    RedeemParams,
     AuraVaultDeploymentParams,
     InitParams,
-    ReinvestRewardParams,
     StableOracleContext,
     Balancer2TokenPoolContext,
     MetaStable2TokenAuraStrategyContext
@@ -18,14 +15,17 @@ import {
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState,
-    TwoTokenPoolContext
+    TwoTokenPoolContext,
+    DepositParams,
+    RedeemParams,
+    ReinvestRewardParams
 } from "./common/VaultTypes.sol";
 import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
-import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
+import {SettlementUtils} from "./common/internal/settlement/SettlementUtils.sol";
 import {Balancer2TokenPoolUtils} from "./balancer/internal/pool/Balancer2TokenPoolUtils.sol";
 import {Stable2TokenOracleMath} from "./balancer/internal/math/Stable2TokenOracleMath.sol";
 import {MetaStable2TokenAuraHelper} from "./balancer/external/MetaStable2TokenAuraHelper.sol";
@@ -179,11 +179,11 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         );
     }
 
-    function getEmergencySettlementBPTAmount(uint256 maturity) external view returns (uint256 bptToSettle) {
+    function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 bptToSettle) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
         bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalBPTSupply: context.poolContext.basePool.poolToken.totalSupply()
+            totalPoolSupply: context.poolContext.basePool.poolToken.totalSupply()
         });
     }
 }

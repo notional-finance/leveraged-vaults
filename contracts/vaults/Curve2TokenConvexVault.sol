@@ -4,16 +4,17 @@ pragma solidity 0.8.17;
 import {
     ConvexVaultDeploymentParams, 
     InitParams, 
-    DepositParams,
-    ReinvestRewardParams,
-    TwoTokenRedeemParams,
     Curve2TokenPoolContext,
     Curve2TokenConvexStrategyContext
 } from "./curve/CurveVaultTypes.sol";
 import {
     StrategyContext,
-    StrategyVaultState
+    StrategyVaultState,
+    RedeemParams,
+    DepositParams,
+    ReinvestRewardParams
 } from "./common/VaultTypes.sol";
+import {Errors} from "../global/Errors.sol";
 import {Constants} from "../global/Constants.sol";
 import {TypeConvert} from "../global/TypeConvert.sol";
 import {Deployments} from "../global/Deployments.sol";
@@ -23,6 +24,7 @@ import {CurveVaultStorage} from "./curve/internal/CurveVaultStorage.sol";
 import {Curve2TokenPoolUtils} from "./curve/internal/pool/Curve2TokenPoolUtils.sol";
 import {Curve2TokenConvexHelper} from "./curve/external/Curve2TokenConvexHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
+import {SettlementUtils} from "./common/internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 
 contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
@@ -73,35 +75,69 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
-        /*Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        uint256 poolClaim = StrategyUtils._convertStrategyTokensToPoolClaim(context.baseStrategy, strategyTokens);
-
-        bool success = CONVEX_REWARD_POOL.withdrawAndUnwrap(poolClaim, false); // claim = false
-        require(success);
-
-        TwoTokenRedeemParams memory params = abi.decode(data, (TwoTokenRedeemParams));
-
-        if (params.redeemSingleSided) {
-            finalPrimaryBalance = ICurve2TokenPool(address(CURVE_POOL)).remove_liquidity_one_coin(
-                poolClaim, int8(PRIMARY_INDEX), params.minPrimary
-            );
-        } else {
-            uint256[2] memory minAmounts;
-            minAmounts[PRIMARY_INDEX] = params.minPrimary;
-            minAmounts[SECONDARY_INDEX] = params.minSecondary;
-            ICurve2TokenPool(address(CURVE_POOL)).remove_liquidity(poolClaim, minAmounts);
-
-            // TODO: sell secondary for primary
-        }
-
-        context.baseStrategy.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
-        context.baseStrategy.vaultState.totalPoolClaim = CONVEX_REWARD_POOL.balanceOf(address(this));
-        context.baseStrategy.vaultState.setStrategyVaultState(); */
+        finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
     }   
+
+    function settleVaultNormal(
+        uint256 maturity,
+        uint256 strategyTokensToRedeem,
+        bytes calldata data
+    ) external onlyRole(NORMAL_SETTLEMENT_ROLE) {
+        if (maturity <= block.timestamp) {
+            revert Errors.PostMaturitySettlement();
+        }
+        if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
+            revert Errors.NotInSettlementWindow();
+        }
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+
+        SettlementUtils._validateCoolDown(
+            context.baseStrategy.vaultState.lastSettlementTimestamp,
+            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes
+        );
+
+        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
+        context.baseStrategy.vaultState.setStrategyVaultState();
+
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
+            data
+        );
+        Curve2TokenConvexHelper.settleVault(
+            context, maturity, strategyTokensToRedeem, params
+        );
+    }
+
+    function settleVaultPostMaturity(
+        uint256 maturity,
+        uint256 strategyTokensToRedeem,
+        bytes calldata data
+    ) external onlyRole(POST_MATURITY_SETTLEMENT_ROLE) {
+        if (block.timestamp < maturity) {
+            revert Errors.HasNotMatured();
+        }
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+            context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
+            data
+        );
+        Curve2TokenConvexHelper.settleVault(
+            context, maturity, strategyTokensToRedeem, params
+        );
+    }
+
+    function settleVaultEmergency(uint256 maturity, bytes calldata data) 
+        external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
+        // No need for emergency settlement during the settlement window
+        _revertInSettlementWindow(maturity);
+        Curve2TokenConvexHelper.settleVaultEmergency(
+            _strategyContext(), maturity, data
+        );
+    }
 
     function reinvestReward(ReinvestRewardParams calldata params) 
         external onlyRole(REWARD_REINVESTMENT_ROLE) {
-        
+        Curve2TokenConvexHelper.reinvestReward(_strategyContext(), params);        
     }
 
     function convertStrategyToUnderlying(

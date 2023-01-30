@@ -3,11 +3,10 @@ pragma solidity 0.8.17;
 
 import {
     SingleSidedRewardTradeParams,
-    ReinvestRewardParams,
     AuraStakingContext,
     BoostedOracleContext
 } from "../../BalancerVaultTypes.sol";
-import {ThreeTokenPoolContext} from "../../../common/VaultTypes.sol";
+import {ThreeTokenPoolContext,  ReinvestRewardParams} from "../../../common/VaultTypes.sol";
 import {BalancerEvents} from "../../BalancerEvents.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";

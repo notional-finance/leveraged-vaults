@@ -39,17 +39,6 @@ struct InitParams {
     StrategyVaultSettings settings;
 }
 
-struct DepositParams {
-    uint256 minBPT;
-    bytes tradeData;
-}
-
-struct RedeemParams {
-    uint256 minPrimary;
-    uint256 minSecondary;
-    bytes secondaryTradeParams;
-}
-
 /// @notice Parameters for joining/exiting Balancer pools
 struct PoolParams {
     IAsset[] assets;
@@ -130,9 +119,4 @@ struct SingleSidedRewardTradeParams {
     address buyToken;
     uint256 amount;
     TradeParams tradeParams;
-}
-
-struct ReinvestRewardParams {
-    bytes tradeData;
-    uint256 minBPT;
 }

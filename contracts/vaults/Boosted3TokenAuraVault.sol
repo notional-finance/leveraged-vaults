@@ -4,11 +4,8 @@ pragma solidity 0.8.17;
 import {Errors} from "../global/Errors.sol";
 import {Deployments} from "../global/Deployments.sol";
 import {
-    DepositParams,
-    RedeemParams,
     AuraVaultDeploymentParams,
     InitParams,
-    ReinvestRewardParams,
     Balancer3TokenPoolContext,
     Boosted3TokenAuraStrategyContext
 } from "./balancer/BalancerVaultTypes.sol";
@@ -16,7 +13,10 @@ import {
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState,
-    ThreeTokenPoolContext
+    ThreeTokenPoolContext,
+    DepositParams,
+    RedeemParams,
+    ReinvestRewardParams
 } from "./common/VaultTypes.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
@@ -25,7 +25,7 @@ import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.s
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
-import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
+import {SettlementUtils} from "./common/internal/settlement/SettlementUtils.sol";
 import {Balancer3TokenBoostedPoolUtils} from "./balancer/internal/pool/Balancer3TokenBoostedPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";

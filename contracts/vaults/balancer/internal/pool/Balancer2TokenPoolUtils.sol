@@ -5,8 +5,6 @@ import {
     Balancer2TokenPoolContext, 
     StableOracleContext, 
     PoolParams,
-    DepositParams,
-    RedeemParams,
     AuraStakingContext
 } from "../../BalancerVaultTypes.sol";
 import {
@@ -14,7 +12,9 @@ import {
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState,
-    TwoTokenPoolContext
+    TwoTokenPoolContext,
+    DepositParams,
+    RedeemParams
 } from "../../../common/VaultTypes.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
@@ -129,36 +129,10 @@ library Balancer2TokenPoolUtils {
             stakingContext: stakingContext,
             primaryAmount: deposit,
             secondaryAmount: secondaryAmount,
-            minBPT: params.minBPT
+            minBPT: params.minPoolClaim
         });
 
-        strategyTokensMinted = strategyContext._convertPoolClaimToStrategyTokens(bptMinted);
-
-        strategyContext.vaultState.totalPoolClaim += bptMinted;
-        // Update global supply count
-        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
-        strategyContext.vaultState.setStrategyVaultState(); 
-    }
-
-    function _sellSecondaryBalance(
-        TwoTokenPoolContext memory poolContext,
-        StrategyContext memory strategyContext,
-        RedeemParams memory params,
-        uint256 secondaryBalance
-    ) private returns (uint256 primaryPurchased) {
-        (TradeParams memory tradeParams) = abi.decode(
-            params.secondaryTradeParams, (TradeParams)
-        );
-
-        ( /*uint256 amountSold */, primaryPurchased) = 
-            StrategyUtils._executeTradeExactIn({
-                params: tradeParams,
-                tradingModule: strategyContext.tradingModule,
-                sellToken: poolContext.secondaryToken,
-                buyToken: poolContext.primaryToken,
-                amount: secondaryBalance,
-                useDynamicSlippage: true
-            });
+        poolContext.basePool._mintStrategyTokens(strategyContext, bptMinted);
     }
 
     function _redeem(
@@ -168,9 +142,7 @@ library Balancer2TokenPoolUtils {
         uint256 strategyTokens,
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = strategyContext._convertStrategyTokensToPoolClaim(strategyTokens);
-
-        if (bptClaim == 0) return 0;
+        uint256 bptClaim = poolContext.basePool._redeemStrategyTokens(strategyContext, strategyTokens);
 
         // Underlying token balances from exiting the pool
         (uint256 primaryBalance, uint256 secondaryBalance)
@@ -180,17 +152,12 @@ library Balancer2TokenPoolUtils {
 
         finalPrimaryBalance = primaryBalance;
         if (secondaryBalance > 0) {
-            uint256 primaryPurchased = _sellSecondaryBalance(
-                poolContext.basePool, strategyContext, params, secondaryBalance
+            uint256 primaryPurchased = poolContext.basePool._sellSecondaryBalance(
+                strategyContext, params, secondaryBalance
             );
 
             finalPrimaryBalance += primaryPurchased;
         }
-
-        strategyContext.vaultState.totalPoolClaim -= bptClaim;
-        // Update global strategy token balance
-        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
-        strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _joinPoolAndStake(

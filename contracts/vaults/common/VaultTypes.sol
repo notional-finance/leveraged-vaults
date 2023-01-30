@@ -18,6 +18,23 @@ struct DepositTradeParams {
     TradeParams tradeParams;
 }
 
+struct DepositParams {
+    uint256 minPoolClaim;
+    bytes tradeData;
+}
+
+struct RedeemParams {
+    uint256 minPrimary;
+    uint256 minSecondary;
+    bool redeemSingleSided;
+    bytes secondaryTradeParams;
+}
+
+struct ReinvestRewardParams {
+    bytes tradeData;
+    uint256 minPoolClaim;
+}
+
 struct StrategyContext {
     uint32 settlementPeriodInSeconds;
     ITradingModule tradingModule;

@@ -2,9 +2,17 @@
 pragma solidity 0.8.17;
 
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
+import {Errors} from "../../../../global/Errors.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
-import {StrategyContext, TwoTokenPoolContext, StrategyVaultState} from "../../../common/VaultTypes.sol";
-import {Curve2TokenPoolContext, ConvexStakingContext, DepositParams} from "../../CurveVaultTypes.sol";
+import {
+    StrategyContext, 
+    TwoTokenPoolContext, 
+    StrategyVaultState,
+    DepositParams,
+    RedeemParams,
+    ReinvestRewardParams
+} from "../../../common/VaultTypes.sol";
+import {Curve2TokenPoolContext, ConvexStakingContext} from "../../CurveVaultTypes.sol";
 import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "../../../common/VaultStorage.sol";
@@ -43,12 +51,30 @@ library Curve2TokenPoolUtils {
             minPoolClaim: params.minPoolClaim
         });
 
-        strategyTokensMinted = strategyContext._convertPoolClaimToStrategyTokens(poolClaimMinted);
+        poolContext.basePool._mintStrategyTokens(strategyContext, poolClaimMinted);
+    }
 
-        strategyContext.vaultState.totalPoolClaim += poolClaimMinted;
-        // Update global supply count
-        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
-        strategyContext.vaultState.setStrategyVaultState(); 
+    function _redeem(
+        Curve2TokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        ConvexStakingContext memory stakingContext,
+        uint256 strategyTokens,
+        RedeemParams memory params
+    ) internal returns (uint256 finalPrimaryBalance) {
+        uint256 bptClaim = poolContext.basePool._redeemStrategyTokens(strategyContext, strategyTokens);
+
+        // Underlying token balances from exiting the pool
+        (uint256 primaryBalance, uint256 secondaryBalance)
+            = _unstakeAndExitPool(poolContext, stakingContext, bptClaim, params);
+
+        finalPrimaryBalance = primaryBalance;
+        if (secondaryBalance > 0) {
+            uint256 primaryPurchased = poolContext.basePool._sellSecondaryBalance(
+                strategyContext, params, secondaryBalance
+            );
+
+            finalPrimaryBalance += primaryPurchased;
+        }
     }
 
     function _getSpotPrice(
@@ -140,5 +166,32 @@ library Curve2TokenPoolUtils {
 
         bool success = stakingContext.booster.deposit(stakingContext.poolId, poolClaimMinted, true); // stake = true
         require(success);    
+    }
+
+    function _unstakeAndExitPool(
+        Curve2TokenPoolContext memory poolContext,
+        ConvexStakingContext memory stakingContext,
+        uint256 poolClaim,
+        RedeemParams memory params
+    ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
+        // Withdraw BPT tokens back to the vault for redemption
+        bool success = stakingContext.rewardPool.withdrawAndUnwrap(poolClaim, false); // claimRewards = false
+        if (!success) revert Errors.UnstakeFailed();
+
+        if (params.redeemSingleSided) {
+            primaryBalance = ICurve2TokenPool(address(poolContext.curvePool)).remove_liquidity_one_coin(
+                poolClaim, int8(poolContext.basePool.primaryIndex), params.minPrimary
+            );
+        } else {
+            uint256[2] memory minAmounts;
+            minAmounts[poolContext.basePool.primaryIndex] = params.minPrimary;
+            minAmounts[poolContext.basePool.secondaryIndex] = params.minSecondary;
+            uint256[2] memory exitBalances = ICurve2TokenPool(address(poolContext.curvePool)).remove_liquidity(
+                poolClaim, minAmounts
+            );
+
+            (primaryBalance, secondaryBalance) 
+                = (exitBalances[poolContext.basePool.primaryIndex], exitBalances[poolContext.basePool.secondaryIndex]);
+        }
     }
 }

@@ -4,11 +4,10 @@ pragma solidity 0.8.17;
 import {
     Balanced2TokenRewardTradeParams,
     SingleSidedRewardTradeParams,
-    ReinvestRewardParams,
     StrategyContext,
     AuraStakingContext
 } from "../../BalancerVaultTypes.sol";
-import {TwoTokenPoolContext} from "../../../common/VaultTypes.sol";
+import {TwoTokenPoolContext, ReinvestRewardParams} from "../../../common/VaultTypes.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerEvents} from "../../BalancerEvents.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";

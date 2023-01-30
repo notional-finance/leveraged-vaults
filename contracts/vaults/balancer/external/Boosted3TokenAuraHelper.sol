@@ -3,9 +3,6 @@ pragma solidity 0.8.17;
 
 import {
     Boosted3TokenAuraStrategyContext, 
-    DepositParams,
-    RedeemParams,
-    ReinvestRewardParams,
     Balancer3TokenPoolContext,
     StrategyContext,
     AuraStakingContext,
@@ -15,12 +12,15 @@ import {
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState,
-    ThreeTokenPoolContext
+    ThreeTokenPoolContext,
+    DepositParams,
+    RedeemParams,
+    ReinvestRewardParams
 } from "../../common/VaultTypes.sol";
 import {VaultConstants} from "../../common/VaultConstants.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerEvents} from "../BalancerEvents.sol";
-import {SettlementUtils} from "../internal/settlement/SettlementUtils.sol";
+import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {Balancer3TokenBoostedPoolUtils} from "../internal/pool/Balancer3TokenBoostedPoolUtils.sol";
 import {Boosted3TokenAuraRewardUtils} from "../internal/reward/Boosted3TokenAuraRewardUtils.sol";
@@ -50,7 +50,7 @@ library Boosted3TokenAuraHelper {
             stakingContext: context.stakingContext,
             oracleContext: context.oracleContext, 
             deposit: deposit,
-            minBPT: params.minBPT
+            minBPT: params.minPoolClaim
         });
     }
 
@@ -102,7 +102,7 @@ library Boosted3TokenAuraHelper {
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalBPTSupply: context.poolContext.basePool._getVirtualSupply(context.oracleContext)
+            totalPoolSupply: context.poolContext.basePool._getVirtualSupply(context.oracleContext)
         });
 
         uint256 redeemStrategyTokenAmount 
