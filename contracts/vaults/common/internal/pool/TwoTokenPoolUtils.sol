@@ -5,20 +5,15 @@ import {
     TwoTokenPoolContext, 
     StrategyContext, 
     DepositTradeParams, 
-    StrategyVaultState,
     TradeParams,
     RedeemParams
 } from "../../VaultTypes.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {Errors} from "../../../../global/Errors.sol";
-import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
-import {VaultStorage} from "../../VaultStorage.sol";
 
 library TwoTokenPoolUtils {
     using StrategyUtils for StrategyContext;
-    using TypeConvert for uint256;
-    using VaultStorage for StrategyVaultState;
 
     /// @notice Gets the oracle price pair price between two tokens using a weighted
     /// average between a chainlink oracle and the balancer TWAP oracle.
@@ -103,37 +98,5 @@ library TwoTokenPoolUtils {
                 amount: secondaryBalance,
                 useDynamicSlippage: true
             });
-    }
-
-    function _mintStrategyTokens(
-        TwoTokenPoolContext memory poolContext,
-        StrategyContext memory strategyContext,
-        uint256 poolClaimMinted
-    ) internal returns (uint256 strategyTokensMinted) {
-        strategyTokensMinted = strategyContext._convertPoolClaimToStrategyTokens(poolClaimMinted);
-
-        if (strategyTokensMinted == 0) {
-            revert Errors.ZeroStrategyTokens();
-        }
-
-        strategyContext.vaultState.totalPoolClaim += poolClaimMinted;
-        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
-        strategyContext.vaultState.setStrategyVaultState(); 
-    }
-
-    function _redeemStrategyTokens(
-        TwoTokenPoolContext memory poolContext,
-        StrategyContext memory strategyContext,
-        uint256 strategyTokens
-    ) internal returns (uint256 poolClaim) {
-        poolClaim = strategyContext._convertStrategyTokensToPoolClaim(strategyTokens);
-
-        if (poolClaim == 0) {
-            revert Errors.ZeroPoolClaim();
-        }
-
-        strategyContext.vaultState.totalPoolClaim -= poolClaim;
-        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
-        strategyContext.vaultState.setStrategyVaultState(); 
     }
 }

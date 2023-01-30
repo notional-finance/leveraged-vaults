@@ -158,7 +158,7 @@ library Boosted3TokenAuraHelper {
         StrategyContext memory strategyContext = context.baseStrategy;
         BoostedOracleContext calldata oracleContext = context.oracleContext;
         AuraStakingContext calldata stakingContext = context.stakingContext;
-        ThreeTokenPoolContext calldata poolContext = context.poolContext;
+        Balancer3TokenPoolContext calldata poolContext = context.poolContext;
 
         (address rewardToken, uint256 primaryAmount) = context.poolContext.basePool._executeRewardTrades({
             stakingContext: stakingContext,

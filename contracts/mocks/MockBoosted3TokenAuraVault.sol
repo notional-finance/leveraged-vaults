@@ -4,14 +4,14 @@ pragma solidity 0.8.17;
 import {
     AuraVaultDeploymentParams, 
     Boosted3TokenAuraStrategyContext, 
-    ThreeTokenPoolContext
+    Balancer3TokenPoolContext
 } from "../vaults/balancer/BalancerVaultTypes.sol";
 import {Boosted3TokenPoolMixin} from "../vaults/balancer/mixins/Boosted3TokenPoolMixin.sol";
-import {Boosted3TokenPoolUtils} from "../vaults/balancer/internal/pool/Boosted3TokenPoolUtils.sol";
+import {Balancer3TokenBoostedPoolUtils} from "../vaults/balancer/internal/pool/Balancer3TokenBoostedPoolUtils.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 
 contract MockBoosted3TokenAuraVault is Boosted3TokenPoolMixin {
-    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
+    using Balancer3TokenBoostedPoolUtils for Balancer3TokenPoolContext;
 
     mapping(address => uint256) public valuationFactors;
 
@@ -63,14 +63,14 @@ contract MockBoosted3TokenAuraVault is Boosted3TokenPoolMixin {
     function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 minBPT) 
         external returns (uint256) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        return Boosted3TokenPoolUtils._joinPoolAndStake(
+        return Balancer3TokenBoostedPoolUtils._joinPoolAndStake(
             context.poolContext, context.baseStrategy, context.stakingContext, context.oracleContext, primaryAmount, minBPT
         );
     }
 
     function getTimeWeightedPrimaryBalance(uint256 bptAmount) external view returns (uint256) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        return Boosted3TokenPoolUtils._getTimeWeightedPrimaryBalance(
+        return Balancer3TokenBoostedPoolUtils._getTimeWeightedPrimaryBalance(
             context.poolContext, context.oracleContext, context.baseStrategy, bptAmount
         );
     }

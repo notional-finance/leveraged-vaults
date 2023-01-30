@@ -54,7 +54,7 @@ library Stable2TokenOracleMath {
         spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / scaleFactor;
 
         // Convert precision back to 1e18 after downscaling by scaleFactor
-        spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / _getPrecision(poolContext, tokenIndex);
+        spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / _getPrecision(poolContext.basePool, tokenIndex);
     }
 
     function _getPrecision(

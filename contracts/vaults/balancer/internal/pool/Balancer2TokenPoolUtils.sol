@@ -132,7 +132,7 @@ library Balancer2TokenPoolUtils {
             minBPT: params.minPoolClaim
         });
 
-        poolContext.basePool._mintStrategyTokens(strategyContext, bptMinted);
+        strategyContext._mintStrategyTokens(bptMinted);
     }
 
     function _redeem(
@@ -142,7 +142,7 @@ library Balancer2TokenPoolUtils {
         uint256 strategyTokens,
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = poolContext.basePool._redeemStrategyTokens(strategyContext, strategyTokens);
+        uint256 bptClaim = strategyContext._redeemStrategyTokens(strategyTokens);
 
         // Underlying token balances from exiting the pool
         (uint256 primaryBalance, uint256 secondaryBalance)

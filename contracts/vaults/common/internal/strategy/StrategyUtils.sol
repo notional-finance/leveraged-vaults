@@ -3,16 +3,20 @@ pragma solidity 0.8.17;
 
 import {Errors} from "../../../../global/Errors.sol";
 import {VaultConstants} from "../../VaultConstants.sol";
-import {StrategyContext, TradeParams} from "../../VaultTypes.sol";
+import {StrategyContext, TradeParams, StrategyVaultState} from "../../VaultTypes.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {ITradingModule, Trade, TradeType} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {TypeConvert} from "../../../../global/TypeConvert.sol";
+import {VaultStorage} from "../../VaultStorage.sol";
 
 library StrategyUtils {
     using TradeHandler for Trade;
     using TokenUtils for IERC20;
+    using TypeConvert for uint256;
+    using VaultStorage for StrategyVaultState;
 
     function _checkPriceLimit(
         StrategyContext memory strategyContext,
@@ -123,5 +127,35 @@ library StrategyUtils {
                 amountBought = Deployments.WRAPPED_STETH.balanceOf(address(this)) - amountBeforeWrap;
             }
         }
+    }
+
+    function _mintStrategyTokens(
+        StrategyContext memory strategyContext,
+        uint256 poolClaimMinted
+    ) internal returns (uint256 strategyTokensMinted) {
+        strategyTokensMinted = _convertPoolClaimToStrategyTokens(strategyContext, poolClaimMinted);
+
+        if (strategyTokensMinted == 0) {
+            revert Errors.ZeroStrategyTokens();
+        }
+
+        strategyContext.vaultState.totalPoolClaim += poolClaimMinted;
+        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
+    }
+
+    function _redeemStrategyTokens(
+        StrategyContext memory strategyContext,
+        uint256 strategyTokens
+    ) internal returns (uint256 poolClaim) {
+        poolClaim = _convertStrategyTokensToPoolClaim(strategyContext, strategyTokens);
+
+        if (poolClaim == 0) {
+            revert Errors.ZeroPoolClaim();
+        }
+
+        strategyContext.vaultState.totalPoolClaim -= poolClaim;
+        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
     }
 }

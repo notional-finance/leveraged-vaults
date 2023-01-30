@@ -52,13 +52,13 @@ library Balancer3TokenBoostedPoolUtils {
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
     function _getScaleFactor(
-        ThreeTokenPoolContext memory poolContext,
+        Balancer3TokenPoolContext memory poolContext,
         uint8 tokenIndex
     ) private pure returns(uint256 scaleFactor) {
         if (tokenIndex == 0) {
-            scaleFactor = poolContext.basePool.primaryScaleFactor;
+            scaleFactor = poolContext.primaryScaleFactor;
         } else if (tokenIndex == 1) {
-            scaleFactor = poolContext.basePool.secondaryScaleFactor;
+            scaleFactor = poolContext.secondaryScaleFactor;
         } else if (tokenIndex == 2) {
             scaleFactor = poolContext.tertiaryScaleFactor;
         }
@@ -79,7 +79,7 @@ library Balancer3TokenBoostedPoolUtils {
 
     /// @notice Spot price is always expressed in terms of the primary currency
     function _getSpotPrice(
-        ThreeTokenPoolContext memory poolContext, 
+        Balancer3TokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext,
         uint8 tokenIndex
     ) internal pure returns (uint256 spotPrice) {
@@ -151,7 +151,7 @@ library Balancer3TokenBoostedPoolUtils {
 
     /// @notice Spot price is always expressed in terms of the primary currency
     function _getSpotPriceWithInvariant(
-        ThreeTokenPoolContext memory poolContext, 
+        Balancer3TokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext,
         uint256[] memory balances,
         uint256 invariant,
@@ -160,7 +160,7 @@ library Balancer3TokenBoostedPoolUtils {
         // Trade 1 unit of tokenIn for tokenOut to get the spot price
         // AmountIn needs to be in underlying precision because mainScaleFactor
         // will convert it to 1e18
-        uint256 amountIn = _getPrecision(poolContext, tokenIndex);
+        uint256 amountIn = _getPrecision(poolContext.basePool, tokenIndex);
 
         UnderlyingPoolContext memory inPool = oracleContext.underlyingPools[tokenIndex];
         amountIn = amountIn * inPool.mainScaleFactor / BalancerConstants.BALANCER_PRECISION;
@@ -185,11 +185,11 @@ library Balancer3TokenBoostedPoolUtils {
 
         // Convert precision back to 1e18 after downscaling by mainScaleFactor
         // primary currency = index 0
-        spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / _getPrecision(poolContext, 0);
+        spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / _getPrecision(poolContext.basePool, 0);
     }
 
     function _validateSpotPrice(
-        ThreeTokenPoolContext memory poolContext, 
+        Balancer3TokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext,
         StrategyContext memory context,
         address tokenIn,
@@ -224,15 +224,15 @@ library Balancer3TokenBoostedPoolUtils {
     }
 
     function _validateTokenPrices(
-        ThreeTokenPoolContext memory poolContext, 
+        Balancer3TokenPoolContext memory poolContext, 
         BoostedOracleContext memory oracleContext,
         StrategyContext memory strategyContext,
         uint256[] memory balances,
         uint256 invariant
     ) private view {
-        address primaryUnderlying = ILinearPool(address(poolContext.basePool.primaryToken)).getMainToken();
-        address secondaryUnderlying = ILinearPool(address(poolContext.basePool.secondaryToken)).getMainToken();
-        address tertiaryUnderlying = ILinearPool(address(poolContext.tertiaryToken)).getMainToken();
+        address primaryUnderlying = ILinearPool(address(poolContext.basePool.basePool.primaryToken)).getMainToken();
+        address secondaryUnderlying = ILinearPool(address(poolContext.basePool.basePool.secondaryToken)).getMainToken();
+        address tertiaryUnderlying = ILinearPool(address(poolContext.basePool.tertiaryToken)).getMainToken();
 
         _validateSpotPrice({
             poolContext: poolContext,
@@ -257,14 +257,14 @@ library Balancer3TokenBoostedPoolUtils {
         });
     }
 
-    function _getScaledBalances(ThreeTokenPoolContext memory poolContext) 
+    function _getScaledBalances(Balancer3TokenPoolContext memory poolContext) 
         private pure returns (uint256[] memory amountsWithoutBpt) {
         amountsWithoutBpt = new uint256[](3);
-        amountsWithoutBpt[0] = poolContext.basePool.primaryBalance * poolContext.basePool.primaryScaleFactor 
+        amountsWithoutBpt[0] = poolContext.basePool.basePool.primaryBalance * poolContext.primaryScaleFactor 
             / BalancerConstants.BALANCER_PRECISION;
-        amountsWithoutBpt[1] = poolContext.basePool.secondaryBalance * poolContext.basePool.secondaryScaleFactor
+        amountsWithoutBpt[1] = poolContext.basePool.basePool.secondaryBalance * poolContext.secondaryScaleFactor
             / BalancerConstants.BALANCER_PRECISION;
-        amountsWithoutBpt[2] = poolContext.tertiaryBalance * poolContext.tertiaryScaleFactor
+        amountsWithoutBpt[2] = poolContext.basePool.tertiaryBalance * poolContext.tertiaryScaleFactor
             / BalancerConstants.BALANCER_PRECISION;        
     }
 
@@ -282,7 +282,7 @@ library Balancer3TokenBoostedPoolUtils {
 
         // validate spot prices against oracle prices
         _validateTokenPrices({
-            poolContext: poolContext.basePool,
+            poolContext: poolContext,
             oracleContext: oracleContext,
             strategyContext: strategyContext,
             balances: balances,
@@ -323,12 +323,12 @@ library Balancer3TokenBoostedPoolUtils {
         });
 
         // Downscale BPT out
-        linearBPTAmount = linearBPTAmount * BalancerConstants.BALANCER_PRECISION / poolContext.basePool.primaryScaleFactor;
+        linearBPTAmount = linearBPTAmount * BalancerConstants.BALANCER_PRECISION / poolContext.primaryScaleFactor;
 
         // Primary underlying pool = index 0
         primaryAmount = _getUnderlyingMainOut(oracleContext.underlyingPools[0], linearBPTAmount);
 
-        uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
+        uint256 primaryPrecision = 10 ** poolContext.basePool.basePool.primaryDecimals;
         primaryAmount = (primaryAmount * bptAmount * primaryPrecision) / BalancerConstants.BALANCER_PRECISION_SQUARED;
     }
 
@@ -346,7 +346,7 @@ library Balancer3TokenBoostedPoolUtils {
 
     function _joinPoolExactTokensIn(Balancer3TokenPoolContext memory context, uint256 primaryAmount, uint256 minBPT)
         private returns (uint256 bptAmount) {
-        ILinearPool underlyingPool = ILinearPool(address(context.basePool.primaryToken));
+        ILinearPool underlyingPool = ILinearPool(address(context.basePool.basePool.primaryToken));
 
         // Swap underlyingToken for LinearPool BPT
         uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
@@ -369,7 +369,7 @@ library Balancer3TokenBoostedPoolUtils {
 
     function _exitPoolExactBPTIn(Balancer3TokenPoolContext memory context, uint256 bptExitAmount, uint256 minPrimary)
         private returns (uint256 primaryBalance) {
-        ILinearPool underlyingPool = ILinearPool(address(context.basePool.primaryToken));
+        ILinearPool underlyingPool = ILinearPool(address(context.basePool.basePool.primaryToken));
 
         // Swap Boosted BPT for LinearPool BPT
         uint256 linearPoolBPT = BalancerUtils._swapGivenIn({
@@ -406,7 +406,7 @@ library Balancer3TokenBoostedPoolUtils {
             minBPT: minBPT
         });
 
-        poolContext.basePool._mintStrategyTokens(strategyContext, bptMinted);
+        strategyContext._mintStrategyTokens(bptMinted);
     }
 
     function _redeem(
@@ -416,7 +416,7 @@ library Balancer3TokenBoostedPoolUtils {
         uint256 strategyTokens,
         uint256 minPrimary
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = poolContext.basePool._redeemStrategyTokens(strategyContext, strategyTokens);
+        uint256 bptClaim = strategyContext._redeemStrategyTokens(strategyTokens);
 
         finalPrimaryBalance = _unstakeAndExitPool({
             stakingContext: stakingContext,

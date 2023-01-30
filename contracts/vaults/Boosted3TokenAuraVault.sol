@@ -37,7 +37,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     using StrategyUtils for StrategyContext;
     using VaultStorage for StrategyVaultState;
     using SettlementUtils for StrategyContext;
-    using BalancerVaultStorage for StrategyVaultState;
+    using Boosted3TokenAuraHelper for Boosted3TokenAuraStrategyContext;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         Boosted3TokenPoolMixin(notional_, params)
@@ -172,7 +172,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalBPTSupply: IERC20(context.poolContext.basePool.basePool.pool).totalSupply()
+            totalPoolSupply: context.poolContext.basePool.basePool.poolToken.totalSupply()
         });
     }
 }

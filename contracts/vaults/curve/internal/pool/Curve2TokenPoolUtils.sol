@@ -51,7 +51,7 @@ library Curve2TokenPoolUtils {
             minPoolClaim: params.minPoolClaim
         });
 
-        poolContext.basePool._mintStrategyTokens(strategyContext, poolClaimMinted);
+        strategyContext._mintStrategyTokens(poolClaimMinted);
     }
 
     function _redeem(
@@ -61,7 +61,7 @@ library Curve2TokenPoolUtils {
         uint256 strategyTokens,
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = poolContext.basePool._redeemStrategyTokens(strategyContext, strategyTokens);
+        uint256 bptClaim = strategyContext._redeemStrategyTokens(strategyTokens);
 
         // Underlying token balances from exiting the pool
         (uint256 primaryBalance, uint256 secondaryBalance)
