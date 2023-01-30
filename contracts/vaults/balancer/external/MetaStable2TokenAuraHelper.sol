@@ -15,7 +15,7 @@ import {
     RedeemParams,
     ReinvestRewardParams
 } from "../../common/VaultTypes.sol";
-import {BalancerEvents} from "../BalancerEvents.sol";
+import {VaultEvents} from "../../common/VaultEvents.sol";
 import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.sol";
 import {TwoTokenPoolUtils} from "../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
@@ -85,7 +85,7 @@ library MetaStable2TokenAuraHelper {
             params: params
         });
 
-        emit BalancerEvents.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
+        emit VaultEvents.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
@@ -116,7 +116,7 @@ library MetaStable2TokenAuraHelper {
             params: params
         });
 
-        emit BalancerEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 
     function _executeSettlement(
@@ -192,6 +192,6 @@ library MetaStable2TokenAuraHelper {
         strategyContext.vaultState.totalPoolClaim += bptAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
-        emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
+        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
     }
 }

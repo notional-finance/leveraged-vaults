@@ -7,7 +7,7 @@ import {
     BoostedOracleContext
 } from "../../BalancerVaultTypes.sol";
 import {ThreeTokenPoolContext,  ReinvestRewardParams} from "../../../common/VaultTypes.sol";
-import {BalancerEvents} from "../../BalancerEvents.sol";
+import {VaultEvents} from "../../../common/VaultEvents.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Balancer3TokenBoostedPoolUtils} from "../pool/Balancer3TokenBoostedPoolUtils.sol";

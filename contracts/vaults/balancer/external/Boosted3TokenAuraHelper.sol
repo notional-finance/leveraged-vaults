@@ -19,7 +19,7 @@ import {
 } from "../../common/VaultTypes.sol";
 import {VaultConstants} from "../../common/VaultConstants.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
-import {BalancerEvents} from "../BalancerEvents.sol";
+import {VaultEvents} from "../../common/VaultEvents.sol";
 import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {Balancer3TokenBoostedPoolUtils} from "../internal/pool/Balancer3TokenBoostedPoolUtils.sol";
@@ -87,7 +87,7 @@ library Boosted3TokenAuraHelper {
             params: params
         });
 
-        emit BalancerEvents.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
+        emit VaultEvents.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
@@ -118,7 +118,7 @@ library Boosted3TokenAuraHelper {
             params: params
         });
 
-        emit BalancerEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
+        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
     }
 
     function _executeSettlement(
@@ -189,7 +189,7 @@ library Boosted3TokenAuraHelper {
         strategyContext.vaultState.totalPoolClaim += bptAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
-        emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
+        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
     }
 
     function convertStrategyToUnderlying(

@@ -9,7 +9,7 @@ import {
 } from "../../BalancerVaultTypes.sol";
 import {TwoTokenPoolContext, ReinvestRewardParams} from "../../../common/VaultTypes.sol";
 import {Errors} from "../../../../global/Errors.sol";
-import {BalancerEvents} from "../../BalancerEvents.sol";
+import {VaultEvents} from "../../../common/VaultEvents.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";

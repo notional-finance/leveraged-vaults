@@ -9,7 +9,7 @@ import {IAuraStakingProxy} from "../../../../interfaces/aura/IAuraStakingProxy.s
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
-import {BalancerEvents} from "../BalancerEvents.sol";
+import {VaultEvents} from "../../common/VaultEvents.sol";
 import {BalancerStrategyBase} from "../BalancerStrategyBase.sol";
 
 abstract contract AuraStakingMixin is BalancerStrategyBase {
@@ -74,7 +74,7 @@ abstract contract AuraStakingMixin is BalancerStrategyBase {
             claimedBalances[i] = rewardTokens[i].balanceOf(address(this)) - claimedBalances[i];
         }
 
-        emit BalancerEvents.ClaimedRewardTokens(rewardTokens, claimedBalances);
+        emit VaultEvents.ClaimedRewardTokens(rewardTokens, claimedBalances);
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades
