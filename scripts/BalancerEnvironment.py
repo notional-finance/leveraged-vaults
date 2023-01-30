@@ -60,27 +60,14 @@ StrategyConfig = {
             "maxPrimaryBorrowCapacity": 100_000_000e8,
             "name": "Balancer Boosted Pool Strategy",
             "primaryCurrency": 2, # DAI
-<<<<<<< HEAD
-            "poolId": "0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb20000000000000000000000fe",
-            "liquidityGauge": "0x68d019f64a7aa97e2d4e7363aee42251d08124fb",
-            "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
-            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 10000e18, # 10000 DAI
-            "maxPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 5e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
-            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
-            "maxRewardTradeSlippageLimitPercent": 5e6,
-=======
             "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
             "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
             "auraRewardPool": "0xfb6b1c1a1ea5618b3cfc20f81a11a97e930fa46b",
             "maxUnderlyingSurplus": 50000e18, # 50000 DAI
-            "maxBalancerPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 3e6, # 3%
+            "maxPoolShare": 2e3, # 20%
+            "settlementSlippageLimitPercent": 3e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
             "emergencySettlementSlippageLimitPercent": 4e6, # 4%
->>>>>>> master
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -98,28 +85,15 @@ StrategyConfig = {
             "maxPrimaryBorrowCapacity": 100_000_000e8,
             "name": "Balancer Boosted Pool Strategy",
             "primaryCurrency": 3, # USDC
-<<<<<<< HEAD
-            "poolId": "0x7b50775383d3d6f0215a8f290f2c9e2eebbeceb20000000000000000000000fe",
-            "liquidityGauge": "0x68d019f64a7aa97e2d4e7363aee42251d08124fb",
-            "auraRewardPool": "0xcc2f52b57247f2bc58fec182b9a60dac5963d010",
-            "feeReceiver": "0x0190702d5e52e0269c9319144d3ad62a60ebe526",
-            "maxUnderlyingSurplus": 10000e6, # 10000 USDC
-            "oracleWindowInSeconds": 0,
-            "maxPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 5e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 10e6, # 10%
-            "emergencySettlementSlippageLimitPercent": 10e6, # 10%
-            "maxRewardTradeSlippageLimitPercent": 5e6,
-=======
             "poolId": "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d",
             "liquidityGauge": "0xa6325e799d266632d347e41265a69af111b05403",
             "auraRewardPool": "0xfb6b1c1a1ea5618b3cfc20f81a11a97e930fa46b",
             "maxUnderlyingSurplus": 50000e6, # 50000 USDC
-            "maxBalancerPoolShare": 2e3, # 20%
+            "oracleWindowInSeconds": 0,
+            "maxPoolShare": 2e3, # 20%
             "settlementSlippageLimitPercent": 3e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
             "emergencySettlementSlippageLimitPercent": 4e6, # 4%
->>>>>>> master
             "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
@@ -204,12 +178,7 @@ class BalancerEnvironment(Environment):
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
-<<<<<<< HEAD
-                    stratConfig["maxRewardTradeSlippageLimitPercent"], 
-                    stratConfig["maxPoolShare"],
-=======
                     stratConfig["maxBalancerPoolShare"],
->>>>>>> master
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
                     stratConfig["poolSlippageLimitPercent"]

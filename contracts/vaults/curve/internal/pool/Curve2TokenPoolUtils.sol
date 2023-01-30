@@ -90,13 +90,13 @@ library Curve2TokenPoolUtils {
             spotPrice = poolContext.curvePool.get_dy(
                 int8(poolContext.basePool.primaryIndex), 
                 int8(poolContext.basePool.secondaryIndex), 
-                10**poolContext.basePool.primaryDecimals
+                10**poolContext.basePool.primaryDecimals // 1 unit of primary
             );
         } else {
             spotPrice = poolContext.curvePool.get_dy(
                 int8(poolContext.basePool.secondaryIndex),
                 int8(poolContext.basePool.primaryIndex), 
-                10**poolContext.basePool.secondaryDecimals
+                10**poolContext.basePool.secondaryDecimals // 1 unit of secondary
             );
         }
     }

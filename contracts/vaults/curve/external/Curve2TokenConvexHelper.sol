@@ -169,7 +169,7 @@ library Curve2TokenConvexHelper {
             stakingContext: context.stakingContext,
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount,
-            /// @notice minBPT is not required to be set by the caller because primaryAmount
+            /// @notice minPoolClaim is not required to be set by the caller because primaryAmount
             /// and secondaryAmount are already validated
             minPoolClaim: params.minPoolClaim      
         });
