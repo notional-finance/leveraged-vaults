@@ -10,6 +10,7 @@ import {
     Proportional2TokenRewardTradeParams,
     RedeemParams
 } from "../../VaultTypes.sol";
+import {VaultConstants} from "../../VaultConstants.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {RewardUtils} from "../reward/RewardUtils.sol";
 import {Errors} from "../../../../global/Errors.sol";
@@ -40,6 +41,27 @@ library TwoTokenPoolUtils {
 
         // No overflow in rate conversion, checked above
         oraclePairPrice = uint256(rate);
+    }
+
+    /// @notice calculates the expected primary and secondary amounts based on
+    /// the given spot price and oracle price
+    function _getMinExitAmounts(
+        TwoTokenPoolContext calldata poolContext,
+        StrategyContext calldata strategyContext,
+        uint256 spotPrice,
+        uint256 oraclePrice,
+        uint256 poolClaim
+    ) internal view returns (uint256 minPrimary, uint256 minSecondary) {
+        strategyContext._checkPriceLimit(oraclePrice, spotPrice);
+
+        // min amounts are calculated based on the share of the Balancer pool with a small discount applied
+        uint256 totalPoolSupply = poolContext.poolToken.totalSupply();
+        minPrimary = (poolContext.primaryBalance * poolClaim * 
+            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
+            (totalPoolSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
+        minSecondary = (poolContext.secondaryBalance * poolClaim * 
+            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
+            (totalPoolSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
     }
 
     function _getTimeWeightedPrimaryBalance(

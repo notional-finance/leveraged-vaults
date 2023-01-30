@@ -5,6 +5,7 @@ import {StableOracleContext, Balancer2TokenPoolContext, StrategyContext} from ".
 import {TwoTokenPoolContext} from "../../../common/VaultTypes.sol";
 import {VaultConstants} from "../../../common/VaultConstants.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
+import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
@@ -14,6 +15,7 @@ import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.s
 library Stable2TokenOracleMath {
     using TypeConvert for int256;
     using Stable2TokenOracleMath for StableOracleContext;
+    using TwoTokenPoolUtils for TwoTokenPoolContext;
     using StrategyUtils for StrategyContext;
 
     function _getSpotPrice(
@@ -86,16 +88,12 @@ library Stable2TokenOracleMath {
             tokenIndex: 0
         });
 
-        strategyContext._checkPriceLimit(oraclePrice, spotPrice);
-
-        // min amounts are calculated based on the share of the Balancer pool with a small discount applied
-        uint256 totalBPTSupply = poolContext.basePool.poolToken.totalSupply();
-        minPrimary = (poolContext.basePool.primaryBalance * bptAmount * 
-            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
-            (totalBPTSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
-        minSecondary = (poolContext.basePool.secondaryBalance * bptAmount * 
-            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
-            (totalBPTSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
+        (minPrimary, minSecondary) = poolContext.basePool._getMinExitAmounts({
+            strategyContext: strategyContext,
+            spotPrice: spotPrice,
+            oraclePrice: oraclePrice,
+            poolClaim: bptAmount
+        });
     }
 
     function _validateSpotPriceAndPairPrice(

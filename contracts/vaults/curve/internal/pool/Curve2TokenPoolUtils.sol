@@ -13,6 +13,7 @@ import {
     RedeemParams,
     ReinvestRewardParams
 } from "../../../common/VaultTypes.sol";
+import {CurveConstants} from "../CurveConstants.sol";
 import {Curve2TokenPoolContext, ConvexStakingContext} from "../../CurveVaultTypes.sol";
 import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
@@ -117,17 +118,47 @@ library Curve2TokenPoolUtils {
         /// the pool is not being manipulated
         strategyContext._checkPriceLimit(oraclePrice, spotPrice);
 
-        /*uint256 calculatedPairPrice = _getSpotPrice({
-            oracleContext: oracleContext,
-            poolContext: poolContext,
-            primaryBalance: primaryAmount,
-            secondaryBalance: secondaryAmount,
-            tokenIndex: 0
-        }); */
+        uint256 primaryPrecision = 10**poolContext.basePool.primaryDecimals;
+        uint256 secondaryPrecision = 10**poolContext.basePool.secondaryDecimals;
 
-        /// @notice Check the calculated primary/secondary price against the oracle price
-        /// to make sure that we are joining the pool proportionally
-        //strategyContext._checkPriceLimit(oraclePrice, calculatedPairPrice);
+        // Convert input amounts and pool amounts to CURVE_PRECISION (1e18)
+
+        primaryAmount = primaryAmount * strategyContext.poolClaimPrecision / primaryPrecision;
+        secondaryAmount = secondaryAmount * strategyContext.poolClaimPrecision / secondaryPrecision;
+
+        uint256 primaryPoolBalance = poolContext.basePool.primaryBalance * CurveConstants.CURVE_PRECISION 
+            / primaryPrecision;
+        uint256 secondaryPoolBalance = poolContext.basePool.secondaryBalance * CurveConstants.CURVE_PRECISION 
+            / secondaryPrecision;
+
+        _checkPrimarySecondaryRatio({
+            strategyContext: strategyContext,
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount,
+            primaryPoolBalance: primaryPoolBalance,
+            secondaryPoolBalance: secondaryPoolBalance
+        });
+    }
+
+    function _checkPrimarySecondaryRatio(
+        StrategyContext memory strategyContext,
+        uint256 primaryAmount, 
+        uint256 secondaryAmount, 
+        uint256 primaryPoolBalance, 
+        uint256 secondaryPoolBalance
+    ) private pure {
+        uint256 totalAmount = primaryAmount + secondaryAmount;
+        uint256 totalPoolBalance = primaryPoolBalance + secondaryPoolBalance;
+
+        uint256 primaryPercentage = primaryAmount * CurveConstants.CURVE_PRECISION / totalAmount;        
+        uint256 expectedPrimaryPercentage = primaryPoolBalance * CurveConstants.CURVE_PRECISION / totalPoolBalance;
+
+        strategyContext._checkPriceLimit(expectedPrimaryPercentage, primaryPercentage);
+
+        uint256 secondaryPercentage = secondaryAmount * CurveConstants.CURVE_PRECISION / totalAmount;
+        uint256 expectedSecondaryPercentage = secondaryPoolBalance * CurveConstants.CURVE_PRECISION / totalPoolBalance;
+
+        strategyContext._checkPriceLimit(expectedSecondaryPercentage, secondaryPercentage);
     }
     
     /// @notice calculates the expected min exit amounts for a given pool claim amount
@@ -144,16 +175,12 @@ library Curve2TokenPoolUtils {
             tokenIndex: 0
         });
 
-        strategyContext._checkPriceLimit(oraclePrice, spotPrice);
-
-        // min amounts are calculated based on the share of the Balancer pool with a small discount applied
-        uint256 totalPoolSupply = poolContext.basePool.poolToken.totalSupply();
-        minPrimary = (poolContext.basePool.primaryBalance * poolClaim * 
-            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
-            (totalPoolSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
-        minSecondary = (poolContext.basePool.secondaryBalance * poolClaim * 
-            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
-            (totalPoolSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
+        (minPrimary, minSecondary) = poolContext.basePool._getMinExitAmounts({
+            strategyContext: strategyContext,
+            spotPrice: spotPrice,
+            oraclePrice: oraclePrice,
+            poolClaim: poolClaim
+        });
     }
 
     /// @notice Gets the time-weighted primary token balance for a given poolClaim Amount
