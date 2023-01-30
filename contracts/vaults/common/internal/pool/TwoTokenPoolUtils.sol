@@ -6,11 +6,15 @@ import {
     StrategyContext, 
     DepositTradeParams, 
     TradeParams,
+    SingleSidedRewardTradeParams,
+    Proportional2TokenRewardTradeParams,
     RedeemParams
 } from "../../VaultTypes.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
+import {RewardUtils} from "../reward/RewardUtils.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {IERC20} from "../../../../../interfaces/IERC20.sol";
 
 library TwoTokenPoolUtils {
     using StrategyUtils for StrategyContext;
@@ -98,5 +102,67 @@ library TwoTokenPoolUtils {
                 amount: secondaryBalance,
                 useDynamicSlippage: true
             });
+    }
+
+    function _validateTrades(
+        IERC20[] memory rewardTokens,
+        SingleSidedRewardTradeParams memory primaryTrade,
+        SingleSidedRewardTradeParams memory secondaryTrade,
+        address primaryToken,
+        address secondaryToken
+    ) private pure {
+        // Validate trades
+        if (!RewardUtils._isValidRewardToken(rewardTokens, primaryTrade.sellToken)) {
+            revert Errors.InvalidRewardToken(primaryTrade.sellToken);
+        }
+        if (secondaryTrade.sellToken != primaryTrade.sellToken) {
+            revert Errors.InvalidRewardToken(secondaryTrade.sellToken);
+        }
+        if (primaryTrade.buyToken != primaryToken) {
+            revert Errors.InvalidRewardToken(primaryTrade.buyToken);
+        }
+        if (secondaryTrade.buyToken != secondaryToken) {
+            revert Errors.InvalidRewardToken(secondaryTrade.buyToken);
+        }
+    }
+
+    function _executeRewardTrades(
+        TwoTokenPoolContext calldata poolContext,
+        IERC20[] memory rewardTokens,
+        ITradingModule tradingModule,
+        bytes calldata data
+    ) internal returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
+        Proportional2TokenRewardTradeParams memory params = abi.decode(
+            data,
+            (Proportional2TokenRewardTradeParams)
+        );
+
+        _validateTrades(
+            rewardTokens,
+            params.primaryTrade,
+            params.secondaryTrade,
+            poolContext.primaryToken,
+            poolContext.secondaryToken
+        );
+
+        (/*uint256 amountSold*/, primaryAmount) = StrategyUtils._executeTradeExactIn({
+            params: params.primaryTrade.tradeParams,
+            tradingModule: tradingModule,
+            sellToken: params.primaryTrade.sellToken,
+            buyToken: params.primaryTrade.buyToken,
+            amount: params.primaryTrade.amount,
+            useDynamicSlippage: false
+        });
+
+        (/*uint256 amountSold*/, secondaryAmount) = StrategyUtils._executeTradeExactIn({
+            params: params.secondaryTrade.tradeParams,
+            tradingModule: tradingModule,
+            sellToken: params.secondaryTrade.sellToken,
+            buyToken: params.secondaryTrade.buyToken,
+            amount: params.secondaryTrade.amount,
+            useDynamicSlippage: false
+        });
+
+        rewardToken = params.primaryTrade.sellToken;
     }
 }

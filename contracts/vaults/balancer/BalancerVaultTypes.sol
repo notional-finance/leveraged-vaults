@@ -111,28 +111,3 @@ struct Boosted3TokenAuraStrategyContext {
     AuraStakingContext stakingContext;
     StrategyContext baseStrategy;
 }
-
-struct NormalSettlementData {
-    uint256 maxUnderlyingSurplus;
-    uint256 redeemStrategyTokenAmount;
-    int256 underlyingCashRequiredToSettle;
-}
-
-struct BoostedSettlementData {
-    uint256 maxUnderlyingSurplus;
-    uint256 primarySettlementBalance;
-    uint256 redeemStrategyTokenAmount;
-    int256 underlyingCashRequiredToSettle;
-}
-
-struct Balanced2TokenRewardTradeParams {
-    SingleSidedRewardTradeParams primaryTrade;
-    SingleSidedRewardTradeParams secondaryTrade;
-}
-
-struct SingleSidedRewardTradeParams {
-    address sellToken;
-    address buyToken;
-    uint256 amount;
-    TradeParams tradeParams;
-}

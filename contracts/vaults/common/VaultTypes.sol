@@ -35,6 +35,18 @@ struct ReinvestRewardParams {
     uint256 minPoolClaim;
 }
 
+struct Proportional2TokenRewardTradeParams {
+    SingleSidedRewardTradeParams primaryTrade;
+    SingleSidedRewardTradeParams secondaryTrade;
+}
+
+struct SingleSidedRewardTradeParams {
+    address sellToken;
+    address buyToken;
+    uint256 amount;
+    TradeParams tradeParams;
+}
+
 struct StrategyContext {
     uint32 settlementPeriodInSeconds;
     ITradingModule tradingModule;

@@ -23,7 +23,6 @@ import {Errors} from "../../../../global/Errors.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {StableMath} from "../math/StableMath.sol";
 import {LinearMath} from "../math/LinearMath.sol";
-import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
@@ -40,16 +39,9 @@ library Balancer3TokenBoostedPoolUtils {
     using Balancer2TokenPoolUtils for Balancer2TokenPoolContext;
     using Balancer2TokenPoolUtils for TwoTokenPoolContext;
     using Balancer3TokenBoostedPoolUtils for Balancer3TokenPoolContext;
-    using AuraStakingUtils for AuraStakingContext;
     using StrategyUtils for StrategyContext;
     using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
-
-    // Preminted BPT is sometimes called Phantom BPT, as the preminted BPT (which is deposited in the Vault as balance of
-    // the Pool) doesn't belong to any entity until transferred out of the Pool. The Pool's arithmetic behaves as if it
-    // didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
-    // actually owned by some entity) instead.
-    uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
     function _getScaleFactor(
         Balancer3TokenPoolContext memory poolContext,
@@ -406,7 +398,7 @@ library Balancer3TokenBoostedPoolUtils {
             minBPT: minBPT
         });
 
-        strategyContext._mintStrategyTokens(bptMinted);
+        strategyTokensMinted = strategyContext._mintStrategyTokens(bptMinted);
     }
 
     function _redeem(

@@ -25,7 +25,6 @@ import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
 import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {Stable2TokenOracleMath} from "../math/Stable2TokenOracleMath.sol";
-import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils.sol";
@@ -40,7 +39,6 @@ library Balancer2TokenPoolUtils {
     using TradeHandler for Trade;
     using TypeConvert for uint256;
     using StrategyUtils for StrategyContext;
-    using AuraStakingUtils for AuraStakingContext;
     using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
     using Stable2TokenOracleMath for StableOracleContext;
@@ -132,7 +130,7 @@ library Balancer2TokenPoolUtils {
             minBPT: params.minPoolClaim
         });
 
-        strategyContext._mintStrategyTokens(bptMinted);
+        strategyTokensMinted = strategyContext._mintStrategyTokens(bptMinted);
     }
 
     function _redeem(

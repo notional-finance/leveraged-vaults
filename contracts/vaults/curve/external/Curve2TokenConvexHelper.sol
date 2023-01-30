@@ -24,8 +24,10 @@ import {IERC20} from "../../../../interfaces/IERC20.sol";
 
 library Curve2TokenConvexHelper {
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
+    using TwoTokenPoolUtils for TwoTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using SettlementUtils for StrategyContext;
+    using VaultStorage for StrategyVaultState;
 
     function deposit(
         Curve2TokenConvexStrategyContext memory context,
@@ -63,18 +65,18 @@ library Curve2TokenConvexHelper {
         uint256 strategyTokensToRedeem,
         RedeemParams memory params
     ) external {
-        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToPoolClaim(strategyTokensToRedeem);
+        uint256 poolClaimToSettle = context.baseStrategy._convertStrategyTokensToPoolClaim(strategyTokensToRedeem);
         
         _executeSettlement({
             strategyContext: context.baseStrategy,
             poolContext: context.poolContext,
             maturity: maturity,
-            bptToSettle: bptToSettle,
+            poolClaimToSettle: poolClaimToSettle,
             redeemStrategyTokenAmount: strategyTokensToRedeem,
             params: params
         });
 
-        emit VaultEvents.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
+        emit VaultEvents.VaultSettlement(maturity, poolClaimToSettle, strategyTokensToRedeem);
     }
 
     function settleVaultEmergency(
@@ -87,41 +89,94 @@ library Curve2TokenConvexHelper {
             data
         );
 
-        uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
+        uint256 poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
             totalPoolSupply: context.poolContext.basePool.poolToken.totalSupply()
         });
 
         uint256 redeemStrategyTokenAmount = 
-            context.baseStrategy._convertPoolClaimToStrategyTokens(bptToSettle);
+            context.baseStrategy._convertPoolClaimToStrategyTokens(poolClaimToSettle);
 
         _executeSettlement({
             strategyContext: context.baseStrategy,
             poolContext: context.poolContext,
             maturity: maturity,
-            bptToSettle: bptToSettle,
+            poolClaimToSettle: poolClaimToSettle,
             redeemStrategyTokenAmount: redeemStrategyTokenAmount,
             params: params
         });
 
-        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);    
+        emit VaultEvents.EmergencyVaultSettlement(maturity, poolClaimToSettle, redeemStrategyTokenAmount);    
     }
 
     function _executeSettlement(
         StrategyContext calldata strategyContext,
         Curve2TokenPoolContext calldata poolContext,
         uint256 maturity,
-        uint256 bptToSettle,
+        uint256 poolClaimToSettle,
         uint256 redeemStrategyTokenAmount,
         RedeemParams memory params
     ) private {
-    
+        uint256 oraclePrice = poolContext.basePool._getOraclePairPrice(strategyContext);
+
+        /// @notice params.minPrimary and params.minSecondary are not required for this strategy vault
+        (params.minPrimary, params.minSecondary) = poolContext._getMinExitAmounts({
+            strategyContext: strategyContext,
+            oraclePrice: oraclePrice,
+            poolClaim: poolClaimToSettle
+        });
+
+        int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
+            strategyContext: strategyContext,
+            strategyTokenAmount: redeemStrategyTokenAmount
+        });
+
+        strategyContext._executeSettlement({
+            maturity: maturity,
+            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
+            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+            params: params
+        });    
     }
 
     function reinvestReward(
         Curve2TokenConvexStrategyContext calldata context,
         ReinvestRewardParams calldata params
     ) external {
+        StrategyContext memory strategyContext = context.baseStrategy;
+        Curve2TokenPoolContext calldata poolContext = context.poolContext; 
 
+        (
+            address rewardToken, 
+            uint256 primaryAmount, 
+            uint256 secondaryAmount
+        ) = poolContext.basePool._executeRewardTrades({
+            rewardTokens: context.stakingContext.rewardTokens,
+            tradingModule: strategyContext.tradingModule,
+            data: params.tradeData
+        });
+
+        // Make sure we are joining with the right proportion to minimize slippage
+        poolContext._validateSpotPriceAndPairPrice({
+            strategyContext: strategyContext,
+            oraclePrice: poolContext.basePool._getOraclePairPrice(strategyContext),
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount
+        });
+
+        uint256 poolClaimAmount = poolContext._joinPoolAndStake({
+            strategyContext: strategyContext,
+            stakingContext: context.stakingContext,
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount,
+            /// @notice minBPT is not required to be set by the caller because primaryAmount
+            /// and secondaryAmount are already validated
+            minPoolClaim: params.minPoolClaim      
+        });
+
+        strategyContext.vaultState.totalPoolClaim += poolClaimAmount;
+        strategyContext.vaultState.setStrategyVaultState(); 
+
+        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, poolClaimAmount); 
     }
 }

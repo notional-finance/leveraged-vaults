@@ -6,7 +6,8 @@ import {Errors} from "../../../../global/Errors.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {
     StrategyContext, 
-    TwoTokenPoolContext, 
+    TwoTokenPoolContext,
+    StrategyVaultSettings, 
     StrategyVaultState,
     DepositParams,
     RedeemParams,
@@ -16,6 +17,7 @@ import {Curve2TokenPoolContext, ConvexStakingContext} from "../../CurveVaultType
 import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "../../../common/VaultStorage.sol";
+import {VaultConstants} from "../../../common/VaultConstants.sol";
 import {ICurve2TokenPool} from "../../../../../interfaces/curve/ICurvePool.sol";
 
 library Curve2TokenPoolUtils {
@@ -23,6 +25,7 @@ library Curve2TokenPoolUtils {
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using TypeConvert for uint256;
+    using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
 
     function _deposit(
@@ -51,7 +54,7 @@ library Curve2TokenPoolUtils {
             minPoolClaim: params.minPoolClaim
         });
 
-        strategyContext._mintStrategyTokens(poolClaimMinted);
+        strategyTokensMinted = strategyContext._mintStrategyTokens(poolClaimMinted);
     }
 
     function _redeem(
@@ -95,6 +98,62 @@ library Curve2TokenPoolUtils {
                 10**poolContext.basePool.secondaryDecimals
             );
         }
+    }
+
+    function _validateSpotPriceAndPairPrice(
+        Curve2TokenPoolContext calldata poolContext,
+        StrategyContext memory strategyContext,
+        uint256 oraclePrice,
+        uint256 primaryAmount, 
+        uint256 secondaryAmount
+    ) internal view {
+        // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
+        uint256 spotPrice = _getSpotPrice({
+            poolContext: poolContext,
+            tokenIndex: 0
+        });
+
+        /// @notice Check spotPrice against oracle price to make sure that 
+        /// the pool is not being manipulated
+        strategyContext._checkPriceLimit(oraclePrice, spotPrice);
+
+        /*uint256 calculatedPairPrice = _getSpotPrice({
+            oracleContext: oracleContext,
+            poolContext: poolContext,
+            primaryBalance: primaryAmount,
+            secondaryBalance: secondaryAmount,
+            tokenIndex: 0
+        }); */
+
+        /// @notice Check the calculated primary/secondary price against the oracle price
+        /// to make sure that we are joining the pool proportionally
+        //strategyContext._checkPriceLimit(oraclePrice, calculatedPairPrice);
+    }
+    
+    /// @notice calculates the expected min exit amounts for a given pool claim amount
+    function _getMinExitAmounts(
+        Curve2TokenPoolContext calldata poolContext,
+        StrategyContext calldata strategyContext,
+        uint256 oraclePrice,
+        uint256 poolClaim
+    ) internal view returns (uint256 minPrimary, uint256 minSecondary) {
+        // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
+        // Validate the spot price to make sure the pool is not being manipulated
+        uint256 spotPrice = _getSpotPrice({
+            poolContext: poolContext,
+            tokenIndex: 0
+        });
+
+        strategyContext._checkPriceLimit(oraclePrice, spotPrice);
+
+        // min amounts are calculated based on the share of the Balancer pool with a small discount applied
+        uint256 totalPoolSupply = poolContext.basePool.poolToken.totalSupply();
+        minPrimary = (poolContext.basePool.primaryBalance * poolClaim * 
+            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
+            (totalPoolSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
+        minSecondary = (poolContext.basePool.secondaryBalance * poolClaim * 
+            strategyContext.vaultSettings.poolSlippageLimitPercent) / 
+            (totalPoolSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
     }
 
     /// @notice Gets the time-weighted primary token balance for a given poolClaim Amount
@@ -163,6 +222,16 @@ library Curve2TokenPoolUtils {
         poolClaimMinted = ICurve2TokenPool(address(poolContext.curvePool)).add_liquidity{value: msgValue}(
             amounts, minPoolClaim
         );
+
+        // Check BPT threshold to make sure our share of the pool is
+        // below maxBalancerPoolShare
+        uint256 poolClaimThreshold = strategyContext.vaultSettings._poolClaimThreshold(
+            poolContext.basePool.poolToken.totalSupply()
+        );
+        uint256 poolClaimHeldAfterJoin = strategyContext.vaultState.totalPoolClaim + poolClaimMinted;
+        if (poolClaimHeldAfterJoin > poolClaimThreshold)
+            revert Errors.PoolShareTooHigh(poolClaimHeldAfterJoin, poolClaimThreshold);
+
 
         bool success = stakingContext.booster.deposit(stakingContext.poolId, poolClaimMinted, true); // stake = true
         require(success);    

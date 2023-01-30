@@ -20,14 +20,11 @@ import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.
 import {TwoTokenPoolUtils} from "../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {Balancer2TokenPoolUtils} from "../internal/pool/Balancer2TokenPoolUtils.sol";
-import {TwoTokenAuraRewardUtils} from "../internal/reward/TwoTokenAuraRewardUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 import {VaultStorage} from "../../common/VaultStorage.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
 library MetaStable2TokenAuraHelper {
-    using TwoTokenAuraRewardUtils for Balancer2TokenPoolContext;
-    using TwoTokenAuraRewardUtils for TwoTokenPoolContext;
     using Balancer2TokenPoolUtils for Balancer2TokenPoolContext;
     using Balancer2TokenPoolUtils for TwoTokenPoolContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
@@ -164,11 +161,11 @@ library MetaStable2TokenAuraHelper {
             address rewardToken, 
             uint256 primaryAmount, 
             uint256 secondaryAmount
-        ) = poolContext.basePool._executeRewardTrades(
-            context.stakingContext,
-            strategyContext.tradingModule,
-            params.tradeData
-        );
+        ) = poolContext.basePool._executeRewardTrades({
+            rewardTokens: context.stakingContext.rewardTokens,
+            tradingModule: strategyContext.tradingModule,
+            data: params.tradeData
+        });
 
         // Make sure we are joining with the right proportion to minimize slippage
         oracleContext._validateSpotPriceAndPairPrice({
