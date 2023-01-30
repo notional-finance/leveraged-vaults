@@ -42,6 +42,7 @@ def test_spot_price_within_1_perc_of_pair_price_after_trading(StratStableETHstET
     tradeCallData = balancer_trade_exact_in_single(
         env.tokens["wstETH"].address, env.tokens["WETH"].address, 30000e18, 0, poolId
     )
+
     env.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 5e6, {"from": env.whales["wstETH"]})
 
     # Trade in small increments to update the balancer oracle pair price 

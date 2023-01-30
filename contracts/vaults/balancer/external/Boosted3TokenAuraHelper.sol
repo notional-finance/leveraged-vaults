@@ -102,7 +102,7 @@ library Boosted3TokenAuraHelper {
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalPoolSupply: context.poolContext.basePool._getVirtualSupply(context.oracleContext)
+            totalPoolSupply: context.oracleContext.virtualSupply
         });
 
         uint256 redeemStrategyTokenAmount 
@@ -129,7 +129,7 @@ library Boosted3TokenAuraHelper {
         uint256 bptToSettle,
         uint256 redeemStrategyTokenAmount,
         RedeemParams memory params
-    ) private {
+    ) private {        
         // Calculate minPrimary using Chainlink oracle data
         params.minPrimary = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, strategyContext, bptToSettle
@@ -158,29 +158,55 @@ library Boosted3TokenAuraHelper {
         StrategyContext memory strategyContext = context.baseStrategy;
         BoostedOracleContext calldata oracleContext = context.oracleContext;
         AuraStakingContext calldata stakingContext = context.stakingContext;
+        ThreeTokenPoolContext calldata poolContext = context.poolContext;
 
         (address rewardToken, uint256 primaryAmount) = context.poolContext.basePool._executeRewardTrades({
             stakingContext: stakingContext,
             tradingModule: strategyContext.tradingModule,
-            data: params.tradeData,
-            slippageLimit: strategyContext.vaultSettings.maxRewardTradeSlippageLimitPercent
+            data: params.tradeData
         });
 
-        uint256 minBPT = context.poolContext._getMinBPT(
-            oracleContext, strategyContext, primaryAmount
-        );
+        /// @notice This function is used to validate the spot price against
+        /// the oracle price. The return values are not used.
+        poolContext._getValidatedPoolData(oracleContext, strategyContext);
 
         uint256 bptAmount = context.poolContext._joinPoolAndStake({
             strategyContext: strategyContext,
             stakingContext: stakingContext,
             oracleContext: oracleContext,
             deposit: primaryAmount,
-            minBPT: minBPT
+            /// @notice Setting minBPT to 0 based on the following assumptions
+            /// 1. _getValidatedPoolData already validates the spot price to make sure
+            /// the pool isn't being manipulated
+            /// 2. We check maxBalancerPoolShare before joining to make sure the pool
+            /// has adequate liquidity
+            /// 3. Manipulating the pool before calling reinvestReward isn't expected
+            /// to be very profitable for the attacker because the function gets called
+            /// very frequently (relatively small trades)
+            minBPT: 0
         });
 
         strategyContext.vaultState.totalPoolClaim += bptAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
         emit BalancerEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
+    }
+
+    function convertStrategyToUnderlying(
+        Boosted3TokenAuraStrategyContext memory context,
+        uint256 strategyTokenAmount
+    ) external view returns (int256 underlyingValue) {
+        underlyingValue = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
+            oracleContext: context.oracleContext,
+            strategyTokenAmount: strategyTokenAmount
+        });
+    }
+
+    function getSpotPrice(
+        Boosted3TokenAuraStrategyContext memory context,
+        uint8 tokenIndex
+    ) external view returns (uint256 spotPrice) {
+        spotPrice = context.poolContext._getSpotPrice(context.oracleContext, tokenIndex);
     }
 }

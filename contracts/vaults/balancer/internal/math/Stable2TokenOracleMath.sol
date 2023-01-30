@@ -52,6 +52,20 @@ library Stable2TokenOracleMath {
             poolContext.secondaryScaleFactor * BalancerConstants.BALANCER_PRECISION / poolContext.primaryScaleFactor :
             poolContext.primaryScaleFactor * BalancerConstants.BALANCER_PRECISION / poolContext.secondaryScaleFactor;
         spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / scaleFactor;
+
+        // Convert precision back to 1e18 after downscaling by scaleFactor
+        spotPrice = spotPrice * BalancerConstants.BALANCER_PRECISION / _getPrecision(poolContext, tokenIndex);
+    }
+
+    function _getPrecision(
+        TwoTokenPoolContext memory poolContext,
+        uint256 tokenIndex
+    ) private pure returns(uint256 precision) {
+        if (tokenIndex == 0) {
+            precision = 10**poolContext.primaryDecimals;
+        } else if (tokenIndex == 1) {
+            precision = 10**poolContext.secondaryDecimals;
+        }
     }
 
     /// @notice calculates the expected min exit amounts for a given BPT amount
@@ -104,12 +118,6 @@ library Stable2TokenOracleMath {
         /// @notice Check spotPrice against oracle price to make sure that 
         /// the pool is not being manipulated
         strategyContext._checkPriceLimit(oraclePrice, spotPrice);
-
-        /// @notice Balancer math functions expect all amounts to be in BALANCER_PRECISION
-        uint256 primaryPrecision = 10 ** poolContext.basePool.primaryDecimals;
-        uint256 secondaryPrecision = 10 ** poolContext.basePool.secondaryDecimals;
-        primaryAmount = primaryAmount * BalancerConstants.BALANCER_PRECISION / primaryPrecision;
-        secondaryAmount = secondaryAmount * BalancerConstants.BALANCER_PRECISION / secondaryPrecision;
 
         uint256 calculatedPairPrice = _getSpotPrice({
             oracleContext: oracleContext,

@@ -416,6 +416,7 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
     chain.sleep(3600 * 24 * 365)
     chain.mine()
+
     currentBalances = {}
     for key in expectedRewardTokenAmounts:
         currentBalances[key] = env.tokens[key].balanceOf(vault.address)
@@ -454,7 +455,7 @@ def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, e
     with brownie.reverts():
         vault.grantRole.call(vault.getRoles()["rewardReinvestment"], depositor, {"from": context.whale})
     vault.grantRole(vault.getRoles()["rewardReinvestment"], depositor, {"from": env.notional.owner()})
-
+    
     if shouldRevert == True:
         with brownie.reverts():
             vault.reinvestReward.call(rewardParams, {"from": depositor})

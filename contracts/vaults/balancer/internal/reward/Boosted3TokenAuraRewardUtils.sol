@@ -14,7 +14,7 @@ import {Balancer3TokenBoostedPoolUtils} from "../pool/Balancer3TokenBoostedPoolU
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {AuraStakingUtils} from "../staking/AuraStakingUtils.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
-import {IBoostedPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
+import {ILinearPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 
 library Boosted3TokenAuraRewardUtils {
     using AuraStakingUtils for AuraStakingContext;
@@ -28,7 +28,7 @@ library Boosted3TokenAuraRewardUtils {
         if (!context._isValidRewardToken(params.sellToken)) {
             revert Errors.InvalidRewardToken(params.sellToken);
         }
-        if (params.buyToken != IBoostedPool(primaryToken).getMainToken()) {
+        if (params.buyToken != ILinearPool(primaryToken).getMainToken()) {
             revert Errors.InvalidRewardToken(params.buyToken);
         }
     }
@@ -37,8 +37,7 @@ library Boosted3TokenAuraRewardUtils {
         ThreeTokenPoolContext calldata poolContext,
         AuraStakingContext calldata stakingContext,
         ITradingModule tradingModule,
-        bytes calldata data,
-        uint256 slippageLimit
+        bytes calldata data
     ) internal returns (address rewardToken, uint256 primaryAmount) {
         SingleSidedRewardTradeParams memory params = abi.decode(data, (SingleSidedRewardTradeParams));
 

@@ -51,8 +51,6 @@ struct StrategyVaultSettings {
     uint32 postMaturitySettlementSlippageLimitPercent;
     /// @notice Slippage limit for emergency settlement (vault owns too much of the pool)
     uint32 emergencySettlementSlippageLimitPercent;
-    /// @notice Slippage limit for selling reward tokens
-    uint32 maxRewardTradeSlippageLimitPercent;
     /// @notice Max share of the pool that the vault is allowed to hold
     uint16 maxPoolShare;
     /// @notice Cool down in minutes for normal settlement

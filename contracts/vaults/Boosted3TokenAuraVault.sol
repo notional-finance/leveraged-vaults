@@ -29,13 +29,15 @@ import {SettlementUtils} from "./common/internal/settlement/SettlementUtils.sol"
 import {Balancer3TokenBoostedPoolUtils} from "./balancer/internal/pool/Balancer3TokenBoostedPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
+import {IERC20} from "../../interfaces/IERC20.sol";
 
 contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     using Balancer3TokenBoostedPoolUtils for Balancer3TokenPoolContext;
     using Balancer3TokenBoostedPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
     using VaultStorage for StrategyVaultState;
-    using Boosted3TokenAuraHelper for Boosted3TokenAuraStrategyContext;
+    using SettlementUtils for StrategyContext;
+    using BalancerVaultStorage for StrategyVaultState;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         Boosted3TokenPoolMixin(notional_, params)
@@ -52,7 +54,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         VaultStorage.setStrategyVaultSettings(params.settings);
-        (uint256[] memory balances, uint256[] memory scalingFactors) = _getScaledBalances();
+        (uint256[] memory balances, uint256[] memory scalingFactors) = _getBalancesAndScaleFactors();
 
         _threeTokenPoolContext(balances, scalingFactors).basePool._approveBalancerTokens(
             address(_auraStakingContext().booster)
@@ -145,11 +147,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         uint256 maturity
     ) public view virtual override returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        underlyingValue = context.poolContext._convertStrategyToUnderlying({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
-            strategyTokenAmount: strategyTokenAmount
-        });
+        underlyingValue = context.convertStrategyToUnderlying(strategyTokenAmount);
     }
 
     /// @notice Updates the vault settings
@@ -160,33 +158,21 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     {
         VaultStorage.setStrategyVaultSettings(settings);
     }
-
-    function _getScaledBalances() private view returns (uint256[] memory balances, uint256[] memory scalingFactors) {
-        (
-            /* address[] memory tokens */,
-            balances,
-            /* uint256 lastChangeBlock */
-        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
-
-        scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
-
-        for (uint256 i; i < balances.length; i++) {
-            balances[i] = balances[i] * scalingFactors[i] / BalancerConstants.BALANCER_PRECISION;
-        }
-    }
-
-    function _strategyContext() private view returns (Boosted3TokenAuraStrategyContext memory) {
-        (uint256[] memory balances, uint256[] memory scalingFactors) = _getScaledBalances();
-
-        return Boosted3TokenAuraStrategyContext({
-            poolContext: _threeTokenPoolContext(balances, scalingFactors),
-            oracleContext: _boostedOracleContext(balances),
-            stakingContext: _auraStakingContext(),
-            baseStrategy: _baseStrategyContext()
-        });
-    }
     
     function getStrategyContext() external view returns (Boosted3TokenAuraStrategyContext memory) {
         return _strategyContext();
+    }
+
+    function getSpotPrice(uint8 tokenIndex) external view returns (uint256 spotPrice) {
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        spotPrice = Boosted3TokenAuraHelper.getSpotPrice(context, tokenIndex);
+    }
+
+    function getEmergencySettlementBPTAmount(uint256 maturity) external view returns (uint256 bptToSettle) {
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        bptToSettle = context.baseStrategy._getEmergencySettlementParams({
+            maturity: maturity, 
+            totalBPTSupply: IERC20(context.poolContext.basePool.basePool.pool).totalSupply()
+        });
     }
 }

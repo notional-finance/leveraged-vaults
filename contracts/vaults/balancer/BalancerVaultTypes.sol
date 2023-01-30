@@ -51,13 +51,28 @@ struct StableOracleContext {
     uint256 ampParam;
 }
 
+struct UnderlyingPoolContext {
+    uint256 mainScaleFactor;
+    uint256 mainBalance;
+    uint256 wrappedScaleFactor;
+    uint256 wrappedBalance;
+    uint256 virtualSupply;
+    uint256 fee;
+    uint256 lowerTarget;
+    uint256 upperTarget;
+}
+
 struct BoostedOracleContext {
     /// @notice Amplification parameter
     uint256 ampParam;
     /// @notice BPT balance in the pool
     uint256 bptBalance;
-    /// @notice Protocol fee amount used to calculate the virtual supply
-    uint256 dueProtocolFeeBptAmount;
+    /// @notice Boosted pool swap fee
+    uint256 swapFeePercentage;
+    /// @notice Virtual supply
+    uint256 virtualSupply;
+    /// @notice Underlying linear pool for the primary token
+    UnderlyingPoolContext[] underlyingPools;
 }
 
 struct AuraStakingContext {
@@ -79,6 +94,7 @@ struct Balancer3TokenPoolContext {
     ThreeTokenPoolContext basePool;
     uint256 primaryScaleFactor;
     uint256 secondaryScaleFactor;
+    uint256 tertiaryScaleFactor;
     bytes32 poolId;
 }
 

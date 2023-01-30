@@ -65,7 +65,7 @@ def get_vault_config(**kwargs):
         kwargs.get("maxBorrowMarketIndex", 2),  # 7: 20% reserve fee share
         kwargs.get("maxDeleverageCollateralRatioBPS", 1500),  # 8: 15% max collateral ratio
         kwargs.get("secondaryBorrowCurrencies", [0, 0]),  # 9: none set
-        kwargs.get("maxRequiredAccountCollateralRatio", 10000),  # 10: none set
+        kwargs.get("maxRequiredAccountCollateralRatio", 20000),  # 10: none set
     ]
 
 def set_flags(flags, **kwargs):
@@ -96,7 +96,6 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("settlementSlippageLimitPercent", settings["settlementSlippageLimitPercent"]), 
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
         kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
-        kwargs.get("maxRewardTradeSlippageLimitPercent", settings["maxRewardTradeSlippageLimitPercent"]),
         kwargs.get("maxPoolShare", settings["maxPoolShare"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
@@ -124,7 +123,7 @@ def get_univ3_batch_data(path):
 
 def get_deposit_trade_params(dexId, tradeType, amount, slippage, unwrap, exchangeData):
     return eth_abi.encode_abi(
-        ['(uint256,(uint16,uint8,uint32,bool,bytes))'],
+        ['(uint256,(uint16,uint8,uint256,bool,bytes))'],
         [[
             Wei(amount),
             [
@@ -139,7 +138,7 @@ def get_deposit_trade_params(dexId, tradeType, amount, slippage, unwrap, exchang
 
 def get_dynamic_trade_params(dexId, tradeType, slippage, unwrap, exchangeData):
     return eth_abi.encode_abi(
-        ['(uint16,uint8,uint32,bool,bytes)'],
+        ['(uint16,uint8,uint256,bool,bytes)'],
         [[
             dexId,
             tradeType,
