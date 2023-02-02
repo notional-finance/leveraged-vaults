@@ -9,6 +9,7 @@ import {ISwapRouter as UniV3ISwapRouter} from "../../interfaces/uniswap/v3/ISwap
 import {IUniV2Router2} from "../../interfaces/uniswap/v2/IUniV2Router2.sol";
 import {ICurveRouter} from "../../interfaces/curve/ICurveRouter.sol";
 import {ICurveRegistry} from "../../interfaces/curve/ICurveRegistry.sol";
+import {ICurveRouterV2} from "../../interfaces/curve/ICurveRouterV2.sol";
 
 /// @title Hardcoded Deployment Addresses for ETH Mainnet
 library Deployments {
@@ -27,4 +28,5 @@ library Deployments {
     address internal constant ALT_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     ICurveRegistry public constant CURVE_REGISTRY = ICurveRegistry(0x90E00ACe148ca3b23Ac1bC8C240C2a7Dd9c2d7f5);
     ICurveRouter public constant CURVE_ROUTER = ICurveRouter(0xfA9a30350048B2BF66865ee20363067c66f67e58);
+    ICurveRouterV2 public constant CURVE_ROUTER_V2 = ICurveRouterV2(0x99a58482BD75cbab83b27EC03CA68fF489b5788f);
 }

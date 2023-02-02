@@ -1,10 +1,9 @@
 
 import pytest
 import brownie
-import eth_abi
 from brownie import Wei, accounts, network, interface, MockVault
 from brownie.network.state import Chain
-from scripts.common import DEX_ID, TRADE_TYPE, set_dex_flags, set_trade_type_flags
+from scripts.common import DEX_ID, TRADE_TYPE, set_dex_flags, set_trade_type_flags, get_crv_batch_data
 from scripts.EnvironmentConfig import getEnvironment
 
 chain = Chain()
@@ -32,10 +31,7 @@ def curve_trade_exact_in_batch(sellToken, buyToken, amount):
         amount, 
         0, 
         deadline,
-        eth_abi.encode_abi(
-            ["(address[6],uint256[8])"],
-            [[routes[0], routes[1]]]
-        )
+        get_crv_batch_data(sellToken, buyToken, amount)
     ]
 
 def test_stETH_to_weth_exact_in_dynamic_slippage():

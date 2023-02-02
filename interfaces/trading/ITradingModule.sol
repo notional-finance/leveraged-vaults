@@ -10,7 +10,8 @@ enum DexId {
     ZERO_EX,
     BALANCER_V2,
     CURVE,
-    NOTIONAL_VAULT
+    NOTIONAL_VAULT,
+    CURVE_V2
 }
 
 enum TradeType {

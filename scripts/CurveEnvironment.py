@@ -69,9 +69,9 @@ class CurveEnvironment(Environment):
         stratConfig = StrategyConfig[strat]
 
         if mockImpl == None:
-            proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+            proxy = nProxy.deploy(impl.address, bytes(), {"from": self.deployer})
         else:
-            proxy = nMockProxy.deploy(impl.address, bytes(0), mockImpl, {"from": self.deployer})
+            proxy = nMockProxy.deploy(impl.address, bytes(), mockImpl, {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, vaultContract.abi)
         vaultProxy.initialize(
             [

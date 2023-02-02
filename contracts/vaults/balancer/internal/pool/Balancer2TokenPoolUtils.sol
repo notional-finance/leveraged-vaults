@@ -67,7 +67,6 @@ library Balancer2TokenPoolUtils {
     }
 
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
-    /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
     /// @param poolContext pool context variables
     /// @param oracleContext oracle context variables
     /// @param bptAmount amount of balancer pool lp tokens

@@ -26,27 +26,31 @@ abstract contract Curve2TokenPoolMixin is CurvePoolMixin {
         ConvexVaultDeploymentParams memory params
     ) CurvePoolMixin(notional_, params) {
         address primaryToken = _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId);
+
+        PRIMARY_TOKEN = primaryToken;
+
         // Curve uses ALT_ETH_ADDRESS
         if (primaryToken == Deployments.ETH_ADDRESS) {
             primaryToken = Deployments.ALT_ETH_ADDRESS;
         }
 
-        PRIMARY_TOKEN = primaryToken;
-
         address token0 = CURVE_POOL.coins(0);
         address token1 = CURVE_POOL.coins(1);
         
-        // Balancer tokens are sorted by address, so we need to figure out
-        // the correct index for the primary token
         uint8 primaryIndex;
         address secondaryToken;
-        if (token0 == PRIMARY_TOKEN) {
+        if (token0 == primaryToken) {
             primaryIndex = 0;
             secondaryToken = token1;
         } else {
             primaryIndex = 1;
             secondaryToken = token0;
         }
+
+        if (secondaryToken == Deployments.ALT_ETH_ADDRESS) {
+            secondaryToken = Deployments.ETH_ADDRESS;
+        }
+
         PRIMARY_INDEX = primaryIndex;
         SECONDARY_TOKEN = secondaryToken;
 
@@ -55,7 +59,7 @@ abstract contract Curve2TokenPoolMixin is CurvePoolMixin {
         }
 
         uint256 primaryDecimals = PRIMARY_TOKEN ==
-            Deployments.ALT_ETH_ADDRESS
+            Deployments.ETH_ADDRESS
             ? 18
             : IERC20(PRIMARY_TOKEN).decimals();
         // Do not allow decimal places greater than 18
@@ -63,7 +67,7 @@ abstract contract Curve2TokenPoolMixin is CurvePoolMixin {
         PRIMARY_DECIMALS = uint8(primaryDecimals);
 
         uint256 secondaryDecimals = SECONDARY_TOKEN ==
-            Deployments.ALT_ETH_ADDRESS
+            Deployments.ETH_ADDRESS
             ? 18
             : IERC20(SECONDARY_TOKEN).decimals();
         require(secondaryDecimals <= 18);

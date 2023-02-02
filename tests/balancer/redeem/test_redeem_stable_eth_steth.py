@@ -9,7 +9,7 @@ from scripts.common import get_dynamic_trade_params, get_redeem_params, DEX_ID, 
 
 def test_single_maturity_full_redemption_unwrapped_success(StratStableETHstETH):
     redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
-        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
+        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes()
     ))
     redeem(
         ETHPrimaryContext(*StratStableETHstETH),
@@ -31,7 +31,7 @@ def test_single_maturity_full_redemption_wrapped_success(StratStableETHstETH):
     
 def test_single_maturity_partial_redemption_success(StratStableETHstETH):
     redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
-        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
+        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes()
     ))
     redeem(
         ETHPrimaryContext(*StratStableETHstETH),
@@ -40,7 +40,7 @@ def test_single_maturity_partial_redemption_success(StratStableETHstETH):
 
 def test_multiple_maturities_full_redemption_success(StratStableETHstETH):
     redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
-        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
+        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes()
     ))
     redeem(
         ETHPrimaryContext(*StratStableETHstETH),
@@ -52,7 +52,7 @@ def test_multiple_maturities_full_redemption_success(StratStableETHstETH):
 
 def test_multiple_maturities_partial_redemption_success(StratStableETHstETH):
     redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
-        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
+        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes()
     ))
     redeem(
         ETHPrimaryContext(*StratStableETHstETH),

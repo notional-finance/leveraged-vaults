@@ -67,7 +67,7 @@ def test_reinvest_reward(StratStableETHstETH):
         ]]
     ), 0]
 
-    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 200916107796947076)
+    reinvest_reward(context, accounts[0], "BAL", rewardAmount, rewardParams, bptBefore, 200916107796947076)
 
 def test_reinvest_0x_trade(StratStableETHstETH, request):
     context = ETHPrimaryContext(*StratStableETHstETH)
@@ -128,7 +128,7 @@ def test_reinvest_0x_trade(StratStableETHstETH, request):
         ]]
     ), 0]
 
-    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 200823932438657761, True) # shouldRevert = True
+    reinvest_reward(context, accounts[0], "BAL", rewardAmount, rewardParams, bptBefore, 200823932438657761, True) # shouldRevert = True
 
     # Give vault permission to sell wstETH
     env.tradingModule.setTokenPermissions(
@@ -137,4 +137,4 @@ def test_reinvest_0x_trade(StratStableETHstETH, request):
         [True, set_dex_flags(0, ZERO_EX=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
         {"from": env.notional.owner()})
 
-    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 200823932438657761)
+    reinvest_reward(context, accounts[0], "BAL", rewardAmount, rewardParams, bptBefore, 200823932438657761)

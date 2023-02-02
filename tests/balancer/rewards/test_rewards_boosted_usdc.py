@@ -46,4 +46,4 @@ def test_reinvest_rewards_success(StratBoostedPoolUSDCPrimary):
         ]]
     ), 0]
 
-    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 290190561975839441022)
+    reinvest_reward(context, accounts[0], "BAL", rewardAmount, rewardParams, bptBefore, 290190561975839441022)

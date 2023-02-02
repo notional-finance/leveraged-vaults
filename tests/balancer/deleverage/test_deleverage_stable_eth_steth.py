@@ -43,7 +43,7 @@ def test_single_maturity_success(StratStableETHstETH):
     primaryAmount, secondaryAmount = get_metastable_amounts(mock.getStrategyContext()["poolContext"], underlyingRedeemed)
     # discount primary and secondary slightly
     redeemParams = get_redeem_params(primaryAmount * 0.98, secondaryAmount * 0.98, get_dynamic_trade_params(
-        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
+        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes()
     ))
     assert env.tokens["WETH"].balanceOf(env.liquidator.owner()) == 0
     env.liquidator.flashLiquidate(

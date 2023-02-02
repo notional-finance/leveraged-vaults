@@ -57,7 +57,7 @@ def test_secondary_currency_trading_unwrapped_success(StratStableETHstETH):
     expectedBorrowAmount = get_expected_borrow_amount(context.env, context.currencyId, maturity, primaryBorrowAmount)
     totalUnderlyingAmount = depositAmount + expectedBorrowAmount
     depositParams = get_deposit_params(trade=get_deposit_trade_params(
-        DEX_ID["CURVE"],  TRADE_TYPE["EXACT_IN_SINGLE"], (totalUnderlyingAmount) / 2, 5e6, True, bytes(0)
+        DEX_ID["CURVE"],  TRADE_TYPE["EXACT_IN_SINGLE"], (totalUnderlyingAmount) / 2, 5e6, True, bytes()
     ))
     deposit(
         ETHPrimaryContext(*StratStableETHstETH),

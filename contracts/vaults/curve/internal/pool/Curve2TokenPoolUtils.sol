@@ -38,7 +38,7 @@ library Curve2TokenPoolUtils {
     ) internal returns (uint256 strategyTokensMinted) {
         uint256 secondaryAmount;
         if (params.tradeData.length != 0) {
-            // Allows users to trade on a different DEX instead of Balancer when joining
+            // Allows users to trade on a different DEX when joining
             (uint256 primarySold, uint256 secondaryBought) = poolContext.basePool._tradePrimaryForSecondary({
                 strategyContext: strategyContext,
                 data: params.tradeData
@@ -65,11 +65,11 @@ library Curve2TokenPoolUtils {
         uint256 strategyTokens,
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = strategyContext._redeemStrategyTokens(strategyTokens);
+        uint256 poolClaim = strategyContext._redeemStrategyTokens(strategyTokens);
 
         // Underlying token balances from exiting the pool
         (uint256 primaryBalance, uint256 secondaryBalance)
-            = _unstakeAndExitPool(poolContext, stakingContext, bptClaim, params);
+            = _unstakeAndExitPool(poolContext, stakingContext, poolClaim, params);
 
         finalPrimaryBalance = primaryBalance;
         if (secondaryBalance > 0) {
@@ -92,12 +92,16 @@ library Curve2TokenPoolUtils {
                 int8(poolContext.basePool.secondaryIndex), 
                 10**poolContext.basePool.primaryDecimals // 1 unit of primary
             );
+            uint256 secondaryPrecision = 10**poolContext.basePool.secondaryDecimals;
+            spotPrice = spotPrice * CurveConstants.CURVE_PRECISION / secondaryPrecision;
         } else {
             spotPrice = poolContext.curvePool.get_dy(
                 int8(poolContext.basePool.secondaryIndex),
                 int8(poolContext.basePool.primaryIndex), 
                 10**poolContext.basePool.secondaryDecimals // 1 unit of secondary
             );
+            uint256 primaryPrecision = 10**poolContext.basePool.secondaryDecimals;
+            spotPrice = spotPrice * CurveConstants.CURVE_PRECISION / primaryPrecision;
         }
     }
 
@@ -118,47 +122,13 @@ library Curve2TokenPoolUtils {
         /// the pool is not being manipulated
         strategyContext._checkPriceLimit(oraclePrice, spotPrice);
 
-        uint256 primaryPrecision = 10**poolContext.basePool.primaryDecimals;
-        uint256 secondaryPrecision = 10**poolContext.basePool.secondaryDecimals;
+        uint256 expectedSecondaryAmount = poolContext.curvePool.get_dy(
+            int8(poolContext.basePool.primaryIndex), 
+            int8(poolContext.basePool.secondaryIndex), 
+            primaryAmount
+        );
 
-        // Convert input amounts and pool amounts to CURVE_PRECISION (1e18)
-
-        primaryAmount = primaryAmount * strategyContext.poolClaimPrecision / primaryPrecision;
-        secondaryAmount = secondaryAmount * strategyContext.poolClaimPrecision / secondaryPrecision;
-
-        uint256 primaryPoolBalance = poolContext.basePool.primaryBalance * CurveConstants.CURVE_PRECISION 
-            / primaryPrecision;
-        uint256 secondaryPoolBalance = poolContext.basePool.secondaryBalance * CurveConstants.CURVE_PRECISION 
-            / secondaryPrecision;
-
-        _checkPrimarySecondaryRatio({
-            strategyContext: strategyContext,
-            primaryAmount: primaryAmount,
-            secondaryAmount: secondaryAmount,
-            primaryPoolBalance: primaryPoolBalance,
-            secondaryPoolBalance: secondaryPoolBalance
-        });
-    }
-
-    function _checkPrimarySecondaryRatio(
-        StrategyContext memory strategyContext,
-        uint256 primaryAmount, 
-        uint256 secondaryAmount, 
-        uint256 primaryPoolBalance, 
-        uint256 secondaryPoolBalance
-    ) private pure {
-        uint256 totalAmount = primaryAmount + secondaryAmount;
-        uint256 totalPoolBalance = primaryPoolBalance + secondaryPoolBalance;
-
-        uint256 primaryPercentage = primaryAmount * CurveConstants.CURVE_PRECISION / totalAmount;        
-        uint256 expectedPrimaryPercentage = primaryPoolBalance * CurveConstants.CURVE_PRECISION / totalPoolBalance;
-
-        strategyContext._checkPriceLimit(expectedPrimaryPercentage, primaryPercentage);
-
-        uint256 secondaryPercentage = secondaryAmount * CurveConstants.CURVE_PRECISION / totalAmount;
-        uint256 expectedSecondaryPercentage = secondaryPoolBalance * CurveConstants.CURVE_PRECISION / totalPoolBalance;
-
-        strategyContext._checkPriceLimit(expectedSecondaryPercentage, secondaryPercentage);
+        strategyContext._checkPriceLimit(expectedSecondaryAmount, secondaryAmount);
     }
     
     /// @notice calculates the expected min exit amounts for a given pool claim amount
@@ -184,10 +154,9 @@ library Curve2TokenPoolUtils {
     }
 
     /// @notice Gets the time-weighted primary token balance for a given poolClaim Amount
-    /// @dev Balancer pool needs to be fully initialized with at least 1024 trades
     /// @param poolContext pool context variables
     /// @param strategyContext strategy context variables
-    /// @param poolClaim amount of balancer pool lp tokens
+    /// @param poolClaim amount of pool lp tokens
     /// @return primaryAmount primary token balance
     function _getTimeWeightedPrimaryBalance(
         Curve2TokenPoolContext memory poolContext,
@@ -240,9 +209,9 @@ library Curve2TokenPoolUtils {
         amounts[poolContext.basePool.primaryIndex] = primaryAmount;
         amounts[poolContext.basePool.secondaryIndex] = secondaryAmount;
 
-        if (poolContext.basePool.primaryToken == Deployments.ALT_ETH_ADDRESS) {
+        if (poolContext.basePool.primaryToken == Deployments.ETH_ADDRESS) {
             msgValue = primaryAmount;
-        } else if (poolContext.basePool.secondaryToken == Deployments.ALT_ETH_ADDRESS) {
+        } else if (poolContext.basePool.secondaryToken == Deployments.ETH_ADDRESS) {
             msgValue = secondaryAmount;
         }
 
@@ -250,8 +219,8 @@ library Curve2TokenPoolUtils {
             amounts, minPoolClaim
         );
 
-        // Check BPT threshold to make sure our share of the pool is
-        // below maxBalancerPoolShare
+        // Check pool claim threshold to make sure our share of the pool is
+        // below maxPoolShare
         uint256 poolClaimThreshold = strategyContext.vaultSettings._poolClaimThreshold(
             poolContext.basePool.poolToken.totalSupply()
         );
@@ -270,7 +239,7 @@ library Curve2TokenPoolUtils {
         uint256 poolClaim,
         RedeemParams memory params
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
-        // Withdraw BPT tokens back to the vault for redemption
+        // Withdraw pool tokens back to the vault for redemption
         bool success = stakingContext.rewardPool.withdrawAndUnwrap(poolClaim, false); // claimRewards = false
         if (!success) revert Errors.UnstakeFailed();
 

@@ -439,16 +439,17 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
 
     i = 0
     for key in expectedRewardTokenAmounts:
+        assert env.tokens[key].balanceOf(vault.address) - currentBalances[key] > 0
         assert env.tokens[key].balanceOf(vault.address) - currentBalances[key] >= expectedRewardTokenAmounts[key]
         assert ret[i] == env.tokens[key].balanceOf(vault.address) - currentBalances[key]
         i += 1
     check_invariants(env, vault, [depositor], currencyId, snapshot)
 
-def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, expectedBPTAmount, shouldRevert=False):
+def reinvest_reward(context, depositor, rewardToken, rewardAmount, rewardParams, poolClaimBefore, expectedPoolClaimAmount, shouldRevert=False):
     env = context.env
     vault = context.vault
     currencyId = context.currencyId   
-    env.tokens["BAL"].transfer(vault.address, rewardAmount, {"from": env.whales["BAL"]})
+    env.tokens[rewardToken].transfer(vault.address, rewardAmount, {"from": env.whales[rewardToken]})
     snapshot = snapshot_invariants(env, vault, currencyId)
 
     # Cannot reinvest without the proper role assigned
@@ -465,8 +466,8 @@ def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, e
             vault.reinvestReward.call(rewardParams, {"from": depositor})
     else:
         vault.reinvestReward(rewardParams, {"from": depositor})
-        bptAfter = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
-        assert bptAfter - bptBefore >= expectedBPTAmount
+        poolClaimAfter = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
+        assert poolClaimAfter - poolClaimBefore >= expectedPoolClaimAmount
 
     vault.revokeRole(vault.getRoles()["rewardReinvestment"], depositor, {"from": env.notional.owner()})
     check_invariants(env, vault, [], currencyId, snapshot)
