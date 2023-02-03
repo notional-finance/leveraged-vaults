@@ -1,16 +1,12 @@
 import json
 from brownie import ZERO_ADDRESS, Wei, accounts
-from brownie.convert import to_bytes
 from tests.fixtures import *
 from tests.balancer.helpers import get_metastable_amounts
 from tests.balancer.acceptance import ETHPrimaryContext, claim_rewards, reinvest_reward
 from scripts.common import (
-    set_dex_flags,
-    set_trade_type_flags,
     DEX_ID, 
     TRADE_TYPE
 )
-from tests.zeroex.helpers import load_test_data, save_test_data, fetch_0x_data
 
 chain = Chain()
 
@@ -35,6 +31,40 @@ def test_reinvest_reward(StratCurveStableETHstETH):
     proportional2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
     (primaryAmount, secondaryAmount) = get_metastable_amounts(context.vault.getStrategyContext()["poolContext"], rewardAmount)
     poolClaimBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
+    primaryTradeAddresses = [
+        '0xD533a949740bb3306d119CC777fa900bA034cd52', 
+        '0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511', 
+        '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', 
+        '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', 
+        '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', 
+        '0x0000000000000000000000000000000000000000', 
+        '0x0000000000000000000000000000000000000000', 
+        '0x0000000000000000000000000000000000000000', 
+        '0x0000000000000000000000000000000000000000'
+    ]
+    primaryTradeParams = [
+        [1, 0, 3], 
+        [0, 1, 15], 
+        [0, 0, 0], 
+        [0, 0, 0]
+    ]
+    secondaryTradeAddresses = [
+        '0xD533a949740bb3306d119CC777fa900bA034cd52', 
+        '0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511', 
+        '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', 
+        '0xDC24316b9AE028F1497c275EB9192a3Ea0f67022', 
+        '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84', 
+        '0x0000000000000000000000000000000000000000', 
+        '0x0000000000000000000000000000000000000000', 
+        '0x0000000000000000000000000000000000000000', 
+        '0x0000000000000000000000000000000000000000'
+    ] 
+    secondaryTradeParams = [
+        [1, 0, 3], 
+        [0, 1, 1], 
+        [0, 0, 0], 
+        [0, 0, 0]
+    ]
     rewardParams = [eth_abi.encode_abi(
         [proportional2TokenRewardTradeParams],
         [[
@@ -43,11 +73,14 @@ def test_reinvest_reward(StratCurveStableETHstETH):
                 ZERO_ADDRESS,
                 primaryAmount,
                 [
-                    DEX_ID["CURVE"],
-                    TRADE_TYPE["EXACT_IN_SINGLE"],
+                    DEX_ID["CURVE_V2"],
+                    TRADE_TYPE["EXACT_IN_BATCH"],
                     0,
                     False,
-                    bytes()
+                    eth_abi.encode_abi(
+                        ['(address[9],uint256[3][4])'],
+                        [[primaryTradeAddresses, primaryTradeParams]]
+                    )
                 ]
             ],
             [
@@ -55,35 +88,17 @@ def test_reinvest_reward(StratCurveStableETHstETH):
                 env.tokens["stETH"].address,
                 secondaryAmount,
                 [
-                    DEX_ID["CURVE"],
+                    DEX_ID["CURVE_V2"],
                     TRADE_TYPE["EXACT_IN_BATCH"],
-                    0, #Wei(0.05e18), # static slippage
+                    0,
                     False,
-                    bytes()
+                    eth_abi.encode_abi(
+                        ['(address[9],uint256[3][4])'],
+                        [[secondaryTradeAddresses, secondaryTradeParams]]
+                    )
                 ]
             ]
         ]]
     ), 0]
 
-    env.tokens["CRV"].transfer(env.tradingModule.address, rewardAmount, {"from": env.whales["CRV"]})
-    env.tradingModule.setTokenPermissions(
-        env.tradingModule,
-        env.tokens["CRV"].address,
-        [True, set_dex_flags(0, UNISWAP_V3=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True, EXACT_IN_BATCH=True)], 
-        {"from": env.notional.owner()})
-    trade = [
-        TRADE_TYPE["EXACT_IN_BATCH"],
-        env.tokens["CRV"].address,
-        env.tokens["stETH"].address,
-        secondaryAmount,
-        0,
-        chain.time() + 20000,
-        bytes()
-    ]
-    with open("abi/CurveExchangeContract.json", "r") as f:
-        abi = json.load(f)
-    router = Contract.from_abi("CurveExchangeContract", "0x99a58482BD75cbab83b27EC03CA68fF489b5788f", abi)
-    assert 1 == 2
-    env.tradingModule.executeTrade(DEX_ID["CURVE"], trade, {"from": env.notional.owner()})
-
-    #reinvest_reward(context, accounts[0], "CRV", rewardAmount, rewardParams, poolClaimBefore, 200916107796947076)
+    reinvest_reward(context, accounts[0], "CRV", rewardAmount, rewardParams, poolClaimBefore, 6375823110677832135)

@@ -144,7 +144,7 @@ def StratCurveStableETHstETH():
     env.tradingModule.setTokenPermissions(
         vault.address,
         env.tokens["CRV"].address,
-        [True, set_dex_flags(0, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True, EXACT_IN_BATCH=True)], 
+        [True, set_dex_flags(0, CURVE_V2=True), set_trade_type_flags(0, EXACT_IN_BATCH=True)], 
         {"from": env.notional.owner()})
 
     # Deploy mock contract necessary for liquidation tests

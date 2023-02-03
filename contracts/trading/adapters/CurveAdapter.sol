@@ -81,9 +81,13 @@ library CurveAdapter {
             revert InvalidTrade();
         }
 
-        if (trade.sellToken == address(Deployments.WETH) || trade.sellToken == Deployments.ETH_ADDRESS) {
+        if (
+            trade.sellToken == address(Deployments.WETH) || 
+            trade.sellToken == Deployments.ETH_ADDRESS ||
+            trade.sellToken == Deployments.ALT_ETH_ADDRESS
+        ) {
             // Curve does not support WETH as an input
-            spender = address(0);
+            // spender = address(0);
             msgValue = trade.amount;
         } else {
             spender = target;

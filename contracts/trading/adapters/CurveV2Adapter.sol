@@ -30,6 +30,10 @@ library CurveV2Adapter {
         uint256[3][4] swapParams;
     }
 
+    function _getTokenAddress(address token) internal view returns (address) {
+        return token == Deployments.ETH_ADDRESS ? Deployments.ALT_ETH_ADDRESS : token;
+    }
+
     function getExecutionData(address from, Trade calldata trade)
         internal view returns (
             address spender,
@@ -43,8 +47,8 @@ library CurveV2Adapter {
             executionCallData = abi.encodeWithSelector(
                 ICurveRouterV2.exchange.selector,
                 data.pool,
-                trade.sellToken,
-                trade.buyToken,
+                _getTokenAddress(trade.sellToken),
+                _getTokenAddress(trade.buyToken),
                 trade.amount,
                 trade.limit,
                 address(this)
@@ -69,7 +73,10 @@ library CurveV2Adapter {
         }
 
         target = address(Deployments.CURVE_ROUTER_V2);
-        if (trade.sellToken == Deployments.ETH_ADDRESS || trade.sellToken == Deployments.ALT_ETH_ADDRESS) {
+        if (trade.sellToken == Deployments.ETH_ADDRESS || 
+            trade.sellToken == Deployments.ALT_ETH_ADDRESS
+        ) {
+            // spender = address(0);
             msgValue = trade.amount;
         } else {
             spender = target;

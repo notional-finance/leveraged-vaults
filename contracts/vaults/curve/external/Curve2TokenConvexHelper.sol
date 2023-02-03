@@ -157,14 +157,14 @@ library Curve2TokenConvexHelper {
         });
 
         // Make sure we are joining with the right proportion to minimize slippage
-        /*poolContext._validateSpotPriceAndPairPrice({
+        poolContext._validateSpotPriceAndPairPrice({
             strategyContext: strategyContext,
             oraclePrice: poolContext.basePool._getOraclePairPrice(strategyContext),
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount
-        });*/
+        });
 
-        /*uint256 poolClaimAmount = poolContext._joinPoolAndStake({
+        uint256 poolClaimAmount = poolContext._joinPoolAndStake({
             strategyContext: strategyContext,
             stakingContext: context.stakingContext,
             primaryAmount: primaryAmount,
@@ -177,6 +177,6 @@ library Curve2TokenConvexHelper {
         strategyContext.vaultState.totalPoolClaim += poolClaimAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, poolClaimAmount); */
+        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, poolClaimAmount);
     }
 }
