@@ -26,8 +26,6 @@ library TradingUtils {
         uint256 buyAmount
     );
 
-    event TradeCall(address target, uint256 msgValue, bytes params);
-
     function _executeInternal(
         Trade memory trade,
         uint16 dexId,
@@ -152,8 +150,6 @@ library TradingUtils {
             uint256 depositAmount = _isExactIn(trade) ? trade.amount : trade.limit;
             Deployments.WETH.deposit{value: depositAmount }();
         }
-
-        emit TradeCall(target, msgValue, params);
 
         (bool success, bytes memory returnData) = target.call{value: msgValue}(params);
         if (!success) revert TradeExecution(returnData);
