@@ -169,13 +169,17 @@ def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex
 
     tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * percent)
     tradeParams = redeemParams[2]
-    redeemParamsEncoded = get_redeem_params(
-        redeemParams[0], 
-        redeemParams[1], 
-        get_dynamic_trade_params(
-            tradeParams[0], tradeParams[1], tradeParams[2], tradeParams[3], tradeParams[4]
+    if tradeParams != None:
+        redeemParamsEncoded = get_redeem_params(
+            redeemParams[0], 
+            redeemParams[1], 
+            get_dynamic_trade_params(
+                tradeParams[0], tradeParams[1], tradeParams[2], tradeParams[3], tradeParams[4]
+            )
         )
-    )
+    else:
+        redeemParamsEncoded = get_redeem_params(redeemParams[0], redeemParams[1])
+
     # Can't settle without the proper role
     with brownie.reverts():
         vault.settleVaultNormal.call(maturity, tokensToRedeem, redeemParamsEncoded, {"from": operator})
@@ -186,15 +190,16 @@ def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex
     vault.grantRole(vault.getRoles()["normalSettlement"], operator, {"from": env.notional.owner()})
 
     # Can't settle with bad slippage setting
-    with brownie.reverts():
-        badSlippage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["settlementSlippageLimitPercent"] + 1
-        vault.settleVaultNormal.call(maturity, tokensToRedeem, get_redeem_params(
-            redeemParams[0], 
-            redeemParams[1], 
-            get_dynamic_trade_params(
-                tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
-            )
-        ), {"from": operator})
+    if tradeParams != None:
+        with brownie.reverts():
+            badSlippage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["settlementSlippageLimitPercent"] + 1
+            vault.settleVaultNormal.call(maturity, tokensToRedeem, get_redeem_params(
+                redeemParams[0], 
+                redeemParams[1], 
+                get_dynamic_trade_params(
+                    tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
+                )
+            ), {"from": operator})
 
     # Test settlement (settle half)
     vaultState = env.notional.getVaultState(vault.address, maturity)
@@ -210,13 +215,17 @@ def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex
         enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, operator, True)
 
     # Redeem is allowed
-    redeemParamsEncoded2 = get_redeem_params(
-        redeemParams[0], 
-        redeemParams[1], 
-        get_dynamic_trade_params(
-            tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
+    if tradeParams != None:
+        redeemParamsEncoded2 = get_redeem_params(
+            redeemParams[0], 
+            redeemParams[1], 
+            get_dynamic_trade_params(
+                tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
+            )
         )
-    )
+    else:
+        redeemParamsEncoded2 = get_redeem_params(redeemParams[0], redeemParams[1])
+
     exitVaultPercent(env, vault, depositor, 1.0, redeemParamsEncoded2)
     chain.undo()
 
@@ -265,13 +274,16 @@ def post_maturity_settlement(context, depositAmount, primaryBorrowAmount, maturi
 
     tokensToRedeem = math.floor(env.notional.getVaultState(vault.address, maturity)["totalStrategyTokens"] * percent)
     tradeParams = redeemParams[2]
-    redeemParamsEncoded = get_redeem_params(
-        redeemParams[0], 
-        redeemParams[1], 
-        get_dynamic_trade_params(
-            tradeParams[0], tradeParams[1], tradeParams[2], tradeParams[3], tradeParams[4]
+    if tradeParams != None:
+        redeemParamsEncoded = get_redeem_params(
+            redeemParams[0], 
+            redeemParams[1], 
+            get_dynamic_trade_params(
+                tradeParams[0], tradeParams[1], tradeParams[2], tradeParams[3], tradeParams[4]
+            )
         )
-    )
+    else:
+        redeemParamsEncoded = get_redeem_params(redeemParams[0], redeemParams[1]) 
 
     # Can't call settleVaultPostMaturity before maturity
     with brownie.reverts():
@@ -293,15 +305,17 @@ def post_maturity_settlement(context, depositAmount, primaryBorrowAmount, maturi
     vault.grantRole(vault.getRoles()["postMaturitySettlement"], operator, {"from": env.notional.owner()})
 
     # Can't settle with bad slippage setting
-    with brownie.reverts():
-        badSlippage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["postMaturitySettlementSlippageLimitPercent"] + 1
-        vault.settleVaultPostMaturity.call(maturity, tokensToRedeem, get_redeem_params(
-            redeemParams[0], 
-            redeemParams[1], 
-            get_dynamic_trade_params(
-                tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
-            )
-        ), {"from": operator})
+    if tradeParams != None:
+        with brownie.reverts():
+            badSlippage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["postMaturitySettlementSlippageLimitPercent"] + 1
+            vault.settleVaultPostMaturity.call(maturity, tokensToRedeem, get_redeem_params(
+                redeemParams[0], 
+                redeemParams[1], 
+                get_dynamic_trade_params(
+                    tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
+                )
+            ), {"from": operator})
+
     vaultState = env.notional.getVaultState(vault.address, maturity)
     underlyingCashBefore = vault.convertStrategyToUnderlying(depositor, vaultState["totalStrategyTokens"], maturity)
 
@@ -337,13 +351,16 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
     enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor)
 
     tradeParams = redeemParams[2]
-    redeemParamsEncoded = get_redeem_params(
-        redeemParams[0], 
-        redeemParams[1], 
-        get_dynamic_trade_params(
-            tradeParams[0], tradeParams[1], tradeParams[2], tradeParams[3], tradeParams[4]
+    if tradeParams != None:
+        redeemParamsEncoded = get_redeem_params(
+            redeemParams[0], 
+            redeemParams[1], 
+            get_dynamic_trade_params(
+                tradeParams[0], tradeParams[1], tradeParams[2], tradeParams[3], tradeParams[4]
+            )
         )
-    )
+    else:
+        redeemParamsEncoded = get_redeem_params(redeemParams[0], redeemParams[1])
 
     # Role check
     with brownie.reverts():
@@ -355,15 +372,16 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
     vault.grantRole(vault.getRoles()["emergencySettlement"], operator, {"from": env.notional.owner()})
 
     # Can't settle with bad slippage setting
-    with brownie.reverts():
-        badSlippage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["emergencySettlementSlippageLimitPercent"] + 1
-        vault.settleVaultEmergency.call(maturity, get_redeem_params(
-            redeemParams[0], 
-            redeemParams[1], 
-            get_dynamic_trade_params(
-                tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
-            )
-        ), {"from": operator})
+    if tradeParams != None:
+        with brownie.reverts():
+            badSlippage = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]["emergencySettlementSlippageLimitPercent"] + 1
+            vault.settleVaultEmergency.call(maturity, get_redeem_params(
+                redeemParams[0], 
+                redeemParams[1], 
+                get_dynamic_trade_params(
+                    tradeParams[0], tradeParams[1], badSlippage, tradeParams[3], tradeParams[4]
+                )
+            ), {"from": operator})
 
     # Cannot get emergency settlement amount if we are below the threshold
     with brownie.reverts():

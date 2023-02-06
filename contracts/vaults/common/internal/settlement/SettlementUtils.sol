@@ -27,12 +27,14 @@ library SettlementUtils {
         bytes memory data
     ) internal view returns (RedeemParams memory params) {
         params = abi.decode(data, (RedeemParams));
-        TradeParams memory callbackData = abi.decode(
-            params.secondaryTradeParams, (TradeParams)
-        );
+        if (params.secondaryTradeParams.length != 0) {
+            TradeParams memory callbackData = abi.decode(
+                params.secondaryTradeParams, (TradeParams)
+            );
 
-        if (callbackData.oracleSlippagePercentOrLimit > slippageLimitPercent) {
-            revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercentOrLimit, slippageLimitPercent);
+            if (callbackData.oracleSlippagePercentOrLimit > slippageLimitPercent) {
+                revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercentOrLimit, slippageLimitPercent);
+            }
         }
     }
 

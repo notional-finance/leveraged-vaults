@@ -171,7 +171,7 @@ def get_redeem_params(minPrimary, minSecondary, trade=None):
     if trade == None:
         trade = bytes()
     return eth_abi.encode_abi(
-        ['(uint256,uint256,bool,bytes)'],
+        ['(uint256,uint256,bytes)'],
         [[
             Wei(minPrimary * 0.98),
             Wei(minSecondary * 0.98),

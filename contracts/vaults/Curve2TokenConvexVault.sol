@@ -10,10 +10,12 @@ import {
 import {
     StrategyContext,
     StrategyVaultState,
+    StrategyVaultSettings,
     RedeemParams,
     DepositParams,
     ReinvestRewardParams
 } from "./common/VaultTypes.sol";
+import {VaultStorage} from "./common/VaultStorage.sol";
 import {Errors} from "../global/Errors.sol";
 import {Constants} from "../global/Constants.sol";
 import {TypeConvert} from "../global/TypeConvert.sol";
@@ -31,6 +33,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     using TypeConvert for uint256;
     using TypeConvert for int256;
     using TokenUtils for IERC20;
+    using SettlementUtils for StrategyContext;
     using CurveVaultStorage for StrategyVaultState;
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
     using Curve2TokenConvexHelper for Curve2TokenConvexStrategyContext;
@@ -135,6 +138,14 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         );
     }
 
+    function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
+            maturity: maturity, 
+            totalPoolSupply: context.poolContext.basePool.poolToken.totalSupply()
+        });
+    }
+
     function reinvestReward(ReinvestRewardParams calldata params) 
         external onlyRole(REWARD_REINVESTMENT_ROLE) {
         Curve2TokenConvexHelper.reinvestReward(_strategyContext(), params);        
@@ -158,5 +169,14 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
 
     function getStrategyContext() external view returns (Curve2TokenConvexStrategyContext memory) {
         return _strategyContext();
+    }
+
+    /// @notice Updates the vault settings
+    /// @param settings vault settings
+    function setStrategyVaultSettings(StrategyVaultSettings calldata settings)
+        external
+        onlyNotionalOwner
+    {
+        VaultStorage.setStrategyVaultSettings(settings);
     }
 }

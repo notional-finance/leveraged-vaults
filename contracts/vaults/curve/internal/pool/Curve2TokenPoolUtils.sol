@@ -277,11 +277,13 @@ library Curve2TokenPoolUtils {
         bool success = stakingContext.rewardPool.withdrawAndUnwrap(poolClaim, false); // claimRewards = false
         if (!success) revert Errors.UnstakeFailed();
 
-        if (params.redeemSingleSided) {
+        if (params.secondaryTradeParams.length == 0) {
+            // Redeem single-sided
             primaryBalance = ICurve2TokenPool(address(poolContext.curvePool)).remove_liquidity_one_coin(
                 poolClaim, int8(poolContext.basePool.primaryIndex), params.minPrimary
             );
         } else {
+            // Redeem proportionally
             uint256[2] memory minAmounts;
             minAmounts[poolContext.basePool.primaryIndex] = params.minPrimary;
             minAmounts[poolContext.basePool.secondaryIndex] = params.minSecondary;

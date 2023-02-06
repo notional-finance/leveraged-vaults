@@ -179,9 +179,9 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         );
     }
 
-    function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 bptToSettle) {
+    function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        bptToSettle = context.baseStrategy._getEmergencySettlementParams({
+        poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
             totalPoolSupply: context.poolContext.basePool.poolToken.totalSupply()
         });
