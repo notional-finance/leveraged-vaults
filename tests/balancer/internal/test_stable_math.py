@@ -14,8 +14,8 @@ def test_get_spot_price(StratStableETHstETH):
 
 def test_spot_price_within_1_perc_of_pair_price_after_trading(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH
-    poolId = vault.getStrategyContext()["poolContext"]["basePool"].dict()['poolId']
-    pool = vault.getStrategyContext()["poolContext"]["basePool"]["pool"]        
+    poolId = vault.getStrategyContext()["poolContext"]['poolId']
+    pool = vault.getStrategyContext()["poolContext"]["basePool"]["poolToken"]        
     env.tradingModule.setTokenPermissions(
         env.tradingModule.address, 
         env.tokens["wstETH"].address, 
