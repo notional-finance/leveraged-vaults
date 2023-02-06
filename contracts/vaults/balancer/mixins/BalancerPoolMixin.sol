@@ -34,15 +34,15 @@ abstract contract BalancerPoolMixin is AuraStakingMixin {
         });
     }
 
-    /// @notice Converts BPT to strategy tokens
-    function convertPoolClaimToStrategyTokens(uint256 bptClaim)
+    /// @notice Converts pool claim to strategy tokens
+    function convertPoolClaimToStrategyTokens(uint256 poolClaim)
         external view returns (uint256 strategyTokenAmount) {
-        return _baseStrategyContext()._convertPoolClaimToStrategyTokens(bptClaim);
+        return _baseStrategyContext()._convertPoolClaimToStrategyTokens(poolClaim);
     }
 
-    /// @notice Converts strategy tokens to BPT
+    /// @notice Converts strategy tokens to pool claim
     function convertStrategyTokensToPoolClaim(uint256 strategyTokenAmount) 
-        external view returns (uint256 bptClaim) {
+        external view returns (uint256 poolClaim) {
         return _baseStrategyContext()._convertStrategyTokensToPoolClaim(strategyTokenAmount);
     }
 

@@ -37,26 +37,26 @@ library StrategyUtils {
 
     /// @notice Converts strategy tokens to LP tokens
     function _convertStrategyTokensToPoolClaim(StrategyContext memory context, uint256 strategyTokenAmount)
-        internal pure returns (uint256 bptClaim) {
+        internal pure returns (uint256 poolClaim) {
         require(strategyTokenAmount <= context.vaultState.totalStrategyTokenGlobal);
         if (context.vaultState.totalStrategyTokenGlobal > 0) {
-            bptClaim = (strategyTokenAmount * context.vaultState.totalPoolClaim) / context.vaultState.totalStrategyTokenGlobal;
+            poolClaim = (strategyTokenAmount * context.vaultState.totalPoolClaim) / context.vaultState.totalStrategyTokenGlobal;
         }
     }
 
     /// @notice Converts LP tokens to strategy tokens
-    function _convertPoolClaimToStrategyTokens(StrategyContext memory context, uint256 bptClaim)
+    function _convertPoolClaimToStrategyTokens(StrategyContext memory context, uint256 poolClaim)
         internal pure returns (uint256 strategyTokenAmount) {
         if (context.vaultState.totalPoolClaim == 0) {
             // Strategy tokens are in 8 decimal precision. Scale the minted amount according to pool claim precision.
-            return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
+            return (poolClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
                 context.poolClaimPrecision;
         }
 
         // Pool claim in maturity is calculated before the new pool tokens are minted, so this calculation
         // is the tokens minted that will give the account a corresponding share of the new pool balance held.
         // The precision here will be the same as strategy token supply.
-        strategyTokenAmount = (bptClaim * context.vaultState.totalStrategyTokenGlobal) / context.vaultState.totalPoolClaim;
+        strategyTokenAmount = (poolClaim * context.vaultState.totalStrategyTokenGlobal) / context.vaultState.totalPoolClaim;
     }
 
     function _executeTradeExactIn(

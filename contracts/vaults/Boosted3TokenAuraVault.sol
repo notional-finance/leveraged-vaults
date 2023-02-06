@@ -168,9 +168,9 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         spotPrice = Boosted3TokenAuraHelper.getSpotPrice(context, tokenIndex);
     }
 
-    function getEmergencySettlementBPTAmount(uint256 maturity) external view returns (uint256 bptToSettle) {
+    function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        bptToSettle = context.baseStrategy._getEmergencySettlementParams({
+        poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
             totalPoolSupply: context.poolContext.basePool.basePool.poolToken.totalSupply()
         });

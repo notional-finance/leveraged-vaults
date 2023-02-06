@@ -26,7 +26,6 @@ struct DepositParams {
 struct RedeemParams {
     uint256 minPrimary;
     uint256 minSecondary;
-    bool redeemSingleSided;
     bytes secondaryTradeParams;
 }
 

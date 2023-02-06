@@ -148,14 +148,11 @@ def get_dynamic_trade_params(dexId, tradeType, slippage, unwrap, exchangeData):
         ]]
     )
 
-def get_deposit_params(minBPT=0, secondaryBorrow=0, trade=bytes(0)):
+def get_deposit_params(minPoolClaim=0, trade=bytes()):
     return eth_abi.encode_abi(
-        ['(uint256,uint256,uint32,uint32,bytes)'],
+        ['(uint256,bytes)'],
         [[
-            minBPT,
-            secondaryBorrow,
-            0, # secondaryBorrowLimit
-            0, # secondaryRollLendLimit
+            minPoolClaim,
             trade
         ]]
     )
@@ -166,17 +163,6 @@ def get_redeem_params(minPrimary, minSecondary, trade):
         [[
             Wei(minPrimary * 0.98),
             Wei(minSecondary * 0.98),
-            trade
-        ]]
-    )
-
-def get_two_token_redeem_params(minPrimary, minSecondary, redeemSingleSided, trade):
-    return eth_abi.encode_abi(
-        ['(uint256,uint256,bool,bytes)'],
-        [[
-            Wei(minPrimary),
-            Wei(minSecondary),
-            redeemSingleSided,
             trade
         ]]
     )

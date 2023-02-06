@@ -74,7 +74,7 @@ library TwoTokenPoolUtils {
         // Make sure spot price is within oracleDeviationLimit of pairPrice
         strategyContext._checkPriceLimit(oraclePrice, spotPrice);
         
-        // Get shares of primary and secondary balances with the provided bptAmount
+        // Get shares of primary and secondary balances with the provided poolClaim
         uint256 totalSupply = poolContext.poolToken.totalSupply();
         uint256 primaryBalance = poolContext.primaryBalance * poolClaim / totalSupply;
         uint256 secondaryBalance = poolContext.secondaryBalance * poolClaim / totalSupply;

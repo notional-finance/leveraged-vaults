@@ -92,8 +92,12 @@ def deposit(context, ops):
             depositors.add(depositor)
         maturity = maturities[op[3]]
         depositParams = op[4]
+        primaryPercent = op[5]
+        depositTradeFunc = op[6]
         expectedBorrowAmount = get_expected_borrow_amount(env, currencyId, maturity, primaryBorrowAmount)
-        expectedPoolClaimAmount = get_expected_pool_claim_amount(context, depositAmount, expectedBorrowAmount)
+        expectedPoolClaimAmount = get_expected_pool_claim_amount(
+            context, depositAmount, expectedBorrowAmount, primaryPercent, depositTradeFunc
+        )
         enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor, False, depositParams)
         vaultAccount = notional.getVaultAccount(depositor, vault.address)
         vaultState = notional.getVaultState(vault.address, maturity)
@@ -363,13 +367,13 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
 
     # Cannot get emergency settlement amount if we are below the threshold
     with brownie.reverts():
-        vault.getEmergencySettlementBPTAmount(maturity)
+        vault.getEmergencySettlementPoolClaimAmount(maturity)
 
     settings = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]
     vault.setStrategyVaultSettings(get_updated_vault_settings(settings, maxBalancerPoolShare=0), {"from": env.notional.owner()})
 
     vaultState = env.notional.getVaultState(vault.address, maturity)
-    assert vault.getEmergencySettlementBPTAmount(maturity) == vault.convertStrategyTokensToPoolClaim(vaultState["totalStrategyTokens"])
+    assert vault.getEmergencySettlementPoolClaimAmount(maturity) == vault.convertStrategyTokensToPoolClaim(vaultState["totalStrategyTokens"])
     underlyingCashBefore = vault.convertStrategyToUnderlying(depositor, vaultState["totalStrategyTokens"], maturity)
 
     vault.settleVaultEmergency(maturity, redeemParamsEncoded, {"from": operator})
