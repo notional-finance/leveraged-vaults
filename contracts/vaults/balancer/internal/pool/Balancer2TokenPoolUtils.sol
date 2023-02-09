@@ -181,7 +181,7 @@ library Balancer2TokenPoolUtils {
         });
 
         // Check BPT threshold to make sure our share of the pool is
-        // below maxBalancerPoolShare
+        // below maxPoolShare
         uint256 bptThreshold = strategyContext.vaultSettings._poolClaimThreshold(
             poolContext.basePool.poolToken.totalSupply()
         );

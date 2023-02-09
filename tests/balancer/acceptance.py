@@ -370,7 +370,7 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
         vault.getEmergencySettlementPoolClaimAmount(maturity)
 
     settings = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]
-    vault.setStrategyVaultSettings(get_updated_vault_settings(settings, maxBalancerPoolShare=0), {"from": env.notional.owner()})
+    vault.setStrategyVaultSettings(get_updated_vault_settings(settings, maxPoolShare=0), {"from": env.notional.owner()})
 
     vaultState = env.notional.getVaultState(vault.address, maturity)
     assert vault.getEmergencySettlementPoolClaimAmount(maturity) == vault.convertStrategyTokensToPoolClaim(vaultState["totalStrategyTokens"])
@@ -488,11 +488,11 @@ def balancer_share_too_high(context, depositAmount, primaryBorrowAmount):
     # Only Notional owner can change settings
     with brownie.reverts():
         vault.setStrategyVaultSettings.call(
-            get_updated_vault_settings(settings, maxBalancerPoolShare=0),
+            get_updated_vault_settings(settings, maxPoolShare=0),
             {"from": accounts[0]}
         )
     vault.setStrategyVaultSettings(
-        get_updated_vault_settings(settings, maxBalancerPoolShare=0),
+        get_updated_vault_settings(settings, maxPoolShare=0),
         {"from": env.notional.owner()}
     )
     with brownie.reverts():

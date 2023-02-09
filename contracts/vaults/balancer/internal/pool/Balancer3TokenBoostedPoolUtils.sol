@@ -429,7 +429,7 @@ library Balancer3TokenBoostedPoolUtils {
         bptMinted = _joinPoolExactTokensIn(poolContext, deposit, minBPT);
 
         // Check BPT threshold to make sure our share of the pool is
-        // below maxBalancerPoolShare
+        // below maxPoolShare
         uint256 bptThreshold = strategyContext.vaultSettings._poolClaimThreshold(
             oracleContext.virtualSupply
         );

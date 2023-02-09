@@ -79,14 +79,8 @@ class Environment:
     def deployTradingModule(self, useFresh=False):
         if useFresh == False:
             self.tradingModule = Contract.from_abi("TradingModule", self.addresses["trading"]["proxy"], TradingModule.abi)
-
-            # ETH/USD oracle
-            self.tradingModule.setPriceOracle(
-                "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-                "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",
-                {"from": self.notional.owner()}
-            )
-
+            impl = TradingModule.deploy(self.notional.address, self.tradingModule.address, {"from": self.deployer})
+            self.tradingModule.upgradeTo(impl.address, {"from": self.notional.owner()})
         else:
             emptyImpl = EmptyProxy.deploy({"from": self.deployer})
             self.proxy = nProxy.deploy(emptyImpl.address, bytes(0), {"from": self.deployer})

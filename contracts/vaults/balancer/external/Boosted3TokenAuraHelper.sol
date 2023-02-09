@@ -178,7 +178,7 @@ library Boosted3TokenAuraHelper {
             /// @notice Setting minBPT to 0 based on the following assumptions
             /// 1. _getValidatedPoolData already validates the spot price to make sure
             /// the pool isn't being manipulated
-            /// 2. We check maxBalancerPoolShare before joining to make sure the pool
+            /// 2. We check maxPoolShare before joining to make sure the pool
             /// has adequate liquidity
             /// 3. Manipulating the pool before calling reinvestReward isn't expected
             /// to be very profitable for the attacker because the function gets called

@@ -172,7 +172,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalPoolSupply: context.poolContext.basePool.basePool.poolToken.totalSupply()
+            totalPoolSupply: context.oracleContext.virtualSupply
         });
     }
 }
