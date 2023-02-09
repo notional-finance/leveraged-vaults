@@ -82,7 +82,6 @@ class CurveEnvironment(Environment):
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
-                    stratConfig["maxRewardTradeSlippageLimitPercent"], 
                     stratConfig["maxPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
