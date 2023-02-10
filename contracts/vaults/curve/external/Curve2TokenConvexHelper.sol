@@ -119,7 +119,8 @@ library Curve2TokenConvexHelper {
     ) private {
         uint256 oraclePrice = poolContext.basePool._getOraclePairPrice(strategyContext);
 
-        /// @notice params.minPrimary and params.minSecondary are not required for this strategy vault
+        /// @notice params.minPrimary and params.minSecondary are not required to be passed in by the caller
+        /// for this strategy vault
         (params.minPrimary, params.minSecondary) = poolContext._getMinExitAmounts({
             strategyContext: strategyContext,
             oraclePrice: oraclePrice,
