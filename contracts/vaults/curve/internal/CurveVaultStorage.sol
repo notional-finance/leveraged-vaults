@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import {StrategyVaultSettings, StrategyVaultState} from "../../common/VaultTypes.sol";
-import {CurveEvents} from "../CurveEvents.sol";
+import {VaultEvents} from "../../common/VaultEvents.sol";
 import {CurveConstants} from "./CurveConstants.sol";
 
 library CurveVaultStorage {
@@ -28,7 +28,7 @@ library CurveVaultStorage {
         // Hardcode to the zero slot
         store[0] = settings;
 
-        emit CurveEvents.StrategyVaultSettingsUpdated(settings);
+        emit VaultEvents.StrategyVaultSettingsUpdated(settings);
     }
 
     function getStrategyVaultState() internal view returns (StrategyVaultState memory) {

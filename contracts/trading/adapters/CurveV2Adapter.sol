@@ -73,10 +73,7 @@ library CurveV2Adapter {
         }
 
         target = address(Deployments.CURVE_ROUTER_V2);
-        if (trade.sellToken == Deployments.ETH_ADDRESS || 
-            trade.sellToken == Deployments.ALT_ETH_ADDRESS
-        ) {
-            // spender = address(0);
+        if (trade.sellToken == Deployments.ETH_ADDRESS) {
             msgValue = trade.amount;
         } else {
             spender = target;

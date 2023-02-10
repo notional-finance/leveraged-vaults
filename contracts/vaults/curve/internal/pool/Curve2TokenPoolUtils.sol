@@ -259,7 +259,7 @@ library Curve2TokenPoolUtils {
             poolContext.basePool.poolToken.totalSupply()
         );
         uint256 poolClaimHeldAfterJoin = strategyContext.vaultState.totalPoolClaim + poolClaimMinted;
-        if (poolClaimHeldAfterJoin > poolClaimThreshold)
+        if (poolClaimThreshold < poolClaimHeldAfterJoin)
             revert Errors.PoolShareTooHigh(poolClaimHeldAfterJoin, poolClaimThreshold);
 
 

@@ -32,7 +32,7 @@ library SettlementUtils {
                 params.secondaryTradeParams, (TradeParams)
             );
 
-            if (callbackData.oracleSlippagePercentOrLimit > slippageLimitPercent) {
+            if (slippageLimitPercent < callbackData.oracleSlippagePercentOrLimit) {
                 revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercentOrLimit, slippageLimitPercent);
             }
         }

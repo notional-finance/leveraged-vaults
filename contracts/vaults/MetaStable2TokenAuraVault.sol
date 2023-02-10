@@ -20,7 +20,6 @@ import {
     RedeemParams,
     ReinvestRewardParams
 } from "./common/VaultTypes.sol";
-import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {MetaStable2TokenVaultMixin} from "./balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";

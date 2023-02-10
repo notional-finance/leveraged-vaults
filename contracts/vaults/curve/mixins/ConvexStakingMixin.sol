@@ -11,10 +11,11 @@ import {IConvexRewardToken} from "../../../../interfaces/convex/IConvexRewardTok
 import {IConvexRewardPool} from "../../../../interfaces/convex/IConvexRewardPool.sol";
 import {IConvexStakingProxy} from "../../../../interfaces/convex/IConvexStakingProxy.sol";
 import {CurveConstants} from "../internal/CurveConstants.sol";
-import {CurveEvents} from "../CurveEvents.sol";
-import {CurveStrategyBase} from "../CurveStrategyBase.sol";
+import {RewardUtils} from "../../common/internal/reward/RewardUtils.sol";
+import {VaultEvents} from "../../common/VaultEvents.sol";
+import {VaultBase} from "../../common/VaultBase.sol";
 
-abstract contract ConvexStakingMixin is CurveStrategyBase {
+abstract contract ConvexStakingMixin is VaultBase {
     using TokenUtils for IERC20;
 
     /// @notice Convex booster contract used for staking BPT
@@ -26,7 +27,7 @@ abstract contract ConvexStakingMixin is CurveStrategyBase {
     IERC20 internal immutable CVX_TOKEN;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
-        CurveStrategyBase(notional_, params.baseParams) {
+        VaultBase(notional_, params.baseParams.tradingModule, params.baseParams.settlementPeriodInSeconds) {
         CONVEX_REWARD_POOL = params.rewardPool;
         CONVEX_BOOSTER = IConvexBooster(CONVEX_REWARD_POOL.operator());
         CONVEX_POOL_ID = CONVEX_REWARD_POOL.pid();
@@ -57,23 +58,7 @@ abstract contract ConvexStakingMixin is CurveStrategyBase {
 
     function claimRewardTokens() 
         external onlyRole(REWARD_REINVESTMENT_ROLE) returns (uint256[] memory claimedBalances) {
-        IERC20[] memory rewardTokens = _rewardTokens();
-
-        uint256 numRewardTokens = rewardTokens.length;
-
-        claimedBalances = new uint256[](numRewardTokens);
-        for (uint256 i; i < numRewardTokens; i++) {
-            claimedBalances[i] = rewardTokens[i].balanceOf(address(this));
-        }
-
-        bool success = CONVEX_REWARD_POOL.getReward(address(this), true); // claimExtraRewards = true
-        require(success);
-
-        for (uint256 i; i < numRewardTokens; i++) {
-            claimedBalances[i] = rewardTokens[i].balanceOf(address(this)) - claimedBalances[i];
-        }
-        
-        emit CurveEvents.ClaimedRewardTokens(rewardTokens, claimedBalances);
+        claimedBalances = RewardUtils._claimRewardTokens(CONVEX_REWARD_POOL, _rewardTokens());
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades
