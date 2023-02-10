@@ -40,11 +40,9 @@ def test_single_maturity_success(StratCurveStableETHstETH):
     strategyTokensToRedeem = vaultSharesToLiquidator / vaultState["totalVaultShares"] * vaultState["totalStrategyTokens"]
     underlyingRedeemed = mock.convertStrategyToUnderlying(accounts[0], strategyTokensToRedeem, maturity)
     flashLoanAmount = assetRate["rate"] * assetAmountFromLiquidator / assetRate["underlyingDecimals"]
-    primaryAmount, secondaryAmount = get_metastable_amounts(mock.getStrategyContext()["poolContext"], underlyingRedeemed)
+    #primaryAmount, secondaryAmount = get_metastable_amounts(mock.getStrategyContext()["poolContext"], underlyingRedeemed)
     # discount primary and secondary slightly
-    redeemParams = get_redeem_params(primaryAmount * 0.98, secondaryAmount * 0.98, get_dynamic_trade_params(
-        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes()
-    ))
+    redeemParams = get_redeem_params(underlyingRedeemed * 0.98, 0)
     assert env.tokens["WETH"].balanceOf(env.liquidator.owner()) == 0
     env.liquidator.flashLiquidate(
         env.tokens["WETH"], 
