@@ -100,7 +100,7 @@ library Curve2TokenPoolUtils {
                 int8(poolContext.basePool.primaryIndex), 
                 10**poolContext.basePool.secondaryDecimals // 1 unit of secondary
             );
-            uint256 primaryPrecision = 10**poolContext.basePool.secondaryDecimals;
+            uint256 primaryPrecision = 10**poolContext.basePool.primaryDecimals;
             spotPrice = spotPrice * CurveConstants.CURVE_PRECISION / primaryPrecision;
         }
     }
