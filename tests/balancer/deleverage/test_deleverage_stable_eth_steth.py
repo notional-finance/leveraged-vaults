@@ -1,5 +1,6 @@
 import pytest
-from brownie import Wei, accounts
+import brownie
+from brownie import Wei, accounts, MockBalancerCallback
 from brownie.network.state import Chain
 from tests.fixtures import *
 from tests.balancer.helpers import enterMaturity, get_metastable_amounts
@@ -56,3 +57,36 @@ def test_single_maturity_success(StratStableETHstETH):
     # 0.02 == liquidation discount
     expectedProfit = valuationFix + underlyingRedeemed * 0.02
     assert pytest.approx(env.tokens["WETH"].balanceOf(env.liquidator.owner()), rel=5e-2) == expectedProfit
+
+def test_callback_reentrancy(StratStableETHstETH):
+    (env, vault, mock) = StratStableETHstETH
+    currencyId = 1
+    primaryBorrowAmount = 180e8
+    depositAmount = 20e18
+    maturity = env.notional.getActiveMarkets(currencyId)[0][1]
+    enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, env.whales["ETH"])
+
+    cb = MockBalancerCallback.deploy(
+        env.notional, 
+        vault.getStrategyContext()["poolContext"]["basePool"]["poolToken"],
+        {"from": accounts[0]}
+    )
+    
+    env.tokens["cETH"].transfer(cb.address, 100000e8, {"from": env.whales["cETH"]})
+    env.tokens["wstETH"].transfer(cb.address, 1000e18, {"from": env.whales["wstETH"]})
+    env.whales["ETH"].transfer(cb.address, 1000e18)
+    env.tokens["cETH"].approve(env.notional, 2**256-1, {"from": env.whales["cETH"]})
+    env.tokens["cETH"].approve(env.notional, 2**256-1, {"from": cb})
+    
+    redeemParams = get_redeem_params(0, 0, get_dynamic_trade_params(
+        DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
+    ))
+    callParams = [env.whales["ETH"], vault.address, redeemParams]
+
+    with brownie.reverts():
+        cb.deleverage.call(
+            1000e18,
+            1000e18,
+            callParams,
+            {"from": accounts[0]}
+        )

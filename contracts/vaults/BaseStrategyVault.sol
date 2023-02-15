@@ -201,8 +201,18 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         return _repaySecondaryBorrowCallback(token, underlyingRequired, data);
     }
 
-    function checkReentrancyContext() external onlyNotional {
+    function deleverageAccount(
+        address account,
+        address vault,
+        address liquidator,
+        uint256 depositAmountExternal,
+        bool transferSharesToLiquidator,
+        bytes calldata redeemData
+    ) external returns (uint256 profitFromLiquidation) {
         _checkReentrancyContext();
+        return NOTIONAL.deleverageAccount(
+            account, vault, liquidator, depositAmountExternal, transferSharesToLiquidator, redeemData
+        );
     }
 
     function getRoles() external view returns (StrategyVaultRoles memory) {

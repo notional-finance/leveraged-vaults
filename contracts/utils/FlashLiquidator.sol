@@ -5,6 +5,7 @@ import {IEulerDToken} from "../../interfaces/euler/IEulerDToken.sol";
 import {IEulerMarkets} from "../../interfaces/euler/IEulerMarkets.sol";
 import {IEulerFlashLoanReceiver} from "../../interfaces/euler/IEulerFlashLoanReceiver.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
+import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {CErc20Interface} from "../../interfaces/compound/CErc20Interface.sol";
 import {CEtherInterface} from "../../interfaces/compound/CEtherInterface.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
@@ -102,7 +103,7 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
             
             require(maxLiquidatorDepositAssetCash > 0);
 
-            NOTIONAL.deleverageAccount(
+            IStrategyVault(params.vault).deleverageAccount(
                 params.account, 
                 params.vault, 
                 address(this), 
