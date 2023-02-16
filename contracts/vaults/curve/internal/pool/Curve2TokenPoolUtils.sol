@@ -165,52 +165,6 @@ library Curve2TokenPoolUtils {
         strategyContext._checkPriceLimit(expectedSecondaryPercentage, secondaryPercentage);
     }
 
-    /// @notice calculates the expected min exit amounts for a given pool claim amount
-    function _getMinExitAmounts(
-        Curve2TokenPoolContext calldata poolContext,
-        StrategyContext calldata strategyContext,
-        uint256 oraclePrice,
-        uint256 poolClaim
-    ) internal view returns (uint256 minPrimary, uint256 minSecondary) {
-        // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
-        // Validate the spot price to make sure the pool is not being manipulated
-        uint256 spotPrice = _getSpotPrice({
-            poolContext: poolContext,
-            tokenIndex: 0
-        });
-
-        (minPrimary, minSecondary) = poolContext.basePool._getMinExitAmounts({
-            strategyContext: strategyContext,
-            spotPrice: spotPrice,
-            oraclePrice: oraclePrice,
-            poolClaim: poolClaim
-        });
-    }
-
-    /// @notice Gets the time-weighted primary token balance for a given poolClaim Amount
-    /// @param poolContext pool context variables
-    /// @param strategyContext strategy context variables
-    /// @param poolClaim amount of pool lp tokens
-    /// @return primaryAmount primary token balance
-    function _getTimeWeightedPrimaryBalance(
-        Curve2TokenPoolContext memory poolContext,
-        StrategyContext memory strategyContext,
-        uint256 poolClaim
-    ) internal view returns (uint256 primaryAmount) {
-        uint256 oraclePairPrice = poolContext.basePool._getOraclePairPrice(strategyContext);
-        
-        // tokenIndex == 0 because _getOraclePairPrice always returns the price in terms of
-        // the primary currency
-        uint256 spotPrice = _getSpotPrice(poolContext, 0);
-
-        primaryAmount = poolContext.basePool._getTimeWeightedPrimaryBalance({
-            strategyContext: strategyContext,
-            poolClaim: poolClaim,
-            oraclePrice: oraclePairPrice,
-            spotPrice: spotPrice
-        });
-    }
-
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted
     /// primary balance is used in order to prevent pool manipulation.
     /// @param poolContext pool context variables
@@ -220,14 +174,21 @@ library Curve2TokenPoolUtils {
     function _convertStrategyToUnderlying(
         Curve2TokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
-        uint256 strategyTokenAmount
+        uint256 strategyTokenAmount,
+        uint256 oraclePrice,
+        uint256 spotPrice
     ) internal view returns (int256 underlyingValue) {
         
         uint256 poolClaim 
             = strategyContext._convertStrategyTokensToPoolClaim(strategyTokenAmount);
 
         underlyingValue 
-            = poolContext._getTimeWeightedPrimaryBalance(strategyContext, poolClaim).toInt();
+            = poolContext.basePool._getTimeWeightedPrimaryBalance({
+                strategyContext: strategyContext,
+                poolClaim: poolClaim,
+                oraclePrice: oraclePrice, 
+                spotPrice: spotPrice
+            }).toInt();
     }   
 
     function _joinPoolAndStake(
@@ -294,5 +255,15 @@ library Curve2TokenPoolUtils {
             (primaryBalance, secondaryBalance) 
                 = (exitBalances[poolContext.basePool.primaryIndex], exitBalances[poolContext.basePool.secondaryIndex]);
         }
+    }
+
+    function _getSpotPriceAndOraclePrice(
+        Curve2TokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext
+    ) internal view returns (uint256 spotPrice, uint256 oraclePrice) {
+        // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
+        // Validate the spot price to make sure the pool is not being manipulated
+        spotPrice = poolContext._getSpotPrice(0); // tokenIndex
+        oraclePrice = poolContext.basePool._getOraclePairPrice(strategyContext);
     }
 }

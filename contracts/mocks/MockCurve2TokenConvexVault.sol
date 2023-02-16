@@ -6,6 +6,8 @@ import {
     Curve2TokenConvexStrategyContext, 
     Curve2TokenPoolContext
 } from "../vaults/curve/CurveVaultTypes.sol";
+import {TwoTokenPoolUtils} from "../vaults/common/internal/pool/TwoTokenPoolUtils.sol";
+import {TwoTokenPoolContext} from "../vaults/common/VaultTypes.sol";
 import {Curve2TokenVaultMixin} from "../vaults/curve/mixins/Curve2TokenVaultMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {Curve2TokenPoolUtils} from "../vaults/curve/internal/pool/Curve2TokenPoolUtils.sol";
@@ -13,6 +15,7 @@ import {BalancerConstants} from "../vaults/balancer/internal/BalancerConstants.s
 
 contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
+    using TwoTokenPoolUtils for TwoTokenPoolContext;
 
     mapping(address => uint256) public valuationFactors;
 
@@ -50,9 +53,12 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
     ) public view override returns (int256 underlyingValue) {
         uint256 valuationFactor = valuationFactors[account];
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        (uint256 spotPrice, uint256 oraclePrice) = context.poolContext._getSpotPriceAndOraclePrice(context.baseStrategy);
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
-            strategyTokenAmount: strategyTokenAmount
+            strategyTokenAmount: strategyTokenAmount,
+            oraclePrice: oraclePrice,
+            spotPrice: spotPrice
         });
         if (valuationFactor > 0) {
             underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;            
@@ -69,8 +75,12 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
 
     function getTimeWeightedPrimaryBalance(uint256 bptAmount) external view returns (uint256) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        return Curve2TokenPoolUtils._getTimeWeightedPrimaryBalance(
-            context.poolContext, context.baseStrategy, bptAmount
-        );
+        (uint256 spotPrice, uint256 oraclePrice) = context.poolContext._getSpotPriceAndOraclePrice(context.baseStrategy);
+        return context.poolContext.basePool._getTimeWeightedPrimaryBalance({
+            strategyContext: context.baseStrategy,
+            poolClaim: bptAmount,
+            oraclePrice: oraclePrice,
+            spotPrice: spotPrice
+        });
     }
 }
