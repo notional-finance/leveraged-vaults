@@ -24,6 +24,8 @@ interface IBalancerVault {
         MANAGEMENT_FEE_TOKENS_OUT // for ManagedPool
     }
 
+    enum UserBalanceOpKind { DEPOSIT_INTERNAL, WITHDRAW_INTERNAL, TRANSFER_INTERNAL, TRANSFER_EXTERNAL }
+
     /**
      * @dev Returns a Pool's contract address and specialization setting.
      */
@@ -120,4 +122,14 @@ interface IBalancerVault {
         uint256[] calldata amounts, 
         bytes calldata userData
     ) external;
+
+    struct UserBalanceOp {
+        UserBalanceOpKind kind;
+        IAsset asset;
+        uint256 amount;
+        address sender;
+        address payable recipient;
+    }
+
+    function manageUserBalance(UserBalanceOp[] memory ops) external payable;
 }
