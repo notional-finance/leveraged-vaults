@@ -3,14 +3,15 @@ pragma solidity 0.8.17;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {Deployments} from "../../../global/Deployments.sol";
-import {TwoTokenPoolContext, AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
+import {TwoTokenPoolContext} from "../../common/VaultTypes.sol";
+import {Balancer2TokenPoolContext, AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
-import {PoolMixin} from "./PoolMixin.sol";
+import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 
-abstract contract TwoTokenPoolMixin is PoolMixin {
+abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin {
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
 
@@ -24,7 +25,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
     constructor(
         NotionalProxy notional_, 
         AuraVaultDeploymentParams memory params
-    ) PoolMixin(notional_, params) {
+    ) BalancerPoolMixin(notional_, params) {
         PRIMARY_TOKEN = IERC20(_getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId));
         address primaryAddress = BalancerUtils.getTokenAddress(address(PRIMARY_TOKEN));
 
@@ -67,7 +68,7 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
         SECONDARY_DECIMALS = uint8(secondaryDecimals);
     }
 
-    function _twoTokenPoolContext() internal view returns (TwoTokenPoolContext memory) {
+    function _twoTokenPoolContext() internal view returns (Balancer2TokenPoolContext memory) {
         (
             /* address[] memory tokens */,
             uint256[] memory balances,
@@ -76,18 +77,21 @@ abstract contract TwoTokenPoolMixin is PoolMixin {
 
         uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
 
-        return TwoTokenPoolContext({
-            primaryToken: address(PRIMARY_TOKEN),
-            secondaryToken: address(SECONDARY_TOKEN),
-            primaryIndex: PRIMARY_INDEX,
-            secondaryIndex: SECONDARY_INDEX,
-            primaryDecimals: PRIMARY_DECIMALS,
-            secondaryDecimals: SECONDARY_DECIMALS,
-            primaryBalance: balances[PRIMARY_INDEX],
-            secondaryBalance: balances[SECONDARY_INDEX],
+        return Balancer2TokenPoolContext({
+            basePool: TwoTokenPoolContext({
+                primaryToken: address(PRIMARY_TOKEN),
+                secondaryToken: address(SECONDARY_TOKEN),
+                primaryIndex: PRIMARY_INDEX,
+                secondaryIndex: SECONDARY_INDEX,
+                primaryDecimals: PRIMARY_DECIMALS,
+                secondaryDecimals: SECONDARY_DECIMALS,
+                primaryBalance: balances[PRIMARY_INDEX],
+                secondaryBalance: balances[SECONDARY_INDEX],
+                poolToken: BALANCER_POOL_TOKEN
+            }),
             primaryScaleFactor: scalingFactors[PRIMARY_INDEX],
             secondaryScaleFactor: scalingFactors[SECONDARY_INDEX],
-            basePool: _poolContext()
+            poolId: BALANCER_POOL_ID
         });
     }
 

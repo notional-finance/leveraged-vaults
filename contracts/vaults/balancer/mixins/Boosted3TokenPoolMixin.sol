@@ -2,8 +2,8 @@
 pragma solidity 0.8.17;
 
 import {
-    ThreeTokenPoolContext, 
-    TwoTokenPoolContext, 
+    Balancer3TokenPoolContext, 
+    Balancer2TokenPoolContext, 
     BoostedOracleContext,
     UnderlyingPoolContext,
     AuraVaultDeploymentParams,
@@ -11,17 +11,17 @@ import {
     StrategyContext,
     AuraStakingContext
 } from "../BalancerVaultTypes.sol";
+import {TwoTokenPoolContext, ThreeTokenPoolContext} from "../../common/VaultTypes.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {IBalancerPool, IBoostedPool, ILinearPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
-import {PoolMixin} from "./PoolMixin.sol";
+import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
-abstract contract Boosted3TokenPoolMixin is PoolMixin {
-
+abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
     error InvalidPrimaryToken(address token);
 
     uint8 internal constant NOT_FOUND = type(uint8).max;
@@ -40,7 +40,7 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
     constructor(
         NotionalProxy notional_, 
         AuraVaultDeploymentParams memory params
-    ) PoolMixin(notional_, params) {
+    ) BalancerPoolMixin(notional_, params) {
         address primaryAddress = BalancerUtils.getTokenAddress(
             _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId)
         );
@@ -156,26 +156,29 @@ abstract contract Boosted3TokenPoolMixin is PoolMixin {
     }
 
     function _threeTokenPoolContext(uint256[] memory balances, uint256[] memory scalingFactors) 
-        internal view returns (ThreeTokenPoolContext memory) {
-        return ThreeTokenPoolContext({
-            tertiaryToken: address(TERTIARY_TOKEN),
-            tertiaryIndex: TERTIARY_INDEX,
-            tertiaryDecimals: TERTIARY_DECIMALS,
-            tertiaryBalance: balances[TERTIARY_INDEX],
+        internal view returns (Balancer3TokenPoolContext memory) {
+        return Balancer3TokenPoolContext({
+            basePool: ThreeTokenPoolContext({
+                basePool: TwoTokenPoolContext({
+                    primaryToken: address(PRIMARY_TOKEN),
+                    secondaryToken: address(SECONDARY_TOKEN),
+                    primaryIndex: PRIMARY_INDEX,
+                    secondaryIndex: SECONDARY_INDEX,
+                    primaryDecimals: PRIMARY_DECIMALS,
+                    secondaryDecimals: SECONDARY_DECIMALS,
+                    primaryBalance: balances[PRIMARY_INDEX],
+                    secondaryBalance: balances[SECONDARY_INDEX],
+                    poolToken: BALANCER_POOL_TOKEN
+                }),
+                tertiaryToken: address(TERTIARY_TOKEN),
+                tertiaryIndex: TERTIARY_INDEX,
+                tertiaryDecimals: TERTIARY_DECIMALS,
+                tertiaryBalance: balances[TERTIARY_INDEX]
+            }),
+            primaryScaleFactor: scalingFactors[PRIMARY_INDEX],
+            secondaryScaleFactor: scalingFactors[SECONDARY_INDEX],
             tertiaryScaleFactor: scalingFactors[TERTIARY_INDEX],
-            basePool: TwoTokenPoolContext({
-                primaryToken: address(PRIMARY_TOKEN),
-                secondaryToken: address(SECONDARY_TOKEN),
-                primaryIndex: PRIMARY_INDEX,
-                secondaryIndex: SECONDARY_INDEX,
-                primaryDecimals: PRIMARY_DECIMALS,
-                secondaryDecimals: SECONDARY_DECIMALS,
-                primaryBalance: balances[PRIMARY_INDEX],
-                secondaryBalance: balances[SECONDARY_INDEX],
-                primaryScaleFactor: scalingFactors[PRIMARY_INDEX],
-                secondaryScaleFactor: scalingFactors[SECONDARY_INDEX],
-                basePool: _poolContext()
-            })
+            poolId: BALANCER_POOL_ID
         });
     }
 

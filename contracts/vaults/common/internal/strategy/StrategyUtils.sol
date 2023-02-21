@@ -1,41 +1,62 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import { StrategyContext, TradeParams } from "../../BalancerVaultTypes.sol";
+import {Errors} from "../../../../global/Errors.sol";
+import {VaultConstants} from "../../VaultConstants.sol";
+import {StrategyContext, TradeParams, StrategyVaultState} from "../../VaultTypes.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
-import {BalancerUtils} from "../pool/BalancerUtils.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Constants} from "../../../../global/Constants.sol";
-import {BalancerConstants} from "../BalancerConstants.sol";
 import {ITradingModule, Trade, TradeType} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {TypeConvert} from "../../../../global/TypeConvert.sol";
+import {VaultStorage} from "../../VaultStorage.sol";
 
 library StrategyUtils {
     using TradeHandler for Trade;
     using TokenUtils for IERC20;
+    using TypeConvert for uint256;
+    using VaultStorage for StrategyVaultState;
 
-    /// @notice Converts strategy tokens to BPT
-    function _convertStrategyTokensToBPTClaim(StrategyContext memory context, uint256 strategyTokenAmount)
-        internal pure returns (uint256 bptClaim) {
-        require(strategyTokenAmount <= context.vaultState.totalStrategyTokenGlobal);
-        if (context.vaultState.totalStrategyTokenGlobal > 0) {
-            bptClaim = (strategyTokenAmount * context.vaultState.totalBPTHeld) / context.vaultState.totalStrategyTokenGlobal;
+    function _checkPriceLimit(
+        StrategyContext memory strategyContext,
+        uint256 oraclePrice,
+        uint256 poolPrice
+    ) internal pure {
+        uint256 lowerLimit = (oraclePrice * 
+            (VaultConstants.VAULT_PERCENT_BASIS - strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
+            VaultConstants.VAULT_PERCENT_BASIS;
+        uint256 upperLimit = (oraclePrice * 
+            (VaultConstants.VAULT_PERCENT_BASIS + strategyContext.vaultSettings.oraclePriceDeviationLimitPercent)) / 
+            VaultConstants.VAULT_PERCENT_BASIS;
+
+        if (poolPrice < lowerLimit || upperLimit < poolPrice) {
+            revert Errors.InvalidPrice(oraclePrice, poolPrice);
         }
     }
 
-    /// @notice Converts BPT to strategy tokens
-    function _convertBPTClaimToStrategyTokens(StrategyContext memory context, uint256 bptClaim)
+    /// @notice Converts strategy tokens to LP tokens
+    function _convertStrategyTokensToPoolClaim(StrategyContext memory context, uint256 strategyTokenAmount)
+        internal pure returns (uint256 poolClaim) {
+        require(strategyTokenAmount <= context.vaultState.totalStrategyTokenGlobal);
+        if (context.vaultState.totalStrategyTokenGlobal > 0) {
+            poolClaim = (strategyTokenAmount * context.vaultState.totalPoolClaim) / context.vaultState.totalStrategyTokenGlobal;
+        }
+    }
+
+    /// @notice Converts LP tokens to strategy tokens
+    function _convertPoolClaimToStrategyTokens(StrategyContext memory context, uint256 poolClaim)
         internal pure returns (uint256 strategyTokenAmount) {
-        if (context.vaultState.totalBPTHeld == 0) {
-            // Strategy tokens are in 8 decimal precision, BPT is in 18. Scale the minted amount down.
-            return (bptClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
-                BalancerConstants.BALANCER_PRECISION;
+        if (context.vaultState.totalPoolClaim == 0) {
+            // Strategy tokens are in 8 decimal precision. Scale the minted amount according to pool claim precision.
+            return (poolClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
+                context.poolClaimPrecision;
         }
 
-        // BPT held in maturity is calculated before the new BPT tokens are minted, so this calculation
-        // is the tokens minted that will give the account a corresponding share of the new bpt balance held.
+        // Pool claim in maturity is calculated before the new pool tokens are minted, so this calculation
+        // is the tokens minted that will give the account a corresponding share of the new pool balance held.
         // The precision here will be the same as strategy token supply.
-        strategyTokenAmount = (bptClaim * context.vaultState.totalStrategyTokenGlobal) / context.vaultState.totalBPTHeld;
+        strategyTokenAmount = (poolClaim * context.vaultState.totalStrategyTokenGlobal) / context.vaultState.totalPoolClaim;
     }
 
     function _executeTradeExactIn(
@@ -106,5 +127,35 @@ library StrategyUtils {
                 amountBought = Deployments.WRAPPED_STETH.balanceOf(address(this)) - amountBeforeWrap;
             }
         }
+    }
+
+    function _mintStrategyTokens(
+        StrategyContext memory strategyContext,
+        uint256 poolClaimMinted
+    ) internal returns (uint256 strategyTokensMinted) {
+        strategyTokensMinted = _convertPoolClaimToStrategyTokens(strategyContext, poolClaimMinted);
+
+        if (strategyTokensMinted == 0) {
+            revert Errors.ZeroStrategyTokens();
+        }
+
+        strategyContext.vaultState.totalPoolClaim += poolClaimMinted;
+        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
+    }
+
+    function _redeemStrategyTokens(
+        StrategyContext memory strategyContext,
+        uint256 strategyTokens
+    ) internal returns (uint256 poolClaim) {
+        poolClaim = _convertStrategyTokensToPoolClaim(strategyContext, strategyTokens);
+
+        if (poolClaim == 0) {
+            revert Errors.ZeroPoolClaim();
+        }
+
+        strategyContext.vaultState.totalPoolClaim -= poolClaim;
+        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
+        strategyContext.vaultState.setStrategyVaultState(); 
     }
 }

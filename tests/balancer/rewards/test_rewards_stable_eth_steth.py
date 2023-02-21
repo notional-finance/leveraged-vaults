@@ -32,11 +32,11 @@ def test_reinvest_reward(StratStableETHstETH):
     rewardAmount = Wei(50e18)
     tradeParams = "(uint16,uint8,uint256,bool,bytes)"
     singleSidedRewardTradeParams = "(address,address,uint256,{})".format(tradeParams)
-    balanced2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
+    proportional2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
     (primaryAmount, secondaryAmount) = get_metastable_amounts(context.vault.getStrategyContext()["poolContext"], rewardAmount)
-    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
+    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
     rewardParams = [eth_abi.encode_abi(
-        [balanced2TokenRewardTradeParams],
+        [proportional2TokenRewardTradeParams],
         [[
             [
                 env.tokens["BAL"].address,
@@ -75,7 +75,7 @@ def test_reinvest_0x_trade(StratStableETHstETH, request):
     rewardAmount = Wei(50e18)
     tradeParams = "(uint16,uint8,uint256,bool,bytes)"
     singleSidedRewardTradeParams = "(address,address,uint256,{})".format(tradeParams)
-    balanced2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
+    proportional2TokenRewardTradeParams = "({},{})".format(singleSidedRewardTradeParams, singleSidedRewardTradeParams)
     (primaryAmount, secondaryAmount) = get_metastable_amounts(context.vault.getStrategyContext()["poolContext"], rewardAmount)
 
     testData = load_test_data(request.node.name)
@@ -97,9 +97,9 @@ def test_reinvest_0x_trade(StratStableETHstETH, request):
         ethTradeData = testData["params"][0]
         wstETHTradeData = testData["params"][1]
 
-    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
+    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
     rewardParams = [eth_abi.encode_abi(
-        [balanced2TokenRewardTradeParams],
+        [proportional2TokenRewardTradeParams],
         [[
             [
                 env.tokens["BAL"].address,

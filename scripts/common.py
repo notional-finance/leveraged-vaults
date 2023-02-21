@@ -96,10 +96,10 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("settlementSlippageLimitPercent", settings["settlementSlippageLimitPercent"]), 
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
         kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
-        kwargs.get("maxBalancerPoolShare", settings["maxBalancerPoolShare"]), 
+        kwargs.get("maxPoolShare", settings["maxPoolShare"]), 
         kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
-        kwargs.get("balancerPoolSlippageLimitPercent", settings["balancerPoolSlippageLimitPercent"])
+        kwargs.get("poolSlippageLimitPercent", settings["poolSlippageLimitPercent"])
     ]
 
 def get_univ2_data(path):
@@ -148,14 +148,11 @@ def get_dynamic_trade_params(dexId, tradeType, slippage, unwrap, exchangeData):
         ]]
     )
 
-def get_deposit_params(minBPT=0, secondaryBorrow=0, trade=bytes(0)):
+def get_deposit_params(minPoolClaim=0, trade=bytes()):
     return eth_abi.encode_abi(
-        ['(uint256,uint256,uint32,uint32,bytes)'],
+        ['(uint256,bytes)'],
         [[
-            minBPT,
-            secondaryBorrow,
-            0, # secondaryBorrowLimit
-            0, # secondaryRollLendLimit
+            minPoolClaim,
             trade
         ]]
     )
@@ -216,13 +213,15 @@ def get_all_past_maturities(notional, currencyId):
 def get_all_active_maturities(notional, currencyId):
     return [m[1] for m in notional.getActiveMarkets(currencyId)]
 
-def get_remaining_strategy_tokens():
+def get_remaining_strategy_tokens(address):
     resp = requests.post("https://api.thegraph.com/subgraphs/name/notional-finance/mainnet-v2",
         json={
             "query":"{\n  leveragedVaultMaturities {\n    id\n    remainingSettledStrategyTokens\n  }\n}",
         })
     data = list(filter(
-        lambda x: x["remainingSettledStrategyTokens"] != None, resp.json()["data"]["leveragedVaultMaturities"]
+        lambda x: 
+            x["id"].split(":")[0].lower() == address.lower() and x["remainingSettledStrategyTokens"] != None, 
+        resp.json()["data"]["leveragedVaultMaturities"]
     ))
     maturities = list(map(
         lambda x: Wei(x["id"].split(":")[1]), data

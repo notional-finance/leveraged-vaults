@@ -7,10 +7,9 @@ import {IAuraBooster} from "../../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../../interfaces/aura/IAuraRewardPool.sol";
 import {IAuraStakingProxy} from "../../../../interfaces/aura/IAuraStakingProxy.sol";
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
-import {StrategyVaultSettings, BalancerVaultStorage} from "../internal/BalancerVaultStorage.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
-import {BalancerEvents} from "../BalancerEvents.sol";
+import {VaultEvents} from "../../common/VaultEvents.sol";
 import {BalancerStrategyBase} from "../BalancerStrategyBase.sol";
 
 abstract contract AuraStakingMixin is BalancerStrategyBase {
@@ -29,7 +28,7 @@ abstract contract AuraStakingMixin is BalancerStrategyBase {
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         BalancerStrategyBase(notional_, params.baseParams) {
         LIQUIDITY_GAUGE = params.baseParams.liquidityGauge;
-        AURA_REWARD_POOL = params.auraRewardPool;
+        AURA_REWARD_POOL = params.rewardPool;
         AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
         AURA_POOL_ID = AURA_REWARD_POOL.pid();
 
@@ -51,9 +50,9 @@ abstract contract AuraStakingMixin is BalancerStrategyBase {
     function _auraStakingContext() internal view returns (AuraStakingContext memory) {
         return AuraStakingContext({
             liquidityGauge: LIQUIDITY_GAUGE,
-            auraBooster: AURA_BOOSTER,
-            auraRewardPool: AURA_REWARD_POOL,
-            auraPoolId: AURA_POOL_ID,
+            booster: AURA_BOOSTER,
+            rewardPool: AURA_REWARD_POOL,
+            poolId: AURA_POOL_ID,
             rewardTokens: _rewardTokens()
         });
     }
@@ -75,7 +74,7 @@ abstract contract AuraStakingMixin is BalancerStrategyBase {
             claimedBalances[i] = rewardTokens[i].balanceOf(address(this)) - claimedBalances[i];
         }
 
-        emit BalancerEvents.ClaimedRewardTokens(rewardTokens, claimedBalances);
+        emit VaultEvents.ClaimedRewardTokens(rewardTokens, claimedBalances);
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

@@ -17,7 +17,7 @@ def test_claim_rewards_success(StratBoostedPoolUSDCPrimary):
         accounts[0],
         {
             "BAL": 1507407712261392,
-            "AURA": 540912455316372199
+            "AURA": 500923521558696211
         }
     )
 
@@ -27,7 +27,7 @@ def test_reinvest_rewards_success(StratBoostedPoolUSDCPrimary):
     rewardAmount = Wei(50e18)
     tradeParams = "(uint16,uint8,uint256,bool,bytes)"
     singleSidedRewardTradeParams = "(address,address,uint256,{})".format(tradeParams)
-    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
+    bptBefore = context.vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
     rewardParams = [eth_abi.encode_abi(
         [singleSidedRewardTradeParams],
         [[

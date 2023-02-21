@@ -6,34 +6,26 @@ from tests.balancer.acceptance import (
     leverage_ratio_too_high,
     balancer_share_too_high
 )
+from tests.balancer.helpers import get_deposit_op
 
 def test_single_maturity_low_leverage_success(StratBoostedPoolDAIPrimary):
-    deposit(
-        DAIPrimaryContext(*StratBoostedPoolDAIPrimary), 
-        [[10000e18, 5000e8, accounts[0], 0, None]]
-    )
+    deposit(DAIPrimaryContext(*StratBoostedPoolDAIPrimary), [get_deposit_op(10000e18, 5000e8, accounts[0], 0)])
 
 def test_single_maturity_high_leverage_success(StratBoostedPoolDAIPrimary):
-    deposit(
-        DAIPrimaryContext(*StratBoostedPoolDAIPrimary), 
-        [[10000e18, 40000e8, accounts[0], 0, None]]
-    )
+    deposit(DAIPrimaryContext(*StratBoostedPoolDAIPrimary), [get_deposit_op(10000e18, 40000e8, accounts[0], 0)])
 
 def test_multiple_maturities_low_leverage_success(StratBoostedPoolDAIPrimary):
     deposit(
         DAIPrimaryContext(*StratBoostedPoolDAIPrimary), 
-        [
-            [10000e18, 5000e8, accounts[0], 0, None],
-            [10000e18, 5000e8, accounts[1], 1, None]
-        ]
+        [get_deposit_op(10000e18, 5000e8, accounts[0]), get_deposit_op(10000e18, 5000e8, accounts[1], 1)]
     )
 
 def test_multiple_maturities_high_leverage_success(StratBoostedPoolDAIPrimary):
     deposit(
         DAIPrimaryContext(*StratBoostedPoolDAIPrimary), 
         [
-            [10000e18, 40000e8, accounts[0], 0, None],
-            [10000e18, 40000e8, accounts[1], 1, None]
+            get_deposit_op(10000e18, 40000e8, accounts[0]),
+            get_deposit_op(10000e18, 40000e8, accounts[1], 1)
         ]
     )
 
@@ -41,10 +33,10 @@ def test_multiple_accounts_in_each_maturity_success(StratBoostedPoolDAIPrimary):
     deposit(
         DAIPrimaryContext(*StratBoostedPoolDAIPrimary), 
         [
-            [10000e18, 40000e8, accounts[0], 0, None],
-            [10000e18, 40000e8, accounts[1], 0, None],
-            [10000e18, 40000e8, accounts[2], 1, None],
-            [10000e18, 40000e8, accounts[3], 1, None]
+            get_deposit_op(10000e18, 40000e8, accounts[0]),
+            get_deposit_op(10000e18, 40000e8, accounts[1]),
+            get_deposit_op(10000e18, 40000e8, accounts[2], 1),
+            get_deposit_op(10000e18, 40000e8, accounts[3], 1)
         ]
     )
 

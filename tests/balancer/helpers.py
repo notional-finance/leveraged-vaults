@@ -18,8 +18,8 @@ from scripts.common import (
 chain = Chain()
 
 def get_metastable_amounts(poolContext, amount):
-    primaryBalance = poolContext["primaryBalance"]
-    secondaryBalance = poolContext["secondaryBalance"]
+    primaryBalance = poolContext["basePool"]["primaryBalance"]
+    secondaryBalance = poolContext["basePool"]["secondaryBalance"]
     primaryRatio = primaryBalance / (primaryBalance + secondaryBalance)
     primaryAmount = amount * primaryRatio
     secondaryAmount = amount - primaryAmount
@@ -87,7 +87,7 @@ def snapshot_invariants(env, vault, currencyId):
     pastMaturities = get_all_past_maturities(env.notional, currencyId)
     vaultTotalfCash = 0
     vaultTotalVaultShares = 0
-    data = get_remaining_strategy_tokens()
+    data = get_remaining_strategy_tokens(vault.address)
     vaultTotalStrategyTokens = data["amount"]
     for maturity in pastMaturities:
         vaultState = env.notional.getVaultState(vault.address, maturity)
@@ -100,17 +100,17 @@ def snapshot_invariants(env, vault, currencyId):
         vaultTotalfCash += vaultState["totalfCash"]
         vaultTotalVaultShares += vaultState["totalVaultShares"]
         vaultTotalStrategyTokens += vaultState["totalStrategyTokens"]
-    auraPool = interface.IAuraRewardPool(vault.getStrategyContext()["stakingContext"]["auraRewardPool"])
-    auraBalance = math.floor(auraPool.balanceOf(vault.address) / 1e10)
+    rewardPool = interface.IRewardPool(vault.getStrategyContext()["stakingContext"]["rewardPool"])
+    poolBalance = math.floor(rewardPool.balanceOf(vault.address) / 1e10)
     return {
         "totalfCash": vaultTotalfCash,
         "totalVaultShares": vaultTotalVaultShares,
         "totalStrategyTokens": vaultTotalStrategyTokens,
-        "auraBalance": auraBalance
+        "poolBalance": poolBalance
     }
     
 def check_invariants(env, vault, accounts, currencyId, snapshot=None):
-    auraPool = interface.IAuraRewardPool(vault.getStrategyContext()["stakingContext"]["auraRewardPool"])
+    rewardPool = interface.IRewardPool(vault.getStrategyContext()["stakingContext"]["rewardPool"])
     current = snapshot_invariants(env, vault, currencyId)
     accountTotalfCash = 0
     accountTotalVaultShares = 0
@@ -121,18 +121,18 @@ def check_invariants(env, vault, accounts, currencyId, snapshot=None):
     vaultTotalfCash = 0
     vaultTotalVaultShares = 0
     vaultTotalStrategyTokens = 0
-    auraBalance = 0
+    poolBalance = 0
     if snapshot != None:
         vaultTotalfCash = current["totalfCash"] - snapshot["totalfCash"]
         vaultTotalVaultShares = current["totalVaultShares"] - snapshot["totalVaultShares"]
         vaultTotalStrategyTokens = current["totalStrategyTokens"] - snapshot["totalStrategyTokens"]
-        auraBalance = current["auraBalance"] - snapshot["auraBalance"]
+        poolBalance = current["poolBalance"] - snapshot["poolBalance"]
     assert vaultTotalfCash == accountTotalfCash
     assert vaultTotalVaultShares == accountTotalVaultShares
     # Rounding error
-    if auraBalance > 1 and vaultTotalStrategyTokens > 0:
-        assert pytest.approx(vault.convertStrategyTokensToBPTClaim(vaultTotalStrategyTokens) / 1e10, rel=1e-5) == auraBalance
-    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"] == auraPool.balanceOf(vault)
+    if poolBalance > 1 and vaultTotalStrategyTokens > 0:
+        assert pytest.approx(vault.convertStrategyTokensToPoolClaim(vaultTotalStrategyTokens) / 1e10, rel=1e-5) == poolBalance
+    assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"] == rewardPool.balanceOf(vault)
     assert vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalStrategyTokenGlobal"] == current["totalStrategyTokens"]
 
 def check_account(env, vault, account, vaultShares, fCash):
@@ -140,7 +140,7 @@ def check_account(env, vault, account, vaultShares, fCash):
     assert vaultAccount["vaultShares"] == vaultShares
     assert vaultAccount['fCash'] == -fCash
 
-def get_expected_bpt_amount(context, depositAmount, expectedBorrowAmount, primaryPercent=1):
+def get_expected_pool_claim_amount(context, depositAmount, expectedBorrowAmount, primaryPercent=1, tradeFunc=None):
     env = context.env
     vault = context.mock
     totalJoinAmount = depositAmount + expectedBorrowAmount
@@ -152,29 +152,18 @@ def get_expected_bpt_amount(context, depositAmount, expectedBorrowAmount, primar
         undoCount += 1
     secondaryAmount = 0
     if primaryAmountToSell > 0:
-        env.whales["ETH"].transfer(env.tradingModule, primaryAmountToSell)
-        env.tradingModule.setTokenPermissions(
-            env.tradingModule, 
-            ZERO_ADDRESS, 
-            [True, set_dex_flags(0, BALANCER_V2=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
-            {"from": env.notional.owner()})
-        trade = [
-            TRADE_TYPE["EXACT_IN_SINGLE"], 
-            ZERO_ADDRESS,
-            env.tokens["wstETH"].address, 
-            primaryAmountToSell, 
-            0, 
-            chain.time() + 20000, 
-            eth_abi.encode_abi(
-                ["(bytes32)"],
-                [[to_bytes("0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080", "bytes32")]]
-            )
-        ]
-        env.tradingModule.executeTrade(DEX_ID["BALANCER_V2"], trade, {"from": env.whales["ETH"]})
-        secondaryAmount = env.tokens["wstETH"].balanceOf(env.tradingModule)
-        env.tokens["wstETH"].transfer(vault, secondaryAmount, {"from": env.tradingModule})
-        undoCount += 4
-    expectedBPTAmount = vault.joinPoolAndStake.call(primaryAmount, secondaryAmount, 0)
+        context.transfer(env.tradingModule, primaryAmountToSell)
+        undoCount += 1
+        res = tradeFunc(env, vault, primaryAmountToSell)
+        secondaryAmount = res[0]
+        undoCount += res[1]
+    expectedPoolClaimAmount = vault.joinPoolAndStake.call(primaryAmount, secondaryAmount, 0)
     if undoCount > 0:
         chain.undo(undoCount)
-    return expectedBPTAmount
+    return expectedPoolClaimAmount
+
+# Deposit Op: [depositAmount, primaryBorrowAmount, depositor, maturity, depositParams, depositTrade]
+def get_deposit_op(
+    depositAmount, primaryBorrowAmount, depositor, maturityIndex=0, depositParams=None, primaryPercent=1, depositTradeFunc=None
+):
+    return [depositAmount, primaryBorrowAmount, depositor, maturityIndex, depositParams, primaryPercent, depositTradeFunc]

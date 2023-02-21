@@ -4,17 +4,16 @@ pragma solidity 0.8.17;
 import {
     AuraVaultDeploymentParams, 
     MetaStable2TokenAuraStrategyContext, 
-    TwoTokenPoolContext
+    Balancer2TokenPoolContext
 } from "../vaults/balancer/BalancerVaultTypes.sol";
 import {MetaStable2TokenVaultMixin} from "../vaults/balancer/mixins/MetaStable2TokenVaultMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {TwoTokenPoolUtils} from "../vaults/balancer/internal/pool/TwoTokenPoolUtils.sol";
+import {Balancer2TokenPoolUtils} from "../vaults/balancer/internal/pool/Balancer2TokenPoolUtils.sol";
 import {Stable2TokenOracleMath} from "../vaults/balancer/internal/math/Stable2TokenOracleMath.sol";
 import {BalancerConstants} from "../vaults/balancer/internal/BalancerConstants.sol";
-import {IAuraRewardPool} from "../../interfaces/aura/IAuraRewardPool.sol";
 
 contract MockMetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
-    using TwoTokenPoolUtils for TwoTokenPoolContext;
+    using Balancer2TokenPoolUtils for Balancer2TokenPoolContext;
 
     mapping(address => uint256) public valuationFactors;
 
@@ -65,14 +64,14 @@ contract MockMetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     function joinPoolAndStake(uint256 primaryAmount, uint256 secondaryAmount, uint256 minBPT) 
         external returns (uint256) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        return TwoTokenPoolUtils._joinPoolAndStake(
+        return Balancer2TokenPoolUtils._joinPoolAndStake(
             context.poolContext, context.baseStrategy, context.stakingContext, primaryAmount, secondaryAmount, minBPT
         );
     }
 
     function getTimeWeightedPrimaryBalance(uint256 bptAmount) external view returns (uint256) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        return TwoTokenPoolUtils._getTimeWeightedPrimaryBalance(
+        return Balancer2TokenPoolUtils._getTimeWeightedPrimaryBalance(
             context.poolContext, context.oracleContext, context.baseStrategy, bptAmount
         );
     }

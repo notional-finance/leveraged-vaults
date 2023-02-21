@@ -4,36 +4,39 @@ pragma solidity 0.8.17;
 import {Errors} from "../global/Errors.sol";
 import {Deployments} from "../global/Deployments.sol";
 import {
-    DepositParams,
-    RedeemParams,
     AuraVaultDeploymentParams,
     InitParams,
-    ReinvestRewardParams,
+    Balancer3TokenPoolContext,
+    Boosted3TokenAuraStrategyContext
+} from "./balancer/BalancerVaultTypes.sol";
+import {
+    StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState,
-    PoolContext,
     ThreeTokenPoolContext,
-    Boosted3TokenAuraStrategyContext,
-    StrategyContext
-} from "./balancer/BalancerVaultTypes.sol";
+    DepositParams,
+    RedeemParams,
+    ReinvestRewardParams
+} from "./common/VaultTypes.sol";
+import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {BalancerStrategyBase} from "./balancer/BalancerStrategyBase.sol";
 import {Boosted3TokenPoolMixin} from "./balancer/mixins/Boosted3TokenPoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {BalancerVaultStorage} from "./balancer/internal/BalancerVaultStorage.sol";
-import {StrategyUtils} from "./balancer/internal/strategy/StrategyUtils.sol";
-import {SettlementUtils} from "./balancer/internal/settlement/SettlementUtils.sol";
-import {Boosted3TokenPoolUtils} from "./balancer/internal/pool/Boosted3TokenPoolUtils.sol";
+import {VaultStorage} from "./common/VaultStorage.sol";
+import {SettlementUtils} from "./common/internal/settlement/SettlementUtils.sol";
+import {Balancer3TokenBoostedPoolUtils} from "./balancer/internal/pool/Balancer3TokenBoostedPoolUtils.sol";
 import {Boosted3TokenAuraHelper} from "./balancer/external/Boosted3TokenAuraHelper.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 
 contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
-    using Boosted3TokenPoolUtils for ThreeTokenPoolContext;
+    using Balancer3TokenBoostedPoolUtils for Balancer3TokenPoolContext;
+    using Balancer3TokenBoostedPoolUtils for ThreeTokenPoolContext;
     using StrategyUtils for StrategyContext;
+    using VaultStorage for StrategyVaultState;
     using SettlementUtils for StrategyContext;
-    using BalancerVaultStorage for StrategyVaultState;
     using Boosted3TokenAuraHelper for Boosted3TokenAuraStrategyContext;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
@@ -50,11 +53,11 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        BalancerVaultStorage.setStrategyVaultSettings(params.settings);
+        VaultStorage.setStrategyVaultSettings(params.settings);
         (uint256[] memory balances, uint256[] memory scalingFactors) = _getBalancesAndScaleFactors();
 
-        _threeTokenPoolContext(balances, scalingFactors)._approveBalancerTokens(
-            address(_auraStakingContext().auraBooster)
+        _threeTokenPoolContext(balances, scalingFactors).basePool._approveBalancerTokens(
+            address(_auraStakingContext().booster)
         );
     }
 
@@ -153,7 +156,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         external
         onlyNotionalOwner
     {
-        BalancerVaultStorage.setStrategyVaultSettings(settings);
+        VaultStorage.setStrategyVaultSettings(settings);
     }
     
     function getStrategyContext() external view returns (Boosted3TokenAuraStrategyContext memory) {
@@ -165,11 +168,11 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         spotPrice = Boosted3TokenAuraHelper.getSpotPrice(context, tokenIndex);
     }
 
-    function getEmergencySettlementBPTAmount(uint256 maturity) external view returns (uint256 bptToSettle) {
+    function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        bptToSettle = context.baseStrategy._getEmergencySettlementParams({
+        poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
-            totalBPTSupply: IERC20(context.poolContext.basePool.basePool.pool).totalSupply()
+            totalPoolSupply: context.oracleContext.virtualSupply
         });
     }
 }

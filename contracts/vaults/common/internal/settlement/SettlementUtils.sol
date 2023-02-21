@@ -1,28 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {
-    RedeemParams, 
-    TradeParams,
-    StrategyContext,
-    PoolContext,
-    StrategyVaultSettings,
-    StrategyVaultState
-} from "../../BalancerVaultTypes.sol";
+import {TradeParams, StrategyContext, RedeemParams} from "../../VaultTypes.sol";
 import {VaultState} from "../../../../global/Types.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Constants} from "../../../../global/Constants.sol";
-import {BalancerConstants} from "../BalancerConstants.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
-import {StrategyUtils} from "../strategy/StrategyUtils.sol";
-import {BalancerVaultStorage} from "../BalancerVaultStorage.sol";
+import {VaultConstants} from "../../VaultConstants.sol";
+import {StrategyUtils} from "../../internal/strategy/StrategyUtils.sol";
+import {VaultStorage, StrategyVaultSettings, StrategyVaultState} from "../../VaultStorage.sol";
 
 library SettlementUtils {
     using TypeConvert for uint256;
     using TypeConvert for int256;
     using StrategyUtils for StrategyContext;
-    using BalancerVaultStorage for StrategyVaultSettings;
+    using VaultStorage for StrategyVaultSettings;
 
     /// @notice Validates that the slippage passed in by the caller
     /// does not exceed the designated threshold.
@@ -53,28 +46,28 @@ library SettlementUtils {
             revert Errors.InSettlementCoolDown(lastSettlementTimestamp, coolDownInMinutes);
     }
 
-    /// @notice Calculates the amount of BPT availTable for emergency settlement
-    function _getEmergencySettlementBPTAmount(
-        uint256 bptTotalSupply,
-        uint16 maxBalancerPoolShare,
-        uint256 totalBPTHeld,
-        uint256 bptHeldInMaturity
-    ) private pure returns (uint256 bptToSettle) {
+    /// @notice Calculates the amount of pool claim available for emergency settlement
+    function _getEmergencySettlementPoolClaimAmount(
+        uint256 totalPoolSupply,
+        uint16 maxPoolShare,
+        uint256 totalPoolClaim,
+        uint256 poolClaimInMaturity
+    ) private pure returns (uint256 poolClaimToSettle) {
         // desiredPoolShare = maxPoolShare * bufferPercentage
-        uint256 desiredPoolShare = (maxBalancerPoolShare *
-            BalancerConstants.BALANCER_POOL_SHARE_BUFFER) /
-            BalancerConstants.VAULT_PERCENT_BASIS;
-        uint256 desiredBPTAmount = (bptTotalSupply * desiredPoolShare) /
-            BalancerConstants.VAULT_PERCENT_BASIS;
+        uint256 desiredPoolShare = (maxPoolShare *
+            VaultConstants.POOL_SHARE_BUFFER) /
+            VaultConstants.VAULT_PERCENT_BASIS;
+        uint256 desiredPoolClaimAmount = (totalPoolSupply * desiredPoolShare) /
+            VaultConstants.VAULT_PERCENT_BASIS;
         
-        bptToSettle = totalBPTHeld - desiredBPTAmount;
+        poolClaimToSettle = totalPoolClaim - desiredPoolClaimAmount;
 
-        // Check to make sure we are not settling more than the amount of BPT
+        // Check to make sure we are not settling more than the amount of pool claim
         // available in the current maturity
         // If more settlement is needed, call settleVaultEmergency
         // again with a different maturity
-        if (bptToSettle > bptHeldInMaturity) {
-            bptToSettle = bptHeldInMaturity;
+        if (poolClaimToSettle > poolClaimInMaturity) {
+            poolClaimToSettle = poolClaimInMaturity;
         }
     }
 
@@ -86,28 +79,28 @@ library SettlementUtils {
     function _getEmergencySettlementParams(
         StrategyContext memory strategyContext,
         uint256 maturity,
-        uint256 totalBPTSupply
-    )  internal view returns(uint256 bptToSettle) {
+        uint256 totalPoolSupply
+    )  internal view returns(uint256 poolClaimToSettle) {
         StrategyVaultSettings memory settings = strategyContext.vaultSettings;
         StrategyVaultState memory state = strategyContext.vaultState;
 
-        // Not in settlement window, check if BPT held is greater than maxBalancerPoolShare * total BPT supply
-        uint256 emergencyBPTWithdrawThreshold = settings._bptThreshold(totalBPTSupply);
+        // Not in settlement window, check if pool claim held is greater than maxPoolShare * total pool supply
+        uint256 emergencyPooLClaimWithdrawThreshold = settings._poolClaimThreshold(totalPoolSupply);
 
-        if (strategyContext.vaultState.totalBPTHeld <= emergencyBPTWithdrawThreshold)
+        if (strategyContext.vaultState.totalPoolClaim <= emergencyPooLClaimWithdrawThreshold)
             revert Errors.InvalidEmergencySettlement();
 
-        uint256 bptHeldInMaturity = _getBPTHeldInMaturity(
+        uint256 poolClaimInMaturity = _getPoolClaimHeldInMaturity(
             state,
             _totalSupplyInMaturity(maturity),
-            strategyContext.vaultState.totalBPTHeld
+            strategyContext.vaultState.totalPoolClaim
         );
 
-        bptToSettle = _getEmergencySettlementBPTAmount({
-            bptTotalSupply: totalBPTSupply,
-            maxBalancerPoolShare: settings.maxBalancerPoolShare,
-            totalBPTHeld: strategyContext.vaultState.totalBPTHeld,
-            bptHeldInMaturity: bptHeldInMaturity
+        poolClaimToSettle = _getEmergencySettlementPoolClaimAmount({
+            totalPoolSupply: totalPoolSupply,
+            maxPoolShare: settings.maxPoolShare,
+            totalPoolClaim: strategyContext.vaultState.totalPoolClaim,
+            poolClaimInMaturity: poolClaimInMaturity
         });
     }
 
@@ -133,7 +126,7 @@ library SettlementUtils {
             underlyingCashRequiredToSettle;
 
         // Make sure we not redeeming too much to underlying
-        // This allows BPT to be accrued as the profit token.
+        // This allows pool claim to be accrued as the profit token.
         if (surplus > context.vaultSettings.maxUnderlyingSurplus.toInt()) {
             revert Errors.RedeemingTooMuch(
                 expectedUnderlyingRedeemed,
@@ -151,14 +144,14 @@ library SettlementUtils {
         }
     }
 
-    function _getBPTHeldInMaturity(
+    function _getPoolClaimHeldInMaturity(
         StrategyVaultState memory strategyVaultState, 
         uint256 totalSupplyInMaturity,
-        uint256 totalBPTHeld
-    ) private pure returns (uint256 bptHeldInMaturity) {
+        uint256 totalPoolClaimHeld
+    ) private pure returns (uint256 poolClaimHeldInMaturity) {
         if (strategyVaultState.totalStrategyTokenGlobal == 0) return 0;
-        bptHeldInMaturity =
-            (totalBPTHeld * totalSupplyInMaturity) /
+        poolClaimHeldInMaturity =
+            (totalPoolClaimHeld * totalSupplyInMaturity) /
             strategyVaultState.totalStrategyTokenGlobal;
     }
 

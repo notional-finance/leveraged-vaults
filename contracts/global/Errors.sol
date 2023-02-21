@@ -17,7 +17,7 @@ library Errors {
     error SettlementNotRequired();
     error InvalidRewardToken(address token);
     error InvalidJoinAmounts(uint256 oraclePrice, uint256 maxPrimary, uint256 maxSecondary);
-    error BalancerPoolShareTooHigh(uint256 totalBPTHeld, uint256 bptThreshold);
+    error PoolShareTooHigh(uint256 totalPoolClaim, uint256 poolClaimThreshold);
     error StakeFailed();
     error UnstakeFailed();
     error InvalidTokenIndex(uint8 tokenIndex);

@@ -17,7 +17,7 @@ from tests.balancer.helpers import (
     enterMaturity, 
     exitVaultPercent,
     convert_to_underlying,
-    get_expected_bpt_amount,
+    get_expected_pool_claim_amount,
     get_expected_borrow_amount
 )
 
@@ -92,14 +92,18 @@ def deposit(context, ops):
             depositors.add(depositor)
         maturity = maturities[op[3]]
         depositParams = op[4]
+        primaryPercent = op[5]
+        depositTradeFunc = op[6]
         expectedBorrowAmount = get_expected_borrow_amount(env, currencyId, maturity, primaryBorrowAmount)
-        expectedBptAmount = get_expected_bpt_amount(context, depositAmount, expectedBorrowAmount)
+        expectedPoolClaimAmount = get_expected_pool_claim_amount(
+            context, depositAmount, expectedBorrowAmount, primaryPercent, depositTradeFunc
+        )
         enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor, False, depositParams)
         vaultAccount = notional.getVaultAccount(depositor, vault.address)
         vaultState = notional.getVaultState(vault.address, maturity)
         assert vaultAccount["fCash"] == -primaryBorrowAmount
         strategyTokens = vaultAccount["vaultShares"] * vaultState["totalStrategyTokens"] / vaultState["totalVaultShares"]
-        assert pytest.approx(vault.convertStrategyTokensToBPTClaim(strategyTokens), rel=1e-5) == expectedBptAmount
+        assert pytest.approx(vault.convertStrategyTokensToPoolClaim(strategyTokens), rel=1e-5) == expectedPoolClaimAmount
         underlyingValue = vault.convertStrategyToUnderlying(depositor, vaultAccount["vaultShares"], maturity)
         assert pytest.approx(underlyingValue, rel=5e-2) == depositAmount + primaryBorrowAmount * primaryPrecision / 1e8
     check_invariants(env, vault, list(depositors), currencyId, snapshot)
@@ -363,13 +367,13 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
 
     # Cannot get emergency settlement amount if we are below the threshold
     with brownie.reverts():
-        vault.getEmergencySettlementBPTAmount(maturity)
+        vault.getEmergencySettlementPoolClaimAmount(maturity)
 
     settings = vault.getStrategyContext()["baseStrategy"]["vaultSettings"]
-    vault.setStrategyVaultSettings(get_updated_vault_settings(settings, maxBalancerPoolShare=0), {"from": env.notional.owner()})
+    vault.setStrategyVaultSettings(get_updated_vault_settings(settings, maxPoolShare=0), {"from": env.notional.owner()})
 
     vaultState = env.notional.getVaultState(vault.address, maturity)
-    assert vault.getEmergencySettlementBPTAmount(maturity) == vault.convertStrategyTokensToBPTClaim(vaultState["totalStrategyTokens"])
+    assert vault.getEmergencySettlementPoolClaimAmount(maturity) == vault.convertStrategyTokensToPoolClaim(vaultState["totalStrategyTokens"])
     underlyingCashBefore = vault.convertStrategyToUnderlying(depositor, vaultState["totalStrategyTokens"], maturity)
 
     vault.settleVaultEmergency(maturity, redeemParamsEncoded, {"from": operator})
@@ -461,7 +465,7 @@ def reinvest_reward(context, depositor, rewardAmount, rewardParams, bptBefore, e
             vault.reinvestReward.call(rewardParams, {"from": depositor})
     else:
         vault.reinvestReward(rewardParams, {"from": depositor})
-        bptAfter = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalBPTHeld"]
+        bptAfter = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
         assert bptAfter - bptBefore >= expectedBPTAmount
 
     vault.revokeRole(vault.getRoles()["rewardReinvestment"], depositor, {"from": env.notional.owner()})
@@ -484,11 +488,11 @@ def balancer_share_too_high(context, depositAmount, primaryBorrowAmount):
     # Only Notional owner can change settings
     with brownie.reverts():
         vault.setStrategyVaultSettings.call(
-            get_updated_vault_settings(settings, maxBalancerPoolShare=0),
+            get_updated_vault_settings(settings, maxPoolShare=0),
             {"from": accounts[0]}
         )
     vault.setStrategyVaultSettings(
-        get_updated_vault_settings(settings, maxBalancerPoolShare=0),
+        get_updated_vault_settings(settings, maxPoolShare=0),
         {"from": env.notional.owner()}
     )
     with brownie.reverts():
