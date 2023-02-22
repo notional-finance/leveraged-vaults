@@ -263,39 +263,36 @@ def getEnvironment(network = "mainnet"):
     return BalancerEnvironment(network)
 
 def main():
-    networkName = network.show_active()
-    if networkName == "hardhat-fork":
-        networkName = "mainnet"
-    env = BalancerEnvironment(networkName)
+    env = getEnvironment(network.show_active())
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    vault1Impl = env.deployBalancerVault(
+    stETHVaultImpl = env.deployBalancerVault(
         "StratStableETHstETH", 
         MetaStable2TokenAuraVault,
         [MetaStable2TokenAuraHelper]
     )
-    vault1 = env.deployVaultProxy("StratStableETHstETH", vault1Impl, MetaStable2TokenAuraVault)
-    vault2Impl = env.deployBalancerVault(
+    stETHVault = env.deployVaultProxy("StratStableETHstETH", stETHVaultImpl, MetaStable2TokenAuraVault)
+    aaveBoostedDAIImpl = env.deployBalancerVault(
         "StratAaveBoostedPoolDAIPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-    vault2 = env.deployVaultProxy("StratAaveBoostedPoolDAIPrimary", vault2Impl, Boosted3TokenAuraVault)
-    vault3Impl = env.deployBalancerVault(
+    aaveBoostedDAI = env.deployVaultProxy("StratAaveBoostedPoolDAIPrimary", aaveBoostedDAIImpl, Boosted3TokenAuraVault)
+    aaveBoostedUSDCImpl = env.deployBalancerVault(
         "StratAaveBoostedPoolUSDCPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-    vault3 = env.deployVaultProxy("StratAaveBoostedPoolUSDCPrimary", vault3Impl, Boosted3TokenAuraVault)
-    vault4Impl = env.deployBalancerVault(
+    aaveBoostedUSDC = env.deployVaultProxy("StratAaveBoostedPoolUSDCPrimary", aaveBoostedUSDCImpl, Boosted3TokenAuraVault)
+    eulerBoostedDAIImpl = env.deployBalancerVault(
         "StratEulerBoostedPoolDAIPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-    vault4 = env.deployVaultProxy("StratEulerBoostedPoolDAIPrimary", vault2Impl, Boosted3TokenAuraVault)
-    vault5Impl = env.deployBalancerVault(
+    eulerBoostedDAI = env.deployVaultProxy("StratEulerBoostedPoolDAIPrimary", eulerBoostedDAIImpl, Boosted3TokenAuraVault)
+    eulerBoostedUSDCImpl = env.deployBalancerVault(
         "StratEulerBoostedPoolUSDCPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-    vault5 = env.deployVaultProxy("StratEulerBoostedPoolUSDCPrimary", vault3Impl, Boosted3TokenAuraVault)
+    eulerBoostedUSDC = env.deployVaultProxy("StratEulerBoostedPoolUSDCPrimary", eulerBoostedUSDCImpl, Boosted3TokenAuraVault)
