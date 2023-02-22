@@ -93,9 +93,9 @@ def StratStableETHstETH():
     return (env, vault, mock)
 
 @pytest.fixture()
-def StratBoostedPoolDAIPrimary():
+def StratAaveBoostedPoolDAIPrimary():
     env = getEnvironment(network.show_active())
-    strat = "StratBoostedPoolDAIPrimary"
+    strat = "StratAaveBoostedPoolDAIPrimary"
     impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
     vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
 
@@ -112,9 +112,47 @@ def StratBoostedPoolDAIPrimary():
     return (env, vault, mock)
 
 @pytest.fixture()
-def StratBoostedPoolUSDCPrimary():
+def StratAaveBoostedPoolUSDCPrimary():
     env = getEnvironment(network.show_active())
-    strat = "StratBoostedPoolUSDCPrimary"
+    strat = "StratAaveBoostedPoolUSDCPrimary"
+    impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
+
+    env.tradingModule.setTokenPermissions(
+        vault.address, 
+        env.tokens["BAL"].address, 
+        [True, set_dex_flags(0, UNISWAP_V3=True), set_trade_type_flags(0, EXACT_IN_BATCH=True)], 
+        {"from": env.notional.owner()})
+
+    mockImpl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockUSDCBoostedVault", mock.address, MockBoosted3TokenAuraVault.abi)
+
+    return (env, vault, mock)
+
+@pytest.fixture()
+def StratEulerBoostedPoolDAIPrimary():
+    env = getEnvironment(network.show_active())
+    strat = "StratEulerBoostedPoolDAIPrimary"
+    impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
+
+    env.tradingModule.setTokenPermissions(
+        vault.address, 
+        env.tokens["BAL"].address, 
+        [True, set_dex_flags(0, UNISWAP_V3=True), set_trade_type_flags(0, EXACT_IN_BATCH=True)], 
+        {"from": env.notional.owner()})
+
+    mockImpl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockDAIBoostedVault", mock.address, MockBoosted3TokenAuraVault.abi)
+
+    return (env, vault, mock)
+
+@pytest.fixture()
+def StratEulerBoostedPoolUSDCPrimary():
+    env = getEnvironment(network.show_active())
+    strat = "StratEulerBoostedPoolUSDCPrimary"
     impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
     vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
 
