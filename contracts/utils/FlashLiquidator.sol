@@ -22,6 +22,7 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
     address public immutable EULER;
     IEulerMarkets public immutable MARKETS;
     mapping(address => address) internal underlyingToAsset;
+    mapping(address => bool) internal vaultDeleverage;
 
     struct LiquidationParams {
         uint16 currencyId;
@@ -73,6 +74,10 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         dToken.flashLoan(amount, abi.encode(asset, amount, true, params));
     }
 
+    function setVaultDeleverage(address vault, bool useVaultDeleverage) external onlyOwner {
+        vaultDeleverage[vault] = useVaultDeleverage;
+    }
+
     function onFlashLoan(bytes memory data) external override {
         require(msg.sender == address(EULER));
 
@@ -103,14 +108,25 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
             
             require(maxLiquidatorDepositAssetCash > 0);
 
-            IStrategyVault(params.vault).deleverageAccount(
-                params.account, 
-                params.vault, 
-                address(this), 
-                uint256(maxLiquidatorDepositAssetCash), 
-                false, 
-                params.redeemData
-            );
+            if (vaultDeleverage[params.vault]) {
+                IStrategyVault(params.vault).deleverageAccount(
+                    params.account, 
+                    params.vault, 
+                    address(this), 
+                    uint256(maxLiquidatorDepositAssetCash), 
+                    false, 
+                    params.redeemData
+                );
+            } else {
+                NOTIONAL.deleverageAccount(
+                    params.account, 
+                    params.vault,
+                    address(this), 
+                    uint256(maxLiquidatorDepositAssetCash), 
+                    false, 
+                    params.redeemData
+                );
+            }
         }
 
         // Redeem CToken

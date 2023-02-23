@@ -93,6 +93,8 @@ def StratStableETHstETH():
         750000000000,
         {"from": env.notional.owner()}
     )
+    env.liquidator.setVaultDeleverage(vault, True)
+    env.liquidator.setVaultDeleverage(mock, True)
 
     return (env, vault, mock)
 
