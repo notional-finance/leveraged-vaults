@@ -47,10 +47,19 @@ def test_single_maturity_success(StratStableETHstETH):
         DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
     ))
     assert env.tokens["WETH"].balanceOf(env.liquidator.owner()) == 0
+
+    with brownie.reverts():
+        env.liquidator.flashLiquidate.call(
+            env.tokens["WETH"], 
+            Wei(flashLoanAmount * 1.2), 
+            [1, accounts[0].address, mock.address, False, redeemParams], 
+            {"from": env.liquidator.owner()}
+        )
+
     env.liquidator.flashLiquidate(
         env.tokens["WETH"], 
         Wei(flashLoanAmount * 1.2), 
-        [1, accounts[0].address, mock.address, redeemParams], 
+        [1, accounts[0].address, mock.address, True, redeemParams], 
         {"from": env.liquidator.owner()}
     )
 

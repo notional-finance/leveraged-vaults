@@ -22,12 +22,12 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
     address public immutable EULER;
     IEulerMarkets public immutable MARKETS;
     mapping(address => address) internal underlyingToAsset;
-    mapping(address => bool) internal vaultDeleverage;
 
     struct LiquidationParams {
         uint16 currencyId;
         address account;
         address vault;
+        bool useVaultDeleverage;
         bytes redeemData;
     }
 
@@ -74,10 +74,6 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         dToken.flashLoan(amount, abi.encode(asset, amount, true, params));
     }
 
-    function setVaultDeleverage(address vault, bool useVaultDeleverage) external onlyOwner {
-        vaultDeleverage[vault] = useVaultDeleverage;
-    }
-
     function onFlashLoan(bytes memory data) external override {
         require(msg.sender == address(EULER));
 
@@ -108,7 +104,7 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
             
             require(maxLiquidatorDepositAssetCash > 0);
 
-            if (vaultDeleverage[params.vault]) {
+            if (params.useVaultDeleverage) {
                 IStrategyVault(params.vault).deleverageAccount(
                     params.account, 
                     params.vault, 
