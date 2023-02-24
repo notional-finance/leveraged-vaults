@@ -9,10 +9,11 @@ import {IAuraStakingProxy} from "../../../../interfaces/aura/IAuraStakingProxy.s
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
+import {RewardUtils} from "../../common/internal/reward/RewardUtils.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
-import {BalancerStrategyBase} from "../BalancerStrategyBase.sol";
+import {VaultBase} from "../../common/VaultBase.sol";
 
-abstract contract AuraStakingMixin is BalancerStrategyBase {
+abstract contract AuraStakingMixin is VaultBase {
     using TokenUtils for IERC20;
 
     /// @notice Balancer liquidity gauge used to get a list of reward tokens
@@ -26,7 +27,7 @@ abstract contract AuraStakingMixin is BalancerStrategyBase {
     IERC20 internal immutable AURA_TOKEN;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        BalancerStrategyBase(notional_, params.baseParams) {
+        VaultBase(notional_, params.baseParams.tradingModule, params.baseParams.settlementPeriodInSeconds) {
         LIQUIDITY_GAUGE = params.baseParams.liquidityGauge;
         AURA_REWARD_POOL = params.rewardPool;
         AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
@@ -59,22 +60,7 @@ abstract contract AuraStakingMixin is BalancerStrategyBase {
 
     function claimRewardTokens() 
         external onlyRole(REWARD_REINVESTMENT_ROLE) returns (uint256[] memory claimedBalances) {
-        IERC20[] memory rewardTokens = _rewardTokens();
-
-        uint256 numRewardTokens = rewardTokens.length;
-
-        claimedBalances = new uint256[](numRewardTokens);
-        for (uint256 i; i < numRewardTokens; i++) {
-            claimedBalances[i] = rewardTokens[i].balanceOf(address(this));
-        }
-
-        AURA_REWARD_POOL.getReward(address(this), true); // claimExtraRewards = true
-
-        for (uint256 i; i < numRewardTokens; i++) {
-            claimedBalances[i] = rewardTokens[i].balanceOf(address(this)) - claimedBalances[i];
-        }
-
-        emit VaultEvents.ClaimedRewardTokens(rewardTokens, claimedBalances);
+        claimedBalances = RewardUtils._claimRewardTokens(AURA_REWARD_POOL, _rewardTokens());
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades
