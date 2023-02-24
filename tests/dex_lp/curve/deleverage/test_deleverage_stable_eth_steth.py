@@ -47,7 +47,7 @@ def test_single_maturity_success(StratCurveStableETHstETH):
     env.liquidator.flashLiquidate(
         env.tokens["WETH"], 
         Wei(flashLoanAmount * 1.2), 
-        [1, accounts[0].address, mock.address, redeemParams], 
+        [1, accounts[0].address, mock.address, False, redeemParams], 
         {"from": env.liquidator.owner()}
     )
 
