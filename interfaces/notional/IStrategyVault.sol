@@ -43,4 +43,13 @@ interface IStrategyVault {
         uint256 underlyingRequired,
         bytes calldata data
     ) external returns (bytes memory returnData);
+
+    function deleverageAccount(
+        address account,
+        address vault,
+        address liquidator,
+        uint256 depositAmountExternal,
+        bool transferSharesToLiquidator,
+        bytes calldata redeemData
+    ) external returns (uint256 profitFromLiquidation);
 }
