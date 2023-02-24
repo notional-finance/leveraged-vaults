@@ -16,7 +16,7 @@ from brownie.network import Chain
 from brownie import network, Contract
 from scripts.BalancerEnvironment import getEnvironment
 from scripts.CurveEnvironment import getCurveEnvironment
-from scripts.common import set_dex_flags, set_trade_type_flags
+from scripts.common import set_flags, set_dex_flags, set_trade_type_flags
 
 chain = Chain()
 
@@ -52,11 +52,12 @@ def StratStableETHstETH():
 
     vault.upgradeToAndCall(impl.address, settingsCalldata, {"from": env.notional.owner()})
 
-    # Increase capacity
-    # TODO: remove after mainnet capacity increase
     env.notional.updateVault(
         '0xF049B944eC83aBb50020774D48a8cf40790996e6', 
-        [3, 1, 100, 900, 0, 102, 80, 2, 1500, [0, 0], 10000], 
+        [
+            set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True, ONLY_VAULT_DELEVERAGE=True),
+            1, 100, 900, 0, 102, 80, 2, 2000, [0, 0], 10000
+        ], 
         750000000000,
         {"from": env.notional.owner()}
     )
@@ -89,7 +90,10 @@ def StratStableETHstETH():
 
     env.notional.updateVault(
         mock.address, 
-        [3, 1, 100, 900, 0, 102, 80, 2, 1500, [0, 0], 10000], 
+        [
+            set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True, ONLY_VAULT_DELEVERAGE=True),
+            1, 100, 900, 0, 102, 80, 2, 2000, [0, 0], 10000
+        ], 
         750000000000,
         {"from": env.notional.owner()}
     )
