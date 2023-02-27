@@ -74,6 +74,11 @@ yarn install
 ```
 https://eth-brownie.readthedocs.io/en/stable/network-management.html#
 ### Execute tests
+* Balancer tests
 ```
-brownie test tests/balancer --network mainnet-fork
+brownie test tests/dex_lp/balancer --network mainnet-fork
+```
+* Curve tests
+```
+brownie test tests/dex_lp/curve --network mainnet-fork
 ```
