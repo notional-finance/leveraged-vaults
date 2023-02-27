@@ -5,6 +5,7 @@ import {IEulerDToken} from "../../interfaces/euler/IEulerDToken.sol";
 import {IEulerMarkets} from "../../interfaces/euler/IEulerMarkets.sol";
 import {IEulerFlashLoanReceiver} from "../../interfaces/euler/IEulerFlashLoanReceiver.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
+import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {CErc20Interface} from "../../interfaces/compound/CErc20Interface.sol";
 import {CEtherInterface} from "../../interfaces/compound/CEtherInterface.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
@@ -26,6 +27,7 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         uint16 currencyId;
         address account;
         address vault;
+        bool useVaultDeleverage;
         bytes redeemData;
     }
 
@@ -102,14 +104,25 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
             
             require(maxLiquidatorDepositAssetCash > 0);
 
-            NOTIONAL.deleverageAccount(
-                params.account, 
-                params.vault, 
-                address(this), 
-                uint256(maxLiquidatorDepositAssetCash), 
-                false, 
-                params.redeemData
-            );
+            if (params.useVaultDeleverage) {
+                IStrategyVault(params.vault).deleverageAccount(
+                    params.account, 
+                    params.vault, 
+                    address(this), 
+                    uint256(maxLiquidatorDepositAssetCash), 
+                    false, 
+                    params.redeemData
+                );
+            } else {
+                NOTIONAL.deleverageAccount(
+                    params.account, 
+                    params.vault,
+                    address(this), 
+                    uint256(maxLiquidatorDepositAssetCash), 
+                    false, 
+                    params.redeemData
+                );
+            }
         }
 
         // Redeem CToken

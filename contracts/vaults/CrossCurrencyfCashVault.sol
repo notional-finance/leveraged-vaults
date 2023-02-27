@@ -291,6 +291,8 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
         (/* */, borrowedCurrencyAmount) = _executeTrade(params.dexId, trade);
     }
 
+    function _checkReentrancyContext() internal override {} 
+
     function _encodeBorrowTrade(
         uint256 maturity,
         uint256 fCashAmount,

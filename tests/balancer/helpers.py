@@ -42,7 +42,7 @@ def enterMaturity(
     if currencyId == 1:
         value = depositAmount
     if depositParams == None:
-        depositParams = get_deposit_params()
+        depositParams = get_deposit_params()    
     if callStatic:
         env.notional.enterVault.call(
             account,

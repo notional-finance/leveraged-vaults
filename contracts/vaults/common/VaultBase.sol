@@ -2,19 +2,19 @@
 pragma solidity 0.8.17;
 
 import {BaseStrategyVault} from "../BaseStrategyVault.sol";
-import {DeploymentParams} from "./BalancerVaultTypes.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-abstract contract BalancerStrategyBase is BaseStrategyVault, UUPSUpgradeable {
+abstract contract VaultBase is BaseStrategyVault, UUPSUpgradeable {
 
     /** Immutables */
     uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
 
-    constructor(NotionalProxy notional_, DeploymentParams memory params) 
-        BaseStrategyVault(notional_, params.tradingModule)
+    constructor(NotionalProxy notional_, ITradingModule tradingModule_, uint32 settlementPeriodInSeconds_) 
+        BaseStrategyVault(notional_, tradingModule_)
     {
-        SETTLEMENT_PERIOD_IN_SECONDS = params.settlementPeriodInSeconds;
+        SETTLEMENT_PERIOD_IN_SECONDS = settlementPeriodInSeconds_;
     }
 
     function _revertInSettlementWindow(uint256 maturity) internal view {
