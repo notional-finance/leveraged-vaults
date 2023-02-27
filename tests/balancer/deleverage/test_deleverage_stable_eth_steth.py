@@ -46,26 +46,26 @@ def test_single_maturity_success(StratStableETHstETH):
     redeemParams = get_redeem_params(primaryAmount * 0.98, secondaryAmount * 0.98, get_dynamic_trade_params(
         DEX_ID["CURVE"], TRADE_TYPE["EXACT_IN_SINGLE"], 5e6, True, bytes(0)
     ))
-    assert env.tokens["WETH"].balanceOf(env.liquidator.owner()) == 0
+    assert env.tokens["WETH"].balanceOf(env.eulerLiquidator.owner()) == 0
 
     with brownie.reverts():
-        env.liquidator.flashLiquidate.call(
+        env.eulerLiquidator.flashLiquidate.call(
             env.tokens["WETH"], 
             Wei(flashLoanAmount * 1.2), 
             [1, accounts[0].address, mock.address, False, redeemParams], 
-            {"from": env.liquidator.owner()}
+            {"from": env.eulerLiquidator.owner()}
         )
 
-    env.liquidator.flashLiquidate(
+    env.eulerLiquidator.flashLiquidate(
         env.tokens["WETH"], 
         Wei(flashLoanAmount * 1.2), 
         [1, accounts[0].address, mock.address, True, redeemParams], 
-        {"from": env.liquidator.owner()}
+        {"from": env.eulerLiquidator.owner()}
     )
 
     # 0.02 == liquidation discount
     expectedProfit = valuationFix + underlyingRedeemed * 0.02
-    assert pytest.approx(env.tokens["WETH"].balanceOf(env.liquidator.owner()), rel=5e-2) == expectedProfit
+    assert pytest.approx(env.tokens["WETH"].balanceOf(env.eulerLiquidator.owner()), rel=5e-2) == expectedProfit
 
 def test_callback_reentrancy(StratStableETHstETH):
     (env, vault, mock) = StratStableETHstETH

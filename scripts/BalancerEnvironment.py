@@ -7,7 +7,8 @@ from brownie import (
     Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
     MetaStable2TokenAuraHelper,
-    FlashLiquidator,
+    EulerFlashLiquidator,
+    AaveFlashLiquidator,
     nMockProxy
 )
 from brownie.network.contract import Contract
@@ -156,7 +157,8 @@ StrategyConfig = {
 class BalancerEnvironment(Environment):
     def __init__(self, network) -> None:
         Environment.__init__(self, network)
-        self.liquidator = self.deployLiquidator()
+        self.eulerLiquidator = self.deployEulerLiquidator()
+        self.aaveLiquidator = self.deployAaveLiquidator()
 
     def getStratConfig(self, strat):
         return StrategyConfig["balancer2TokenStrats"][strat]
@@ -247,12 +249,21 @@ class BalancerEnvironment(Environment):
 
         return vaultProxy
 
-    def deployLiquidator(self):
-        liquidator = FlashLiquidator.deploy(
+    def deployEulerLiquidator(self):
+        liquidator = EulerFlashLiquidator.deploy(
             self.notional, 
             "0x27182842E098f60e3D576794A5bFFb0777E025d3",
             "0x3520d5a913427E6F0D6A83E07ccD4A4da316e4d3",
             {"from": self.deployer}
+        )
+        liquidator.enableCurrencies([1, 2, 3], {"from": self.deployer})
+        return liquidator
+
+    def deployAaveLiquidator(self):
+        liquidator = AaveFlashLiquidator.deploy(
+            self.notional,
+            "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
+            {"from": self.deployer}            
         )
         liquidator.enableCurrencies([1, 2, 3], {"from": self.deployer})
         return liquidator

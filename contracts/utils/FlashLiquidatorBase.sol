@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {IEulerDToken} from "../../interfaces/euler/IEulerDToken.sol";
-import {IEulerMarkets} from "../../interfaces/euler/IEulerMarkets.sol";
-import {IEulerFlashLoanReceiver} from "../../interfaces/euler/IEulerFlashLoanReceiver.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {CErc20Interface} from "../../interfaces/compound/CErc20Interface.sol";
@@ -15,12 +12,11 @@ import {Token} from "../global/Types.sol";
 import {BoringOwnable} from "./BoringOwnable.sol";
 import {Deployments} from "../global/Deployments.sol";
 
-contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
+abstract contract FlashLiquidatorBase is BoringOwnable {
     using TokenUtils for IERC20;
 
     NotionalProxy public immutable NOTIONAL;
-    address public immutable EULER;
-    IEulerMarkets public immutable MARKETS;
+    address internal immutable FLASH_LENDER;
     mapping(address => address) internal underlyingToAsset;
 
     struct LiquidationParams {
@@ -31,10 +27,9 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         bytes redeemData;
     }
 
-    constructor(NotionalProxy notional_, address euler_, IEulerMarkets markets_) {
+    constructor(NotionalProxy notional_, address flashLender_) {
         NOTIONAL = notional_;
-        EULER = euler_;
-        MARKETS = markets_;
+        FLASH_LENDER = flashLender_;
         owner = msg.sender;
         emit OwnershipTransferred(address(0), owner);
     }
@@ -44,10 +39,10 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
             (Token memory assetToken, Token memory underlyingToken) = NOTIONAL.getCurrency(currencies[i]);
             IERC20(assetToken.tokenAddress).checkApprove(address(NOTIONAL), type(uint256).max);
             if (underlyingToken.tokenAddress == Constants.ETH_ADDRESS) {
-                IERC20(address(Deployments.WETH)).checkApprove(address(EULER), type(uint256).max);
+                IERC20(address(Deployments.WETH)).checkApprove(address(FLASH_LENDER), type(uint256).max);
                 underlyingToAsset[address(Deployments.WETH)] = assetToken.tokenAddress;
             } else {
-                IERC20(underlyingToken.tokenAddress).checkApprove(address(EULER), type(uint256).max);
+                IERC20(underlyingToken.tokenAddress).checkApprove(address(FLASH_LENDER), type(uint256).max);
                 IERC20(underlyingToken.tokenAddress).checkApprove(assetToken.tokenAddress, type(uint256).max);
                 underlyingToAsset[underlyingToken.tokenAddress] = assetToken.tokenAddress;
             }
@@ -60,8 +55,7 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         LiquidationParams calldata params
     ) external onlyOwner returns (uint256) {
         uint256 balance = IERC20(asset).balanceOf(address(this));
-        IEulerDToken dToken = IEulerDToken(MARKETS.underlyingToDToken(asset));
-        dToken.flashLoan(amount, abi.encode(asset, amount, false, params));
+        _flashLiquidate(asset, amount, false, params);
         return IERC20(asset).balanceOf(address(this)) - balance;
     }
 
@@ -70,12 +64,18 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
         uint256 amount,
         LiquidationParams calldata params
     ) external {
-        IEulerDToken dToken = IEulerDToken(MARKETS.underlyingToDToken(asset));
-        dToken.flashLoan(amount, abi.encode(asset, amount, true, params));
+        _flashLiquidate(asset, amount, true, params);
     }
 
-    function onFlashLoan(bytes memory data) external override {
-        require(msg.sender == address(EULER));
+    function _flashLiquidate(
+        address asset,
+        uint256 amount,
+        bool withdraw,
+        LiquidationParams calldata params
+    ) internal virtual;
+
+    function handleLiquidation(uint256 fee, bool repay, bytes memory data) internal {
+        require(msg.sender == address(FLASH_LENDER));
 
         (
             address asset, 
@@ -140,7 +140,9 @@ contract FlashLiquidator is IEulerFlashLoanReceiver, BoringOwnable {
             _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount);
         }
 
-        IERC20(asset).transfer(msg.sender, amount); // repay
+        if (repay) {
+            IERC20(asset).transfer(msg.sender, amount);
+        }
     }
 
     function _withdrawToOwner(address token, uint256 amount) private {
