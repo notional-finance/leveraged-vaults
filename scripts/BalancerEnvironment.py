@@ -45,7 +45,7 @@ StrategyConfig = {
             "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 5%
             "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
-            "settlementWindow": 172800,  # 1-week settlement
+            "settlementWindow": 172800,  # 2 days
             "oraclePriceDeviationLimitPercent": 200, # +/- 2%
             "poolSlippageLimitPercent": 9975, # 0.25%
         },
@@ -91,7 +91,7 @@ StrategyConfig = {
             "auraRewardPool": "0xfb6b1c1a1ea5618b3cfc20f81a11a97e930fa46b",
             "maxUnderlyingSurplus": 50000e6, # 50000 USDC
             "oracleWindowInSeconds": 0,
-            "maxPoolShare": 2e3, # 20%
+            "maxPoolShare": Wei(0.1e3), # 1%
             "settlementSlippageLimitPercent": 3e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
             "emergencySettlementSlippageLimitPercent": 4e6, # 4%
@@ -116,14 +116,14 @@ StrategyConfig = {
             "liquidityGauge": "0xf53f2fee2a34f7f8d1bfe1b774a95cc79c121b34",
             "auraRewardPool": "0x9542ecd46f3e661e4a53ee63c0ab764196df1f8a",
             "maxUnderlyingSurplus": 50000e18, # 50000 DAI
-            "maxPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 3e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
-            "emergencySettlementSlippageLimitPercent": 4e6, # 4%
-            "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
-            "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-            "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
-            "poolSlippageLimitPercent": 9900, # 1%
+            "maxPoolShare": Wei(0.1e3), # 1%
+            "settlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "postMaturitySettlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "emergencySettlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "settlementCoolDownInMinutes": 20, # 6 hour settlement cooldown
+            "settlementWindow": 172800,  # 2 days
+            "oraclePriceDeviationLimitPercent": 100, # +/- 1%
+            "poolSlippageLimitPercent": 9980, # 0.2%
         },
         "StratEulerBoostedPoolUSDCPrimary": {
             "vaultConfig": get_vault_config(
@@ -143,13 +143,13 @@ StrategyConfig = {
             "maxUnderlyingSurplus": 50000e6, # 50000 USDC
             "oracleWindowInSeconds": 0,
             "maxPoolShare": 2e3, # 20%
-            "settlementSlippageLimitPercent": 3e6, # 5%
-            "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
-            "emergencySettlementSlippageLimitPercent": 4e6, # 4%
-            "settlementCoolDownInMinutes": 60 * 6, # 6 hour settlement cooldown
-            "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
-            "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
-            "poolSlippageLimitPercent": 9900, # 1%
+            "settlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "postMaturitySettlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "emergencySettlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "settlementCoolDownInMinutes": 20, # 6 hour settlement cooldown
+            "settlementWindow": 172800,  # 2 days
+            "oraclePriceDeviationLimitPercent": 100, # +/- 1%
+            "poolSlippageLimitPercent": 9980, # 0.2%
         }
     }
 }
@@ -301,9 +301,30 @@ def main():
         [Boosted3TokenAuraHelper]
     )
     eulerBoostedDAI = env.deployVaultProxy("StratEulerBoostedPoolDAIPrimary", eulerBoostedDAIImpl, Boosted3TokenAuraVault)
+
+    env.notional.updateVault(
+        eulerBoostedDAI.address, 
+        [
+            set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True, ONLY_VAULT_DELEVERAGE=True),
+            2, 100, 500, 150, 102, 80, 2, 800, [0, 0], 10000
+        ], 
+        Wei(5000000e8),
+        {"from": env.notional.owner()}
+    )
+
     eulerBoostedUSDCImpl = env.deployBalancerVault(
         "StratEulerBoostedPoolUSDCPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
     eulerBoostedUSDC = env.deployVaultProxy("StratEulerBoostedPoolUSDCPrimary", eulerBoostedUSDCImpl, Boosted3TokenAuraVault)
+
+    env.notional.updateVault(
+        eulerBoostedUSDC.address, 
+        [
+            set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True, ONLY_VAULT_DELEVERAGE=True),
+            3, 100, 500, 150, 102, 80, 2, 800, [0, 0], 10000
+        ], 
+        Wei(5000000e8),
+        {"from": env.notional.owner()}
+    )
