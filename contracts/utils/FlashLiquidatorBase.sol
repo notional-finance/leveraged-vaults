@@ -137,11 +137,11 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         }
 
         if (withdraw) {
-            _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount);
+            _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount - fee);
         }
 
         if (repay) {
-            IERC20(asset).transfer(msg.sender, amount);
+            IERC20(asset).transfer(msg.sender, amount + fee);
         }
     }
 
