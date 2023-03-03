@@ -3,7 +3,7 @@ import brownie
 from brownie import Wei, accounts, MockBalancerCallback
 from brownie.network.state import Chain
 from tests.fixtures import *
-from tests.balancer.helpers import enterMaturity, get_metastable_amounts
+from tests.balancer.helpers import enterMaturity, get_metastable_amounts, get_asset_exchange_rate
 from scripts.common import (
     get_redeem_params, 
     get_dynamic_trade_params, 
@@ -40,7 +40,7 @@ def test_single_maturity_success(StratStableETHstETH):
     assetRate = env.notional.getCurrencyAndRates(currencyId)["assetRate"]
     strategyTokensToRedeem = vaultSharesToLiquidator / vaultState["totalVaultShares"] * vaultState["totalStrategyTokens"]
     underlyingRedeemed = mock.convertStrategyToUnderlying(accounts[0], strategyTokensToRedeem, maturity)
-    flashLoanAmount = assetRate["rate"] * assetAmountFromLiquidator / assetRate["underlyingDecimals"]
+    flashLoanAmount = assetAmountFromLiquidator * get_asset_exchange_rate(env, currencyId) * assetRate["underlyingDecimals"] / 1e8
     primaryAmount, secondaryAmount = get_metastable_amounts(mock.getStrategyContext()["poolContext"], underlyingRedeemed)
     # discount primary and secondary slightly
     redeemParams = get_redeem_params(primaryAmount * 0.98, secondaryAmount * 0.98, get_dynamic_trade_params(

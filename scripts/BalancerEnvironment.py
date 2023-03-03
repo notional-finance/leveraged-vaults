@@ -105,7 +105,7 @@ StrategyConfig = {
                 flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
                 currencyId=2,
                 minAccountBorrowSize=1,
-                maxBorrowMarketIndex=3,
+                maxBorrowMarketIndex=2,
                 secondaryBorrowCurrencies=[0,0]
             ),
             "secondaryBorrowCurrency": None,
@@ -130,7 +130,7 @@ StrategyConfig = {
                 flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
                 currencyId=3,
                 minAccountBorrowSize=1,
-                maxBorrowMarketIndex=3,
+                maxBorrowMarketIndex=2,
                 secondaryBorrowCurrencies=[0,0]
             ),
             "secondaryBorrowCurrency": None,
