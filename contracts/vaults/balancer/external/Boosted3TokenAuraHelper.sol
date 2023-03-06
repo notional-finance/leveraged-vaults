@@ -154,13 +154,18 @@ library Boosted3TokenAuraHelper {
     function reinvestReward(
         Boosted3TokenAuraStrategyContext calldata context,
         ReinvestRewardParams calldata params
-    ) external {        
+    ) external returns (
+        address rewardToken,
+        uint256 primaryAmount,
+        uint256 secondaryAmount,
+        uint256 poolClaimAmount
+    ) {
         StrategyContext memory strategyContext = context.baseStrategy;
         BoostedOracleContext calldata oracleContext = context.oracleContext;
         AuraStakingContext calldata stakingContext = context.stakingContext;
         Balancer3TokenPoolContext calldata poolContext = context.poolContext;
 
-        (address rewardToken, uint256 primaryAmount) = context.poolContext.basePool._executeRewardTrades({
+        (rewardToken, primaryAmount) = context.poolContext.basePool._executeRewardTrades({
             rewardTokens: stakingContext.rewardTokens,
             tradingModule: strategyContext.tradingModule,
             data: params.tradeData
@@ -170,7 +175,7 @@ library Boosted3TokenAuraHelper {
         /// the oracle price. The return values are not used.
         poolContext._getValidatedPoolData(oracleContext, strategyContext);
 
-        uint256 bptAmount = context.poolContext._joinPoolAndStake({
+        poolClaimAmount = context.poolContext._joinPoolAndStake({
             strategyContext: strategyContext,
             stakingContext: stakingContext,
             oracleContext: oracleContext,
@@ -186,10 +191,10 @@ library Boosted3TokenAuraHelper {
             minBPT: 0
         });
 
-        strategyContext.vaultState.totalPoolClaim += bptAmount;
+        strategyContext.vaultState.totalPoolClaim += poolClaimAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, 0, bptAmount); 
+        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, poolClaimAmount); 
     }
 
     function convertStrategyToUnderlying(

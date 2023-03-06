@@ -150,8 +150,13 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) 
-        external onlyRole(REWARD_REINVESTMENT_ROLE) {
-        MetaStable2TokenAuraHelper.reinvestReward(_strategyContext(), params);
+        external onlyRole(REWARD_REINVESTMENT_ROLE) returns (
+            address rewardToken,
+            uint256 primaryAmount,
+            uint256 secondaryAmount,
+            uint256 poolClaimAmount
+    ) {
+        return MetaStable2TokenAuraHelper.reinvestReward(_strategyContext(), params);
     }
 
     /// @notice Updates the vault settings
