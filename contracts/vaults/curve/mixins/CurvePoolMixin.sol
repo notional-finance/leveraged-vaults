@@ -8,7 +8,7 @@ import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {ICurvePool} from "../../../../interfaces/curve/ICurvePool.sol";
 import {ConvexStakingMixin} from "./ConvexStakingMixin.sol";
-import {CurveVaultStorage} from "../internal/CurveVaultStorage.sol";
+import {VaultStorage} from "../../common/VaultStorage.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {CurveConstants} from "../internal/CurveConstants.sol";
 
@@ -29,8 +29,8 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
         return StrategyContext({
             settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
             tradingModule: TRADING_MODULE,
-            vaultSettings: CurveVaultStorage.getStrategyVaultSettings(),
-            vaultState: CurveVaultStorage.getStrategyVaultState(),
+            vaultSettings: VaultStorage.getStrategyVaultSettings(),
+            vaultState: VaultStorage.getStrategyVaultState(),
             poolClaimPrecision: CurveConstants.CURVE_PRECISION
         });
     }

@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 
 import {ConvexStakingContext, ConvexVaultDeploymentParams} from "../CurveVaultTypes.sol";
 import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
-import {StrategyVaultSettings, CurveVaultStorage} from "../internal/CurveVaultStorage.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {ICurveGauge} from "../../../../interfaces/curve/ICurveGauge.sol";
 import {IConvexBooster} from "../../../../interfaces/convex/IConvexBooster.sol";
@@ -12,6 +11,7 @@ import {IConvexRewardPool} from "../../../../interfaces/convex/IConvexRewardPool
 import {IConvexStakingProxy} from "../../../../interfaces/convex/IConvexStakingProxy.sol";
 import {CurveConstants} from "../internal/CurveConstants.sol";
 import {RewardUtils} from "../../common/internal/reward/RewardUtils.sol";
+import {StrategyVaultSettings, VaultStorage} from "../../common/VaultStorage.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
 import {VaultBase} from "../../common/VaultBase.sol";
 

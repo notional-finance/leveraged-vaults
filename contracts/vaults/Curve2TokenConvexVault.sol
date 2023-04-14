@@ -22,7 +22,6 @@ import {TypeConvert} from "../global/TypeConvert.sol";
 import {Deployments} from "../global/Deployments.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {Curve2TokenVaultMixin} from "./curve/mixins/Curve2TokenVaultMixin.sol";
-import {CurveVaultStorage} from "./curve/internal/CurveVaultStorage.sol";
 import {Curve2TokenPoolUtils} from "./curve/internal/pool/Curve2TokenPoolUtils.sol";
 import {Curve2TokenConvexHelper} from "./curve/external/Curve2TokenConvexHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -34,7 +33,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     using TypeConvert for int256;
     using TokenUtils for IERC20;
     using SettlementUtils for StrategyContext;
-    using CurveVaultStorage for StrategyVaultState;
+    using VaultStorage for StrategyVaultState;
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
     using Curve2TokenConvexHelper for Curve2TokenConvexStrategyContext;
 
@@ -51,7 +50,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        CurveVaultStorage.setStrategyVaultSettings(params.settings);
+        VaultStorage.setStrategyVaultSettings(params.settings);
 
         if (PRIMARY_TOKEN != Deployments.ALT_ETH_ADDRESS) {
             IERC20(PRIMARY_TOKEN).checkApprove(address(CURVE_POOL), type(uint256).max);
