@@ -78,13 +78,16 @@ library TwoTokenPoolUtils {
         uint256 totalSupply = poolContext.poolToken.totalSupply();
         uint256 primaryBalance = poolContext.primaryBalance * poolClaim / totalSupply;
         uint256 secondaryBalance = poolContext.secondaryBalance * poolClaim / totalSupply;
+        
+        // Scale secondary balance to primaryPrecision
+        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
+        uint256 secondaryPrecision = 10 ** poolContext.secondaryDecimals;
+        secondaryBalance = secondaryBalance * primaryPrecision / secondaryPrecision;
 
         // Value the secondary balance in terms of the primary token using the oraclePairPrice
         uint256 secondaryAmountInPrimary = secondaryBalance * strategyContext.poolClaimPrecision / oraclePrice;
 
-        // Make sure primaryAmount is reported in primaryPrecision
-        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
-        primaryAmount = (primaryBalance + secondaryAmountInPrimary) * primaryPrecision / strategyContext.poolClaimPrecision;
+        primaryAmount = primaryBalance + secondaryAmountInPrimary;
     }
 
     /// @notice Trade primary currency for secondary if the trade is specified
