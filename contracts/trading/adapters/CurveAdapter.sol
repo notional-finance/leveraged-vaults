@@ -10,6 +10,10 @@ import {ICurveRegistry} from "../../../interfaces/curve/ICurveRegistry.sol";
 
 library CurveAdapter {
     int128 internal constant MAX_TOKENS = 4;
+    struct CurveSingleData {
+        uint256 poolIndex;
+    }
+
     struct CurveBatchData { 
         address[6] route;
         uint256[8] indices;
@@ -34,9 +38,13 @@ library CurveAdapter {
     function _exactInSingle(Trade memory trade)
         internal view returns (address target, bytes memory executionCallData)
     {
+        CurveSingleData memory data = abi.decode(trade.exchangeData, (CurveSingleData));
+
         address sellToken = _getTokenAddress(trade.sellToken);
         address buyToken = _getTokenAddress(trade.buyToken);
-        ICurvePool pool = ICurvePool(Deployments.CURVE_REGISTRY.find_pool_for_coins(sellToken, buyToken));
+        ICurvePool pool = ICurvePool(
+            Deployments.CURVE_REGISTRY.find_pool_for_coins(sellToken, buyToken, data.poolIndex)
+        );
 
         if (address(pool) == address(0)) revert InvalidTrade();
 
