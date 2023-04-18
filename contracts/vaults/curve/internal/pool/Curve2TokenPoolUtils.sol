@@ -134,37 +134,8 @@ library Curve2TokenPoolUtils {
             / primaryPrecision;
         uint256 secondaryPoolBalance = poolContext.basePool.secondaryBalance * CurveConstants.CURVE_PRECISION 
             / secondaryPrecision;
-
-        return _checkPrimarySecondaryRatio({
-            strategyContext: strategyContext,
-            primaryAmount: primaryAmount,
-            secondaryAmount: secondaryAmount,
-            primaryPoolBalance: primaryPoolBalance,
-            secondaryPoolBalance: secondaryPoolBalance
-        });
     }
     
-    function _checkPrimarySecondaryRatio(
-        StrategyContext memory strategyContext,
-        uint256 primaryAmount, 
-        uint256 secondaryAmount, 
-        uint256 primaryPoolBalance, 
-        uint256 secondaryPoolBalance
-    ) private pure {
-        uint256 totalAmount = primaryAmount + secondaryAmount;
-        uint256 totalPoolBalance = primaryPoolBalance + secondaryPoolBalance;
-
-        uint256 primaryPercentage = primaryAmount * CurveConstants.CURVE_PRECISION / totalAmount;        
-        uint256 expectedPrimaryPercentage = primaryPoolBalance * CurveConstants.CURVE_PRECISION / totalPoolBalance;
-
-        strategyContext._checkPriceLimit(expectedPrimaryPercentage, primaryPercentage);
-
-        uint256 secondaryPercentage = secondaryAmount * CurveConstants.CURVE_PRECISION / totalAmount;
-        uint256 expectedSecondaryPercentage = secondaryPoolBalance * CurveConstants.CURVE_PRECISION / totalPoolBalance;
-
-        strategyContext._checkPriceLimit(expectedSecondaryPercentage, secondaryPercentage);
-    }
-
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted
     /// primary balance is used in order to prevent pool manipulation.
     /// @param poolContext pool context variables
