@@ -9,6 +9,7 @@ import {CurveConstants} from "../internal/CurveConstants.sol";
 import {CurvePoolMixin} from "./CurvePoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
+import {ICurvePool} from "../../../../interfaces/curve/ICurvePool.sol";
 
 abstract contract Curve2TokenPoolMixin is CurvePoolMixin {
     error InvalidPrimaryToken(address token);
@@ -34,8 +35,8 @@ abstract contract Curve2TokenPoolMixin is CurvePoolMixin {
             primaryToken = Deployments.ALT_ETH_ADDRESS;
         }
 
-        address token0 = CURVE_POOL.coins(0);
-        address token1 = CURVE_POOL.coins(1);
+        address token0 = ICurvePool(CURVE_POOL).coins(0);
+        address token1 = ICurvePool(CURVE_POOL).coins(1);
         
         uint8 primaryIndex;
         address secondaryToken;
@@ -83,11 +84,12 @@ abstract contract Curve2TokenPoolMixin is CurvePoolMixin {
                 secondaryIndex: SECONDARY_INDEX,
                 primaryDecimals: PRIMARY_DECIMALS,
                 secondaryDecimals: SECONDARY_DECIMALS,
-                primaryBalance: CURVE_POOL.balances(PRIMARY_INDEX),
-                secondaryBalance: CURVE_POOL.balances(SECONDARY_INDEX),
+                primaryBalance: ICurvePool(CURVE_POOL).balances(PRIMARY_INDEX),
+                secondaryBalance: ICurvePool(CURVE_POOL).balances(SECONDARY_INDEX),
                 poolToken: CURVE_POOL_TOKEN      
             }),
-            curvePool: CURVE_POOL
+            curvePool: CURVE_POOL,
+            isV2: IS_CURVE_V2
         });   
     }
 

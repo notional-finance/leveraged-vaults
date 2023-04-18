@@ -19,15 +19,28 @@ interface ICurvePool {
         uint256 minDy
     ) external payable returns (uint256);
 
-    function lp_token() external view returns (address);
-
     function balances(uint256 i) external view returns (uint256);
 
     function get_dy(int128 i, int128 j, uint256 dx) external view returns (uint256);
 }
 
+interface ICurvePoolV1 is ICurvePool {
+    function lp_token() external view returns (address);
+}
+
+interface ICurvePoolV2 is ICurvePool {
+    function token() external view returns (address);
+}
+
 interface ICurve2TokenPool is ICurvePool {
-    function add_liquidity(uint256[2] calldata amounts, uint256 min_mint_amount) external payable returns (uint256);
     function remove_liquidity(uint256 amount, uint256[2] calldata _min_amounts) external returns (uint256[2] memory);
     function remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 _min_amount) external returns (uint256);
+}
+
+interface ICurve2TokenPoolV1 is ICurve2TokenPool, ICurvePoolV1 {
+    function add_liquidity(uint256[2] calldata amounts, uint256 min_mint_amount) external payable returns (uint256);
+}
+
+interface ICurve2TokenPoolV2 is ICurve2TokenPool, ICurvePoolV2 {
+    function add_liquidity(uint256[2] calldata amounts, uint256 min_mint_amount, bool use_eth) external payable returns (uint256);
 }
