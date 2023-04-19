@@ -6,6 +6,8 @@ import {Trade, TradeType, InvalidTrade} from "../../../interfaces/trading/ITradi
 import {ICurveRouterV2} from "../../../interfaces/curve/ICurveRouterV2.sol";
 
 library CurveV2Adapter {
+    uint256 internal constant ROUTE_LEN = 9;
+
     struct CurveV2SingleData {
         // Address of the pool to use for the swap
         address pool;
@@ -15,7 +17,7 @@ library CurveV2Adapter {
         // Array of [initial token, pool, token, pool, token, ...]
         // The array is iterated until a pool address of 0x00, then the last
         // given token is transferred to `_receiver`
-        address[9] route;
+        address[ROUTE_LEN] route;
         // Multidimensional array of [i, j, swap type] where i and j are the correct
         // values for the n'th pool in `_route`. The swap type should be
         // 1 for a stableswap `exchange`,
@@ -55,6 +57,17 @@ library CurveV2Adapter {
             );
         } else if (trade.tradeType == TradeType.EXACT_IN_BATCH) {
             CurveV2BatchData memory data = abi.decode(trade.exchangeData, (CurveV2BatchData));
+
+            // Validate exchange data
+            require(data.route[0] == _getTokenAddress(trade.sellToken));
+            for (uint256 i = 1; i < ROUTE_LEN; i++) {
+                // Route ends with address(0)
+                if (data.route[i] == address(0)) {
+                    require(data.route[i - 1] == _getTokenAddress(trade.buyToken));
+                    break;
+                }
+            }
+
             // Array of pools for swaps via zap contracts. This parameter is only needed for
             // Polygon meta-factories underlying swaps.
             address[4] memory pools;

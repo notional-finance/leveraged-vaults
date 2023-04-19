@@ -28,6 +28,9 @@ library UniV2Adapter {
             tradeType == TradeType.EXACT_IN_BATCH
         ) {
             if (trade.sellToken == Constants.ETH_ADDRESS) {
+                require(data.path[0] == address(Deployments.WETH));
+                require(data.path[data.path.length - 1] == trade.buyToken);
+
                 msgValue = trade.amount;
                 // spender = address(0)
                 executionCallData = abi.encodeWithSelector(
@@ -38,6 +41,9 @@ library UniV2Adapter {
                     trade.deadline
                 );
             } else if (trade.buyToken == Constants.ETH_ADDRESS) {
+                require(data.path[0] == trade.sellToken);
+                require(data.path[data.path.length - 1] == address(Deployments.WETH));
+
                 spender = address(Deployments.UNIV2_ROUTER);
                 executionCallData = abi.encodeWithSelector(
                     IUniV2Router2.swapExactTokensForETH.selector,
@@ -48,6 +54,9 @@ library UniV2Adapter {
                     trade.deadline
                 );
             } else {
+                require(data.path[0] == trade.sellToken);
+                require(data.path[data.path.length - 1] == trade.buyToken);
+
                 spender = address(Deployments.UNIV2_ROUTER);
                 executionCallData = abi.encodeWithSelector(
                     IUniV2Router2.swapExactTokensForTokens.selector,
@@ -63,6 +72,9 @@ library UniV2Adapter {
             tradeType == TradeType.EXACT_OUT_BATCH
         ) {
             if (trade.sellToken == Constants.ETH_ADDRESS) {
+                require(data.path[0] == address(Deployments.WETH));
+                require(data.path[data.path.length - 1] == trade.buyToken);
+
                 msgValue = trade.limit;
                 // spender = address(0)
                 executionCallData = abi.encodeWithSelector(
@@ -73,6 +85,9 @@ library UniV2Adapter {
                     trade.deadline
                 );
             } else if (trade.buyToken == Constants.ETH_ADDRESS) {
+                require(data.path[0] == trade.sellToken);
+                require(data.path[data.path.length - 1] == address(Deployments.WETH));
+
                 spender = address(Deployments.UNIV2_ROUTER);
                 executionCallData = abi.encodeWithSelector(
                     IUniV2Router2.swapTokensForExactETH.selector,
@@ -83,6 +98,9 @@ library UniV2Adapter {
                     trade.deadline
                 );
             } else {
+                require(data.path[0] == trade.sellToken);
+                require(data.path[data.path.length - 1] == trade.buyToken);
+
                 spender = address(Deployments.UNIV2_ROUTER);
                 executionCallData = abi.encodeWithSelector(
                     IUniV2Router2.swapTokensForExactTokens.selector,

@@ -10,12 +10,13 @@ import {ICurveRegistry} from "../../../interfaces/curve/ICurveRegistry.sol";
 
 library CurveAdapter {
     int128 internal constant MAX_TOKENS = 4;
+    uint256 internal constant ROUTE_LEN = 6;
     struct CurveSingleData {
         uint256 poolIndex;
     }
 
     struct CurveBatchData { 
-        address[6] route;
+        address[ROUTE_LEN] route;
         uint256[8] indices;
     }
 
@@ -25,6 +26,16 @@ library CurveAdapter {
 
     function _exactInBatch(Trade memory trade) internal view returns (bytes memory executionCallData) {
         CurveBatchData memory data = abi.decode(trade.exchangeData, (CurveBatchData));
+
+        // Validate exchange data
+        require(data.route[0] == _getTokenAddress(trade.sellToken));
+        for (uint256 i = 1; i < ROUTE_LEN; i++) {
+            // Route ends with address(0)
+            if (data.route[i] == address(0)) {
+                require(data.route[i - 1] == _getTokenAddress(trade.buyToken));
+                break;
+            }
+        }
 
         return abi.encodeWithSelector(
             ICurveRouter.exchange.selector,

@@ -68,6 +68,7 @@ class Environment:
 
         self.deployTradingModule()
 
+<<<<<<< HEAD
     def deployAaveLiquidator(self):
         liquidator = AaveFlashLiquidator.deploy(
             self.notional,
@@ -77,6 +78,8 @@ class Environment:
         liquidator.enableCurrencies([1, 2, 3, 4], {"from": self.deployer})
         return liquidator
 
+=======
+>>>>>>> 4c8ab2f (Fix: sherlock-audit/2023-02-notional-judging#13)
     def deployTradingModule(self, useFresh=False):
         if useFresh == False:
             self.tradingModule = Contract.from_abi("TradingModule", self.addresses["trading"]["proxy"], TradingModule.abi)
