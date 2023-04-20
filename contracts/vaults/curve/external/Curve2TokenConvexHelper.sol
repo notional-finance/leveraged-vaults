@@ -119,15 +119,6 @@ library Curve2TokenConvexHelper {
     ) private {
         (uint256 spotPrice, uint256 oraclePrice) = poolContext._getSpotPriceAndOraclePrice(strategyContext);
 
-        /// @notice params.minPrimary and params.minSecondary are not required to be passed in by the caller
-        /// for this strategy vault
-        (params.minPrimary, params.minSecondary) = poolContext.basePool._getMinExitAmounts({
-            strategyContext: strategyContext,
-            oraclePrice: oraclePrice,
-            spotPrice: spotPrice,
-            poolClaim: poolClaimToSettle
-        });
-
         int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
             strategyContext: strategyContext,
             strategyTokenAmount: redeemStrategyTokenAmount,
