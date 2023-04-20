@@ -224,6 +224,13 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         });
     }
 
+    function _isCallerAuthenticated() internal view returns (bool) {
+        return (hasRole(NORMAL_SETTLEMENT_ROLE, msg.sender) ||
+            hasRole(EMERGENCY_SETTLEMENT_ROLE, msg.sender) ||
+            hasRole(POST_MATURITY_SETTLEMENT_ROLE, msg.sender) ||
+            hasRole(REWARD_REINVESTMENT_ROLE, msg.sender));
+    }
+
     // Storage gap for future potential upgrades
     uint256[45] private __gap;
 }

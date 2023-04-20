@@ -146,8 +146,8 @@ library Curve2TokenConvexHelper {
             uint256 primaryAmount, 
             uint256 secondaryAmount
         ) = poolContext.basePool._executeRewardTrades({
+            strategyContext: strategyContext,
             rewardTokens: context.stakingContext.rewardTokens,
-            tradingModule: strategyContext.tradingModule,
             data: params.tradeData
         });
 

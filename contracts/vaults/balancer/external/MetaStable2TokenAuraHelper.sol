@@ -168,8 +168,8 @@ library MetaStable2TokenAuraHelper {
             primaryAmount, 
             secondaryAmount
         ) = poolContext.basePool._executeRewardTrades({
+            strategyContext: strategyContext,
             rewardTokens: context.stakingContext.rewardTokens,
-            tradingModule: strategyContext.tradingModule,
             data: params.tradeData
         });
 

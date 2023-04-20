@@ -98,9 +98,8 @@ library TwoTokenPoolUtils {
     ) internal returns (uint256 primarySold, uint256 secondaryBought) {
         (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
 
-        (primarySold, secondaryBought) = StrategyUtils._executeTradeExactIn({
+        (primarySold, secondaryBought) = strategyContext._executeTradeExactIn({
             params: params.tradeParams, 
-            tradingModule: strategyContext.tradingModule, 
             sellToken: poolContext.primaryToken, 
             buyToken: poolContext.secondaryToken, 
             amount: params.tradeAmount,
@@ -119,9 +118,8 @@ library TwoTokenPoolUtils {
         );
 
         ( /*uint256 amountSold */, primaryPurchased) = 
-            StrategyUtils._executeTradeExactIn({
+            strategyContext._executeTradeExactIn({
                 params: tradeParams,
-                tradingModule: strategyContext.tradingModule,
                 sellToken: poolContext.secondaryToken,
                 buyToken: poolContext.primaryToken,
                 amount: secondaryBalance,
@@ -153,8 +151,8 @@ library TwoTokenPoolUtils {
 
     function _executeRewardTrades(
         TwoTokenPoolContext calldata poolContext,
+        StrategyContext memory strategyContext,
         IERC20[] memory rewardTokens,
-        ITradingModule tradingModule,
         bytes calldata data
     ) internal returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
         Proportional2TokenRewardTradeParams memory params = abi.decode(
@@ -170,18 +168,16 @@ library TwoTokenPoolUtils {
             poolContext.secondaryToken
         );
 
-        (/*uint256 amountSold*/, primaryAmount) = StrategyUtils._executeTradeExactIn({
+        (/*uint256 amountSold*/, primaryAmount) = strategyContext._executeTradeExactIn({
             params: params.primaryTrade.tradeParams,
-            tradingModule: tradingModule,
             sellToken: params.primaryTrade.sellToken,
             buyToken: params.primaryTrade.buyToken,
             amount: params.primaryTrade.amount,
             useDynamicSlippage: false
         });
 
-        (/*uint256 amountSold*/, secondaryAmount) = StrategyUtils._executeTradeExactIn({
+        (/*uint256 amountSold*/, secondaryAmount) = strategyContext._executeTradeExactIn({
             params: params.secondaryTrade.tradeParams,
-            tradingModule: tradingModule,
             sellToken: params.secondaryTrade.sellToken,
             buyToken: params.secondaryTrade.buyToken,
             amount: params.secondaryTrade.amount,

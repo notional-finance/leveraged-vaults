@@ -60,8 +60,8 @@ library StrategyUtils {
     }
 
     function _executeTradeExactIn(
+        StrategyContext memory context,
         TradeParams memory params,
-        ITradingModule tradingModule,
         address sellToken,
         address buyToken,
         uint256 amount,
@@ -72,6 +72,8 @@ library StrategyUtils {
         );
         if (useDynamicSlippage) {
             require(params.oracleSlippagePercentOrLimit <= Constants.SLIPPAGE_LIMIT_PRECISION);
+        } else {
+            require(context.isCallerAuthenticated);
         }
 
         // Sell residual secondary balance
@@ -103,11 +105,11 @@ library StrategyUtils {
         if (useDynamicSlippage) {
             /// @dev params.oracleSlippagePercentOrLimit checked above
             (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
-                params.dexId, tradingModule, uint32(params.oracleSlippagePercentOrLimit)
+                params.dexId, context.tradingModule, uint32(params.oracleSlippagePercentOrLimit)
             );
         } else {
             (amountSold, amountBought) = trade._executeTrade(
-                params.dexId, tradingModule
+                params.dexId, context.tradingModule
             );
         }
 
