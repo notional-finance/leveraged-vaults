@@ -44,7 +44,7 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
             vaultSettings: VaultStorage.getStrategyVaultSettings(),
             vaultState: VaultStorage.getStrategyVaultState(),
             poolClaimPrecision: CurveConstants.CURVE_PRECISION,
-            isCallerAuthenticated: _isCallerAuthenticated()
+            canUseStaticSlippage: _canUseStaticSlippage()
         });
     }
 

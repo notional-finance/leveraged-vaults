@@ -188,6 +188,7 @@ def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex
     with brownie.reverts():
         vault.grantRole.call(vault.getRoles()["normalSettlement"], operator, {"from": context.whale})
     vault.grantRole(vault.getRoles()["normalSettlement"], operator, {"from": env.notional.owner()})
+    vault.grantRole(vault.getRoles()["staticSlippageTrading"], operator, {"from": env.notional.owner()})
 
     # Can't settle with bad slippage setting
     if tradeParams != None:
@@ -303,6 +304,7 @@ def post_maturity_settlement(context, depositAmount, primaryBorrowAmount, maturi
     with brownie.reverts():
         vault.grantRole.call(vault.getRoles()["postMaturitySettlement"], operator, {"from": context.whale})
     vault.grantRole(vault.getRoles()["postMaturitySettlement"], operator, {"from": env.notional.owner()})
+    vault.grantRole(vault.getRoles()["staticSlippageTrading"], operator, {"from": env.notional.owner()})
 
     # Can't settle with bad slippage setting
     if tradeParams != None:
@@ -370,6 +372,7 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
     with brownie.reverts():
         vault.grantRole.call(vault.getRoles()["emergencySettlement"], operator, {"from": context.whale})
     vault.grantRole(vault.getRoles()["emergencySettlement"], operator, {"from": env.notional.owner()})
+    vault.grantRole(vault.getRoles()["staticSlippageTrading"], operator, {"from": env.notional.owner()})
 
     # Can't settle with bad slippage setting
     if tradeParams != None:
@@ -482,9 +485,14 @@ def reinvest_reward(
     vault.grantRole(vault.getRoles()["rewardReinvestment"], depositor, {"from": env.notional.owner()})
     
     if shouldRevert == True:
+        vault.grantRole(vault.getRoles()["staticSlippageTrading"], depositor, {"from": env.notional.owner()})
         with brownie.reverts():
             vault.reinvestReward.call(rewardParams, {"from": depositor})
     else:
+        # Can't trade using static slippage without the proper role
+        with brownie.reverts():
+            vault.reinvestReward.call(rewardParams, {"from": depositor})
+        vault.grantRole(vault.getRoles()["staticSlippageTrading"], depositor, {"from": env.notional.owner()})
         ret = vault.reinvestReward.call(rewardParams, {"from": depositor})
         vault.reinvestReward(rewardParams, {"from": depositor})
         poolClaimAfter = vault.getStrategyContext()["baseStrategy"]["vaultState"]["totalPoolClaim"]
@@ -493,6 +501,7 @@ def reinvest_reward(
         assert poolClaimAfter - poolClaimBefore >= expectedPoolClaimAmount
 
     vault.revokeRole(vault.getRoles()["rewardReinvestment"], depositor, {"from": env.notional.owner()})
+    vault.revokeRole(vault.getRoles()["staticSlippageTrading"], depositor, {"from": env.notional.owner()})
     check_invariants(env, vault, [], currencyId, snapshot)
 
 def leverage_ratio_too_high(context, depositAmount, primaryBorrowAmount):

@@ -20,6 +20,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     bytes32 internal constant EMERGENCY_SETTLEMENT_ROLE = keccak256("EMERGENCY_SETTLEMENT_ROLE");
     bytes32 internal constant POST_MATURITY_SETTLEMENT_ROLE = keccak256("POST_MATURITY_SETTLEMENT_ROLE");
     bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
+    bytes32 internal constant STATIC_SLIPPAGE_TRADING_ROLE = keccak256("STATIC_SLIPPAGE_TRADING_ROLE");
 
     /// @notice Hardcoded on the implementation contract during deployment
     NotionalProxy public immutable NOTIONAL;
@@ -220,15 +221,13 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
             normalSettlement: NORMAL_SETTLEMENT_ROLE,
             emergencySettlement: EMERGENCY_SETTLEMENT_ROLE,
             postMaturitySettlement: POST_MATURITY_SETTLEMENT_ROLE,
-            rewardReinvestment: REWARD_REINVESTMENT_ROLE
+            rewardReinvestment: REWARD_REINVESTMENT_ROLE,
+            staticSlippageTrading: STATIC_SLIPPAGE_TRADING_ROLE
         });
     }
 
-    function _isCallerAuthenticated() internal view returns (bool) {
-        return (hasRole(NORMAL_SETTLEMENT_ROLE, msg.sender) ||
-            hasRole(EMERGENCY_SETTLEMENT_ROLE, msg.sender) ||
-            hasRole(POST_MATURITY_SETTLEMENT_ROLE, msg.sender) ||
-            hasRole(REWARD_REINVESTMENT_ROLE, msg.sender));
+    function _canUseStaticSlippage() internal view returns (bool) {
+        return hasRole(STATIC_SLIPPAGE_TRADING_ROLE, msg.sender);
     }
 
     // Storage gap for future potential upgrades

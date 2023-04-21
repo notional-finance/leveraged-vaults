@@ -37,7 +37,7 @@ abstract contract BalancerPoolMixin is AuraStakingMixin {
             vaultSettings: VaultStorage.getStrategyVaultSettings(),
             vaultState: VaultStorage.getStrategyVaultState(),
             poolClaimPrecision: BalancerConstants.BALANCER_PRECISION,
-            isCallerAuthenticated: _isCallerAuthenticated()
+            canUseStaticSlippage: _canUseStaticSlippage()
         });
     }
 

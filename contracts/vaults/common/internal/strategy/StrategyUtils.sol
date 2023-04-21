@@ -73,7 +73,7 @@ library StrategyUtils {
         if (useDynamicSlippage) {
             require(params.oracleSlippagePercentOrLimit <= Constants.SLIPPAGE_LIMIT_PRECISION);
         } else {
-            require(context.isCallerAuthenticated);
+            require(context.canUseStaticSlippage);
         }
 
         // Sell residual secondary balance

@@ -8,6 +8,7 @@ interface IStrategyVault {
         bytes32 emergencySettlement;
         bytes32 postMaturitySettlement;
         bytes32 rewardReinvestment;
+        bytes32 staticSlippageTrading;
     }
 
     function decimals() external view returns (uint8);

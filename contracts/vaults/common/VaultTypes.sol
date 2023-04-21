@@ -52,7 +52,7 @@ struct StrategyContext {
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
     uint256 poolClaimPrecision;
-    bool isCallerAuthenticated;
+    bool canUseStaticSlippage;
 }
 
 struct StrategyVaultSettings {
