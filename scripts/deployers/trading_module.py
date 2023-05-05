@@ -7,7 +7,7 @@ def main():
     [networkName, addresses] = get_addresses()
     deployer = accounts.load(networkName.upper() + "_DEPLOYER")
     emptyImpl = EmptyProxy.deploy({"from": deployer})
-    proxy = nProxy.deploy(emptyImpl.address, bytes(0), {"from": deployer})
+    proxy = nProxy.deploy(emptyImpl.address, bytes(), {"from": deployer})
 
     impl = TradingModule.deploy(addresses['notional'], proxy.address, {"from": deployer})
     emptyProxy = Contract.from_abi("EmptyProxy", proxy.address, EmptyProxy.abi)

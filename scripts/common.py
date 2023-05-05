@@ -2,10 +2,11 @@ import json
 import re
 import eth_abi
 import requests
-from brownie import network, Contract, Wei
+from brownie import network, Contract, Wei, interface
 from brownie.network.state import Chain
 
 chain = Chain()
+ALT_ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
 
 DEX_ID = {
     'UNUSED': 0,
@@ -14,7 +15,8 @@ DEX_ID = {
     'ZERO_EX': 3,
     'BALANCER_V2': 4,
     'CURVE': 5,
-    'NOTIONAL_VAULT': 6
+    'NOTIONAL_VAULT': 6,
+    'CURVE_V2': 7
 }
 
 TRADE_TYPE = {
@@ -121,6 +123,14 @@ def get_univ3_batch_data(path):
         path,
     )]])
 
+def get_crv_batch_data(sellToken, buyToken, amount):
+    router = interface.ICurveRouter("0xfA9a30350048B2BF66865ee20363067c66f67e58")
+    routes = router.get_exchange_routing(sellToken, buyToken, amount)
+    return eth_abi.encode_abi(
+        ["(address[6],uint256[8])"],
+        [[routes[0], routes[1]]]
+    )
+
 def get_deposit_trade_params(dexId, tradeType, amount, slippage, unwrap, exchangeData):
     return eth_abi.encode_abi(
         ['(uint256,(uint16,uint8,uint256,bool,bytes))'],
@@ -157,12 +167,14 @@ def get_deposit_params(minPoolClaim=0, trade=bytes()):
         ]]
     )
 
-def get_redeem_params(minPrimary, minSecondary, trade):
+def get_redeem_params(minPrimary, minSecondary, trade=None):
+    if trade == None:
+        trade = bytes()
     return eth_abi.encode_abi(
         ['(uint256,uint256,bytes)'],
         [[
-            Wei(minPrimary * 0.98),
-            Wei(minSecondary * 0.98),
+            Wei(minPrimary),
+            Wei(minSecondary),
             trade
         ]]
     )
@@ -181,6 +193,8 @@ def set_dex_flags(flags, **kwargs):
         binList[5] = "1"
     if "NOTIONAL_VAULT" in kwargs:
         binList[6] = "1"
+    if "CURVE_V2" in kwargs:
+        binList[7] = "1"
     return int("".join(reversed(binList)), 2)
 
 def set_trade_type_flags(flags, **kwargs):

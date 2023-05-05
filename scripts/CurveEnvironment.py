@@ -4,7 +4,8 @@ from brownie import (
     Wei,
     Curve2TokenConvexVault,
     nProxy,
-    nMockProxy
+    nMockProxy,
+    FlashLiquidator
 )
 from scripts.common import get_vault_config, set_flags
 from scripts.EnvironmentConfig import Environment
@@ -42,6 +43,7 @@ StrategyConfig = {
 class CurveEnvironment(Environment):
     def __init__(self, network) -> None:
         Environment.__init__(self, network)
+        self.liquidator = self.deployLiquidator()
 
     def deployVault(self, strat, vaultContract, libs=None):
         stratConfig = StrategyConfig[strat]
@@ -69,9 +71,9 @@ class CurveEnvironment(Environment):
         stratConfig = StrategyConfig[strat]
 
         if mockImpl == None:
-            proxy = nProxy.deploy(impl.address, bytes(0), {"from": self.deployer})
+            proxy = nProxy.deploy(impl.address, bytes(), {"from": self.deployer})
         else:
-            proxy = nMockProxy.deploy(impl.address, bytes(0), mockImpl, {"from": self.deployer})
+            proxy = nMockProxy.deploy(impl.address, bytes(), mockImpl, {"from": self.deployer})
         vaultProxy = Contract.from_abi(stratConfig["name"], proxy.address, vaultContract.abi)
         vaultProxy.initialize(
             [
@@ -82,7 +84,6 @@ class CurveEnvironment(Environment):
                     stratConfig["settlementSlippageLimitPercent"], 
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
-                    stratConfig["maxRewardTradeSlippageLimitPercent"], 
                     stratConfig["maxPoolShare"],
                     stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
@@ -100,6 +101,16 @@ class CurveEnvironment(Environment):
         )
 
         return vaultProxy
+
+    def deployLiquidator(self):
+        liquidator = FlashLiquidator.deploy(
+            self.notional, 
+            "0x27182842E098f60e3D576794A5bFFb0777E025d3",
+            "0x3520d5a913427E6F0D6A83E07ccD4A4da316e4d3",
+            {"from": self.deployer}
+        )
+        liquidator.enableCurrencies([1, 2, 3], {"from": self.deployer})
+        return liquidator
 
 def getCurveEnvironment(network = "mainnet"):
     if network == "mainnet-fork" or network == "hardhat-fork":

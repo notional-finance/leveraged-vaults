@@ -11,6 +11,7 @@ import {CurveAdapter} from "./adapters/CurveAdapter.sol";
 import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
 import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
 import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
+import {CurveV2Adapter} from "./adapters/CurveV2Adapter.sol";
 import {TradingUtils} from "./TradingUtils.sol";
 
 import {IERC20} from "../utils/TokenUtils.sol";
@@ -77,7 +78,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         TokenPermissions calldata permissions
     ) external override onlyNotionalOwner {
         /// @dev update these if we are adding new DEXes or types
-        for (uint32 i = uint32(DexId.NOTIONAL_VAULT) + 1; i < 32; i++) {
+        for (uint32 i = uint32(DexId.CURVE_V2) + 1; i < 32; i++) {
             require(!_hasPermission(permissions.dexFlags, uint32(1 << i)));
         }
         for (uint32 i = uint32(TradeType.EXACT_OUT_BATCH) + 1; i < 32; i++) {
@@ -217,6 +218,8 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             return CurveAdapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.ZERO_EX) {
             return ZeroExAdapter.getExecutionData(from, trade);
+        } else if (DexId(dexId) == DexId.CURVE_V2) {
+            return CurveV2Adapter.getExecutionData(from, trade);
         }
 
         revert UnknownDEX();
