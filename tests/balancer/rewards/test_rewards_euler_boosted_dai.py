@@ -4,25 +4,24 @@ import eth_abi
 from brownie import Wei, accounts
 from brownie.network.state import Chain
 from tests.fixtures import *
-from tests.balancer.acceptance import USDCPrimaryContext, claim_rewards, reinvest_reward
-from tests.balancer.helpers import enterMaturity
+from tests.balancer.acceptance import DAIPrimaryContext, claim_rewards, reinvest_reward
 from scripts.common import get_univ3_batch_data, DEX_ID, TRADE_TYPE
 
 chain = Chain()
 
-def test_claim_rewards_success(StratBoostedPoolUSDCPrimary):
-    claim_rewards(USDCPrimaryContext(*StratBoostedPoolUSDCPrimary), 
-        10000e6,
+def test_claim_rewards_success(StratEulerBoostedPoolDAIPrimary):
+    claim_rewards(DAIPrimaryContext(*StratEulerBoostedPoolDAIPrimary), 
+        10000e18,
         5000e8, 
         accounts[0],
         {
-            "BAL": 1507407712261392,
-            "AURA": 500923521558696211
+            "BAL": 131970343996744098,
+            "AURA": 500807534315721345
         }
     )
 
-def test_reinvest_rewards_success(StratBoostedPoolUSDCPrimary):
-    context = USDCPrimaryContext(*StratBoostedPoolUSDCPrimary)
+def test_reinvest_rewards_success(StratEulerBoostedPoolDAIPrimary):
+    context = DAIPrimaryContext(*StratEulerBoostedPoolDAIPrimary)
     env = context.env
     rewardAmount = Wei(50e18)
     tradeParams = "(uint16,uint8,uint256,bool,bytes)"
@@ -32,7 +31,7 @@ def test_reinvest_rewards_success(StratBoostedPoolUSDCPrimary):
         [singleSidedRewardTradeParams],
         [[
             env.tokens["BAL"].address,
-            env.tokens["USDC"].address,
+            env.tokens["DAI"].address,
             rewardAmount,
             [
                 DEX_ID["UNISWAP_V3"],
@@ -40,10 +39,10 @@ def test_reinvest_rewards_success(StratBoostedPoolUSDCPrimary):
                 0,
                 False,
                 get_univ3_batch_data([
-                    env.tokens["BAL"].address, 3000, env.tokens["WETH"].address, 500, env.tokens["USDC"].address
+                    env.tokens["BAL"].address, 3000, env.tokens["WETH"].address, 500, env.tokens["DAI"].address
                 ])
             ]
         ]]
     ), 0]
 
-    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 290190561975839441022)
+    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 290374198729029913290)

@@ -17,7 +17,7 @@ contract MockEuler is IEulerMarkets, IEulerDToken {
         return address(this);
     }
 
-    function underlyingToEToken(address underlying) external view returns (address) {
+    function underlyingToEToken(address underlying) external override view returns (address) {
         return address(this);
     }
 

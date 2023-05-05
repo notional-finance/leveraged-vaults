@@ -9,8 +9,8 @@ from scripts.common import get_univ3_batch_data, DEX_ID, TRADE_TYPE
 
 chain = Chain()
 
-def test_claim_rewards_success(StratBoostedPoolDAIPrimary):
-    claim_rewards(DAIPrimaryContext(*StratBoostedPoolDAIPrimary), 
+def test_claim_rewards_success(StratAaveBoostedPoolDAIPrimary):
+    claim_rewards(DAIPrimaryContext(*StratAaveBoostedPoolDAIPrimary), 
         10000e18,
         5000e8, 
         accounts[0],
@@ -20,8 +20,8 @@ def test_claim_rewards_success(StratBoostedPoolDAIPrimary):
         }
     )
 
-def test_reinvest_rewards_success(StratBoostedPoolDAIPrimary):
-    context = DAIPrimaryContext(*StratBoostedPoolDAIPrimary)
+def test_reinvest_rewards_success(StratAaveBoostedPoolDAIPrimary):
+    context = DAIPrimaryContext(*StratAaveBoostedPoolDAIPrimary)
     env = context.env
     rewardAmount = Wei(50e18)
     tradeParams = "(uint16,uint8,uint256,bool,bytes)"
