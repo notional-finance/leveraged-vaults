@@ -1,15 +1,9 @@
 import math
-import eth_abi
 import pytest
-from brownie import ZERO_ADDRESS, Wei, interface
-from brownie.convert import to_bytes
+from brownie import Wei, interface
 from brownie.network.state import Chain
 from scripts.common import (
-    TRADE_TYPE,
-    DEX_ID,
     get_deposit_params, 
-    set_trade_type_flags, 
-    set_dex_flags,
     get_all_past_maturities,
     get_all_active_maturities,
     get_remaining_strategy_tokens
@@ -167,3 +161,14 @@ def get_deposit_op(
     depositAmount, primaryBorrowAmount, depositor, maturityIndex=0, depositParams=None, primaryPercent=1, depositTradeFunc=None
 ):
     return [depositAmount, primaryBorrowAmount, depositor, maturityIndex, depositParams, primaryPercent, depositTradeFunc]
+
+def get_asset_exchange_rate_address(env, currencyId):
+    return env.notional.getRateStorage(currencyId)[1][0]
+
+def get_asset_exchange_rate(env, currencyId):
+    addr = get_asset_exchange_rate_address(env, currencyId)
+    rateDecimals = env.notional.getRateStorage(currencyId)[1][1]
+    ratePrecision = pow(10, int(rateDecimals))
+    assetExchangeRate = interface.AssetRateAdapter(addr).getExchangeRateView()
+    assetExchangeRate = assetExchangeRate / ratePrecision
+    return assetExchangeRate / 1e10 # Decimals to be set as a variable

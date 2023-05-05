@@ -7,7 +7,8 @@ from brownie import (
     Boosted3TokenAuraVault,
     Boosted3TokenAuraHelper,
     MetaStable2TokenAuraHelper,
-    FlashLiquidator,
+    EulerFlashLiquidator,
+    AaveFlashLiquidator,
     nMockProxy
 )
 from brownie.network.contract import Contract
@@ -44,11 +45,11 @@ StrategyConfig = {
             "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 5%
             "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
             "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
-            "settlementWindow": 172800,  # 1-week settlement
+            "settlementWindow": 172800,  # 2 days
             "oraclePriceDeviationLimitPercent": 200, # +/- 2%
             "poolSlippageLimitPercent": 9975, # 0.25%
         },
-        "StratBoostedPoolDAIPrimary": {
+        "StratAaveBoostedPoolDAIPrimary": {
             "vaultConfig": get_vault_config(
                 flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
                 currencyId=2,
@@ -73,7 +74,7 @@ StrategyConfig = {
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
             "poolSlippageLimitPercent": 9900, # 1%
         },
-        "StratBoostedPoolUSDCPrimary": {
+        "StratAaveBoostedPoolUSDCPrimary": {
             "vaultConfig": get_vault_config(
                 flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
                 currencyId=3,
@@ -90,7 +91,7 @@ StrategyConfig = {
             "auraRewardPool": "0xfb6b1c1a1ea5618b3cfc20f81a11a97e930fa46b",
             "maxUnderlyingSurplus": 50000e6, # 50000 USDC
             "oracleWindowInSeconds": 0,
-            "maxPoolShare": 2e3, # 20%
+            "maxPoolShare": Wei(0.1e3), # 1%
             "settlementSlippageLimitPercent": 3e6, # 5%
             "postMaturitySettlementSlippageLimitPercent": 5e6, # 5%
             "emergencySettlementSlippageLimitPercent": 4e6, # 4%
@@ -98,6 +99,57 @@ StrategyConfig = {
             "settlementWindow": 3600 * 24 * 7,  # 1-week settlement
             "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
             "poolSlippageLimitPercent": 9900, # 1%
+        },
+        "StratEulerBoostedPoolDAIPrimary": {
+            "vaultConfig": get_vault_config(
+                flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
+                currencyId=2,
+                minAccountBorrowSize=1,
+                maxBorrowMarketIndex=2,
+                secondaryBorrowCurrencies=[0,0]
+            ),
+            "secondaryBorrowCurrency": None,
+            "maxPrimaryBorrowCapacity": 100_000_000e8,
+            "name": "Balancer Boosted Pool Strategy",
+            "primaryCurrency": 2, # DAI
+            "poolId": "0x50cf90b954958480b8df7958a9e965752f62712400000000000000000000046f",
+            "liquidityGauge": "0xf53f2fee2a34f7f8d1bfe1b774a95cc79c121b34",
+            "auraRewardPool": "0x9542ecd46f3e661e4a53ee63c0ab764196df1f8a",
+            "maxUnderlyingSurplus": 50000e18, # 50000 DAI
+            "maxPoolShare": Wei(0.1e3), # 1%
+            "settlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "postMaturitySettlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "emergencySettlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "settlementCoolDownInMinutes": 20, # 6 hour settlement cooldown
+            "settlementWindow": 172800,  # 2 days
+            "oraclePriceDeviationLimitPercent": 100, # +/- 1%
+            "poolSlippageLimitPercent": 9980, # 0.2%
+        },
+        "StratEulerBoostedPoolUSDCPrimary": {
+            "vaultConfig": get_vault_config(
+                flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
+                currencyId=3,
+                minAccountBorrowSize=1,
+                maxBorrowMarketIndex=2,
+                secondaryBorrowCurrencies=[0,0]
+            ),
+            "secondaryBorrowCurrency": None,
+            "maxPrimaryBorrowCapacity": 100_000_000e8,
+            "name": "Balancer Boosted Pool Strategy",
+            "primaryCurrency": 3, # USDC
+            "poolId": "0x50cf90b954958480b8df7958a9e965752f62712400000000000000000000046f",
+            "liquidityGauge": "0xf53f2fee2a34f7f8d1bfe1b774a95cc79c121b34",
+            "auraRewardPool": "0x9542ecd46f3e661e4a53ee63c0ab764196df1f8a",
+            "maxUnderlyingSurplus": 50000e6, # 50000 USDC
+            "oracleWindowInSeconds": 0,
+            "maxPoolShare": 2e3, # 20%
+            "settlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "postMaturitySettlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "emergencySettlementSlippageLimitPercent": Wei(0.5e6), # 0.5%
+            "settlementCoolDownInMinutes": 20, # 6 hour settlement cooldown
+            "settlementWindow": 172800,  # 2 days
+            "oraclePriceDeviationLimitPercent": 100, # +/- 1%
+            "poolSlippageLimitPercent": 9980, # 0.2%
         }
     }
 }
@@ -105,7 +157,8 @@ StrategyConfig = {
 class BalancerEnvironment(Environment):
     def __init__(self, network) -> None:
         Environment.__init__(self, network)
-        self.liquidator = self.deployLiquidator()
+        self.eulerLiquidator = self.deployEulerLiquidator()
+        self.aaveLiquidator = self.deployAaveLiquidator()
 
     def getStratConfig(self, strat):
         return StrategyConfig["balancer2TokenStrats"][strat]
@@ -196,12 +249,21 @@ class BalancerEnvironment(Environment):
 
         return vaultProxy
 
-    def deployLiquidator(self):
-        liquidator = FlashLiquidator.deploy(
+    def deployEulerLiquidator(self):
+        liquidator = EulerFlashLiquidator.deploy(
             self.notional, 
             "0x27182842E098f60e3D576794A5bFFb0777E025d3",
             "0x3520d5a913427E6F0D6A83E07ccD4A4da316e4d3",
             {"from": self.deployer}
+        )
+        liquidator.enableCurrencies([1, 2, 3], {"from": self.deployer})
+        return liquidator
+
+    def deployAaveLiquidator(self):
+        liquidator = AaveFlashLiquidator.deploy(
+            self.notional,
+            "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
+            {"from": self.deployer}            
         )
         liquidator.enableCurrencies([1, 2, 3], {"from": self.deployer})
         return liquidator
@@ -212,27 +274,57 @@ def getEnvironment(network = "mainnet"):
     return BalancerEnvironment(network)
 
 def main():
-    networkName = network.show_active()
-    if networkName == "hardhat-fork":
-        networkName = "mainnet"
-    env = BalancerEnvironment(networkName)
+    env = getEnvironment(network.show_active())
     maturity = env.notional.getActiveMarkets(1)[0][1]
 
-    vault1Impl = env.deployBalancerVault(
+    stETHVaultImpl = env.deployBalancerVault(
         "StratStableETHstETH", 
         MetaStable2TokenAuraVault,
         [MetaStable2TokenAuraHelper]
     )
-    vault1 = env.deployVaultProxy("StratStableETHstETH", vault1Impl, MetaStable2TokenAuraVault)
-    vault2Impl = env.deployBalancerVault(
-        "StratBoostedPoolDAIPrimary", 
+    stETHVault = env.deployVaultProxy("StratStableETHstETH", stETHVaultImpl, MetaStable2TokenAuraVault)
+    aaveBoostedDAIImpl = env.deployBalancerVault(
+        "StratAaveBoostedPoolDAIPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-    vault2 = env.deployVaultProxy("StratBoostedPoolDAIPrimary", vault2Impl, Boosted3TokenAuraVault)
-    vault3Impl = env.deployBalancerVault(
-        "StratBoostedPoolUSDCPrimary", 
+    aaveBoostedDAI = env.deployVaultProxy("StratAaveBoostedPoolDAIPrimary", aaveBoostedDAIImpl, Boosted3TokenAuraVault)
+    aaveBoostedUSDCImpl = env.deployBalancerVault(
+        "StratAaveBoostedPoolUSDCPrimary", 
         Boosted3TokenAuraVault,
         [Boosted3TokenAuraHelper]
     )
-    vault3 = env.deployVaultProxy("StratBoostedPoolUSDCPrimary", vault3Impl, Boosted3TokenAuraVault)
+    aaveBoostedUSDC = env.deployVaultProxy("StratAaveBoostedPoolUSDCPrimary", aaveBoostedUSDCImpl, Boosted3TokenAuraVault)
+    eulerBoostedDAIImpl = env.deployBalancerVault(
+        "StratEulerBoostedPoolDAIPrimary", 
+        Boosted3TokenAuraVault,
+        [Boosted3TokenAuraHelper]
+    )
+    eulerBoostedDAI = env.deployVaultProxy("StratEulerBoostedPoolDAIPrimary", eulerBoostedDAIImpl, Boosted3TokenAuraVault)
+
+    env.notional.updateVault(
+        eulerBoostedDAI.address, 
+        [
+            set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True, ONLY_VAULT_DELEVERAGE=True),
+            2, 100, 500, 150, 102, 80, 2, 800, [0, 0], 10000
+        ], 
+        Wei(5000000e8),
+        {"from": env.notional.owner()}
+    )
+
+    eulerBoostedUSDCImpl = env.deployBalancerVault(
+        "StratEulerBoostedPoolUSDCPrimary", 
+        Boosted3TokenAuraVault,
+        [Boosted3TokenAuraHelper]
+    )
+    eulerBoostedUSDC = env.deployVaultProxy("StratEulerBoostedPoolUSDCPrimary", eulerBoostedUSDCImpl, Boosted3TokenAuraVault)
+
+    env.notional.updateVault(
+        eulerBoostedUSDC.address, 
+        [
+            set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True, ONLY_VAULT_DELEVERAGE=True),
+            3, 100, 500, 150, 102, 80, 2, 800, [0, 0], 10000
+        ], 
+        Wei(5000000e8),
+        {"from": env.notional.owner()}
+    )

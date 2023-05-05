@@ -1,15 +1,17 @@
 
+import pytest
 import eth_abi
 from brownie import Wei, accounts
 from brownie.network.state import Chain
 from tests.fixtures import *
-from tests.dex_lp.acceptance import USDCPrimaryContext, claim_rewards, reinvest_reward
+from tests.balancer.acceptance import USDCPrimaryContext, claim_rewards, reinvest_reward
+from tests.balancer.helpers import enterMaturity
 from scripts.common import get_univ3_batch_data, DEX_ID, TRADE_TYPE
 
 chain = Chain()
 
-def test_claim_rewards_success(StratAaveBoostedPoolUSDCPrimary):
-    claim_rewards(USDCPrimaryContext(*StratAaveBoostedPoolUSDCPrimary), 
+def test_claim_rewards_success(StratEulerBoostedPoolUSDCPrimary):
+    claim_rewards(USDCPrimaryContext(*StratEulerBoostedPoolUSDCPrimary), 
         10000e6,
         5000e8, 
         accounts[0],
@@ -19,8 +21,8 @@ def test_claim_rewards_success(StratAaveBoostedPoolUSDCPrimary):
         }
     )
 
-def test_reinvest_rewards_success(StratAaveBoostedPoolUSDCPrimary):
-    context = USDCPrimaryContext(*StratAaveBoostedPoolUSDCPrimary)
+def test_reinvest_rewards_success(StratEulerBoostedPoolUSDCPrimary):
+    context = USDCPrimaryContext(*StratEulerBoostedPoolUSDCPrimary)
     env = context.env
     rewardAmount = Wei(50e18)
     tradeParams = "(uint16,uint8,uint256,bool,bytes)"
@@ -44,4 +46,4 @@ def test_reinvest_rewards_success(StratAaveBoostedPoolUSDCPrimary):
         ]]
     ), 0]
 
-    reinvest_reward(context, accounts[0], "BAL", rewardAmount, rewardParams, bptBefore, 290190561975839441022)
+    reinvest_reward(context, accounts[0], rewardAmount, rewardParams, bptBefore, 290190561975839441022)
