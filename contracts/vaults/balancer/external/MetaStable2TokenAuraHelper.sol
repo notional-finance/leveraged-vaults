@@ -153,15 +153,20 @@ library MetaStable2TokenAuraHelper {
     function reinvestReward(
         MetaStable2TokenAuraStrategyContext calldata context,
         ReinvestRewardParams calldata params
-    ) external {
+    ) external returns (
+        address rewardToken,
+        uint256 primaryAmount,
+        uint256 secondaryAmount,
+        uint256 poolClaimAmount
+    ) {
         StrategyContext memory strategyContext = context.baseStrategy;
         Balancer2TokenPoolContext calldata poolContext = context.poolContext; 
         StableOracleContext calldata oracleContext = context.oracleContext;
 
         (
-            address rewardToken, 
-            uint256 primaryAmount, 
-            uint256 secondaryAmount
+            rewardToken, 
+            primaryAmount, 
+            secondaryAmount
         ) = poolContext.basePool._executeRewardTrades({
             rewardTokens: context.stakingContext.rewardTokens,
             tradingModule: strategyContext.tradingModule,
@@ -177,7 +182,7 @@ library MetaStable2TokenAuraHelper {
             secondaryAmount: secondaryAmount
         });
 
-        uint256 bptAmount = poolContext._joinPoolAndStake({
+        poolClaimAmount = poolContext._joinPoolAndStake({
             strategyContext: strategyContext,
             stakingContext: context.stakingContext,
             primaryAmount: primaryAmount,
@@ -187,9 +192,9 @@ library MetaStable2TokenAuraHelper {
             minBPT: params.minPoolClaim      
         });
 
-        strategyContext.vaultState.totalPoolClaim += bptAmount;
+        strategyContext.vaultState.totalPoolClaim += poolClaimAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, bptAmount); 
+        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, poolClaimAmount); 
     }
 }

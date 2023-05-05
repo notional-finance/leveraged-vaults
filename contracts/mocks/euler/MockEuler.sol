@@ -17,6 +17,10 @@ contract MockEuler is IEulerMarkets, IEulerDToken {
         return address(this);
     }
 
+    function underlyingToEToken(address underlying) external view returns (address) {
+        return address(this);
+    }
+
     function flashLoan(uint amount, bytes calldata data) external override {
         uint256 currentBalance = TOKEN.balanceOf(address(this));
         TOKEN.transfer(msg.sender, amount);
