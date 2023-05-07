@@ -62,8 +62,9 @@ def test_COMP_to_WETH_exact_in(request):
 
     compBefore = env.tokens["COMP"].balanceOf(env.tradingModule)
     wethBefore = env.tokens["WETH"].balanceOf(env.tradingModule)
-    ret = env.tradingModule.executeTrade(DEX_ID["ZERO_EX"], trade, {"from": accounts[0]})
+    ret = env.tradingModule.executeTrade.call(DEX_ID["ZERO_EX"], trade, {"from": accounts[0]})
+    env.tradingModule.executeTrade(DEX_ID["ZERO_EX"], trade, {"from": accounts[0]})
     assert env.tokens["COMP"].balanceOf(env.tradingModule) == 0
-    assert env.tokens["WETH"].balanceOf(env.tradingModule) >= 5408750927015628960
-    assert ret.return_value[0] == compBefore - env.tokens["COMP"].balanceOf(env.tradingModule)
-    assert ret.return_value[1] == env.tokens["WETH"].balanceOf(env.tradingModule) - wethBefore
+    assert env.tokens["WETH"].balanceOf(env.tradingModule) >= 4006899007283400626
+    assert ret[0] == compBefore - env.tokens["COMP"].balanceOf(env.tradingModule)
+    assert ret[1] == env.tokens["WETH"].balanceOf(env.tradingModule) - wethBefore

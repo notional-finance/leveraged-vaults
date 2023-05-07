@@ -8,7 +8,8 @@ from brownie import (
     EmptyProxy,
     WstETHChainlinkOracle,
     BalancerPoolChainlinkAdapter,
-    ChainlinkAdapter
+    ChainlinkAdapter,
+    AaveFlashLiquidator
 )
 from brownie.network.contract import Contract
 from brownie.network.state import Chain
@@ -50,13 +51,6 @@ class Environment:
             "Notional", addresses["notional"], NotionalABI
         )
 
-        self.notional.upgradeTo("0x2C67B0C0493e358cF368073bc0B5fA6F01E981e0", {"from": self.notional.owner()})
-        self.notional.updateAssetRate(1, "0x8E3D447eBE244db6D28E2303bCa86Ef3033CFAd6", {"from": self.notional.owner()})
-        self.notional.updateAssetRate(2, "0x719993E82974f5b5eA0c5ebA25c260CD5AF78E00", {"from": self.notional.owner()})
-        self.notional.updateAssetRate(3, "0x612741825ACedC6F88D8709319fe65bCB015C693", {"from": self.notional.owner()})
-        self.notional.updateAssetRate(4, "0x39D9590721331B13C8e9A42941a2B961B513E69d", {"from": self.notional.owner()})
-        self.upgradeNotional()
-
         self.tokens = {}
         for (symbol, obj) in addresses["tokens"].items():
             if symbol.startswith("c"):
@@ -70,53 +64,18 @@ class Environment:
 
         self.owner = accounts.at(self.notional.owner(), force=True)
         self.balancerVault = interface.IBalancerVault(addresses["balancer"]["vault"])
+        self.aaveLiquidator = self.deployAaveLiquidator()
 
         self.deployTradingModule()
 
-    def upgradeNotional(self):
-        tradingAction = deployArtifact(
-            "scripts/artifacts/TradingAction.json",
-            [],
-            self.deployer,
-            "VaultAccountAction",
-            {"SettleAssetsExternal": "0x01713633a1b85a4a3d2f9430C68Bd4392c4a90eA"}
+    def deployAaveLiquidator(self):
+        liquidator = AaveFlashLiquidator.deploy(
+            self.notional,
+            "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
+            {"from": self.deployer}            
         )
-        vaultAccountAction = deployArtifact(
-            "scripts/artifacts/VaultAccountAction.json",
-            [],
-            self.deployer,
-            "VaultAccountAction",
-            {"TradingAction": tradingAction.address}
-        )
-        vaultAction = deployArtifact(
-            "scripts/artifacts/VaultAction.json",
-            [],
-            self.deployer,
-            "VaultAction",
-            {"TradingAction": tradingAction.address}
-        )
-        newRouter = deployArtifact(
-            "scripts/artifacts/Router.json",
-            [[
-                "0x38A4DfC0ff6588fD0c2142d14D4963A97356A245",
-                "0xBf91ec7A64FCF0844e54d3198E50AD8fb4D68E93",
-                "0xe3E38607A1E2d6881A32F1D78C5C232f14bdef22",
-                "0xeA82Cfc621D5FA00E30c10531380846BB5aAfE79",
-                "0x1d1a531CBcb969040Da7527bf1092DfC4FF7DD46",
-                "0x8A096f6C6D89dBd3c3Df3EEBA45710Aa367F9A8c",
-                "0xBf12d7e41a25f449293AB8cd1364Fe74A175bFa5",
-                "0xa3707CD595F6AB810a84d04C92D8adE5f7593Db5",
-                "0xfB56271c976A8b446B6D33D1Ec76C84F6AA53F1B",
-                "0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5",
-                "0x5fd75e91Cc34DF9831Aa75903027FC34FeB9b931",
-                "0xbE4AbA25915BAd390edf83B7e1ca44b6145F261e",
-                vaultAccountAction.address,
-                vaultAction.address
-            ]],
-            self.deployer,
-            "Router"
-        )
-        self.notional.upgradeTo(newRouter.address, {'from': self.notional.owner()})
+        liquidator.enableCurrencies([1, 2, 3, 4], {"from": self.deployer})
+        return liquidator
 
     def deployTradingModule(self, useFresh=False):
         if useFresh == False:
