@@ -23,6 +23,8 @@ import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 /// @notice TradingModule is meant to be an upgradeable contract deployed to help Strategy Vaults
 /// exchange tokens via multiple DEXes as well as receive price oracle information
 contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
+    address public constant TEMP_OWNER = 0xE6FB62c2218fd9e3c948f0549A2959B509a293C8;
+
     NotionalProxy public immutable NOTIONAL;
     // Used to get the proxy address inside delegate call contexts
     ITradingModule internal immutable PROXY;
@@ -47,7 +49,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     modifier onlyNotionalOwner() {
-        require(msg.sender == NOTIONAL.owner());
+        require(msg.sender == TEMP_OWNER);
         _;
     }
 
@@ -208,14 +210,10 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     {
         if (trade.buyToken == trade.sellToken) revert SellTokenEqualsBuyToken();
 
-        if (DexId(dexId) == DexId.UNISWAP_V2) {
-            return UniV2Adapter.getExecutionData(from, trade);
-        } else if (DexId(dexId) == DexId.UNISWAP_V3) {
+        if (DexId(dexId) == DexId.UNISWAP_V3) {
             return UniV3Adapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.BALANCER_V2) {
             return BalancerV2Adapter.getExecutionData(from, trade);
-        } else if (DexId(dexId) == DexId.CURVE) {
-            return CurveAdapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.ZERO_EX) {
             return ZeroExAdapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.CURVE_V2) {

@@ -51,7 +51,7 @@ library CurveV2Adapter {
                 _getTokenAddress(trade.buyToken),
                 trade.amount,
                 trade.limit,
-                address(this)
+                from
             );
         } else if (trade.tradeType == TradeType.EXACT_IN_BATCH) {
             CurveV2BatchData memory data = abi.decode(trade.exchangeData, (CurveV2BatchData));
@@ -65,7 +65,7 @@ library CurveV2Adapter {
                 trade.amount,
                 trade.limit,
                 pools,
-                address(this)
+                from
             );
         } else {
             // EXACT_OUT_SINGLE and EXACT_OUT_BATCH are not supported by Curve
