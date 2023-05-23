@@ -50,7 +50,7 @@ library TradingUtils {
         // Get post-trade token balances
         (uint256 postTradeSellBalance, uint256 postTradeBuyBalance) = _getBalances(trade);
 
-        _postValidate(trade, postTradeBuyBalance - preTradeBuyBalance);
+        _postValidate(trade, dexId, postTradeBuyBalance - preTradeBuyBalance);
 
         // No need to revoke ETH trades
         if (spender != Deployments.ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
@@ -102,13 +102,21 @@ library TradingUtils {
         }
     }
 
-    function _postValidate(Trade memory trade, uint256 amountReceived) private pure {
+    function _postValidate(Trade memory trade, uint16 dexId, uint256 amountReceived) private pure {
         if (_isExactIn(trade) && amountReceived < trade.limit) {
             revert PostValidationExactIn(trade.limit, amountReceived);
         }
 
-        if (_isExactOut(trade) && amountReceived != trade.amount) {
-            revert PostValidationExactOut(trade.amount, amountReceived);
+        if (_isExactOut(trade)) {
+            if (DexId(dexId) == DexId.ZERO_EX) {
+                if (amountReceived < trade.amount) {
+                    revert PostValidationExactOut(trade.amount, amountReceived);
+                }
+            } else {
+                if (amountReceived != trade.amount) {
+                    revert PostValidationExactOut(trade.amount, amountReceived);
+                }
+            } 
         }
     }
 
@@ -175,6 +183,7 @@ library TradingUtils {
     }
 
     function _getLimitAmount(
+        address from,
         TradeType tradeType,
         address sellToken,
         address buyToken,
@@ -198,8 +207,10 @@ library TradingUtils {
 
         if (tradeType == TradeType.EXACT_OUT_SINGLE || tradeType == TradeType.EXACT_OUT_BATCH) {
             // type(uint256).max means no slippage limit
-            if (slippageLimit == type(uint256).max) {
-                return type(uint256).max;
+            if (slippageLimit == type(uint32).max) {
+                return sellToken == Deployments.ETH_ADDRESS
+                    ? address(from).balance
+                    : IERC20(sellToken).balanceOf(from);
             }
             // For exact out trades, we need to invert the oracle price (1 / oraclePrice)
             // We increase the precision before we divide because oraclePrice is in
@@ -218,7 +229,7 @@ library TradingUtils {
             limitAmount = (limitAmount * sellTokenDecimals) / buyTokenDecimals;
         } else {
             // type(uint256).max means no slippage limit
-            if (slippageLimit == type(uint256).max) {
+            if (slippageLimit == type(uint32).max) {
                 return 0;
             }
             // For exact in trades, limitAmount is the min amount of buyToken the contract

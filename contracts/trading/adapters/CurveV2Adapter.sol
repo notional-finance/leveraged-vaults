@@ -30,12 +30,12 @@ library CurveV2Adapter {
         uint256[3][4] swapParams;
     }
 
-    function _getTokenAddress(address token) internal view returns (address) {
+    function _getTokenAddress(address token) internal pure returns (address) {
         return token == Deployments.ETH_ADDRESS ? Deployments.ALT_ETH_ADDRESS : token;
     }
 
-    function getExecutionData(address from, Trade calldata trade)
-        internal view returns (
+    function getExecutionData(address from, Trade memory trade)
+        internal pure returns (
             address spender,
             address target,
             uint256 msgValue,

@@ -85,6 +85,7 @@ interface ITradingModule {
     ) external returns (uint256 amountSold, uint256 amountBought);
 
     function getLimitAmount(
+        address from,
         TradeType tradeType,
         address sellToken,
         address buyToken,

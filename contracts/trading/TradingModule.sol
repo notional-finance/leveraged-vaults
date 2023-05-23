@@ -7,8 +7,6 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
-import {CurveAdapter} from "./adapters/CurveAdapter.sol";
-import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
 import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
 import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
 import {CurveV2Adapter} from "./adapters/CurveV2Adapter.sol";
@@ -138,6 +136,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         // This method calls back into the implementation via the proxy so that it has proper
         // access to storage.
         trade.limit = PROXY.getLimitAmount(
+            address(this),
             trade.tradeType,
             trade.sellToken,
             trade.buyToken,
@@ -150,7 +149,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             address target,
             uint256 msgValue,
             bytes memory executionData
-        ) = PROXY.getExecutionData(dexId, address(this), trade);
+        ) = _getExecutionData(dexId, address(this), trade);
 
         return
             TradingUtils._executeInternal(
@@ -197,10 +196,10 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     function _getExecutionData(
         uint16 dexId,
         address from,
-        Trade calldata trade
+        Trade memory trade
     )
         internal
-        view
+        pure
         returns (
             address spender,
             address target,
@@ -273,6 +272,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     function getLimitAmount(
+        address from,
         TradeType tradeType,
         address sellToken,
         address buyToken,
@@ -286,6 +286,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         require(oracleDecimals > 0); /// @dev Chainlink decimals error
 
         limitAmount = TradingUtils._getLimitAmount({
+            from: from,
             tradeType: tradeType,
             sellToken: sellToken,
             buyToken: buyToken,

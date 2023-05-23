@@ -64,8 +64,8 @@ library UniV3Adapter {
         return abi.encodeWithSelector(ISwapRouter.exactOutput.selector, params);
     }
 
-    function getExecutionData(address from, Trade calldata trade)
-        internal view returns (
+    function getExecutionData(address from, Trade memory trade)
+        internal pure returns (
             address spender,
             address target,
             uint256 /* msgValue */,
