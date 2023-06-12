@@ -107,16 +107,8 @@ library TradingUtils {
             revert PostValidationExactIn(trade.limit, amountReceived);
         }
 
-        if (_isExactOut(trade)) {
-            if (DexId(dexId) == DexId.ZERO_EX) {
-                if (amountReceived < trade.amount) {
-                    revert PostValidationExactOut(trade.amount, amountReceived);
-                }
-            } else {
-                if (amountReceived != trade.amount) {
-                    revert PostValidationExactOut(trade.amount, amountReceived);
-                }
-            } 
+        if (_isExactOut(trade) && amountReceived < trade.amount) {
+            revert PostValidationExactOut(trade.amount, amountReceived);
         }
     }
 
