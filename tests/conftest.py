@@ -33,6 +33,8 @@ def StratStableETHstETH():
     )
 
     impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])   
+    migrateData = impl.migrateAura.encode_input()
+    vault.upgradeToAndCall(impl, migrateData, {"from": env.notional.owner()})
 
     stratConfig = env.getStratConfig(strat)
     settingsCalldata = vault.setStrategyVaultSettings.encode_input([

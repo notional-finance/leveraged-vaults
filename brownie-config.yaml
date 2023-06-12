@@ -13,7 +13,7 @@ networks:
   default: mainnet-fork
   mainnet-fork:
     cmd_settings:
-      fork_block: 16629088
+      fork_block: 17466958
   
 reports:
   exclude_paths:
