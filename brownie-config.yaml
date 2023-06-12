@@ -13,7 +13,10 @@ networks:
   default: mainnet-fork
   mainnet-fork:
     cmd_settings:
-      fork_block: 16685662
+      fork_block: 17196399
+  arbitrum-fork:
+    cmd_settings:
+      fork_block: 88474429
   
 reports:
   exclude_paths:
