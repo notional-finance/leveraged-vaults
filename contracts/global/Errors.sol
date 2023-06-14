@@ -23,4 +23,6 @@ library Errors {
     error InvalidTokenIndex(uint8 tokenIndex);
     error ZeroPoolClaim();
     error ZeroStrategyTokens();
+    error VaultLocked();
+    error VaultNotLocked();
 }

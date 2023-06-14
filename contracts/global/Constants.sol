@@ -114,6 +114,9 @@ library Constants {
     int256 internal constant DEPOSIT_PERCENT_BASIS = 1e8;
     uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
 
+    // Placeholder constant to mark the variable rate prime cash maturity
+    uint40 internal constant PRIME_CASH_VAULT_MATURITY = type(uint40).max;
+
     uint256 internal constant CHAIN_ID_MAINNET = 1;
     uint256 internal constant CHAIN_ID_ARBITRUM = 42161;
 }

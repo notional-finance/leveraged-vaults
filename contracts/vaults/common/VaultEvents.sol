@@ -18,4 +18,6 @@ library VaultEvents {
         uint256 redeemStrategyTokenAmount
     );
     event ClaimedRewardTokens(IERC20[] rewardTokens, uint256[] claimedBalances);
+    event VaultLocked();
+    event VaultUnlocked();
 }

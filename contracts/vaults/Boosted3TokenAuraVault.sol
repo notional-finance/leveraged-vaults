@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import {Errors} from "../global/Errors.sol";
 import {Deployments} from "../global/Deployments.sol";
+import {TokenUtils} from "../utils/TokenUtils.sol";
 import {
     AuraVaultDeploymentParams,
     InitParams,
@@ -65,78 +66,48 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
         uint256 deposit,
         uint256 maturity,
         bytes calldata data
-    ) internal override returns (uint256 strategyTokensMinted) {
-        strategyTokensMinted = _strategyContext().deposit(deposit, data);
+    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+        vaultSharesMinted = _strategyContext().deposit(deposit, data);
     }
 
     function _redeemFromNotional(
         address account,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         uint256 maturity,
         bytes calldata data
-    ) internal override returns (uint256 finalPrimaryBalance) {
-        finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
-    }
-
-    function settleVaultNormal(
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        bytes calldata data
-    ) external onlyRole(NORMAL_SETTLEMENT_ROLE) {
-        if (maturity <= block.timestamp) {
-            revert Errors.PostMaturitySettlement();
-        }
-        if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
-            revert Errors.NotInSettlementWindow();
-        }
-        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-
-        SettlementUtils._validateCoolDown(
-            context.baseStrategy.vaultState.lastSettlementTimestamp,
-            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes
-        );
-
-        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
-        context.baseStrategy.vaultState.setStrategyVaultState();
-
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
-            data
-        );
-        Boosted3TokenAuraHelper.settleVault(
-            context, maturity, strategyTokensToRedeem, params
-        );
-    }
-
-    function settleVaultPostMaturity(
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        bytes calldata data
-    ) external onlyRole(POST_MATURITY_SETTLEMENT_ROLE)  {
-        if (block.timestamp < maturity) {
-            revert Errors.HasNotMatured();
-        }
-        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
-            data
-        );
-        Boosted3TokenAuraHelper.settleVault(
-            context, maturity, strategyTokensToRedeem, params
-        );
+    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+        finalPrimaryBalance = _strategyContext().redeem(vaultShares, data);
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
-        external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
+        external whenNotLocked onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
         Boosted3TokenAuraHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );
+        _lockVault();
+    }
+
+    function restoreVault(uint256 minBPT) external whenLocked onlyNotionalOwner {
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+
+        uint256 bptAmount = context.poolContext._joinPoolAndStake({
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
+            oracleContext: context.oracleContext,
+            deposit: TokenUtils.tokenBalance(PRIMARY_TOKEN),
+            minBPT: minBPT
+        });
+
+        context.baseStrategy.vaultState.totalPoolClaim += bptAmount;
+        context.baseStrategy.vaultState.setStrategyVaultState(); 
+
+        _unlockVault();
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) 
-        external onlyRole(REWARD_REINVESTMENT_ROLE) returns (
+        external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
             address rewardToken,
             uint256 primaryAmount,
             uint256 secondaryAmount,
@@ -147,11 +118,11 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
 
     function convertStrategyToUnderlying(
         address account,
-        uint256 strategyTokenAmount,
+        uint256 vaultShares,
         uint256 maturity
-    ) public view virtual override returns (int256 underlyingValue) {
+    ) public view virtual override whenNotLocked returns (int256 underlyingValue) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
-        underlyingValue = context.convertStrategyToUnderlying(strategyTokenAmount);
+        underlyingValue = context.convertStrategyToUnderlying(vaultShares);
     }
 
     /// @notice Updates the vault settings

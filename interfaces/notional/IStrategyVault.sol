@@ -49,8 +49,7 @@ interface IStrategyVault {
         address account,
         address vault,
         address liquidator,
-        uint256 depositAmountExternal,
-        bool transferSharesToLiquidator,
-        bytes calldata redeemData
-    ) external returns (uint256 profitFromLiquidation);
+        uint16 currencyIndex,
+        int256 depositUnderlyingInternal
+    ) external payable returns (uint256 vaultSharesFromLiquidation, int256 depositAmountPrimeCash);
 }

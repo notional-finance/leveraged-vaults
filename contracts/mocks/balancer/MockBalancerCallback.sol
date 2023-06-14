@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import {Deployments} from "../../global/Deployments.sol";
+import {VaultAccountHealthFactors} from "../../global/Types.sol";
 import {IBalancerVault, IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
@@ -17,8 +18,7 @@ contract MockBalancerCallback {
 
     event AccountCollateral(
         int256 collateralRatio,
-        int256 minCollateralRatio,
-        int256 maxLiquidatorDepositAssetCash,
+        int256 maxLiquidatorDepositUnderlying,
         uint256 vaultSharesToLiquidator
     );
     event AccountDeleveraged(address account);
@@ -26,6 +26,7 @@ contract MockBalancerCallback {
     struct CallbackParams {
         address account;
         address vault;
+        uint16 currencyIndex;
         bytes redeemData;
     }
 
@@ -74,24 +75,23 @@ contract MockBalancerCallback {
     receive() external payable {
         if (msg.sender == address(Deployments.BALANCER_VAULT)) {
             (
-                int256 collateralRatio,
-                int256 minCollateralRatio,
-                int256 maxLiquidatorDepositAssetCash,
-                uint256 vaultSharesToLiquidator
-            ) = NOTIONAL.getVaultAccountCollateralRatio(
-                callbackParams.account,
-                callbackParams.vault
+                VaultAccountHealthFactors memory h,
+                int256[3] memory maxLiquidatorDepositUnderlying,
+                uint256[3] memory vaultSharesToLiquidator
+            ) = NOTIONAL.getVaultAccountHealthFactors(callbackParams.account, callbackParams.vault);
+
+            emit AccountCollateral(
+                h.collateralRatio, 
+                maxLiquidatorDepositUnderlying[callbackParams.currencyIndex], 
+                vaultSharesToLiquidator[callbackParams.currencyIndex]
             );
 
-            emit AccountCollateral(collateralRatio, minCollateralRatio, maxLiquidatorDepositAssetCash, vaultSharesToLiquidator);
-
-            IStrategyVault(callbackParams.vault).deleverageAccount(
+            IStrategyVault(callbackParams.vault).deleverageAccount{value: address(this).balance}(
                 callbackParams.account, 
                 callbackParams.vault, 
                 address(this), 
-                uint256(maxLiquidatorDepositAssetCash), 
-                true, 
-                callbackParams.redeemData
+                callbackParams.currencyIndex,
+                maxLiquidatorDepositUnderlying[callbackParams.currencyIndex]
             );
 
             emit AccountDeleveraged(callbackParams.account);

@@ -75,7 +75,7 @@ library SettlementUtils {
 
     function _totalSupplyInMaturity(uint256 maturity) private view returns (uint256) {
         VaultState memory vaultState = Deployments.NOTIONAL.getVaultState(address(this), maturity);
-        return vaultState.totalStrategyTokens;
+        return vaultState.totalVaultShares;
     }
 
     function _getEmergencySettlementParams(
@@ -106,55 +106,15 @@ library SettlementUtils {
         });
     }
 
-    function _executeSettlement(
-        StrategyContext memory context,
-        uint256 maturity,
-        int256 expectedUnderlyingRedeemed,
-        uint256 redeemStrategyTokenAmount,
-        RedeemParams memory params
-    ) internal {
-        ( /* int256 assetCashRequiredToSettle */, int256 underlyingCashRequiredToSettle) 
-            = Deployments.NOTIONAL.getCashRequiredToSettle(address(this), maturity);
-
-        // A negative surplus here means the account is insolvent
-        // (either expectedUnderlyingRedeemed is negative or
-        // expectedUnderlyingRedeemed is less than underlyingCashRequiredToSettle).
-        // If that's the case, we should just redeem and repay as much as possible (surplus
-        // check is ignored because maxUnderlyingSurplus can never be negative).
-        // If underlyingCashRequiredToSettle is negative, that means we already have surplus cash
-        // on the Notional side, it will just make the surplus larger and potentially
-        // cause it to go over maxUnderlyingSurplus.
-        int256 surplus = expectedUnderlyingRedeemed -
-            underlyingCashRequiredToSettle;
-
-        // Make sure we not redeeming too much to underlying
-        // This allows pool claim to be accrued as the profit token.
-        if (surplus > context.vaultSettings.maxUnderlyingSurplus.toInt()) {
-            revert Errors.RedeemingTooMuch(
-                expectedUnderlyingRedeemed,
-                underlyingCashRequiredToSettle
-            );
-        }
-
-        ( /* int256 assetCashSurplus */, int256 underlyingCashSurplus) 
-            = Deployments.NOTIONAL.redeemStrategyTokensToCash(
-                maturity, redeemStrategyTokenAmount, abi.encode(params)
-            );
-
-        if (underlyingCashSurplus <= 0 && maturity <= block.timestamp) {
-            Deployments.NOTIONAL.settleVault(address(this), maturity);
-        }
-    }
-
     function _getPoolClaimHeldInMaturity(
         StrategyVaultState memory strategyVaultState, 
         uint256 totalSupplyInMaturity,
         uint256 totalPoolClaimHeld
     ) private pure returns (uint256 poolClaimHeldInMaturity) {
-        if (strategyVaultState.totalStrategyTokenGlobal == 0) return 0;
+        if (strategyVaultState.totalVaultSharesGlobal == 0) return 0;
         poolClaimHeldInMaturity =
             (totalPoolClaimHeld * totalSupplyInMaturity) /
-            strategyVaultState.totalStrategyTokenGlobal;
+            strategyVaultState.totalVaultSharesGlobal;
     }
 
 }
