@@ -19,6 +19,7 @@ import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "../../common/VaultStorage.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
+import {VaultConstants} from "../../common/VaultConstants.sol";
 import {Curve2TokenPoolUtils} from "../internal/pool/Curve2TokenPoolUtils.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
@@ -59,28 +60,8 @@ library Curve2TokenConvexHelper {
         });
     }
 
-    function settleVault(
-        Curve2TokenConvexStrategyContext calldata context,
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        RedeemParams memory params
-    ) external {
-        uint256 poolClaimToSettle = context.baseStrategy._convertStrategyTokensToPoolClaim(strategyTokensToRedeem);
-        
-        _executeSettlement({
-            strategyContext: context.baseStrategy,
-            poolContext: context.poolContext,
-            maturity: maturity,
-            poolClaimToSettle: poolClaimToSettle,
-            redeemStrategyTokenAmount: strategyTokensToRedeem,
-            params: params
-        });
-
-        emit VaultEvents.VaultSettlement(maturity, poolClaimToSettle, strategyTokensToRedeem);
-    }
-
     function settleVaultEmergency(
-        Curve2TokenConvexStrategyContext calldata context, 
+        Curve2TokenConvexStrategyContext memory context, 
         uint256 maturity, 
         bytes calldata data
     ) external {
@@ -94,44 +75,16 @@ library Curve2TokenConvexHelper {
             totalPoolSupply: context.poolContext.basePool.poolToken.totalSupply()
         });
 
-        uint256 redeemStrategyTokenAmount = 
-            context.baseStrategy._convertPoolClaimToStrategyTokens(poolClaimToSettle);
-
-        _executeSettlement({
-            strategyContext: context.baseStrategy,
-            poolContext: context.poolContext,
-            maturity: maturity,
-            poolClaimToSettle: poolClaimToSettle,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
+        context.poolContext._unstakeAndExitPool({
+            stakingContext: context.stakingContext,
+            poolClaim: poolClaimToSettle,
             params: params
         });
 
-        emit VaultEvents.EmergencyVaultSettlement(maturity, poolClaimToSettle, redeemStrategyTokenAmount);    
-    }
+        context.baseStrategy.vaultState.totalPoolClaim -= poolClaimToSettle;
+        context.baseStrategy.vaultState.setStrategyVaultState(); 
 
-    function _executeSettlement(
-        StrategyContext calldata strategyContext,
-        Curve2TokenPoolContext calldata poolContext,
-        uint256 maturity,
-        uint256 poolClaimToSettle,
-        uint256 redeemStrategyTokenAmount,
-        RedeemParams memory params
-    ) private {
-        (uint256 spotPrice, uint256 oraclePrice) = poolContext._getSpotPriceAndOraclePrice(strategyContext);
-
-        int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
-            strategyContext: strategyContext,
-            strategyTokenAmount: redeemStrategyTokenAmount,
-            oraclePrice: oraclePrice,
-            spotPrice: spotPrice
-        });
-
-        strategyContext._executeSettlement({
-            maturity: maturity,
-            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-            params: params
-        });    
+        emit VaultEvents.EmergencyVaultSettlement(maturity, poolClaimToSettle, 0);  
     }
 
     function reinvestReward(
