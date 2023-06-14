@@ -65,9 +65,8 @@ library CurveV2Adapter {
                 // Route ends with address(0)
                 if (ended) {
                     require(data.route[i] == address(0));
-                }
-                if (data.route[i] == address(0)) {
-                    if (data.route[i - 1] != address(0)) {
+                } else {
+                    if (data.route[i] == address(0)) {
                         require(data.route[i - 1] == _getTokenAddress(trade.buyToken));
                         ended = true;
                     }
