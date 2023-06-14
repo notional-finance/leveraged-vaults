@@ -13,16 +13,11 @@ networks:
   default: mainnet-fork
   mainnet-fork:
     cmd_settings:
-<<<<<<< HEAD
       fork_block: 17196399
   arbitrum-fork:
     cmd_settings:
       fork_block: 88474429
   
-=======
-      fork_block: 17082059
-
->>>>>>> 415b86b (Fix: sherlock-audit/2023-02-notional-judging#12 sherlock-audit/2023-02-notional-judging#10)
 reports:
   exclude_paths:
     - interfaces/**/*.*

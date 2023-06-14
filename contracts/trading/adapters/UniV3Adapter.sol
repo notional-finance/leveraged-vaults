@@ -26,12 +26,12 @@ library UniV3Adapter {
         return tempAddress;
     }
 
-    function _getTokenAddress(address token) internal view returns (address) {
+    function _getTokenAddress(address token) internal pure returns (address) {
         return token == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : token;
     }
 
     function _exactInSingle(address from, Trade memory trade)
-        private view returns (bytes memory)
+        private pure returns (bytes memory)
     {
         UniV3SingleData memory data = abi.decode(trade.exchangeData, (UniV3SingleData));
 
@@ -44,7 +44,7 @@ library UniV3Adapter {
         return abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector, params);
     }
 
-    function _exactOutSingle(address from, Trade memory trade) private view returns (bytes memory) {
+    function _exactOutSingle(address from, Trade memory trade) private pure returns (bytes memory) {
         UniV3SingleData memory data = abi.decode(trade.exchangeData, (UniV3SingleData));
 
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams(
@@ -56,7 +56,7 @@ library UniV3Adapter {
         return abi.encodeWithSelector(ISwapRouter.exactOutputSingle.selector, params);
     }
 
-    function _exactInBatch(address from, Trade memory trade) private view returns (bytes memory) {
+    function _exactInBatch(address from, Trade memory trade) private pure returns (bytes memory) {
         UniV3BatchData memory data = abi.decode(trade.exchangeData, (UniV3BatchData));
 
         // Validate path EXACT_IN = [sellToken, fee, ... buyToken]
@@ -71,7 +71,7 @@ library UniV3Adapter {
         return abi.encodeWithSelector(ISwapRouter.exactInput.selector, params);
     }
 
-    function _exactOutBatch(address from, Trade memory trade) private view returns (bytes memory) {
+    function _exactOutBatch(address from, Trade memory trade) private pure returns (bytes memory) {
         UniV3BatchData memory data = abi.decode(trade.exchangeData, (UniV3BatchData));
 
         // Validate path EXACT_OUT = [buyToken, fee, ... sellToken]

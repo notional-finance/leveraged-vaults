@@ -165,12 +165,8 @@ library Boosted3TokenAuraHelper {
         AuraStakingContext calldata stakingContext = context.stakingContext;
         Balancer3TokenPoolContext calldata poolContext = context.poolContext;
 
-<<<<<<< HEAD
         (rewardToken, primaryAmount) = context.poolContext.basePool._executeRewardTrades({
-=======
-        (address rewardToken, uint256 primaryAmount) = context.poolContext.basePool._executeRewardTrades({
             strategyContext: strategyContext,
->>>>>>> 0d0a154 (Fix: sherlock-audit/2023-02-notional-judging#19)
             rewardTokens: stakingContext.rewardTokens,
             data: params.tradeData
         });
