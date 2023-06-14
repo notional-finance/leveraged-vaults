@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import {Token, TokenType} from "../global/Types.sol";
+import {Deployments} from "../global/Deployments.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -54,6 +55,11 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     
     /// @notice Set the NOTIONAL address on deployment
     constructor(NotionalProxy notional_, ITradingModule tradingModule_) initializer {
+        // Make sure we are using the correct Deployments lib
+        uint256 chainId;
+        assembly { chainId := chainid() }
+        require(Deployments.CHAIN_ID == chainId);
+
         NOTIONAL = notional_;
         TRADING_MODULE = tradingModule_;
     }

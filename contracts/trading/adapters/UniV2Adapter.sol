@@ -10,8 +10,8 @@ library UniV2Adapter {
 
     struct UniV2Data { address[] path; }
 
-    function getExecutionData(address from, Trade calldata trade)
-        internal view returns (
+    function getExecutionData(address from, Trade memory trade)
+        internal pure returns (
             address spender,
             address target,
             uint256 msgValue,

@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import {StrategyContext} from "../../common/VaultTypes.sol";
 import {ConvexVaultDeploymentParams} from "../CurveVaultTypes.sol";
 import {Deployments} from "../../../global/Deployments.sol";
+import {Constants} from "../../../global/Constants.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {ICurvePool, ICurvePoolV1, ICurvePoolV2} from "../../../../interfaces/curve/ICurvePool.sol";
@@ -24,13 +25,18 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
 
         CURVE_POOL = params.baseParams.pool;
 
-        address[10] memory handlers = 
-            Deployments.CURVE_META_REGISTRY.get_registry_handlers_from_pool(address(CURVE_POOL));
+        bool isCurveV2 = false;
 
-        /// @dev unknown Curve version
-        require(handlers[0] == CurveConstants.CURVE_V1_HANDLER || handlers[0] == CurveConstants.CURVE_V2_HANDLER);
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+            address[10] memory handlers = 
+                Deployments.CURVE_META_REGISTRY.get_registry_handlers_from_pool(address(CURVE_POOL));
 
-        IS_CURVE_V2 = (handlers[0] == CurveConstants.CURVE_V2_HANDLER);
+            /// @dev unknown Curve version
+            require(handlers[0] == Deployments.CURVE_V1_HANDLER || handlers[0] == Deployments.CURVE_V2_HANDLER);
+            isCurveV2 = (handlers[0] == Deployments.CURVE_V2_HANDLER);
+        }
+
+        IS_CURVE_V2 = isCurveV2;
 
         CURVE_POOL_TOKEN = IS_CURVE_V2 ? 
             IERC20(ICurvePoolV2(address(CURVE_POOL)).token()) :

@@ -113,4 +113,7 @@ library Constants {
     // Equal to 100% of all deposit amounts for nToken liquidity across fCash markets.
     int256 internal constant DEPOSIT_PERCENT_BASIS = 1e8;
     uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
+
+    uint256 internal constant CHAIN_ID_MAINNET = 1;
+    uint256 internal constant CHAIN_ID_ARBITRUM = 42161;
 }
