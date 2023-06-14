@@ -60,11 +60,17 @@ library CurveV2Adapter {
 
             // Validate exchange data
             require(data.route[0] == _getTokenAddress(trade.sellToken));
+            bool ended = false;
             for (uint256 i = 1; i < ROUTE_LEN; i++) {
                 // Route ends with address(0)
+                if (ended) {
+                    require(data.route[i] == address(0));
+                }
                 if (data.route[i] == address(0)) {
-                    require(data.route[i - 1] == _getTokenAddress(trade.buyToken));
-                    break;
+                    if (data.route[i - 1] != address(0)) {
+                        require(data.route[i - 1] == _getTokenAddress(trade.buyToken));
+                        ended = true;
+                    }
                 }
             }
 
