@@ -150,11 +150,11 @@ library StrategyUtils {
         StrategyContext memory strategyContext,
         uint256 vaultShares
     ) internal returns (uint256 poolClaim) {
-        if (strategyTokens == 0) {
+        if (vaultShares == 0) {
             return poolClaim;
         }
 
-        poolClaim = _convertStrategyTokensToPoolClaim(strategyContext, strategyTokens);
+        poolClaim = _convertStrategyTokensToPoolClaim(strategyContext, vaultShares);
 
         if (poolClaim == 0) {
             revert Errors.ZeroPoolClaim();
