@@ -183,7 +183,7 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         );
     }
 
-    function migrateAura() external onlyNotionalOwner {
+    function migrateAura(StrategyVaultSettings calldata settings) external onlyNotionalOwner {
         uint256 amount = OLD_REWARD_POOL.balanceOf(address(this));
 
         bool success = OLD_REWARD_POOL.withdrawAndUnwrap(amount, true);
@@ -198,6 +198,8 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
 
         // New amount should equal to old amount
         require(amount == AURA_REWARD_POOL.balanceOf(address(this)));
+
+        VaultStorage.setStrategyVaultSettings(settings);
     }
 
     function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
