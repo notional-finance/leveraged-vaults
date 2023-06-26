@@ -81,10 +81,7 @@ interface IVaultAction {
         uint32[2] calldata minLendRate
     ) external payable returns (int256[2] memory underlyingDepositExternal);
 
-    function settleSecondaryBorrowForAccount(
-        address vault,
-        address account
-    ) external returns (bool didTransferSecondary);
+    function settleSecondaryBorrowForAccount(address vault, address account) external;
 }
 
 interface IVaultAccountAction {
@@ -214,6 +211,15 @@ interface IVaultLiquidationAction {
         uint256 currencyIndex,
         int256 fCashDeposit
     ) external returns (int256 cashToLiquidator);
+
+    function liquidateExcessVaultCash(
+        address account,
+        address vault,
+        address liquidator,
+        uint256 excessCashIndex,
+        uint256 debtIndex,
+        uint256 _depositUnderlyingInternal
+    ) external payable returns (int256 cashToLiquidator);
 }
 
 interface IVaultAccountHealth {
@@ -223,14 +229,6 @@ interface IVaultAccountHealth {
         uint256[3] memory vaultSharesToLiquidator
     );
 
-    function getLiquidateCashBalanceDepositAmount(
-        address account,
-        address vault,
-        uint16 currencyId,
-        uint256 maturity,
-        uint256 blockTime
-    ) external view returns (int256);
-    
     function calculateDepositAmountInDeleverage(
         uint256 currencyIndex,
         VaultAccount memory vaultAccount,
@@ -238,6 +236,12 @@ interface IVaultAccountHealth {
         VaultState memory vaultState,
         int256 depositUnderlyingInternal
     ) external returns (int256 depositInternal, uint256 vaultSharesToLiquidator, PrimeRate memory);
+
+    function getfCashRequiredToLiquidateCash(
+        uint16 currencyId,
+        uint256 maturity,
+        int256 vaultAccountCashBalance
+    ) external view returns (int256 fCashRequired, int256 discountFactor);
 
     function checkVaultAccountCollateralRatio(address vault, address account) external;
 
