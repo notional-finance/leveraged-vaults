@@ -22,6 +22,8 @@ import {Deployments} from "../global/Deployments.sol";
 abstract contract FlashLiquidatorBase is BoringOwnable {
     using TokenUtils for IERC20;
 
+    uint256 internal constant MAX_CURRENCIES = 3;
+
     NotionalProxy public immutable NOTIONAL;
     address public immutable FLASH_LENDER;
 
@@ -46,11 +48,17 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
     }
 
     struct LiquidateCashBalanceParams {
-        uint16 currencyIndex;
         uint32 minLendRate;
     }
 
+    error ErrInvalidCurrencyIndex(uint16 index);
+
     constructor(NotionalProxy notional_, address flashLender_) {
+        // Make sure we are using the correct Deployments lib
+        uint256 chainId;
+        assembly { chainId := chainid() }
+        require(Deployments.CHAIN_ID == chainId);
+
         NOTIONAL = notional_;
         FLASH_LENDER = flashLender_;
         owner = msg.sender;
@@ -173,8 +181,20 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
 
         require(vaultAccount.maturity != Constants.PRIME_CASH_VAULT_MATURITY);
 
+        int256 cashBalance;
+
+        if (params.currencyIndex == 0) {
+            cashBalance = vaultAccount.tempCashBalance;
+        } else if (params.currencyIndex < MAX_CURRENCIES) {
+            (/* */, /* */, int256[2] memory accountSecondaryCashHeld) = 
+                NOTIONAL.getVaultAccountSecondaryDebt(params.account, params.vault);
+            cashBalance = accountSecondaryCashHeld[params.currencyIndex - 1];
+        } else {
+            revert ErrInvalidCurrencyIndex(params.currencyIndex);
+        }
+
         (int256 fCashDeposit, /* */)  = NOTIONAL.getfCashRequiredToLiquidateCash(
-            params.currencyId, vaultAccount.maturity, vaultAccount.tempCashBalance
+            params.currencyId, vaultAccount.maturity, cashBalance
         );
 
         uint256 fCashAmount = _lend(
@@ -187,7 +207,7 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
             params.account, 
             params.vault, 
             address(this), 
-            actionParams.currencyIndex, 
+            params.currencyIndex, 
             int256(fCashAmount)
         );
 
