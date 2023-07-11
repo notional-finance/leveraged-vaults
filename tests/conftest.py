@@ -32,10 +32,11 @@ def StratStableETHstETH():
         MetaStable2TokenAuraVault.abi
     )
 
-    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])   
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
 
+    #impl = MetaStable2TokenAuraVault.at("0xb8871D17F7BDE7eD824533B14AA63BB9174c2711")   
     stratConfig = env.getStratConfig(strat)
-    settingsCalldata = vault.setStrategyVaultSettings.encode_input([
+    migrateData = impl.migrateAura.encode_input([
         stratConfig["maxUnderlyingSurplus"],
         stratConfig["settlementSlippageLimitPercent"], 
         stratConfig["postMaturitySettlementSlippageLimitPercent"], 
@@ -45,8 +46,7 @@ def StratStableETHstETH():
         stratConfig["oraclePriceDeviationLimitPercent"],
         stratConfig["poolSlippageLimitPercent"]
     ])
-
-    vault.upgradeToAndCall(impl.address, settingsCalldata, {"from": env.notional.owner()})
+    vault.upgradeToAndCall(impl, migrateData, {"from": env.notional.owner()})
 
     env.notional.updateVault(
         '0xF049B944eC83aBb50020774D48a8cf40790996e6', 

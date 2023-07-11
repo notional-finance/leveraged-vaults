@@ -162,7 +162,10 @@ def normal_settlement(context, depositAmount, primaryBorrowAmount, maturityIndex
 
     # Enter settlement window
     settlementWindow = vault.getStrategyContext()["baseStrategy"]["settlementPeriodInSeconds"]
-    chain.sleep(maturity - settlementWindow + 1 - chain.time())
+    settlementTime = maturity - settlementWindow + 1 - chain.time()
+    if settlementTime > 0:
+        chain.sleep(maturity - settlementWindow + 1 - chain.time())
+        
     chain.mine(5)
     # Disable oracle freshness check
     env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
@@ -277,7 +280,11 @@ def post_maturity_settlement(context, depositAmount, primaryBorrowAmount, maturi
     with brownie.reverts():
         vault.settleVaultPostMaturity.call(maturity, tokensToRedeem, redeemParamsEncoded, {"from": env.notional.owner()})
 
-    chain.sleep(maturity + 1 - chain.time())
+    settlementTime = maturity + 1 - chain.time()
+    
+    if settlementTime > 0:
+        chain.sleep(settlementTime)
+
     chain.mine(5)
     # Disable oracle freshness check
     env.tradingModule.setMaxOracleFreshness(2 ** 32 - 1, {"from": env.notional.owner()})
@@ -329,6 +336,14 @@ def emergency_settlement(context, depositAmount, primaryBorrowAmount, maturityIn
     vault = context.vault
     currencyId = context.currencyId
     maturity = env.notional.getActiveMarkets(currencyId)[maturityIndex][1]
+
+    settlementWindow = vault.getStrategyContext()["baseStrategy"]["settlementPeriodInSeconds"]
+    settlementTime = maturity - settlementWindow + 1 - chain.time()
+
+    # Can't test emergency settlement in settlement window
+    if settlementTime <= 0:
+        return
+
     context.approve(depositor, notional.address)
     context.transfer(depositor, depositAmount)
     context.approve(operator, notional.address)
