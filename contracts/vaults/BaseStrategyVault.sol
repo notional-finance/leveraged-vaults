@@ -215,6 +215,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         uint16 currencyIndex,
         int256 depositUnderlyingInternal
     ) external payable returns (uint256 vaultSharesFromLiquidation, int256 depositAmountPrimeCash) {
+        require(msg.sender == liquidator);
         _checkReentrancyContext();
         return NOTIONAL.deleverageAccount{value: msg.value}(
             account, vault, liquidator, currencyIndex, depositUnderlyingInternal
