@@ -76,7 +76,8 @@ library BalancerUtils {
         bytes32 poolId,
         IERC20 poolToken,
         PoolParams memory params,
-        uint256 bptExitAmount
+        uint256 bptExitAmount,
+        bool singleSideExit
     ) internal returns (uint256[] memory exitBalances) {
         uint256 numAssets = params.assets.length;
         exitBalances = new uint256[](numAssets);
@@ -93,7 +94,9 @@ library BalancerUtils {
                 params.assets,
                 params.amounts,
                 abi.encode(
-                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+                    singleSideExit ? 
+                        IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT : 
+                        IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
                     bptExitAmount
                 ),
                 false // Don't use internal balances

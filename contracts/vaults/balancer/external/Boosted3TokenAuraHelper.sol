@@ -17,6 +17,8 @@ import {
     RedeemParams,
     ReinvestRewardParams
 } from "../../common/VaultTypes.sol";
+import {Constants} from "../../../global/Constants.sol";
+import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {VaultConstants} from "../../common/VaultConstants.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
@@ -36,6 +38,7 @@ library Boosted3TokenAuraHelper {
     using SettlementUtils for StrategyContext;
     using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
+    using TypeConvert for uint256;
 
     function deposit(
         Boosted3TokenAuraStrategyContext memory context,
@@ -166,5 +169,21 @@ library Boosted3TokenAuraHelper {
         uint8 tokenIndex
     ) external view returns (uint256 spotPrice) {
         spotPrice = context.poolContext._getSpotPrice(context.oracleContext, tokenIndex);
+    }
+
+    function getExchangeRate(Boosted3TokenAuraStrategyContext memory context) external view returns (int256) {
+        if (context.baseStrategy.vaultState.totalVaultSharesGlobal == 0) {
+            return context.poolContext._getTimeWeightedPrimaryBalance({
+                oracleContext: context.oracleContext,
+                strategyContext: context.baseStrategy,
+                bptAmount: context.baseStrategy.poolClaimPrecision // 1 pool token
+            }).toInt();
+        } else {
+            return context.poolContext._convertStrategyToUnderlying({
+                strategyContext: context.baseStrategy,
+                oracleContext: context.oracleContext,
+                strategyTokenAmount: uint256(Constants.INTERNAL_TOKEN_PRECISION) // 1 vault share
+            });
+        }
     }
 }

@@ -140,11 +140,12 @@ library Balancer2TokenPoolUtils {
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
         uint256 bptClaim = strategyContext._redeemStrategyTokens(strategyTokens);
+        bool singleSideExit = params.secondaryTradeParams.length == 0;
 
         // Underlying token balances from exiting the pool
         (uint256 primaryBalance, uint256 secondaryBalance)
             = _unstakeAndExitPool(
-                poolContext, stakingContext, bptClaim, params.minPrimary, params.minSecondary
+                poolContext, stakingContext, bptClaim, params.minPrimary, params.minSecondary, singleSideExit
             );
 
         finalPrimaryBalance = primaryBalance;
@@ -198,17 +199,21 @@ library Balancer2TokenPoolUtils {
         AuraStakingContext memory stakingContext,
         uint256 bptClaim,
         uint256 minPrimary,
-        uint256 minSecondary
+        uint256 minSecondary,
+        bool singleSideExit
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
-        // Withdraw BPT tokens back to the vault for redemption
-        bool success = stakingContext.rewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
-        if (!success) revert Errors.UnstakeFailed();
+        {
+            // Withdraw BPT tokens back to the vault for redemption
+            bool success = stakingContext.rewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+            if (!success) revert Errors.UnstakeFailed();
+        }
 
         uint256[] memory exitBalances = BalancerUtils._exitPoolExactBPTIn({
             poolId: poolContext.poolId,
             poolToken: poolContext.basePool.poolToken,
             params: poolContext._getPoolParams(minPrimary, minSecondary, false), // isJoin = false
-            bptExitAmount: bptClaim
+            bptExitAmount: bptClaim,
+            singleSideExit: singleSideExit
         });
         
         (primaryBalance, secondaryBalance) 

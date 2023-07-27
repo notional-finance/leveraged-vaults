@@ -25,4 +25,5 @@ library Errors {
     error ZeroStrategyTokens();
     error VaultLocked();
     error VaultNotLocked();
+    error InvalidDexId(uint256 dexId);
 }

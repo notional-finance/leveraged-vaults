@@ -153,13 +153,13 @@ library Curve2TokenPoolUtils {
     function _convertStrategyToUnderlying(
         Curve2TokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
-        uint256 strategyTokenAmount,
-        uint256 oraclePrice,
-        uint256 spotPrice
+        uint256 strategyTokenAmount
     ) internal view returns (int256 underlyingValue) {
         
         uint256 poolClaim 
             = strategyContext._convertStrategyTokensToPoolClaim(strategyTokenAmount);
+
+        (uint256 spotPrice, uint256 oraclePrice) = _getSpotPriceAndOraclePrice(poolContext, strategyContext);
 
         underlyingValue 
             = poolContext.basePool._getTimeWeightedPrimaryBalance({

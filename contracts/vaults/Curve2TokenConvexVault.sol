@@ -126,12 +126,9 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         uint256 maturity
     ) public view virtual override returns (int256 underlyingValue) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        (uint256 spotPrice, uint256 oraclePrice) = context.poolContext._getSpotPriceAndOraclePrice(context.baseStrategy);
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
-            strategyTokenAmount: strategyTokenAmount,
-            oraclePrice: oraclePrice,
-            spotPrice: spotPrice
+            strategyTokenAmount: strategyTokenAmount
         });
     } 
 

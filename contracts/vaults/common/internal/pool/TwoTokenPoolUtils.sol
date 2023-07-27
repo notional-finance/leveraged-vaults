@@ -14,7 +14,7 @@ import {VaultConstants} from "../../VaultConstants.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
 import {RewardUtils} from "../reward/RewardUtils.sol";
 import {Errors} from "../../../../global/Errors.sol";
-import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule, DexId} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../../../../interfaces/IERC20.sol";
 
 library TwoTokenPoolUtils {
@@ -98,6 +98,10 @@ library TwoTokenPoolUtils {
     ) internal returns (uint256 primarySold, uint256 secondaryBought) {
         (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
 
+        if (DexId(params.tradeParams.dexId) == DexId.ZERO_EX) {
+            revert Errors.InvalidDexId(params.tradeParams.dexId);
+        }
+
         (primarySold, secondaryBought) = strategyContext._executeTradeExactIn({
             params: params.tradeParams, 
             sellToken: poolContext.primaryToken, 
@@ -116,6 +120,10 @@ library TwoTokenPoolUtils {
         (TradeParams memory tradeParams) = abi.decode(
             params.secondaryTradeParams, (TradeParams)
         );
+
+        if (DexId(tradeParams.dexId) == DexId.ZERO_EX) {
+            revert Errors.InvalidDexId(tradeParams.dexId);
+        }
 
         ( /*uint256 amountSold */, primaryPurchased) = 
             strategyContext._executeTradeExactIn({

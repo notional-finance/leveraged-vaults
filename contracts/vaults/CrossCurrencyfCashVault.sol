@@ -147,6 +147,14 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             (rateDecimals * int256(Constants.INTERNAL_TOKEN_PRECISION));
     }
 
+    function getExchangeRate() public view virtual returns (int256) {
+        
+    }
+
+    function getStrategyVaultInfo() public view virtual returns (StrategyVaultInfo memory) {
+
+    }
+
     /**
      * @notice Will receive a deposit from Notional in underlying tokens of the borrowed currency.
      * Needs to first trade that deposit into the lend currency and then lend it to fCash on the
