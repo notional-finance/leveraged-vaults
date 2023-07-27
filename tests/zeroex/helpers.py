@@ -22,5 +22,5 @@ def fetch_0x_data(sellToken, buyToken, sellAmount, slippagePercentage):
         "buyToken": buyToken,
         "sellAmount": sellAmount,
         "slippagePercentage": slippagePercentage
-    })
+    }, headers={"0x-api-key":"73320f1c-f232-46da-9f6e-a47fc310ea75"})
     return resp.json()["data"]
