@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {Errors} from "../../../../global/Errors.sol";
+import {Constants} from "../../../../global/Constants.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {
     StrategyContext, 
@@ -25,6 +26,8 @@ import {
     ICurve2TokenPoolV1, 
     ICurve2TokenPoolV2
 } from "../../../../../interfaces/curve/ICurvePool.sol";
+import {IConvexBooster, IConvexBoosterArbitrum} from "../../../../../interfaces/convex/IConvexBooster.sol";
+import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../../../../interfaces/convex/IConvexRewardPool.sol";
 
 library Curve2TokenPoolUtils {
     using StrategyUtils for StrategyContext;
@@ -205,8 +208,16 @@ library Curve2TokenPoolUtils {
         if (poolClaimThreshold < poolClaimHeldAfterJoin)
             revert Errors.PoolShareTooHigh(poolClaimHeldAfterJoin, poolClaimThreshold);
 
-
-        bool success = stakingContext.booster.deposit(stakingContext.poolId, poolClaimMinted, true); // stake = true
+        bool success;        
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+            success = IConvexBooster(stakingContext.booster).deposit(
+                stakingContext.poolId, poolClaimMinted, true
+            ); // stake = true
+        } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
+            success = IConvexBoosterArbitrum(stakingContext.booster).deposit(
+                stakingContext.poolId, poolClaimMinted
+            );
+        }
         require(success);    
     }
 
@@ -217,7 +228,17 @@ library Curve2TokenPoolUtils {
         RedeemParams memory params
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
         // Withdraw pool tokens back to the vault for redemption
-        bool success = stakingContext.rewardPool.withdrawAndUnwrap(poolClaim, false); // claimRewards = false
+        bool success;
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+            success = IConvexRewardPool(stakingContext.rewardPool).withdrawAndUnwrap(
+                poolClaim, false
+            ); // claimRewards = false
+        } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
+            success = IConvexRewardPoolArbitrum(stakingContext.rewardPool).withdraw(
+                poolClaim, false
+            ); // claimRewards = false
+        }
+        
         if (!success) revert Errors.UnstakeFailed();
 
         if (params.secondaryTradeParams.length == 0) {

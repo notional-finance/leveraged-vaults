@@ -11,18 +11,18 @@ import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITra
 import {ICurveGauge} from "../../../interfaces/curve/ICurveGauge.sol";
 import {ICurvePool} from "../../../interfaces/curve/ICurvePool.sol";
 import {IConvexBooster} from "../../../interfaces/convex/IConvexBooster.sol";
-import {IConvexRewardPool} from "../../../interfaces/convex/IConvexRewardPool.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 
 struct DeploymentParams {
     uint16 primaryBorrowCurrencyId;
     address pool;
     ITradingModule tradingModule;
+    bool isSelfLPToken;
     uint32 settlementPeriodInSeconds;
 }
 
 struct ConvexVaultDeploymentParams {
-    IConvexRewardPool rewardPool;
+    address rewardPool;
     DeploymentParams baseParams;
 }
 
@@ -39,8 +39,8 @@ struct Curve2TokenPoolContext {
 }
 
 struct ConvexStakingContext {
-    IConvexBooster booster;
-    IConvexRewardPool rewardPool;
+    address booster;
+    address rewardPool;
     uint256 poolId;
     IERC20[] rewardTokens;
 }

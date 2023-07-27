@@ -58,13 +58,17 @@ abstract contract AuraStakingMixin is VaultBase {
         });
     }
 
+    function _claimAuraRewardTokens() internal returns (bool) {
+        return AURA_REWARD_POOL.getReward(address(this), true); // claimExtraRewards = true
+    }
+
     function claimRewardTokens()
         external onlyRole(REWARD_REINVESTMENT_ROLE) returns (
         IERC20[] memory rewardTokens,
         uint256[] memory claimedBalances
     ) {
         rewardTokens = _rewardTokens();
-        claimedBalances = RewardUtils._claimRewardTokens(AURA_REWARD_POOL, _rewardTokens());
+        claimedBalances = RewardUtils._claimRewardTokens(_claimAuraRewardTokens, rewardTokens);
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

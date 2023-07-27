@@ -49,7 +49,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         initializer
         onlyNotionalOwner
     {
-        __INIT_VAULT(params.name, params.borrowCurrencyId);
+        __INIT_VAULT(params.name, params.borrowCurrencyId);        
         VaultStorage.setStrategyVaultSettings(params.settings);
 
         if (PRIMARY_TOKEN != Deployments.ALT_ETH_ADDRESS) {
