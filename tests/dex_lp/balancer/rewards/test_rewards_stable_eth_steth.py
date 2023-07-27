@@ -22,7 +22,7 @@ def test_claim_rewards(StratStableETHstETH):
         accounts[0],
         {
             "BAL": 13123815655385993316,
-            "AURA": 450315930428330847117
+            "AURA": 130393336388615917729
         }
     )
 
