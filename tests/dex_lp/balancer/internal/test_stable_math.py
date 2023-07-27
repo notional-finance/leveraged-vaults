@@ -1,4 +1,5 @@
 import pytest
+import time
 from brownie import interface
 from brownie.network.state import Chain
 from scripts.common import set_dex_flags, set_trade_type_flags
@@ -43,7 +44,7 @@ def test_spot_price_within_1_perc_of_pair_price_after_trading(StratStableETHstET
         env.tokens["wstETH"].address, env.tokens["WETH"].address, 30000e18, 0, poolId
     )
 
-    env.tradingModule.executeTradeWithDynamicSlippage(4, tradeCallData, 5e6, {"from": env.whales["wstETH"]})
+    env.tradingModule.executeTradeWithDynamicSlippage.call(4, tradeCallData, 30e6, {"from": env.whales["wstETH"]})
 
     # Trade in small increments to update the balancer oracle pair price 
     for i in range(0,10):
