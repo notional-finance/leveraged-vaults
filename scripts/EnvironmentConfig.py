@@ -40,6 +40,9 @@ with open("v2.mainnet.json", "r") as f:
 with open("v2.goerli.json", "r") as f:
     networks["goerli"] = json.load(f)
 
+with open("v3.arbitrum-one.json", "r") as f:
+    networks["arbitrum"] = json.load(f)
+
 class Environment:
     def __init__(self, network) -> None:
         self.forkBlockNumber = chain.height
@@ -81,7 +84,7 @@ class Environment:
         if useFresh == False:
             self.tradingModule = Contract.from_abi("TradingModule", self.addresses["trading"]["proxy"], TradingModule.abi)
             impl = TradingModule.deploy(self.notional.address, self.tradingModule.address, {"from": self.deployer})
-            self.tradingModule.upgradeTo(impl.address, {"from": self.notional.owner()})
+            self.tradingModule.upgradeTo(impl.address, {"from": "0xe6fb62c2218fd9e3c948f0549a2959b509a293c8"})
         else:
             emptyImpl = EmptyProxy.deploy({"from": self.deployer})
             self.proxy = nProxy.deploy(emptyImpl.address, bytes(), {"from": self.deployer})

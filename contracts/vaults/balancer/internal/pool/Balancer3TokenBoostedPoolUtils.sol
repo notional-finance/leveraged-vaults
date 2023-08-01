@@ -27,6 +27,7 @@ import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol
 import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IBoostedPool, ILinearPool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
+import {IAuraBoosterBase} from "../../../../../interfaces/aura/IAuraBooster.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {Balancer2TokenPoolUtils} from "./Balancer2TokenPoolUtils.sol";
 import {FixedPoint} from "../math/FixedPoint.sol";
@@ -438,7 +439,7 @@ library Balancer3TokenBoostedPoolUtils {
             revert Errors.PoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 
         // Transfer token to Aura protocol for boosted staking
-        bool success = stakingContext.booster.deposit(stakingContext.poolId, bptMinted, true); // stake = true
+        bool success = IAuraBoosterBase(stakingContext.booster).deposit(stakingContext.poolId, bptMinted, true); // stake = true
         if (!success) revert Errors.StakeFailed();
     }
 

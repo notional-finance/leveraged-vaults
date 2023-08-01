@@ -30,6 +30,7 @@ import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol
 import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {Balancer2TokenPoolUtils} from "../pool/Balancer2TokenPoolUtils.sol";
 import {Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
+import {IAuraBoosterBase} from "../../../../../interfaces/aura/IAuraBooster.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 
 library Balancer2TokenPoolUtils {
@@ -190,7 +191,7 @@ library Balancer2TokenPoolUtils {
             revert Errors.PoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
 
         // Transfer token to Aura protocol for boosted staking
-        bool success = stakingContext.booster.deposit(stakingContext.poolId, bptMinted, true); // stake = true
+        bool success = IAuraBoosterBase(stakingContext.booster).deposit(stakingContext.poolId, bptMinted, true); // stake = true
         if (!success) revert Errors.StakeFailed();
     }
 

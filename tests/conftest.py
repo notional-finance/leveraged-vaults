@@ -25,7 +25,22 @@ def run_around_tests():
     chain.snapshot()
     yield
     chain.revert()
-    
+
+@pytest.fixture()
+def ArbStratStableETHstETH():
+    env = getEnvironment(network.show_active())
+    strat = "StratStableETHstETH"
+
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault)
+
+    # Deploy mock contract necessary for liquidation tests
+    mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IBalancer2TokenMetaStableMockVault.abi)
+
+    return (env, vault, mock)
+
 @pytest.fixture()
 def StratStableETHstETH():
     env = getEnvironment(network.show_active())

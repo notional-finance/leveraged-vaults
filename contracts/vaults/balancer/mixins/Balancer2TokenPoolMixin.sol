@@ -9,9 +9,10 @@ import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {ISingleSidedLPStrategyVault} from "../../../../interfaces/notional/IStrategyVault.sol";
 import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 
-abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin {
+abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin, ISingleSidedLPStrategyVault {
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
 

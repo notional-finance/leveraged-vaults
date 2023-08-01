@@ -39,7 +39,7 @@ abstract contract Curve2TokenVaultMixin is Curve2TokenPoolMixin {
         });
     }
 
-    function getExchangeRate() public view override returns (int256) {
+    function getExchangeRate(uint256 maturity) public view override returns (int256) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
         if (context.baseStrategy.vaultState.totalVaultSharesGlobal == 0) {
             (uint256 spotPrice, uint256 oraclePrice) = context.poolContext._getSpotPriceAndOraclePrice(
@@ -60,9 +60,9 @@ abstract contract Curve2TokenVaultMixin is Curve2TokenPoolMixin {
         }
     }
 
-    function getStrategyVaultInfo() public view override returns (StrategyVaultInfo memory) {
+    function getStrategyVaultInfo() public view override returns (SingleSidedLPStrategyVaultInfo memory) {
         StrategyContext memory context = _baseStrategyContext();
-        return StrategyVaultInfo({
+        return SingleSidedLPStrategyVaultInfo({
             pool: address(CURVE_POOL),
             singleSidedTokenIndex: PRIMARY_INDEX,
             totalLPTokens: context.vaultState.totalPoolClaim,

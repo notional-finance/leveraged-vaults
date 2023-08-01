@@ -8,10 +8,11 @@ import {Curve2TokenPoolContext, ConvexVaultDeploymentParams} from "../CurveVault
 import {CurveConstants} from "../internal/CurveConstants.sol";
 import {CurvePoolMixin} from "./CurvePoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {ISingleSidedLPStrategyVault} from "../../../../interfaces/notional/IStrategyVault.sol";
 import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {ICurvePool} from "../../../../interfaces/curve/ICurvePool.sol";
 
-abstract contract Curve2TokenPoolMixin is CurvePoolMixin {
+abstract contract Curve2TokenPoolMixin is CurvePoolMixin, ISingleSidedLPStrategyVault{
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
 

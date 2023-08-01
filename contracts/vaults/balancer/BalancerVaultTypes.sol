@@ -77,7 +77,7 @@ struct BoostedOracleContext {
 
 struct AuraStakingContext {
     ILiquidityGauge liquidityGauge;
-    IAuraBooster booster;
+    address booster;
     IAuraRewardPool rewardPool;
     uint256 poolId;
     IERC20[] rewardTokens;

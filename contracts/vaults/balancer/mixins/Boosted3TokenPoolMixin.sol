@@ -18,6 +18,7 @@ import {
 import {Constants} from "../../../global/Constants.sol";
 import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
+import {ISingleSidedLPStrategyVault} from "../../../../interfaces/notional/IStrategyVault.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {IBalancerPool, IBoostedPool, ILinearPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
@@ -27,7 +28,7 @@ import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 import {Boosted3TokenAuraHelper} from "../external/Boosted3TokenAuraHelper.sol";
 
-abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
+abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin, ISingleSidedLPStrategyVault {
     using TypeConvert for uint256;
 
     error InvalidPrimaryToken(address token);
@@ -213,14 +214,14 @@ abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
         scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
     }
 
-    function getExchangeRate() public view override returns (int256) {
+    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
         Boosted3TokenAuraStrategyContext memory context = _strategyContext();
         return Boosted3TokenAuraHelper.getExchangeRate(context);
     }
 
-    function getStrategyVaultInfo() public view override returns (StrategyVaultInfo memory) {
+    function getStrategyVaultInfo() public view override returns (SingleSidedLPStrategyVaultInfo memory) {
         StrategyContext memory context = _baseStrategyContext();
-        return StrategyVaultInfo({
+        return SingleSidedLPStrategyVaultInfo({
             pool: address(BALANCER_POOL_TOKEN),
             singleSidedTokenIndex: PRIMARY_INDEX,
             totalLPTokens: context.vaultState.totalPoolClaim,

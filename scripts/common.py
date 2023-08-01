@@ -7,6 +7,7 @@ from brownie.network.state import Chain
 
 chain = Chain()
 ALT_ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+PRIME_CASH_VAULT_MATURITY = 2 ** 40 - 1
 
 DEX_ID = {
     'UNUSED': 0,
@@ -234,7 +235,9 @@ def get_all_past_maturities(notional, currencyId):
     return res
 
 def get_all_active_maturities(notional, currencyId):
-    return [m[1] for m in notional.getActiveMarkets(currencyId)]
+    mats = [m[1] for m in notional.getActiveMarkets(currencyId)]
+    mats.append(PRIME_CASH_VAULT_MATURITY)
+    return mats
 
 def get_remaining_strategy_tokens(address):
     resp = requests.post("https://api.thegraph.com/subgraphs/name/notional-finance/mainnet-v2",

@@ -171,7 +171,7 @@ library Boosted3TokenAuraHelper {
         spotPrice = context.poolContext._getSpotPrice(context.oracleContext, tokenIndex);
     }
 
-    function getExchangeRate(Boosted3TokenAuraStrategyContext memory context) external view returns (int256) {
+    function getExchangeRate(Boosted3TokenAuraStrategyContext calldata context) external view returns (int256) {
         if (context.baseStrategy.vaultState.totalVaultSharesGlobal == 0) {
             return context.poolContext._getTimeWeightedPrimaryBalance({
                 oracleContext: context.oracleContext,

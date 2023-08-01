@@ -14,10 +14,9 @@ import {StableOracleContext} from "../BalancerVaultTypes.sol";
 import {Balancer2TokenPoolMixin} from "./Balancer2TokenPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
-import {Balancer2TokenPoolUtils} from "../internal/pool/Balancer2TokenPoolUtils.sol";
+import {MetaStable2TokenAuraHelper} from "../external/MetaStable2TokenAuraHelper.sol";
 
 abstract contract MetaStable2TokenVaultMixin is Balancer2TokenPoolMixin {
-    using Balancer2TokenPoolUtils for Balancer2TokenPoolContext;
     using TypeConvert for uint256;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
@@ -45,26 +44,14 @@ abstract contract MetaStable2TokenVaultMixin is Balancer2TokenPoolMixin {
         });
     }
 
-    function getExchangeRate() public view override returns (int256) {
+    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        if (context.baseStrategy.vaultState.totalVaultSharesGlobal == 0) {
-            return context.poolContext._getTimeWeightedPrimaryBalance({
-                oracleContext: context.oracleContext,
-                strategyContext: context.baseStrategy,
-                bptAmount: context.baseStrategy.poolClaimPrecision // 1 pool token
-            }).toInt();
-        } else {
-            return context.poolContext._convertStrategyToUnderlying({
-                strategyContext: context.baseStrategy,
-                oracleContext: context.oracleContext,
-                strategyTokenAmount: uint256(Constants.INTERNAL_TOKEN_PRECISION) // 1 vault share
-            });
-        }
+        return MetaStable2TokenAuraHelper.getExchangeRate(context);
     }
 
-    function getStrategyVaultInfo() public view override returns (StrategyVaultInfo memory) {
+    function getStrategyVaultInfo() public view override returns (SingleSidedLPStrategyVaultInfo memory) {
         StrategyContext memory context = _baseStrategyContext();
-        return StrategyVaultInfo({
+        return SingleSidedLPStrategyVaultInfo({
             pool: address(BALANCER_POOL_TOKEN),
             singleSidedTokenIndex: PRIMARY_INDEX,
             totalLPTokens: context.vaultState.totalPoolClaim,

@@ -147,12 +147,8 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             (rateDecimals * int256(Constants.INTERNAL_TOKEN_PRECISION));
     }
 
-    function getExchangeRate() public view virtual returns (int256) {
-        
-    }
-
-    function getStrategyVaultInfo() public view virtual returns (StrategyVaultInfo memory) {
-
+    function getExchangeRate(uint256 maturity) public view override returns (int256) {
+        return convertStrategyToUnderlying(address(0), uint256(Constants.INTERNAL_TOKEN_PRECISION), maturity);
     }
 
     /**
