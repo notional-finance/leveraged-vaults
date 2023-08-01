@@ -59,7 +59,7 @@ def enterMaturity(
 def exitVaultPercent(env, vault, account, percent, redeemParams, callStatic=False):
     vaultAccount = env.notional.getVaultAccount(account, vault.address)
     vaultShares = vaultAccount["vaultShares"]
-    primaryBorrowAmount = vaultAccount["fCash"]
+    primaryBorrowAmount = vaultAccount["accountDebtUnderlying"]
     sharesToRedeem = math.floor(vaultShares * percent)
     fCashToRepay = math.floor(-primaryBorrowAmount * percent)
     if callStatic:
@@ -122,7 +122,7 @@ def check_invariants(env, vault, accounts, currencyId, snapshot=None):
 def check_account(env, vault, account, vaultShares, fCash):
     vaultAccount = env.notional.getVaultAccount(account, vault.address)
     assert vaultAccount["vaultShares"] == vaultShares
-    assert vaultAccount['fCash'] == -fCash
+    assert vaultAccount['accountDebtUnderlying'] == -fCash
 
 def get_expected_pool_claim_amount(context, depositAmount, expectedBorrowAmount, primaryPercent=1, tradeFunc=None):
     env = context.env

@@ -31,6 +31,7 @@ import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils
 import {Balancer2TokenPoolUtils} from "../pool/Balancer2TokenPoolUtils.sol";
 import {Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IAuraBoosterBase} from "../../../../../interfaces/aura/IAuraBooster.sol";
+import {IBalancerVault} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 
 library Balancer2TokenPoolUtils {
@@ -49,7 +50,9 @@ library Balancer2TokenPoolUtils {
         Balancer2TokenPoolContext memory context,
         uint256 primaryAmount,
         uint256 secondaryAmount,
-        bool isJoin
+        bool isJoin,
+        bool isSingleSidedExit,
+        uint256 bptExitAmount
     ) internal pure returns (PoolParams memory) {
         IAsset[] memory assets = new IAsset[](2);
         assets[context.basePool.primaryIndex] = IAsset(context.basePool.primaryToken);
@@ -64,7 +67,23 @@ library Balancer2TokenPoolUtils {
             msgValue = amounts[context.basePool.primaryIndex];
         }
 
-        return PoolParams(assets, amounts, msgValue);
+        bytes memory customData;
+        if (!isJoin) {
+            if (isSingleSidedExit) {
+                customData = abi.encode(
+                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+                    bptExitAmount,
+                    context.basePool.primaryIndex
+                );
+            } else {
+                customData = abi.encode(
+                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+                    bptExitAmount
+                );
+            }
+        }
+
+        return PoolParams(assets, amounts, msgValue, customData);
     }
 
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
@@ -141,12 +160,12 @@ library Balancer2TokenPoolUtils {
         RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
         uint256 bptClaim = strategyContext._redeemStrategyTokens(strategyTokens);
-        bool singleSideExit = params.secondaryTradeParams.length == 0;
+        bool isSingleSidedExit = params.secondaryTradeParams.length == 0;
 
         // Underlying token balances from exiting the pool
         (uint256 primaryBalance, uint256 secondaryBalance)
             = _unstakeAndExitPool(
-                poolContext, stakingContext, bptClaim, params.minPrimary, params.minSecondary, singleSideExit
+                poolContext, stakingContext, bptClaim, params.minPrimary, params.minSecondary, isSingleSidedExit
             );
 
         finalPrimaryBalance = primaryBalance;
@@ -168,11 +187,13 @@ library Balancer2TokenPoolUtils {
         uint256 minBPT
     ) internal returns (uint256 bptMinted) {
         // prettier-ignore
-        PoolParams memory poolParams = poolContext._getPoolParams( 
-            primaryAmount, 
-            secondaryAmount,
-            true // isJoin
-        );
+        PoolParams memory poolParams = poolContext._getPoolParams({
+            primaryAmount: primaryAmount,
+            secondaryAmount: secondaryAmount,
+            isJoin: true,
+            isSingleSidedExit: false,
+            bptExitAmount: 0
+        });
 
         bptMinted = BalancerUtils._joinPoolExactTokensIn({
             poolId: poolContext.poolId,
@@ -201,24 +222,37 @@ library Balancer2TokenPoolUtils {
         uint256 bptClaim,
         uint256 minPrimary,
         uint256 minSecondary,
-        bool singleSideExit
+        bool isSingleSidedExit
     ) internal returns (uint256 primaryBalance, uint256 secondaryBalance) {
-        {
-            // Withdraw BPT tokens back to the vault for redemption
-            bool success = stakingContext.rewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
-            if (!success) revert Errors.UnstakeFailed();
-        }
+        // Withdraw BPT tokens back to the vault for redemption
+        bool success = stakingContext.rewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
+        if (!success) revert Errors.UnstakeFailed();
 
-        uint256[] memory exitBalances = BalancerUtils._exitPoolExactBPTIn({
-            poolId: poolContext.poolId,
-            poolToken: poolContext.basePool.poolToken,
-            params: poolContext._getPoolParams(minPrimary, minSecondary, false), // isJoin = false
-            bptExitAmount: bptClaim,
-            singleSideExit: singleSideExit
-        });
-        
+        uint256[] memory exitBalances = _exitPool(poolContext, bptClaim, minPrimary, minSecondary, isSingleSidedExit);
+
         (primaryBalance, secondaryBalance) 
             = (exitBalances[poolContext.basePool.primaryIndex], exitBalances[poolContext.basePool.secondaryIndex]);
+    }
+
+    function _exitPool(
+        Balancer2TokenPoolContext memory poolContext,
+        uint256 bptClaim,
+        uint256 minPrimary,
+        uint256 minSecondary,
+        bool isSingleSidedExit
+    ) private returns (uint256[] memory) {
+        return BalancerUtils._exitPoolExactBPTIn({
+            poolId: poolContext.poolId,
+            poolToken: poolContext.basePool.poolToken,
+            params: poolContext._getPoolParams({
+                primaryAmount: minPrimary,
+                secondaryAmount: minSecondary,
+                isJoin: false,
+                isSingleSidedExit: isSingleSidedExit,
+                bptExitAmount: bptClaim
+            }),
+            bptExitAmount: bptClaim
+        });
     }
 
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted

@@ -44,6 +44,7 @@ struct PoolParams {
     IAsset[] assets;
     uint256[] amounts;
     uint256 msgValue;
+    bytes customData;
 }
 
 struct StableOracleContext {

@@ -38,6 +38,23 @@ class ETHPrimaryContext:
     def transfer(self, dest, amount):
         self.whale.transfer(dest, amount)
 
+class wstETHPrimaryContext:
+    def __init__(self, env, vault, mock) -> None:
+        self.env = env
+        self.vault = vault
+        self.mock = mock
+        self.currencyId = 2
+        self.token = env.tokens["wstETH"]
+        self.whale = env.whales["wstETH"]
+        self.token.approve(env.notional.address, 2**256-1, {"from": self.whale})
+        self.primaryPrecision = 10**self.token.decimals()
+    def balance(self, account):
+        return self.token.balanceOf(account)
+    def approve(self, account, target):
+        self.token.approve(target, 2**256-1, {"from": account})
+    def transfer(self, dest, amount):
+        self.token.transfer(dest, amount, {"from": self.whale})    
+
 class DAIPrimaryContext:
     def __init__(self, env, vault, mock) -> None:
         self.env = env
@@ -136,6 +153,7 @@ def redeem(context, ops):
                 # Min entry blocks
                 with brownie.reverts():
                     exitVaultPercent(env, vault, depositor, percentage, redeemParams, True)
+                chain.sleep(3600)
                 chain.mine(5)
 
             (sharesRedeemed, fCashRepaid) = exitVaultPercent(env, vault, depositor, percentage, redeemParams)

@@ -76,7 +76,7 @@ library MetaStable2TokenAuraHelper {
             context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
             data
         );
-        bool singleSideExit = params.secondaryTradeParams.length == 0;
+        bool isSingleSidedExit = params.secondaryTradeParams.length == 0;
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
@@ -95,7 +95,7 @@ library MetaStable2TokenAuraHelper {
         });
 
         context.poolContext._unstakeAndExitPool(
-            context.stakingContext, bptToSettle, minPrimary, minSecondary, singleSideExit
+            context.stakingContext, bptToSettle, minPrimary, minSecondary, isSingleSidedExit
         );
 
         context.baseStrategy.vaultState.totalPoolClaim -= bptToSettle;
