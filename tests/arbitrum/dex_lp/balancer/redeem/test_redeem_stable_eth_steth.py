@@ -15,3 +15,5 @@ def test_single_maturity_full_redemption_unwrapped_success(ArbStratStableETHstET
         ETHPrimaryContext(*ArbStratStableETHstETH),
         [[1e18, 2e8, accounts[0], 0, get_redeem_params(0, 0), [1.0]]]
     )
+
+# TODO: test no 0x trading

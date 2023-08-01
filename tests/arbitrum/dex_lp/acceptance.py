@@ -493,7 +493,7 @@ def claim_rewards(context, depositAmount, primaryBorrowAmount, depositor, expect
     for key in expectedRewardTokenAmounts:
         assert env.tokens[key].balanceOf(vault.address) - currentBalances[key] > 0
         assert env.tokens[key].balanceOf(vault.address) - currentBalances[key] >= expectedRewardTokenAmounts[key]
-        assert ret[i] == env.tokens[key].balanceOf(vault.address) - currentBalances[key]
+        assert ret[1][i] == env.tokens[key].balanceOf(vault.address) - currentBalances[key]
         i += 1
     check_invariants(env, vault, [depositor], currencyId, snapshot)
 

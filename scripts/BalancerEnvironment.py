@@ -1,6 +1,6 @@
-import eth_abi
 from brownie import (
     network, 
+    accounts,
     nProxy,
     nMockProxy,
     MetaStable2TokenAuraVault,
@@ -14,10 +14,8 @@ from brownie import (
 from brownie.network.contract import Contract
 from brownie.convert.datatypes import Wei
 from brownie.network.state import Chain
-from brownie.convert import to_bytes
-from scripts.common import deployArtifact, get_vault_config, set_flags
+from scripts.common import get_vault_config, set_flags
 from scripts.EnvironmentConfig import Environment
-from eth_utils import keccak
 
 chain = Chain()
 ETH_ADDRESS = "0x0000000000000000000000000000000000000000"

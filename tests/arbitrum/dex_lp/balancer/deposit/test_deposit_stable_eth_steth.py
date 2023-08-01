@@ -23,3 +23,5 @@ def test_single_maturity_low_leverage_success(ArbStratStableETHstETH):
     whale = accounts.at("0xc948eb5205bde3e18cac4969d6ad3a56ba7b2347", force=True)
     env.notional.batchBalanceAction(whale, [[4, 1, Wei(9e18), 0, False, True]], {"from": whale, "value": Wei(9e18)})
     deposit(ETHPrimaryContext(*ArbStratStableETHstETH), [get_deposit_op(1e18, 2e8, accounts[0], 0)])
+
+# TODO: Test no 0x trading

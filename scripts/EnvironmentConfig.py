@@ -53,6 +53,8 @@ class Environment:
         self.notional = Contract.from_abi(
             "Notional", addresses["notional"], NotionalABI
         )
+        # TODO: TEMP_OWNER use self.notional.owner() after ownership transfer
+        self.tradingModuleOwner = accounts.at("0xE6FB62c2218fd9e3c948f0549A2959B509a293C8", force=True)
 
         self.tokens = {}
         for (symbol, obj) in addresses["tokens"].items():
@@ -84,7 +86,7 @@ class Environment:
         if useFresh == False:
             self.tradingModule = Contract.from_abi("TradingModule", self.addresses["trading"]["proxy"], TradingModule.abi)
             impl = TradingModule.deploy(self.notional.address, self.tradingModule.address, {"from": self.deployer})
-            self.tradingModule.upgradeTo(impl.address, {"from": "0xe6fb62c2218fd9e3c948f0549a2959b509a293c8"})
+            self.tradingModule.upgradeTo(impl.address, {"from": self.tradingModuleOwner})
         else:
             emptyImpl = EmptyProxy.deploy({"from": self.deployer})
             self.proxy = nProxy.deploy(emptyImpl.address, bytes(), {"from": self.deployer})

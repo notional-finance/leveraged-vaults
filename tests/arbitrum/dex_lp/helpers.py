@@ -111,7 +111,8 @@ def check_invariants(env, vault, accounts, currencyId, snapshot=None):
         vaultTotalfCash = current["totalDebtUnderlying"] - snapshot["totalDebtUnderlying"]
         vaultTotalVaultShares = current["totalVaultShares"] - snapshot["totalVaultShares"]
         poolBalance = current["poolBalance"] - snapshot["poolBalance"]
-    assert vaultTotalfCash == accountTotalfCash
+    # Rounding error
+    assert pytest.approx(vaultTotalfCash, abs=1) == accountTotalfCash
     assert vaultTotalVaultShares == accountTotalVaultShares
     # Rounding error
     if poolBalance > 1 and vaultTotalVaultShares > 0:
