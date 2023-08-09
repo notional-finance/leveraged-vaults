@@ -47,7 +47,6 @@ struct SingleSidedRewardTradeParams {
 }
 
 struct StrategyContext {
-    uint32 settlementPeriodInSeconds;
     ITradingModule tradingModule;
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
@@ -65,8 +64,6 @@ struct StrategyVaultSettings {
     uint32 emergencySettlementSlippageLimitPercent;
     /// @notice Max share of the pool that the vault is allowed to hold
     uint16 maxPoolShare;
-    /// @notice Cool down in minutes for normal settlement
-    uint16 settlementCoolDownInMinutes;
     /// @notice Limits the amount of allowable deviation from the oracle price
     uint16 oraclePriceDeviationLimitPercent;
     /// @notice Slippage limit for joining/exiting pools

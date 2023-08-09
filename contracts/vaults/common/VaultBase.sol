@@ -13,14 +13,8 @@ import {VaultConstants} from "./VaultConstants.sol";
 
 abstract contract VaultBase is BaseStrategyVault, UUPSUpgradeable {
 
-    /** Immutables */
-    uint32 internal immutable SETTLEMENT_PERIOD_IN_SECONDS;
-
-    constructor(NotionalProxy notional_, ITradingModule tradingModule_, uint32 settlementPeriodInSeconds_) 
-        BaseStrategyVault(notional_, tradingModule_)
-    {
-        SETTLEMENT_PERIOD_IN_SECONDS = settlementPeriodInSeconds_;
-    }
+    constructor(NotionalProxy notional_, ITradingModule tradingModule_) 
+        BaseStrategyVault(notional_, tradingModule_) { }
 
     modifier whenNotLocked() {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
@@ -36,12 +30,6 @@ abstract contract VaultBase is BaseStrategyVault, UUPSUpgradeable {
             revert Errors.VaultNotLocked();
         }
         _;
-    }
-
-    function _revertInSettlementWindow(uint256 maturity) internal view {
-        if (maturity - SETTLEMENT_PERIOD_IN_SECONDS <= block.timestamp) {
-            revert();
-        }
     }
 
     function _hasFlag(uint32 flags, uint32 flagID) private pure returns (bool) {

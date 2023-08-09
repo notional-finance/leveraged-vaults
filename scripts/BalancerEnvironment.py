@@ -174,12 +174,33 @@ StrategyConfig = {
                 "settlementSlippageLimitPercent": Wei(3e6), # 3%
                 "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 5%
                 "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
-                "settlementCoolDownInMinutes": 20, # 20 minute settlement cooldown
-                "settlementWindow": 172800,  # 2 days
                 "oraclePriceDeviationLimitPercent": 200, # +/- 2%
                 "poolSlippageLimitPercent": 9975, # 0.25%
             },
-        }
+            "StratStablestETHETH": {
+                "vaultConfig": get_vault_config(
+                    flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
+                    currencyId=5,
+                    minAccountBorrowSize=1,
+                    maxBorrowMarketIndex=2,
+                    secondaryBorrowCurrencies=[0,0]
+                ),
+                "secondaryBorrowCurrency": None,
+                "maxPrimaryBorrowCapacity": 100_000_000e8,
+                "name": "Balancer Stable stETH-ETH Strategy",
+                "primaryCurrency": 5, # stETH
+                "poolId": "0x36bf227d6bac96e2ab1ebb5492ecec69c691943f000200000000000000000316",
+                "liquidityGauge": "0x8f0b53f3ba19ee31c0a73a6f6d84106340fadf5f",
+                "auraRewardPool": "0x49e998899ff11598182918098588e8b90d7f60d3",
+                "maxUnderlyingSurplus": 2000e18, # 2000 ETH
+                "maxPoolShare": Wei(1.5e3), # 15%
+                "settlementSlippageLimitPercent": Wei(3e6), # 3%
+                "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 5%
+                "emergencySettlementSlippageLimitPercent": Wei(4e6), # 4%
+                "oraclePriceDeviationLimitPercent": 200, # +/- 2%
+                "poolSlippageLimitPercent": 9975, # 0.25%
+            },
+        },
     }
 }
 
@@ -204,7 +225,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
                     stratConfig["maxRewardTradeSlippageLimitPercent"],
                     stratConfig["maxPoolShare"],
-                    stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
                     stratConfig["poolSlippageLimitPercent"]
                 ]
@@ -235,8 +255,7 @@ class BalancerEnvironment(Environment):
                     stratConfig["primaryCurrency"],
                     stratConfig["poolId"],
                     stratConfig["liquidityGauge"],
-                    self.tradingModule.address,
-                    stratConfig["settlementWindow"]
+                    self.tradingModule.address
                 ]
             ],
             {"from": self.deployer}
@@ -260,7 +279,6 @@ class BalancerEnvironment(Environment):
                     stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
                     stratConfig["maxPoolShare"],
-                    stratConfig["settlementCoolDownInMinutes"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
                     stratConfig["poolSlippageLimitPercent"]
                 ]

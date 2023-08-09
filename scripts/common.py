@@ -51,10 +51,13 @@ def deployArtifact(path, constructorArgs, deployer, name, libs=None):
     txn = createdContract.constructor(*constructorArgs).buildTransaction(
         {"from": deployer.address, "nonce": deployer.nonce}
     )
-    # This does a manual deployment of a contract
-    tx_receipt = deployer.transfer(data=txn["data"])
 
-    return Contract.from_abi(name, tx_receipt.contract_address, abi=artifact["abi"], owner=deployer)
+    print(txn["data"])
+
+    # This does a manual deployment of a contract
+   # tx_receipt = deployer.transfer(data=txn["data"])
+
+   # return Contract.from_abi(name, tx_receipt.contract_address, abi=artifact["abi"], owner=deployer)
 
 def get_vault_config(**kwargs):
     return [
@@ -103,7 +106,6 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
         kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
         kwargs.get("maxPoolShare", settings["maxPoolShare"]), 
-        kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
         kwargs.get("poolSlippageLimitPercent", settings["poolSlippageLimitPercent"])
     ]

@@ -95,8 +95,6 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
         external whenNotLocked onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
-        // No need for emergency settlement during the settlement window
-        _revertInSettlementWindow(maturity);
         MetaStable2TokenAuraHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );

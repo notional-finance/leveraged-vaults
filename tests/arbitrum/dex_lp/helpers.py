@@ -77,8 +77,6 @@ def snapshot_invariants(env, vault, currencyId):
     pastMaturities = get_all_past_maturities(env.notional, currencyId)
     vaultTotalfCash = 0
     vaultTotalVaultShares = 0
-    #data = get_remaining_strategy_tokens(vault.address)
-    #vaultTotalStrategyTokens = data["amount"]
     for maturity in pastMaturities:
         vaultState = env.notional.getVaultState(vault.address, maturity)
         vaultTotalfCash += vaultState["totalDebtUnderlying"]

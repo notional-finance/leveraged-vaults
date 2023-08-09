@@ -29,7 +29,7 @@ abstract contract AuraStakingMixin is VaultBase {
     IERC20 internal immutable AURA_TOKEN;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        VaultBase(notional_, params.baseParams.tradingModule, params.baseParams.settlementPeriodInSeconds) {
+        VaultBase(notional_, params.baseParams.tradingModule) {
         LIQUIDITY_GAUGE = params.baseParams.liquidityGauge;
         AURA_REWARD_POOL = params.rewardPool;
 

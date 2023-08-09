@@ -82,8 +82,6 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
         external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
-        // No need for emergency settlement during the settlement window
-        _revertInSettlementWindow(maturity);
         Curve2TokenConvexHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );

@@ -25,7 +25,6 @@ struct DeploymentParams {
     bytes32 balancerPoolId;
     ILiquidityGauge liquidityGauge;
     ITradingModule tradingModule;
-    uint32 settlementPeriodInSeconds;
 }
 
 struct AuraVaultDeploymentParams {
