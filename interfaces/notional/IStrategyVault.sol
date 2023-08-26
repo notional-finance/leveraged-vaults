@@ -56,7 +56,7 @@ interface IStrategyVault {
     ) external payable returns (uint256 vaultSharesFromLiquidation, int256 depositAmountPrimeCash);
 }
 
-interface ISingleSidedLPStrategyVault {
+interface ISingleSidedLPStrategyVault is IStrategyVault {
     struct SingleSidedLPStrategyVaultInfo {
         address pool;
         uint8 singleSidedTokenIndex;
