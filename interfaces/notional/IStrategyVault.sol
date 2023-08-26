@@ -56,7 +56,7 @@ interface IStrategyVault {
     ) external payable returns (uint256 vaultSharesFromLiquidation, int256 depositAmountPrimeCash);
 }
 
-interface ISingleSidedLPStrategyVault is IStrategyVault {
+interface ISingleSidedLPStrategyVault {
     struct SingleSidedLPStrategyVaultInfo {
         address pool;
         uint8 singleSidedTokenIndex;
@@ -65,4 +65,13 @@ interface ISingleSidedLPStrategyVault is IStrategyVault {
     }
 
     function getStrategyVaultInfo() external view returns (SingleSidedLPStrategyVaultInfo memory);
+}
+
+interface ICrossCurrencyfCashStrategyVault  {
+
+    function convertVaultSharesToPrimeMaturity(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity
+    ) external returns (uint256 primeStrategyTokens);
 }
