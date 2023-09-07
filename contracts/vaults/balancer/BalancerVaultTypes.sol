@@ -6,7 +6,8 @@ import {
     StrategyVaultSettings, 
     TradeParams,
     TwoTokenPoolContext,
-    ThreeTokenPoolContext
+    ThreeTokenPoolContext,
+    ComposablePoolContext
 } from "../common/VaultTypes.sol";
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
 import {VaultConfig} from "../../../interfaces/notional/IVaultController.sol";
@@ -108,6 +109,18 @@ struct MetaStable2TokenAuraStrategyContext {
 struct Boosted3TokenAuraStrategyContext {
     Balancer3TokenPoolContext poolContext;
     BoostedOracleContext oracleContext;
+    AuraStakingContext stakingContext;
+    StrategyContext baseStrategy;
+}
+
+struct BalancerComposablePoolContext {
+    ComposablePoolContext basePool;
+    // Scale factors?
+    bytes32 poolId;
+}
+
+struct BalancerComposableAuraStrategyContext {
+    BalancerComposablePoolContext poolContext;
     AuraStakingContext stakingContext;
     StrategyContext baseStrategy;
 }

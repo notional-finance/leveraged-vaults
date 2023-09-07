@@ -16,7 +16,7 @@ networks:
       fork_block: 17196399
   arbitrum-fork:
     cmd_settings:
-      fork_block: 117800269
+      fork_block: 128800287
   
 reports:
   exclude_paths:

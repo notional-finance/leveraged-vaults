@@ -97,3 +97,10 @@ struct ThreeTokenPoolContext {
     uint256 tertiaryBalance;
     TwoTokenPoolContext basePool;
 }
+
+struct ComposablePoolContext {
+    address[] tokens;
+    uint8[] indices;
+    uint256[] balances;
+    IERC20 poolToken;
+}
