@@ -90,14 +90,21 @@ library Curve2TokenConvexHelper {
     function reinvestReward(
         Curve2TokenConvexStrategyContext calldata context,
         ReinvestRewardParams calldata params
-    ) external {
+    ) external returns (
+        address rewardToken,
+        uint256 amountSold,
+        uint256 poolClaimAmount
+    ) {
         StrategyContext memory strategyContext = context.baseStrategy;
         Curve2TokenPoolContext calldata poolContext = context.poolContext; 
 
+        uint256 primaryAmount;
+        uint256 secondaryAmount;
         (
-            address rewardToken, 
-            uint256 primaryAmount, 
-            uint256 secondaryAmount
+            rewardToken, 
+            amountSold,
+            primaryAmount,
+            secondaryAmount
         ) = poolContext.basePool._executeRewardTrades({
             strategyContext: strategyContext,
             rewardTokens: context.stakingContext.rewardTokens,
@@ -112,7 +119,7 @@ library Curve2TokenConvexHelper {
             secondaryAmount: secondaryAmount
         });
 
-        uint256 poolClaimAmount = poolContext._joinPoolAndStake({
+        poolClaimAmount = poolContext._joinPoolAndStake({
             strategyContext: strategyContext,
             stakingContext: context.stakingContext,
             primaryAmount: primaryAmount,
@@ -125,6 +132,6 @@ library Curve2TokenConvexHelper {
         strategyContext.vaultState.totalPoolClaim += poolClaimAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, poolClaimAmount);
+        emit VaultEvents.RewardReinvested(rewardToken, amountSold, poolClaimAmount);
     }
 }

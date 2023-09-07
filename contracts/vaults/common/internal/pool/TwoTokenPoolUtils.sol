@@ -162,7 +162,7 @@ library TwoTokenPoolUtils {
         StrategyContext memory strategyContext,
         IERC20[] memory rewardTokens,
         bytes calldata data
-    ) internal returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
+    ) internal returns (address rewardToken, uint256 amountSold, uint256 primaryAmount, uint256 secondaryAmount) {
         Proportional2TokenRewardTradeParams memory params = abi.decode(
             data,
             (Proportional2TokenRewardTradeParams)
@@ -176,7 +176,7 @@ library TwoTokenPoolUtils {
             poolContext.secondaryToken
         );
 
-        (/*uint256 amountSold*/, primaryAmount) = strategyContext._executeTradeExactIn({
+        (/* amountSold */, primaryAmount) = strategyContext._executeTradeExactIn({
             params: params.primaryTrade.tradeParams,
             sellToken: params.primaryTrade.sellToken,
             buyToken: params.primaryTrade.buyToken,
@@ -184,7 +184,7 @@ library TwoTokenPoolUtils {
             useDynamicSlippage: false
         });
 
-        (/*uint256 amountSold*/, secondaryAmount) = strategyContext._executeTradeExactIn({
+        (/* amountSold */, secondaryAmount) = strategyContext._executeTradeExactIn({
             params: params.secondaryTrade.tradeParams,
             sellToken: params.secondaryTrade.sellToken,
             buyToken: params.secondaryTrade.buyToken,
@@ -192,6 +192,7 @@ library TwoTokenPoolUtils {
             useDynamicSlippage: false
         });
 
+        amountSold = params.primaryTrade.amount + params.secondaryTrade.amount;
         rewardToken = params.primaryTrade.sellToken;
     }
 }

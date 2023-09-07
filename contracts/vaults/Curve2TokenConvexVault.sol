@@ -114,7 +114,11 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) 
-        external onlyRole(REWARD_REINVESTMENT_ROLE) {
+        external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
+            address rewardToken,
+            uint256 amountSold,
+            uint256 poolClaimAmount
+    ) {
         Curve2TokenConvexHelper.reinvestReward(_strategyContext(), params);        
     }
 
