@@ -55,9 +55,9 @@ def deployArtifact(path, constructorArgs, deployer, name, libs=None):
     print(txn["data"])
 
     # This does a manual deployment of a contract
-   # tx_receipt = deployer.transfer(data=txn["data"])
+    #tx_receipt = deployer.transfer(data=txn["data"])
 
-   # return Contract.from_abi(name, tx_receipt.contract_address, abi=artifact["abi"], owner=deployer)
+    #return Contract.from_abi(name, tx_receipt.contract_address, abi=artifact["abi"], owner=deployer)
 
 def get_vault_config(**kwargs):
     return [

@@ -200,6 +200,29 @@ StrategyConfig = {
                 "oraclePriceDeviationLimitPercent": 200, # +/- 2%
                 "poolSlippageLimitPercent": 9975, # 0.25%
             },
+            "StratAaveBoostedPoolDAIPrimary": {
+                "vaultConfig": get_vault_config(
+                    flags=set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True),
+                    currencyId=2,
+                    minAccountBorrowSize=1,
+                    maxBorrowMarketIndex=3,
+                    secondaryBorrowCurrencies=[0,0]
+                ),
+                "secondaryBorrowCurrency": None,
+                "maxPrimaryBorrowCapacity": 100_000_000e8,
+                "name": "Balancer Boosted Pool Strategy",
+                "primaryCurrency": 2, # DAI
+                "poolId": "0xc6eee8cb7643ec2f05f46d569e9ec8ef8b41b389000000000000000000000475",
+                "liquidityGauge": "0xac3fc6075b90c4f793e3edab50e5568d2f9f18d7",
+                "auraRewardPool": "0x237c47c7a0c4236049b872a6972cfc0729b0d362",
+                "maxUnderlyingSurplus": 50000e18, # 50000 DAI
+                "maxPoolShare": 2e3, # 20%
+                "settlementSlippageLimitPercent": Wei(3e6), # 3%
+                "postMaturitySettlementSlippageLimitPercent": Wei(5e6), # 5%
+                "emergencySettlementSlippageLimitPercent": 4e6, # 4%
+                "oraclePriceDeviationLimitPercent": 50, # +/- 0.5%
+                "poolSlippageLimitPercent": 9900, # 1%
+            },
         },
     }
 }

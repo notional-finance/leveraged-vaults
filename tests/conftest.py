@@ -54,6 +54,21 @@ def ArbStratStableETHstETH():
     return (env, vault, mock)
 
 @pytest.fixture()
+def ArbStratAaveBoostedPoolDAIPrimary():
+    env = getEnvironment(network.show_active())
+    strat = "StratAaveBoostedPoolDAIPrimary"
+
+    impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
+
+    # Deploy mock contract necessary for liquidation tests
+    mockImpl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockDAIBoostedVault", mock.address, interface.IBalancer3TokenBoostedMockVault.abi)
+
+    return (env, vault, mock)
+
+@pytest.fixture()
 def ArbStratStablestETHETH():
     env = getEnvironment(network.show_active())
     strat = "StratStablestETHETH"

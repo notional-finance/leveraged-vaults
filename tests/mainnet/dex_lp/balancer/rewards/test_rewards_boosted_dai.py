@@ -3,7 +3,7 @@ import eth_abi
 from brownie import Wei, accounts
 from brownie.network.state import Chain
 from tests.fixtures import *
-from tests.dex_lp.acceptance import DAIPrimaryContext, claim_rewards, reinvest_reward
+from tests.mainnet.dex_lp.acceptance import DAIPrimaryContext, claim_rewards, reinvest_reward
 from scripts.common import get_univ3_batch_data, DEX_ID, TRADE_TYPE
 
 chain = Chain()

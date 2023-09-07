@@ -1,12 +1,12 @@
 from brownie import accounts
 from tests.fixtures import *
-from tests.dex_lp.acceptance import (
+from tests.mainnet.dex_lp.acceptance import (
     DAIPrimaryContext, 
     deposit, 
     leverage_ratio_too_high,
     pool_share_too_high
 )
-from tests.dex_lp.helpers import get_deposit_op
+from tests.mainnet.dex_lp.helpers import get_deposit_op
 
 def test_single_maturity_low_leverage_success(StratBoostedPoolDAIPrimary):
     deposit(DAIPrimaryContext(*StratBoostedPoolDAIPrimary), [get_deposit_op(10000e18, 5000e8, accounts[0], 0)])

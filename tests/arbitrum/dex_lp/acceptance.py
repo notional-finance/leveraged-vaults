@@ -116,7 +116,6 @@ def deposit(context, ops):
         )
         enterMaturity(env, vault, currencyId, maturity, depositAmount, primaryBorrowAmount, depositor, False, depositParams)
         vaultAccount = notional.getVaultAccount(depositor, vault.address)
-        vaultState = notional.getVaultState(vault.address, maturity)
         assert vaultAccount["accountDebtUnderlying"] == -primaryBorrowAmount
         assert pytest.approx(vault.convertStrategyTokensToPoolClaim(vaultAccount["vaultShares"]), rel=5e-3) == expectedPoolClaimAmount
         underlyingValue = vault.convertStrategyToUnderlying(depositor, vaultAccount["vaultShares"], maturity)
