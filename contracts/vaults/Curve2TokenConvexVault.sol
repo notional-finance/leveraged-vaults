@@ -119,7 +119,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
             uint256 amountSold,
             uint256 poolClaimAmount
     ) {
-        Curve2TokenConvexHelper.reinvestReward(_strategyContext(), params);        
+        return Curve2TokenConvexHelper.reinvestReward(_strategyContext(), params);        
     }
 
     function convertStrategyToUnderlying(
