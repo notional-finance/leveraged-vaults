@@ -71,91 +71,61 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
         uint256 deposit,
         uint256 maturity,
         bytes calldata data
-    ) internal override returns (uint256 strategyTokensMinted) {
-        strategyTokensMinted = _strategyContext().deposit(deposit, data);
+    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+        vaultSharesMinted = _strategyContext().deposit(deposit, data);
     }
 
     function _redeemFromNotional(
         address account,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         uint256 maturity,
         bytes calldata data
-    ) internal override returns (uint256 finalPrimaryBalance) {
-        finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
+    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+        finalPrimaryBalance = _strategyContext().redeem(vaultShares, data);
     }
 
     function convertStrategyToUnderlying(
         address account,
-        uint256 strategyTokenAmount,
+        uint256 vaultShares,
         uint256 maturity
-    ) public view virtual override returns (int256 underlyingValue) {
+    ) public view virtual override whenNotLocked returns (int256 underlyingValue) {
         MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
             oracleContext: context.oracleContext,
-            strategyTokenAmount: strategyTokenAmount
+            strategyTokenAmount: vaultShares
         });
     }
 
-    function settleVaultNormal(
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        bytes calldata data
-    ) external onlyRole(NORMAL_SETTLEMENT_ROLE) {
-        if (maturity <= block.timestamp) {
-            revert Errors.PostMaturitySettlement();
-        }
-        if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
-            revert Errors.NotInSettlementWindow();
-        }
-        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-
-        SettlementUtils._validateCoolDown(
-            context.baseStrategy.vaultState.lastSettlementTimestamp,
-            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes
-        );
-
-        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
-        context.baseStrategy.vaultState.setStrategyVaultState();
-
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
-            data
-        );
-        MetaStable2TokenAuraHelper.settleVault(
-            context, maturity, strategyTokensToRedeem, params
-        );
-    }
-
-    function settleVaultPostMaturity(
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        bytes calldata data
-    ) external onlyRole(POST_MATURITY_SETTLEMENT_ROLE) {
-        if (block.timestamp < maturity) {
-            revert Errors.HasNotMatured();
-        }
-        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
-            data
-        );
-        MetaStable2TokenAuraHelper.settleVault(
-            context, maturity, strategyTokensToRedeem, params
-        );
-    }
-
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
-        external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
+        external whenNotLocked onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
         // No need for emergency settlement during the settlement window
         _revertInSettlementWindow(maturity);
         MetaStable2TokenAuraHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );
+        _lockVault();
+    }
+
+    function restoreVault(uint256 minBPT) external whenLocked onlyNotionalOwner {
+        MetaStable2TokenAuraStrategyContext memory context = _strategyContext();
+
+        uint256 bptAmount = context.poolContext._joinPoolAndStake({
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
+            primaryAmount: TokenUtils.tokenBalance(PRIMARY_TOKEN),
+            secondaryAmount: TokenUtils.tokenBalance(SECONDARY_TOKEN),
+            minBPT: minBPT
+        });
+
+        context.baseStrategy.vaultState.totalPoolClaim += bptAmount;
+        context.baseStrategy.vaultState.setStrategyVaultState(); 
+
+        _unlockVault();
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) 
-        external onlyRole(REWARD_REINVESTMENT_ROLE) returns (
+        external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
             address rewardToken,
             uint256 primaryAmount,
             uint256 secondaryAmount,

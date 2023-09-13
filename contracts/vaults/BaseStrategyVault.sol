@@ -129,7 +129,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     /**************************************************************************/
     function convertStrategyToUnderlying(
         address account,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         uint256 maturity
     ) public view virtual returns (int256 underlyingValue);
     
@@ -139,11 +139,11 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         uint256 deposit,
         uint256 maturity,
         bytes calldata data
-    ) internal virtual returns (uint256 strategyTokensMinted);
+    ) internal virtual returns (uint256 vaultSharesMinted);
 
     function _redeemFromNotional(
         address account,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         uint256 maturity,
         bytes calldata data
     ) internal virtual returns (uint256 tokensFromRedeem);
@@ -165,19 +165,19 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         uint256 deposit,
         uint256 maturity,
         bytes calldata data
-    ) external payable onlyNotional returns (uint256 strategyTokensMinted) {
+    ) external payable onlyNotional returns (uint256 vaultSharesMinted) {
         return _depositFromNotional(account, deposit, maturity, data);
     }
 
     function redeemFromNotional(
         address account,
         address receiver,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         uint256 maturity,
         uint256 underlyingToRepayDebt,
         bytes calldata data
     ) external onlyNotional returns (uint256 transferToReceiver) {
-        uint256 borrowedCurrencyAmount = _redeemFromNotional(account, strategyTokens, maturity, data);
+        uint256 borrowedCurrencyAmount = _redeemFromNotional(account, vaultShares, maturity, data);
 
         uint256 transferToNotional;
         if (account == address(this) || borrowedCurrencyAmount <= underlyingToRepayDebt) {
@@ -212,13 +212,13 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         address account,
         address vault,
         address liquidator,
-        uint256 depositAmountExternal,
-        bool transferSharesToLiquidator,
-        bytes calldata redeemData
-    ) external returns (uint256 profitFromLiquidation) {
+        uint16 currencyIndex,
+        int256 depositUnderlyingInternal
+    ) external payable returns (uint256 vaultSharesFromLiquidation, int256 depositAmountPrimeCash) {
+        require(msg.sender == liquidator);
         _checkReentrancyContext();
-        return NOTIONAL.deleverageAccount(
-            account, vault, liquidator, depositAmountExternal, transferSharesToLiquidator, redeemData
+        return NOTIONAL.deleverageAccount{value: msg.value}(
+            account, vault, liquidator, currencyIndex, depositUnderlyingInternal
         );
     }
 

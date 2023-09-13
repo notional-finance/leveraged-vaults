@@ -12,4 +12,6 @@ library VaultConstants {
     uint16 internal constant POOL_SHARE_BUFFER = 8e3;
     /// @notice Max settlement cool down period allowed (1 day)
     uint16 internal constant MAX_SETTLEMENT_COOLDOWN_IN_MINUTES = 24 * 60;
+
+    uint32 internal constant FLAG_LOCKED = 1 << 0;
 }

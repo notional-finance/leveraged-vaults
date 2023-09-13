@@ -46,8 +46,8 @@ library TwoTokenPoolUtils {
     /// @notice calculates the expected primary and secondary amounts based on
     /// the given spot price and oracle price
     function _getMinExitAmounts(
-        TwoTokenPoolContext calldata poolContext,
-        StrategyContext calldata strategyContext,
+        TwoTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
         uint256 spotPrice,
         uint256 oraclePrice,
         uint256 poolClaim
