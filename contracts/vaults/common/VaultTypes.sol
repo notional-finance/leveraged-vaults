@@ -55,11 +55,6 @@ struct StrategyContext {
 }
 
 struct StrategyVaultSettings {
-    uint256 maxUnderlyingSurplus;
-    /// @notice Slippage limit for normal settlement
-    uint32 settlementSlippageLimitPercent;
-    /// @notice Slippage limit for post maturity settlement
-    uint32 postMaturitySettlementSlippageLimitPercent;
     /// @notice Slippage limit for emergency settlement (vault owns too much of the pool)
     uint32 emergencySettlementSlippageLimitPercent;
     /// @notice Max share of the pool that the vault is allowed to hold

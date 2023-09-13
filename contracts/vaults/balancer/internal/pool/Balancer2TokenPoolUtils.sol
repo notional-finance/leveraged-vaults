@@ -21,9 +21,9 @@ import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {Constants} from "../../../../global/Constants.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
-import {IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
+import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {TradeHandler} from "../../../../trading/TradeHandler.sol";
-import {BalancerUtils} from "../pool/BalancerUtils.sol";
+import {BalancerUtils} from "./BalancerUtils.sol";
 import {Stable2TokenOracleMath} from "../math/Stable2TokenOracleMath.sol";
 import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
@@ -31,7 +31,6 @@ import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils
 import {Balancer2TokenPoolUtils} from "../pool/Balancer2TokenPoolUtils.sol";
 import {Trade} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IAuraBoosterBase} from "../../../../../interfaces/aura/IAuraBooster.sol";
-import {IBalancerVault} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 
 library Balancer2TokenPoolUtils {
@@ -71,13 +70,13 @@ library Balancer2TokenPoolUtils {
         if (!isJoin) {
             if (isSingleSidedExit) {
                 customData = abi.encode(
-                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+                    IBalancerVault.MetaStableExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
                     bptExitAmount,
                     context.basePool.primaryIndex
                 );
             } else {
                 customData = abi.encode(
-                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+                    IBalancerVault.MetaStableExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
                     bptExitAmount
                 );
             }
@@ -198,8 +197,7 @@ library Balancer2TokenPoolUtils {
         bptMinted = BalancerUtils._joinPoolExactTokensIn({
             poolId: poolContext.poolId,
             poolToken: poolContext.basePool.poolToken,
-            params: poolParams,
-            minBPT: minBPT
+            params: poolParams
         });
 
         // Check BPT threshold to make sure our share of the pool is

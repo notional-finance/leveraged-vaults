@@ -7,6 +7,7 @@ import {Constants} from "../../../../global/Constants.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
+import {BalancerUtils} from "./BalancerUtils.sol";
 
 library BalancerUtils {
     using TokenUtils for IERC20;
@@ -49,8 +50,7 @@ library BalancerUtils {
     function _joinPoolExactTokensIn(
         bytes32 poolId,
         IERC20 poolToken,
-        PoolParams memory params,
-        uint256 minBPT
+        PoolParams memory params
     ) internal returns (uint256 bptAmount) {
         bptAmount = poolToken.balanceOf(address(this));
         Deployments.BALANCER_VAULT.joinPool{value: params.msgValue}(
@@ -60,11 +60,7 @@ library BalancerUtils {
             IBalancerVault.JoinPoolRequest(
                 params.assets,
                 params.amounts,
-                abi.encode(
-                    IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-                    params.amounts,
-                    minBPT // Apply minBPT to prevent front running
-                ),
+                params.customData,
                 false // Don't use internal balances
             )
         );

@@ -2,14 +2,25 @@
 pragma solidity 0.8.17;
 
 import {
+    StrategyContext,
+    StrategyVaultSettings,
+    StrategyVaultState,
+    TwoTokenPoolContext,
+    DepositParams,
+    RedeemParams,
+    ReinvestRewardParams
+} from "../../common/VaultTypes.sol";
+import {
     UnderlyingPoolContext,
     AuraVaultDeploymentParams,
     BalancerComposablePoolContext,
     BalancerComposableAuraStrategyContext,
     AuraStakingContext
 } from "../BalancerVaultTypes.sol";
+import { BalancerComposablePoolUtils } from "../internal/pool/BalancerComposablePoolUtils.sol";
 
 library ComposableAuraHelper {
+    using BalancerComposablePoolUtils for BalancerComposablePoolContext;
 
     function deposit(
         BalancerComposableAuraStrategyContext memory context,
