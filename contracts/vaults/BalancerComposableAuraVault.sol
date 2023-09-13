@@ -20,6 +20,7 @@ import {
 } from "./common/VaultTypes.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
+import {ComposableAuraHelper} from "./balancer/external/ComposableAuraHelper.sol";
 import {BalancerComposablePoolMixin} from "./balancer/mixins/BalancerComposablePoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -32,6 +33,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     using StrategyUtils for StrategyContext;
     using VaultStorage for StrategyVaultState;
     using SettlementUtils for StrategyContext;
+    using ComposableAuraHelper for BalancerComposableAuraStrategyContext;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         BalancerComposablePoolMixin(notional_, params)
@@ -56,6 +58,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+        vaultSharesMinted = _strategyContext().deposit(deposit, data);
     }
 
     function _redeemFromNotional(
