@@ -7,6 +7,7 @@ from brownie.network.state import Chain
 
 chain = Chain()
 ALT_ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+PRIME_CASH_VAULT_MATURITY = 2 ** 40 - 1
 
 DEX_ID = {
     'UNUSED': 0,
@@ -50,10 +51,13 @@ def deployArtifact(path, constructorArgs, deployer, name, libs=None):
     txn = createdContract.constructor(*constructorArgs).buildTransaction(
         {"from": deployer.address, "nonce": deployer.nonce}
     )
-    # This does a manual deployment of a contract
-    tx_receipt = deployer.transfer(data=txn["data"])
 
-    return Contract.from_abi(name, tx_receipt.contract_address, abi=artifact["abi"], owner=deployer)
+    print(txn["data"])
+
+    # This does a manual deployment of a contract
+    #tx_receipt = deployer.transfer(data=txn["data"])
+
+    #return Contract.from_abi(name, tx_receipt.contract_address, abi=artifact["abi"], owner=deployer)
 
 def get_vault_config(**kwargs):
     return [
@@ -102,7 +106,6 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
         kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
         kwargs.get("maxPoolShare", settings["maxPoolShare"]), 
-        kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
         kwargs.get("poolSlippageLimitPercent", settings["poolSlippageLimitPercent"])
     ]
@@ -234,7 +237,9 @@ def get_all_past_maturities(notional, currencyId):
     return res
 
 def get_all_active_maturities(notional, currencyId):
-    return [m[1] for m in notional.getActiveMarkets(currencyId)]
+    mats = [m[1] for m in notional.getActiveMarkets(currencyId)]
+    mats.append(PRIME_CASH_VAULT_MATURITY)
+    return mats
 
 def get_remaining_strategy_tokens(address):
     resp = requests.post("https://api.thegraph.com/subgraphs/name/notional-finance/mainnet-v2",

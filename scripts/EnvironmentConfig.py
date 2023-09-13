@@ -40,6 +40,9 @@ with open("v2.mainnet.json", "r") as f:
 with open("v2.goerli.json", "r") as f:
     networks["goerli"] = json.load(f)
 
+with open("v3.arbitrum-one.json", "r") as f:
+    networks["arbitrum"] = json.load(f)
+
 class Environment:
     def __init__(self, network) -> None:
         self.forkBlockNumber = chain.height
@@ -50,6 +53,8 @@ class Environment:
         self.notional = Contract.from_abi(
             "Notional", addresses["notional"], NotionalABI
         )
+        # TODO: TEMP_OWNER use self.notional.owner() after ownership transfer
+        self.tradingModuleOwner = accounts.at("0xE6FB62c2218fd9e3c948f0549A2959B509a293C8", force=True)
 
         self.tokens = {}
         for (symbol, obj) in addresses["tokens"].items():
@@ -81,7 +86,7 @@ class Environment:
         if useFresh == False:
             self.tradingModule = Contract.from_abi("TradingModule", self.addresses["trading"]["proxy"], TradingModule.abi)
             impl = TradingModule.deploy(self.notional.address, self.tradingModule.address, {"from": self.deployer})
-            self.tradingModule.upgradeTo(impl.address, {"from": self.notional.owner()})
+            self.tradingModule.upgradeTo(impl.address, {"from": self.tradingModuleOwner})
         else:
             emptyImpl = EmptyProxy.deploy({"from": self.deployer})
             self.proxy = nProxy.deploy(emptyImpl.address, bytes(), {"from": self.deployer})

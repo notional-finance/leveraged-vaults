@@ -8,11 +8,17 @@ import {
     UnderlyingPoolContext,
     AuraVaultDeploymentParams,
     Boosted3TokenAuraStrategyContext,
-    StrategyContext,
     AuraStakingContext
 } from "../BalancerVaultTypes.sol";
-import {TwoTokenPoolContext, ThreeTokenPoolContext} from "../../common/VaultTypes.sol";
+import {
+    StrategyContext, 
+    TwoTokenPoolContext, 
+    ThreeTokenPoolContext
+} from "../../common/VaultTypes.sol";
+import {Constants} from "../../../global/Constants.sol";
+import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
+import {ISingleSidedLPStrategyVault} from "../../../../interfaces/notional/IStrategyVault.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {IBalancerPool, IBoostedPool, ILinearPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
@@ -20,8 +26,11 @@ import {Deployments} from "../../../global/Deployments.sol";
 import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
+import {Boosted3TokenAuraHelper} from "../external/Boosted3TokenAuraHelper.sol";
 
-abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
+abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin, ISingleSidedLPStrategyVault {
+    using TypeConvert for uint256;
+
     error InvalidPrimaryToken(address token);
 
     uint8 internal constant NOT_FOUND = type(uint8).max;
@@ -203,6 +212,21 @@ abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
         ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
         scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
+    }
+
+    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
+        Boosted3TokenAuraStrategyContext memory context = _strategyContext();
+        return Boosted3TokenAuraHelper.getExchangeRate(context);
+    }
+
+    function getStrategyVaultInfo() public view override returns (SingleSidedLPStrategyVaultInfo memory) {
+        StrategyContext memory context = _baseStrategyContext();
+        return SingleSidedLPStrategyVaultInfo({
+            pool: address(BALANCER_POOL_TOKEN),
+            singleSidedTokenIndex: PRIMARY_INDEX,
+            totalLPTokens: context.vaultState.totalPoolClaim,
+            totalVaultShares: context.vaultState.totalVaultSharesGlobal
+        });
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

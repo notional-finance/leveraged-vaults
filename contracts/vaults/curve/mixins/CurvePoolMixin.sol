@@ -47,7 +47,6 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
 
     function _baseStrategyContext() internal view returns(StrategyContext memory) {
         return StrategyContext({
-            settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
             tradingModule: TRADING_MODULE,
             vaultSettings: VaultStorage.getStrategyVaultSettings(),
             vaultState: VaultStorage.getStrategyVaultState(),

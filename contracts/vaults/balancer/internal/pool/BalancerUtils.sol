@@ -92,10 +92,7 @@ library BalancerUtils {
             IBalancerVault.ExitPoolRequest(
                 params.assets,
                 params.amounts,
-                abi.encode(
-                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
-                    bptExitAmount
-                ),
+                params.customData,
                 false // Don't use internal balances
             )
         );

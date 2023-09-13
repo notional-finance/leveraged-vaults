@@ -29,7 +29,7 @@ abstract contract ConvexStakingMixin is VaultBase {
     IERC20 internal immutable CVX_TOKEN;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
-        VaultBase(notional_, params.baseParams.tradingModule, params.baseParams.settlementPeriodInSeconds) {
+        VaultBase(notional_, params.baseParams.tradingModule) {
         CONVEX_REWARD_POOL = params.rewardPool;
 
         address convexBooster;

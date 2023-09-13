@@ -39,6 +39,8 @@ interface IStrategyVault {
         uint256 maturity
     ) external view returns (int256 underlyingValue);
 
+    function getExchangeRate(uint256 maturity) external view returns (int256);
+
     function repaySecondaryBorrowCallback(
         address token,
         uint256 underlyingRequired,
@@ -52,4 +54,15 @@ interface IStrategyVault {
         uint16 currencyIndex,
         int256 depositUnderlyingInternal
     ) external payable returns (uint256 vaultSharesFromLiquidation, int256 depositAmountPrimeCash);
+}
+
+interface ISingleSidedLPStrategyVault {
+    struct SingleSidedLPStrategyVaultInfo {
+        address pool;
+        uint8 singleSidedTokenIndex;
+        uint256 totalLPTokens;
+        uint256 totalVaultShares;
+    }
+
+    function getStrategyVaultInfo() external view returns (SingleSidedLPStrategyVaultInfo memory);
 }

@@ -18,7 +18,6 @@ struct DeploymentParams {
     address pool;
     ITradingModule tradingModule;
     bool isSelfLPToken;
-    uint32 settlementPeriodInSeconds;
 }
 
 struct ConvexVaultDeploymentParams {

@@ -1,7 +1,7 @@
 from brownie import accounts
 from brownie.convert import to_bytes
 from tests.fixtures import *
-from tests.dex_lp.acceptance import (
+from tests.mainnet.dex_lp.acceptance import (
     redeem,
     ETHPrimaryContext
 )

@@ -42,14 +42,10 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
     using MetaStable2TokenAuraHelper for MetaStable2TokenAuraStrategyContext;
     using TokenUtils for IERC20;
     
-    IAuraRewardPool internal immutable OLD_REWARD_POOL;
-
     constructor(
         NotionalProxy notional_, 
-        AuraVaultDeploymentParams memory params,
-        IAuraRewardPool oldRewardPool_) 
+        AuraVaultDeploymentParams memory params) 
         MetaStable2TokenVaultMixin(notional_, params) {
-        OLD_REWARD_POOL = oldRewardPool_;
     }
 
     function strategy() external override view returns (bytes4) {
@@ -99,8 +95,6 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
         external whenNotLocked onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
-        // No need for emergency settlement during the settlement window
-        _revertInSettlementWindow(maturity);
         MetaStable2TokenAuraHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );
@@ -156,25 +150,6 @@ contract MetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
             context.poolContext.basePool.secondaryBalance,
             tokenIndex
         );
-    }
-
-    function migrateAura(StrategyVaultSettings calldata settings) external onlyNotionalOwner {
-        uint256 amount = OLD_REWARD_POOL.balanceOf(address(this));
-
-        bool success = OLD_REWARD_POOL.withdrawAndUnwrap(amount, true);
-        if (!success) revert Errors.UnstakeFailed();
-
-        IERC20(address(BALANCER_POOL_TOKEN)).checkApprove(address(AURA_BOOSTER), type(uint256).max);
-
-        amount = BALANCER_POOL_TOKEN.balanceOf(address(this));
-
-        success = AURA_BOOSTER.deposit(AURA_POOL_ID, amount, true);
-        if (!success) revert Errors.StakeFailed();
-
-        // New amount should equal to old amount
-        require(amount == AURA_REWARD_POOL.balanceOf(address(this)));
-
-        VaultStorage.setStrategyVaultSettings(settings);
     }
 
     function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {

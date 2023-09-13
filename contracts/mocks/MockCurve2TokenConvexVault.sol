@@ -53,12 +53,9 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
     ) public view override returns (int256 underlyingValue) {
         uint256 valuationFactor = valuationFactors[account];
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        (uint256 spotPrice, uint256 oraclePrice) = context.poolContext._getSpotPriceAndOraclePrice(context.baseStrategy);
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
-            strategyTokenAmount: strategyTokenAmount,
-            oraclePrice: oraclePrice,
-            spotPrice: spotPrice
+            strategyTokenAmount: strategyTokenAmount
         });
         if (valuationFactor > 0) {
             underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;            

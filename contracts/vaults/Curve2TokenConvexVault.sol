@@ -82,8 +82,6 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
         external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
-        // No need for emergency settlement during the settlement window
-        _revertInSettlementWindow(maturity);
         Curve2TokenConvexHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );
@@ -126,12 +124,9 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         uint256 maturity
     ) public view virtual override returns (int256 underlyingValue) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        (uint256 spotPrice, uint256 oraclePrice) = context.poolContext._getSpotPriceAndOraclePrice(context.baseStrategy);
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
-            strategyTokenAmount: strategyTokenAmount,
-            oraclePrice: oraclePrice,
-            spotPrice: spotPrice
+            strategyTokenAmount: strategyTokenAmount
         });
     } 
 
