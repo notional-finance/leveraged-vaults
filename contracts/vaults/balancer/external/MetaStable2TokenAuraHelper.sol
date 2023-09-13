@@ -64,29 +64,8 @@ library MetaStable2TokenAuraHelper {
         });
     }
 
-    function settleVault(
-        MetaStable2TokenAuraStrategyContext calldata context,
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        RedeemParams memory params
-    ) external {
-        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToPoolClaim(strategyTokensToRedeem);
-        
-        _executeSettlement({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
-            poolContext: context.poolContext,
-            maturity: maturity,
-            bptToSettle: bptToSettle,
-            redeemStrategyTokenAmount: strategyTokensToRedeem,
-            params: params
-        });
-
-        emit VaultEvents.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
-    }
-
     function settleVaultEmergency(
-        MetaStable2TokenAuraStrategyContext calldata context, 
+        MetaStable2TokenAuraStrategyContext memory context, 
         uint256 maturity, 
         bytes calldata data
     ) external {
@@ -100,54 +79,25 @@ library MetaStable2TokenAuraHelper {
             totalPoolSupply: context.poolContext.basePool.poolToken.totalSupply()
         });
 
-        uint256 redeemStrategyTokenAmount = 
-            context.baseStrategy._convertPoolClaimToStrategyTokens(bptToSettle);
-
-        _executeSettlement({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
-            poolContext: context.poolContext,
-            maturity: maturity,
-            bptToSettle: bptToSettle,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-            params: params
-        });
-
-        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
-    }
-
-    function _executeSettlement(
-        StrategyContext calldata strategyContext,
-        StableOracleContext calldata oracleContext,
-        Balancer2TokenPoolContext calldata poolContext,
-        uint256 maturity,
-        uint256 bptToSettle,
-        uint256 redeemStrategyTokenAmount,
-        RedeemParams memory params
-    ) private {
-        uint256 oraclePrice = poolContext.basePool._getOraclePairPrice(strategyContext);
+        uint256 oraclePrice = context.poolContext.basePool._getOraclePairPrice(context.baseStrategy);
 
         /// @notice params.minPrimary and params.minSecondary are not required to be passed in by the caller
         /// for this strategy vault
-        (params.minPrimary, params.minSecondary) = oracleContext._getMinExitAmounts({
-            poolContext: poolContext,
-            strategyContext: strategyContext,
+        (uint256 minPrimary, uint256 minSecondary) = context.oracleContext._getMinExitAmounts({
+            poolContext: context.poolContext,
+            strategyContext: context.baseStrategy,
             oraclePrice: oraclePrice,
             bptAmount: bptToSettle
         });
 
-        int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
-            strategyContext: strategyContext,
-            oracleContext: oracleContext,
-            strategyTokenAmount: redeemStrategyTokenAmount
-        });
+        context.poolContext._unstakeAndExitPool(
+            context.stakingContext, bptToSettle, minPrimary, minSecondary
+        );
 
-        strategyContext._executeSettlement({
-            maturity: maturity,
-            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-            params: params
-        });
+        context.baseStrategy.vaultState.totalPoolClaim -= bptToSettle;
+        context.baseStrategy.vaultState.setStrategyVaultState(); 
+
+        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, 0);
     }
 
     function reinvestReward(
@@ -168,8 +118,8 @@ library MetaStable2TokenAuraHelper {
             primaryAmount, 
             secondaryAmount
         ) = poolContext.basePool._executeRewardTrades({
+            strategyContext: strategyContext,
             rewardTokens: context.stakingContext.rewardTokens,
-            tradingModule: strategyContext.tradingModule,
             data: params.tradeData
         });
 

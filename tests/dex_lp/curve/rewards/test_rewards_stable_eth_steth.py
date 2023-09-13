@@ -17,7 +17,7 @@ def test_claim_rewards(StratCurveStableETHstETH):
         {
             "CRV": 10644377099247555,
             "CVX": 308500225322579,
-            "LDO": 10261520016963064477
+            "LDO": 8005300722886129676
         }
     )
 
@@ -100,4 +100,4 @@ def test_reinvest_reward(StratCurveStableETHstETH):
         ]]
     ), 0]
 
-    reinvest_reward(context, accounts[0], "CRV", rewardAmount, rewardParams, poolClaimBefore, 6002022696816520749)
+    reinvest_reward(context, accounts[0], "CRV", rewardAmount, rewardParams, poolClaimBefore, 4007496772486087698)

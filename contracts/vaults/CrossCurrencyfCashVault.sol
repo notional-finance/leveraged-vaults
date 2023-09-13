@@ -111,62 +111,27 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
     }
 
     /**
-     * @notice During settlement all of the fCash balance in the lend currency will be redeemed to the
-     * underlying token and traded back to the borrow currency. All of the borrow currency will be deposited
-     * into the Notional contract as asset tokens and held for accounts to withdraw. Settlement can only
-     * be called after maturity.
-     * @param maturity the maturity to settle
-     * @param settlementTrade details for the settlement trade
-     */
-    function settleVault(uint256 maturity, uint256 strategyTokens, bytes calldata settlementTrade) external {
-        require(maturity <= block.timestamp, "Cannot Settle");
-        VaultState memory vaultState = NOTIONAL.getVaultState(address(this), maturity);
-        require(vaultState.isSettled == false);
-        require(vaultState.totalStrategyTokens >= strategyTokens);
-
-        RedeemParams memory params = abi.decode(settlementTrade, (RedeemParams));
-    
-        // The only way for underlying value to be negative would be if the vault has somehow ended up with a borrowing
-        // position in the lend underlying currency. This is explicitly prevented during redemption.
-        uint256 underlyingValue = convertStrategyToUnderlying(
-            address(0), vaultState.totalStrategyTokens, maturity
-        ).toUint();
-
-        // Authenticate the minimum purchase amount, all tokens will be sold given this slippage limit.
-        uint256 minAllowedPurchaseAmount = (underlyingValue * settlementSlippageLimit) / SETTLEMENT_SLIPPAGE_PRECISION;
-        require(params.minPurchaseAmount >= minAllowedPurchaseAmount, "Purchase Limit");
-
-        NOTIONAL.redeemStrategyTokensToCash(maturity, strategyTokens, settlementTrade);
-
-        // If there are no more strategy tokens left, then mark the vault as settled
-        vaultState = NOTIONAL.getVaultState(address(this), maturity);
-        if (vaultState.totalStrategyTokens == 0) {
-            NOTIONAL.settleVault(address(this), maturity);
-        }
-    }
-
-    /**
      * @notice Converts the amount of fCash the vault holds into underlying denomination for the
      * borrow currency.
-     * @param strategyTokens each strategy token is equivalent to 1 unit of fCash
+     * @param vaultShares each strategy token is equivalent to 1 unit of fCash
      * @param maturity the maturity of the fCash
      * @return underlyingValue the value of the lent fCash in terms of the borrowed currency
      */
     function convertStrategyToUnderlying(
         address /* account */,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         uint256 maturity
     ) public override view returns (int256 underlyingValue) {
         int256 pvInternal;
         if (maturity <= block.timestamp) {
             // After maturity, strategy tokens no longer have a present value
-            pvInternal = strategyTokens.toInt();
+            pvInternal = vaultShares.toInt();
         } else {
             // This is the non-risk adjusted oracle price for fCash, present value is used in case
             // liquidation is required. The liquidator may need to exit the fCash position in order
             // to repay a flash loan.
             pvInternal = NOTIONAL.getPresentfCashValue(
-                LEND_CURRENCY_ID, maturity, strategyTokens.toInt(), block.timestamp, false
+                LEND_CURRENCY_ID, maturity, vaultShares.toInt(), block.timestamp, false
             );
         }
 
@@ -235,14 +200,14 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
      * @notice Withdraws lent fCash from Notional (by selling it prior to maturity or withdrawing post maturity),
      * and trades it all back to the borrowed currency.
      * @param account the account that is doing the redemption
-     * @param strategyTokens the amount of fCash to redeem
+     * @param vaultShares the amount of fCash to redeem
      * @param maturity the maturity of the fCash
      * @param data RedeemParams
      * @return borrowedCurrencyAmount the amount of borrowed currency raised by the redemption
      */
     function _redeemFromNotional(
         address account,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 borrowedCurrencyAmount) {
@@ -264,7 +229,7 @@ contract CrossCurrencyfCashVault is BaseStrategyVault {
             // Sells fCash on Notional AMM (via borrowing)
             BalanceActionWithTrades[] memory action = _encodeBorrowTrade(
                 maturity,
-                strategyTokens,
+                vaultShares,
                 params.maxBorrowRate
             );
             NOTIONAL.batchBalanceAndTradeAction(address(this), action);

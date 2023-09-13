@@ -1,6 +1,6 @@
 import eth_abi
 import brownie
-from brownie import network, accounts, MockVault
+from brownie import ZERO_ADDRESS, network, accounts, MockVault
 from brownie.network.state import Chain
 from scripts.EnvironmentConfig import getEnvironment
 from scripts.common import (
@@ -78,7 +78,7 @@ def test_CRV_to_ETH_exact_in_batch():
     env.tokens["CRV"].transfer(mockVault, 1000e18, {"from": env.whales["CRV"]})
 
     trade = get_crv_v2_batch_data(
-        env.tokens["CRV"].address, env.tokens["stETH"], env.tokens["CRV"].balanceOf(mockVault), 0,
+        env.tokens["CRV"].address, ZERO_ADDRESS, env.tokens["CRV"].balanceOf(mockVault), 0,
         [
             '0xD533a949740bb3306d119CC777fa900bA034cd52', 
             '0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511', 
@@ -109,11 +109,11 @@ def test_CRV_to_ETH_exact_in_batch():
         [True, set_dex_flags(0, CURVE_V2=True), set_trade_type_flags(0, EXACT_IN_BATCH=True)], 
         {"from": env.notional.owner()})
     crvBefore = env.tokens["CRV"].balanceOf(mockVault)
-    wethBefore = env.tokens["WETH"].balanceOf(mockVault)
+    ethBefore = mockVault.balance()
     ret = mockVault.executeTrade(DEX_ID["CURVE_V2"], trade, {"from": accounts[0]})
     assert env.tokens["CRV"].balanceOf(mockVault) == 0
     assert ret.return_value[0] == crvBefore - env.tokens["CRV"].balanceOf(mockVault)
-    assert ret.return_value[1] == env.tokens["WETH"].balanceOf(mockVault) - wethBefore
+    assert ret.return_value[1] == mockVault.balance() - ethBefore
 
 
 def test_CRV_to_stETH_exact_in_batch():

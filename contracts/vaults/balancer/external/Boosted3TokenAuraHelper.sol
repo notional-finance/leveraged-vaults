@@ -41,11 +41,11 @@ library Boosted3TokenAuraHelper {
         Boosted3TokenAuraStrategyContext memory context,
         uint256 deposit,
         bytes calldata data
-    ) external returns (uint256 strategyTokensMinted) {
+    ) external returns (uint256 vaultSharesMinted) {
         // Entering the vault is not allowed within the settlement window
         DepositParams memory params = abi.decode(data, (DepositParams));
 
-        strategyTokensMinted = context.poolContext._deposit({
+        vaultSharesMinted = context.poolContext._deposit({
             strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,
             oracleContext: context.oracleContext, 
@@ -56,7 +56,7 @@ library Boosted3TokenAuraHelper {
 
     function redeem(
         Boosted3TokenAuraStrategyContext memory context,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         bytes calldata data
     ) external returns (uint256 finalPrimaryBalance) {
         RedeemParams memory params = abi.decode(data, (RedeemParams));
@@ -64,34 +64,13 @@ library Boosted3TokenAuraHelper {
         finalPrimaryBalance = context.poolContext._redeem({
             strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,
-            strategyTokens: strategyTokens,
+            strategyTokens: vaultShares,
             minPrimary: params.minPrimary
         });
     }
 
-    function settleVault(
-        Boosted3TokenAuraStrategyContext calldata context,
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        RedeemParams memory params
-    ) external {
-        uint256 bptToSettle = context.baseStrategy._convertStrategyTokensToPoolClaim(strategyTokensToRedeem);
-
-        _executeSettlement({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
-            poolContext: context.poolContext,
-            maturity: maturity,
-            bptToSettle: bptToSettle,
-            redeemStrategyTokenAmount: strategyTokensToRedeem,
-            params: params
-        });
-
-        emit VaultEvents.VaultSettlement(maturity, bptToSettle, strategyTokensToRedeem);
-    }
-
     function settleVaultEmergency(
-        Boosted3TokenAuraStrategyContext calldata context, 
+        Boosted3TokenAuraStrategyContext memory context, 
         uint256 maturity, 
         bytes calldata data
     ) external {
@@ -104,51 +83,25 @@ library Boosted3TokenAuraHelper {
             maturity: maturity, 
             totalPoolSupply: context.oracleContext.virtualSupply
         });
-
-        uint256 redeemStrategyTokenAmount 
-            = context.baseStrategy._convertPoolClaimToStrategyTokens(bptToSettle);
         
-        _executeSettlement({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
-            poolContext: context.poolContext,
-            maturity: maturity,
-            bptToSettle: bptToSettle,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-            params: params
-        });
-
-        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, redeemStrategyTokenAmount);
-    }
-
-    function _executeSettlement(
-        StrategyContext calldata strategyContext,
-        BoostedOracleContext calldata oracleContext,
-        Balancer3TokenPoolContext calldata poolContext,
-        uint256 maturity,
-        uint256 bptToSettle,
-        uint256 redeemStrategyTokenAmount,
-        RedeemParams memory params
-    ) private {        
         // Calculate minPrimary using Chainlink oracle data
-        params.minPrimary = poolContext._getTimeWeightedPrimaryBalance(
-            oracleContext, strategyContext, bptToSettle
+        uint256 minPrimary = context.poolContext._getTimeWeightedPrimaryBalance(
+            context.oracleContext, context.baseStrategy, bptToSettle
         );
-        params.minPrimary = params.minPrimary * strategyContext.vaultSettings.poolSlippageLimitPercent / 
+
+        minPrimary = minPrimary * context.baseStrategy.vaultSettings.poolSlippageLimitPercent / 
             uint256(VaultConstants.VAULT_PERCENT_BASIS);
 
-        int256 expectedUnderlyingRedeemed = poolContext._convertStrategyToUnderlying({
-            strategyContext: strategyContext,
-            oracleContext: oracleContext,
-            strategyTokenAmount: redeemStrategyTokenAmount
+        context.poolContext._unstakeAndExitPool({
+            stakingContext: context.stakingContext,
+            bptClaim: bptToSettle,
+            minPrimary: minPrimary
         });
 
-        strategyContext._executeSettlement({
-            maturity: maturity,
-            expectedUnderlyingRedeemed: expectedUnderlyingRedeemed,
-            redeemStrategyTokenAmount: redeemStrategyTokenAmount,
-            params: params
-        });
+        context.baseStrategy.vaultState.totalPoolClaim -= bptToSettle;
+        context.baseStrategy.vaultState.setStrategyVaultState(); 
+
+        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, 0);
     }
 
     function reinvestReward(
@@ -166,8 +119,8 @@ library Boosted3TokenAuraHelper {
         Balancer3TokenPoolContext calldata poolContext = context.poolContext;
 
         (rewardToken, primaryAmount) = context.poolContext.basePool._executeRewardTrades({
+            strategyContext: strategyContext,
             rewardTokens: stakingContext.rewardTokens,
-            tradingModule: strategyContext.tradingModule,
             data: params.tradeData
         });
 

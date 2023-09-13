@@ -3,7 +3,7 @@ import pytest
 import brownie
 from brownie import Wei, accounts, network, interface, MockVault
 from brownie.network.state import Chain
-from scripts.common import DEX_ID, TRADE_TYPE, set_dex_flags, set_trade_type_flags, get_crv_batch_data
+from scripts.common import DEX_ID, TRADE_TYPE, set_dex_flags, set_trade_type_flags, get_crv_single_data, get_crv_batch_data
 from scripts.EnvironmentConfig import getEnvironment
 
 chain = Chain()
@@ -17,13 +17,11 @@ def run_around_tests():
 def curve_trade_exact_in_single(sellToken, buyToken, amount, limit):
     deadline = chain.time() + 20000
     return [
-        TRADE_TYPE["EXACT_IN_SINGLE"], sellToken, buyToken, amount, limit, deadline, bytes()
+        TRADE_TYPE["EXACT_IN_SINGLE"], sellToken, buyToken, amount, limit, deadline, get_crv_single_data(0)
     ]
 
 def curve_trade_exact_in_batch(sellToken, buyToken, amount):
     deadline = chain.time() + 20000
-    router = interface.ICurveRouter("0xfA9a30350048B2BF66865ee20363067c66f67e58")
-    routes = router.get_exchange_routing(sellToken, buyToken, amount)
     return [
         TRADE_TYPE["EXACT_IN_BATCH"], 
         sellToken, 

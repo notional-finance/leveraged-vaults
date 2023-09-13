@@ -8,6 +8,7 @@ import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
 import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
+import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
 import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
 import {CurveV2Adapter} from "./adapters/CurveV2Adapter.sol";
 import {TradingUtils} from "./TradingUtils.sol";
@@ -42,6 +43,11 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     mapping(address => mapping(address => TokenPermissions)) public tokenWhitelist;
 
     constructor(NotionalProxy notional_, ITradingModule proxy_) initializer { 
+        // Make sure we are using the correct Deployments lib
+        uint256 chainId;
+        assembly { chainId := chainid() }
+        require(Deployments.CHAIN_ID == chainId);
+
         NOTIONAL = notional_;
         PROXY = proxy_;
     }
@@ -217,6 +223,12 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             return ZeroExAdapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.CURVE_V2) {
             return CurveV2Adapter.getExecutionData(from, trade);
+        }
+
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+            if (DexId(dexId) == DexId.UNISWAP_V2) {
+                return UniV2Adapter.getExecutionData(from, trade);
+            }
         }
 
         revert UnknownDEX();

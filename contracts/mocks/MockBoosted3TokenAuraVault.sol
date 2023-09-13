@@ -34,18 +34,18 @@ contract MockBoosted3TokenAuraVault is Boosted3TokenPoolMixin {
         uint256 deposit,
         uint256 maturity,
         bytes calldata data
-    ) internal override returns (uint256 strategyTokensMinted) {}
+    ) internal override returns (uint256 vaultSharesMinted) {}
 
     function _redeemFromNotional(
         address account,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {}
 
     function convertStrategyToUnderlying(
         address account,
-        uint256 strategyTokenAmount,
+        uint256 vaultShares,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         uint256 valuationFactor = valuationFactors[account];
@@ -53,7 +53,7 @@ contract MockBoosted3TokenAuraVault is Boosted3TokenPoolMixin {
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
             oracleContext: context.oracleContext,
-            strategyTokenAmount: strategyTokenAmount
+            strategyTokenAmount: vaultShares
         });
         if (valuationFactor > 0) {
             underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;            

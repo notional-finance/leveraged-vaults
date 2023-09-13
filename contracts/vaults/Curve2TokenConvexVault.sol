@@ -22,7 +22,6 @@ import {TypeConvert} from "../global/TypeConvert.sol";
 import {Deployments} from "../global/Deployments.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {Curve2TokenVaultMixin} from "./curve/mixins/Curve2TokenVaultMixin.sol";
-import {CurveVaultStorage} from "./curve/internal/CurveVaultStorage.sol";
 import {Curve2TokenPoolUtils} from "./curve/internal/pool/Curve2TokenPoolUtils.sol";
 import {Curve2TokenConvexHelper} from "./curve/external/Curve2TokenConvexHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -34,7 +33,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     using TypeConvert for int256;
     using TokenUtils for IERC20;
     using SettlementUtils for StrategyContext;
-    using CurveVaultStorage for StrategyVaultState;
+    using VaultStorage for StrategyVaultState;
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
     using Curve2TokenConvexHelper for Curve2TokenConvexStrategyContext;
 
@@ -51,7 +50,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         onlyNotionalOwner
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
-        CurveVaultStorage.setStrategyVaultSettings(params.settings);
+        VaultStorage.setStrategyVaultSettings(params.settings);
 
         if (PRIMARY_TOKEN != Deployments.ALT_ETH_ADDRESS) {
             IERC20(PRIMARY_TOKEN).checkApprove(address(CURVE_POOL), type(uint256).max);
@@ -81,54 +80,6 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
     }   
 
-    function settleVaultNormal(
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        bytes calldata data
-    ) external onlyRole(NORMAL_SETTLEMENT_ROLE) {
-        if (maturity <= block.timestamp) {
-            revert Errors.PostMaturitySettlement();
-        }
-        if (block.timestamp < maturity - SETTLEMENT_PERIOD_IN_SECONDS) {
-            revert Errors.NotInSettlementWindow();
-        }
-        Curve2TokenConvexStrategyContext memory context = _strategyContext();
-
-        SettlementUtils._validateCoolDown(
-            context.baseStrategy.vaultState.lastSettlementTimestamp,
-            context.baseStrategy.vaultSettings.settlementCoolDownInMinutes
-        );
-
-        context.baseStrategy.vaultState.lastSettlementTimestamp = uint32(block.timestamp);
-        context.baseStrategy.vaultState.setStrategyVaultState();
-
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.baseStrategy.vaultSettings.settlementSlippageLimitPercent,
-            data
-        );
-        Curve2TokenConvexHelper.settleVault(
-            context, maturity, strategyTokensToRedeem, params
-        );
-    }
-
-    function settleVaultPostMaturity(
-        uint256 maturity,
-        uint256 strategyTokensToRedeem,
-        bytes calldata data
-    ) external onlyRole(POST_MATURITY_SETTLEMENT_ROLE) {
-        if (block.timestamp < maturity) {
-            revert Errors.HasNotMatured();
-        }
-        Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
-            context.baseStrategy.vaultSettings.postMaturitySettlementSlippageLimitPercent,
-            data
-        );
-        Curve2TokenConvexHelper.settleVault(
-            context, maturity, strategyTokensToRedeem, params
-        );
-    }
-
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
         external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
         // No need for emergency settlement during the settlement window
@@ -136,6 +87,24 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         Curve2TokenConvexHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );
+        _lockVault();
+    }
+
+    function restoreVault(uint256 minPoolClaim) external whenLocked onlyNotionalOwner {
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+
+        uint256 poolClaimAmount = context.poolContext._joinPoolAndStake({
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
+            primaryAmount: TokenUtils.tokenBalance(PRIMARY_TOKEN),
+            secondaryAmount: TokenUtils.tokenBalance(SECONDARY_TOKEN),
+            minPoolClaim: minPoolClaim
+        });
+
+        context.baseStrategy.vaultState.totalPoolClaim += poolClaimAmount;
+        context.baseStrategy.vaultState.setStrategyVaultState(); 
+
+        _unlockVault();
     }
 
     function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {

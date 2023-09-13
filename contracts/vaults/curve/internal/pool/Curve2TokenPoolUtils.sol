@@ -19,7 +19,12 @@ import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {VaultConstants} from "../../../common/VaultConstants.sol";
-import {ICurve2TokenPool} from "../../../../../interfaces/curve/ICurvePool.sol";
+import {
+    ICurvePool,
+    ICurve2TokenPool, 
+    ICurve2TokenPoolV1, 
+    ICurve2TokenPoolV2
+} from "../../../../../interfaces/curve/ICurvePool.sol";
 
 library Curve2TokenPoolUtils {
     using StrategyUtils for StrategyContext;
@@ -87,7 +92,7 @@ library Curve2TokenPoolUtils {
     ) internal view returns (uint256 spotPrice) {
         require(tokenIndex < 2);
         if (tokenIndex == 0) {
-            spotPrice = poolContext.curvePool.get_dy(
+            spotPrice = ICurvePool(poolContext.curvePool).get_dy(
                 int8(poolContext.basePool.primaryIndex), 
                 int8(poolContext.basePool.secondaryIndex), 
                 10**poolContext.basePool.primaryDecimals // 1 unit of primary
@@ -95,7 +100,7 @@ library Curve2TokenPoolUtils {
             uint256 secondaryPrecision = 10**poolContext.basePool.secondaryDecimals;
             spotPrice = spotPrice * CurveConstants.CURVE_PRECISION / secondaryPrecision;
         } else {
-            spotPrice = poolContext.curvePool.get_dy(
+            spotPrice = ICurvePool(poolContext.curvePool).get_dy(
                 int8(poolContext.basePool.secondaryIndex),
                 int8(poolContext.basePool.primaryIndex), 
                 10**poolContext.basePool.secondaryDecimals // 1 unit of secondary
@@ -134,37 +139,8 @@ library Curve2TokenPoolUtils {
             / primaryPrecision;
         uint256 secondaryPoolBalance = poolContext.basePool.secondaryBalance * CurveConstants.CURVE_PRECISION 
             / secondaryPrecision;
-
-        return _checkPrimarySecondaryRatio({
-            strategyContext: strategyContext,
-            primaryAmount: primaryAmount,
-            secondaryAmount: secondaryAmount,
-            primaryPoolBalance: primaryPoolBalance,
-            secondaryPoolBalance: secondaryPoolBalance
-        });
     }
     
-    function _checkPrimarySecondaryRatio(
-        StrategyContext memory strategyContext,
-        uint256 primaryAmount, 
-        uint256 secondaryAmount, 
-        uint256 primaryPoolBalance, 
-        uint256 secondaryPoolBalance
-    ) private pure {
-        uint256 totalAmount = primaryAmount + secondaryAmount;
-        uint256 totalPoolBalance = primaryPoolBalance + secondaryPoolBalance;
-
-        uint256 primaryPercentage = primaryAmount * CurveConstants.CURVE_PRECISION / totalAmount;        
-        uint256 expectedPrimaryPercentage = primaryPoolBalance * CurveConstants.CURVE_PRECISION / totalPoolBalance;
-
-        strategyContext._checkPriceLimit(expectedPrimaryPercentage, primaryPercentage);
-
-        uint256 secondaryPercentage = secondaryAmount * CurveConstants.CURVE_PRECISION / totalAmount;
-        uint256 expectedSecondaryPercentage = secondaryPoolBalance * CurveConstants.CURVE_PRECISION / totalPoolBalance;
-
-        strategyContext._checkPriceLimit(expectedSecondaryPercentage, secondaryPercentage);
-    }
-
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted
     /// primary balance is used in order to prevent pool manipulation.
     /// @param poolContext pool context variables
@@ -210,9 +186,15 @@ library Curve2TokenPoolUtils {
             msgValue = secondaryAmount;
         }
 
-        poolClaimMinted = ICurve2TokenPool(address(poolContext.curvePool)).add_liquidity{value: msgValue}(
-            amounts, minPoolClaim
-        );
+        if (poolContext.isV2) {
+            poolClaimMinted = ICurve2TokenPoolV2(address(poolContext.curvePool)).add_liquidity{value: msgValue}(
+                amounts, minPoolClaim, 0 < msgValue // use_eth = true if msgValue > 0
+            );
+        } else {
+            poolClaimMinted = ICurve2TokenPoolV1(address(poolContext.curvePool)).add_liquidity{value: msgValue}(
+                amounts, minPoolClaim
+            );            
+        }
 
         // Check pool claim threshold to make sure our share of the pool is
         // below maxPoolShare

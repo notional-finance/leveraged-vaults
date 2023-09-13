@@ -38,9 +38,9 @@ library StrategyUtils {
     /// @notice Converts strategy tokens to LP tokens
     function _convertStrategyTokensToPoolClaim(StrategyContext memory context, uint256 strategyTokenAmount)
         internal pure returns (uint256 poolClaim) {
-        require(strategyTokenAmount <= context.vaultState.totalStrategyTokenGlobal);
-        if (context.vaultState.totalStrategyTokenGlobal > 0) {
-            poolClaim = (strategyTokenAmount * context.vaultState.totalPoolClaim) / context.vaultState.totalStrategyTokenGlobal;
+        require(strategyTokenAmount <= context.vaultState.totalVaultSharesGlobal);
+        if (context.vaultState.totalVaultSharesGlobal > 0) {
+            poolClaim = (strategyTokenAmount * context.vaultState.totalPoolClaim) / context.vaultState.totalVaultSharesGlobal;
         }
     }
 
@@ -56,12 +56,12 @@ library StrategyUtils {
         // Pool claim in maturity is calculated before the new pool tokens are minted, so this calculation
         // is the tokens minted that will give the account a corresponding share of the new pool balance held.
         // The precision here will be the same as strategy token supply.
-        strategyTokenAmount = (poolClaim * context.vaultState.totalStrategyTokenGlobal) / context.vaultState.totalPoolClaim;
+        strategyTokenAmount = (poolClaim * context.vaultState.totalVaultSharesGlobal) / context.vaultState.totalPoolClaim;
     }
 
     function _executeTradeExactIn(
+        StrategyContext memory context,
         TradeParams memory params,
-        ITradingModule tradingModule,
         address sellToken,
         address buyToken,
         uint256 amount,
@@ -72,6 +72,8 @@ library StrategyUtils {
         );
         if (useDynamicSlippage) {
             require(params.oracleSlippagePercentOrLimit <= Constants.SLIPPAGE_LIMIT_PRECISION);
+        } else {
+            require(context.canUseStaticSlippage);
         }
 
         // Sell residual secondary balance
@@ -103,11 +105,11 @@ library StrategyUtils {
         if (useDynamicSlippage) {
             /// @dev params.oracleSlippagePercentOrLimit checked above
             (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
-                params.dexId, tradingModule, uint32(params.oracleSlippagePercentOrLimit)
+                params.dexId, context.tradingModule, uint32(params.oracleSlippagePercentOrLimit)
             );
         } else {
             (amountSold, amountBought) = trade._executeTrade(
-                params.dexId, tradingModule
+                params.dexId, context.tradingModule
             );
         }
 
@@ -132,30 +134,34 @@ library StrategyUtils {
     function _mintStrategyTokens(
         StrategyContext memory strategyContext,
         uint256 poolClaimMinted
-    ) internal returns (uint256 strategyTokensMinted) {
-        strategyTokensMinted = _convertPoolClaimToStrategyTokens(strategyContext, poolClaimMinted);
+    ) internal returns (uint256 vaultSharesMinted) {
+        vaultSharesMinted = _convertPoolClaimToStrategyTokens(strategyContext, poolClaimMinted);
 
-        if (strategyTokensMinted == 0) {
+        if (vaultSharesMinted == 0) {
             revert Errors.ZeroStrategyTokens();
         }
 
         strategyContext.vaultState.totalPoolClaim += poolClaimMinted;
-        strategyContext.vaultState.totalStrategyTokenGlobal += strategyTokensMinted.toUint80();
+        strategyContext.vaultState.totalVaultSharesGlobal += vaultSharesMinted.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
 
     function _redeemStrategyTokens(
         StrategyContext memory strategyContext,
-        uint256 strategyTokens
+        uint256 vaultShares
     ) internal returns (uint256 poolClaim) {
-        poolClaim = _convertStrategyTokensToPoolClaim(strategyContext, strategyTokens);
+        if (vaultShares == 0) {
+            return poolClaim;
+        }
+
+        poolClaim = _convertStrategyTokensToPoolClaim(strategyContext, vaultShares);
 
         if (poolClaim == 0) {
             revert Errors.ZeroPoolClaim();
         }
 
         strategyContext.vaultState.totalPoolClaim -= poolClaim;
-        strategyContext.vaultState.totalStrategyTokenGlobal -= strategyTokens.toUint80();
+        strategyContext.vaultState.totalVaultSharesGlobal -= vaultShares.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
 }

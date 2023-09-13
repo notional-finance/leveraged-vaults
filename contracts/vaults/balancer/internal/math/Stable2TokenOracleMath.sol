@@ -72,9 +72,9 @@ library Stable2TokenOracleMath {
 
     /// @notice calculates the expected min exit amounts for a given BPT amount
     function _getMinExitAmounts(
-        StableOracleContext calldata oracleContext,
-        Balancer2TokenPoolContext calldata poolContext,
-        StrategyContext calldata strategyContext,
+        StableOracleContext memory oracleContext,
+        Balancer2TokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
         uint256 oraclePrice,
         uint256 bptAmount
     ) internal view returns (uint256 minPrimary, uint256 minSecondary) {

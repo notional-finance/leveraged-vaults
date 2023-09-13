@@ -15,8 +15,8 @@ abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin {
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
 
-    IERC20 internal immutable PRIMARY_TOKEN;
-    IERC20 internal immutable SECONDARY_TOKEN;
+    address internal immutable PRIMARY_TOKEN;
+    address internal immutable SECONDARY_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
     uint8 internal immutable SECONDARY_INDEX;
     uint8 internal immutable PRIMARY_DECIMALS;
@@ -26,8 +26,8 @@ abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin {
         NotionalProxy notional_, 
         AuraVaultDeploymentParams memory params
     ) BalancerPoolMixin(notional_, params) {
-        PRIMARY_TOKEN = IERC20(_getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId));
-        address primaryAddress = BalancerUtils.getTokenAddress(address(PRIMARY_TOKEN));
+        PRIMARY_TOKEN = _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId);
+        address primaryAddress = BalancerUtils.getTokenAddress(PRIMARY_TOKEN);
 
         // prettier-ignore
         (
@@ -43,7 +43,7 @@ abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin {
             SECONDARY_INDEX = 1 - PRIMARY_INDEX;
         }
 
-        SECONDARY_TOKEN = IERC20(tokens[SECONDARY_INDEX]);
+        SECONDARY_TOKEN = tokens[SECONDARY_INDEX];
 
         // Make sure the deployment parameters are correct
         if (tokens[PRIMARY_INDEX] != primaryAddress) {
@@ -51,7 +51,7 @@ abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin {
         }
 
         if (tokens[SECONDARY_INDEX] !=
-            BalancerUtils.getTokenAddress(address(SECONDARY_TOKEN))
+            BalancerUtils.getTokenAddress(SECONDARY_TOKEN)
         ) revert InvalidSecondaryToken(tokens[SECONDARY_INDEX]);
 
         // If the underlying is ETH, primaryBorrowToken will be rewritten as WETH
@@ -60,10 +60,10 @@ abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin {
         require(primaryDecimals <= 18);
         PRIMARY_DECIMALS = uint8(primaryDecimals);
 
-        uint256 secondaryDecimals = address(SECONDARY_TOKEN) ==
+        uint256 secondaryDecimals = SECONDARY_TOKEN ==
             Deployments.ETH_ADDRESS
             ? 18
-            : SECONDARY_TOKEN.decimals();
+            : IERC20(SECONDARY_TOKEN).decimals();
         require(secondaryDecimals <= 18);
         SECONDARY_DECIMALS = uint8(secondaryDecimals);
     }
@@ -79,8 +79,8 @@ abstract contract Balancer2TokenPoolMixin is BalancerPoolMixin {
 
         return Balancer2TokenPoolContext({
             basePool: TwoTokenPoolContext({
-                primaryToken: address(PRIMARY_TOKEN),
-                secondaryToken: address(SECONDARY_TOKEN),
+                primaryToken: PRIMARY_TOKEN,
+                secondaryToken: SECONDARY_TOKEN,
                 primaryIndex: PRIMARY_INDEX,
                 secondaryIndex: SECONDARY_INDEX,
                 primaryDecimals: PRIMARY_DECIMALS,

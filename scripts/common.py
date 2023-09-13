@@ -123,6 +123,12 @@ def get_univ3_batch_data(path):
         path,
     )]])
 
+def get_crv_single_data(poolIndex):
+    return eth_abi.encode_abi(
+        ["(uint256)"],
+        [[poolIndex]]
+    )
+
 def get_crv_batch_data(sellToken, buyToken, amount):
     router = interface.ICurveRouter("0xfA9a30350048B2BF66865ee20363067c66f67e58")
     routes = router.get_exchange_routing(sellToken, buyToken, amount)

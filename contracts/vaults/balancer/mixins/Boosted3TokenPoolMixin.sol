@@ -26,9 +26,9 @@ abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
 
     uint8 internal constant NOT_FOUND = type(uint8).max;
 
-    IERC20 internal immutable PRIMARY_TOKEN;
-    IERC20 internal immutable SECONDARY_TOKEN;
-    IERC20 internal immutable TERTIARY_TOKEN;
+    address internal immutable PRIMARY_TOKEN;
+    address internal immutable SECONDARY_TOKEN;
+    address internal immutable TERTIARY_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
     uint8 internal immutable SECONDARY_INDEX;
     uint8 internal immutable TERTIARY_INDEX;
@@ -81,25 +81,25 @@ abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
         TERTIARY_INDEX = tertiaryIndex;
         BPT_INDEX = bptIndex;
 
-        PRIMARY_TOKEN = IERC20(tokens[PRIMARY_INDEX]);
-        SECONDARY_TOKEN = IERC20(tokens[SECONDARY_INDEX]);
-        TERTIARY_TOKEN = IERC20(tokens[TERTIARY_INDEX]);
+        PRIMARY_TOKEN = tokens[PRIMARY_INDEX];
+        SECONDARY_TOKEN = tokens[SECONDARY_INDEX];
+        TERTIARY_TOKEN = tokens[TERTIARY_INDEX];
 
-        uint256 primaryDecimals = IERC20(ILinearPool(address(PRIMARY_TOKEN)).getMainToken()).decimals();
+        uint256 primaryDecimals = IERC20(ILinearPool(PRIMARY_TOKEN).getMainToken()).decimals();
 
         // Do not allow decimal places greater than 18
         require(primaryDecimals <= 18);
         PRIMARY_DECIMALS = uint8(primaryDecimals);
 
         // If the SECONDARY_TOKEN is ETH, it will be rewritten as WETH
-        uint256 secondaryDecimals = IERC20(ILinearPool(address(SECONDARY_TOKEN)).getMainToken()).decimals();
+        uint256 secondaryDecimals = IERC20(ILinearPool(SECONDARY_TOKEN).getMainToken()).decimals();
 
         // Do not allow decimal places greater than 18
         require(secondaryDecimals <= 18);
         SECONDARY_DECIMALS = uint8(secondaryDecimals);
         
         // If the TERTIARY_TOKEN is ETH, it will be rewritten as WETH
-        uint256 tertiaryDecimals = IERC20(ILinearPool(address(TERTIARY_TOKEN)).getMainToken()).decimals();
+        uint256 tertiaryDecimals = IERC20(ILinearPool(TERTIARY_TOKEN).getMainToken()).decimals();
 
         // Do not allow decimal places greater than 18
         require(tertiaryDecimals <= 18);
@@ -150,9 +150,9 @@ abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
             underlyingPools: new UnderlyingPoolContext[](3)
         });
 
-        boostedPoolContext.underlyingPools[0] = _underlyingPoolContext(ILinearPool(address(PRIMARY_TOKEN)));
-        boostedPoolContext.underlyingPools[1] = _underlyingPoolContext(ILinearPool(address(SECONDARY_TOKEN)));
-        boostedPoolContext.underlyingPools[2] = _underlyingPoolContext(ILinearPool(address(TERTIARY_TOKEN)));
+        boostedPoolContext.underlyingPools[0] = _underlyingPoolContext(ILinearPool(PRIMARY_TOKEN));
+        boostedPoolContext.underlyingPools[1] = _underlyingPoolContext(ILinearPool(SECONDARY_TOKEN));
+        boostedPoolContext.underlyingPools[2] = _underlyingPoolContext(ILinearPool(TERTIARY_TOKEN));
     }
 
     function _threeTokenPoolContext(uint256[] memory balances, uint256[] memory scalingFactors) 
@@ -160,8 +160,8 @@ abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
         return Balancer3TokenPoolContext({
             basePool: ThreeTokenPoolContext({
                 basePool: TwoTokenPoolContext({
-                    primaryToken: address(PRIMARY_TOKEN),
-                    secondaryToken: address(SECONDARY_TOKEN),
+                    primaryToken: PRIMARY_TOKEN,
+                    secondaryToken: SECONDARY_TOKEN,
                     primaryIndex: PRIMARY_INDEX,
                     secondaryIndex: SECONDARY_INDEX,
                     primaryDecimals: PRIMARY_DECIMALS,
@@ -170,7 +170,7 @@ abstract contract Boosted3TokenPoolMixin is BalancerPoolMixin {
                     secondaryBalance: balances[SECONDARY_INDEX],
                     poolToken: BALANCER_POOL_TOKEN
                 }),
-                tertiaryToken: address(TERTIARY_TOKEN),
+                tertiaryToken: TERTIARY_TOKEN,
                 tertiaryIndex: TERTIARY_INDEX,
                 tertiaryDecimals: TERTIARY_DECIMALS,
                 tertiaryBalance: balances[TERTIARY_INDEX]

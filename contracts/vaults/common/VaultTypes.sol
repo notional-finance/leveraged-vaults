@@ -52,6 +52,7 @@ struct StrategyContext {
     StrategyVaultSettings vaultSettings;
     StrategyVaultState vaultState;
     uint256 poolClaimPrecision;
+    bool canUseStaticSlippage;
 }
 
 struct StrategyVaultSettings {
@@ -75,8 +76,9 @@ struct StrategyVaultSettings {
 struct StrategyVaultState {
     uint256 totalPoolClaim;
     /// @notice Total number of strategy tokens across all maturities
-    uint80 totalStrategyTokenGlobal;
+    uint80 totalVaultSharesGlobal;
     uint32 lastSettlementTimestamp;
+    uint32 flags;
 }
 
 struct TwoTokenPoolContext {

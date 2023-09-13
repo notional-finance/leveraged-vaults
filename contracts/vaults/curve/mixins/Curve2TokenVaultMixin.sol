@@ -11,8 +11,10 @@ abstract contract Curve2TokenVaultMixin is Curve2TokenPoolMixin {
         Curve2TokenPoolMixin(notional_, params) { }
 
     function _checkReentrancyContext() internal override {
+        // We need to set the LP token amount to 1 for Curve V2 pools to bypass
+        // the underflow check
         uint256[2] memory minAmounts;
-        ICurve2TokenPool(address(CURVE_POOL)).remove_liquidity(0, minAmounts);
+        ICurve2TokenPool(address(CURVE_POOL)).remove_liquidity(IS_CURVE_V2 ? 1 : 0, minAmounts);
     }
 
     function _strategyContext() internal view returns (Curve2TokenConvexStrategyContext memory) {

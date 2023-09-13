@@ -46,8 +46,8 @@ library TwoTokenPoolUtils {
     /// @notice calculates the expected primary and secondary amounts based on
     /// the given spot price and oracle price
     function _getMinExitAmounts(
-        TwoTokenPoolContext calldata poolContext,
-        StrategyContext calldata strategyContext,
+        TwoTokenPoolContext memory poolContext,
+        StrategyContext memory strategyContext,
         uint256 spotPrice,
         uint256 oraclePrice,
         uint256 poolClaim
@@ -78,13 +78,16 @@ library TwoTokenPoolUtils {
         uint256 totalSupply = poolContext.poolToken.totalSupply();
         uint256 primaryBalance = poolContext.primaryBalance * poolClaim / totalSupply;
         uint256 secondaryBalance = poolContext.secondaryBalance * poolClaim / totalSupply;
+        
+        // Scale secondary balance to primaryPrecision
+        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
+        uint256 secondaryPrecision = 10 ** poolContext.secondaryDecimals;
+        secondaryBalance = secondaryBalance * primaryPrecision / secondaryPrecision;
 
         // Value the secondary balance in terms of the primary token using the oraclePairPrice
         uint256 secondaryAmountInPrimary = secondaryBalance * strategyContext.poolClaimPrecision / oraclePrice;
 
-        // Make sure primaryAmount is reported in primaryPrecision
-        uint256 primaryPrecision = 10 ** poolContext.primaryDecimals;
-        primaryAmount = (primaryBalance + secondaryAmountInPrimary) * primaryPrecision / strategyContext.poolClaimPrecision;
+        primaryAmount = primaryBalance + secondaryAmountInPrimary;
     }
 
     /// @notice Trade primary currency for secondary if the trade is specified
@@ -95,9 +98,8 @@ library TwoTokenPoolUtils {
     ) internal returns (uint256 primarySold, uint256 secondaryBought) {
         (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
 
-        (primarySold, secondaryBought) = StrategyUtils._executeTradeExactIn({
+        (primarySold, secondaryBought) = strategyContext._executeTradeExactIn({
             params: params.tradeParams, 
-            tradingModule: strategyContext.tradingModule, 
             sellToken: poolContext.primaryToken, 
             buyToken: poolContext.secondaryToken, 
             amount: params.tradeAmount,
@@ -116,9 +118,8 @@ library TwoTokenPoolUtils {
         );
 
         ( /*uint256 amountSold */, primaryPurchased) = 
-            StrategyUtils._executeTradeExactIn({
+            strategyContext._executeTradeExactIn({
                 params: tradeParams,
-                tradingModule: strategyContext.tradingModule,
                 sellToken: poolContext.secondaryToken,
                 buyToken: poolContext.primaryToken,
                 amount: secondaryBalance,
@@ -150,8 +151,8 @@ library TwoTokenPoolUtils {
 
     function _executeRewardTrades(
         TwoTokenPoolContext calldata poolContext,
+        StrategyContext memory strategyContext,
         IERC20[] memory rewardTokens,
-        ITradingModule tradingModule,
         bytes calldata data
     ) internal returns (address rewardToken, uint256 primaryAmount, uint256 secondaryAmount) {
         Proportional2TokenRewardTradeParams memory params = abi.decode(
@@ -167,18 +168,16 @@ library TwoTokenPoolUtils {
             poolContext.secondaryToken
         );
 
-        (/*uint256 amountSold*/, primaryAmount) = StrategyUtils._executeTradeExactIn({
+        (/*uint256 amountSold*/, primaryAmount) = strategyContext._executeTradeExactIn({
             params: params.primaryTrade.tradeParams,
-            tradingModule: tradingModule,
             sellToken: params.primaryTrade.sellToken,
             buyToken: params.primaryTrade.buyToken,
             amount: params.primaryTrade.amount,
             useDynamicSlippage: false
         });
 
-        (/*uint256 amountSold*/, secondaryAmount) = StrategyUtils._executeTradeExactIn({
+        (/*uint256 amountSold*/, secondaryAmount) = strategyContext._executeTradeExactIn({
             params: params.secondaryTrade.tradeParams,
-            tradingModule: tradingModule,
             sellToken: params.secondaryTrade.sellToken,
             buyToken: params.secondaryTrade.buyToken,
             amount: params.secondaryTrade.amount,

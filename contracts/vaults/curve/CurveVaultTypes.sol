@@ -34,7 +34,8 @@ struct InitParams {
 
 struct Curve2TokenPoolContext {
     TwoTokenPoolContext basePool;
-    ICurvePool curvePool;
+    address curvePool;
+    bool isV2;
 }
 
 struct ConvexStakingContext {
