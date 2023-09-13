@@ -3,7 +3,6 @@ pragma solidity >=0.7.6;
 
 library Errors {
     error InvalidPrice(uint256 oraclePrice, uint256 poolPrice);
-    error NotInSettlementWindow();
     error InvalidEmergencySettlement();
     error HasNotMatured();
     error PostMaturitySettlement();
@@ -25,4 +24,5 @@ library Errors {
     error ZeroStrategyTokens();
     error VaultLocked();
     error VaultNotLocked();
+    error InvalidDexId(uint256 dexId);
 }

@@ -19,8 +19,7 @@ contract MockMetaStable2TokenAuraVault is MetaStable2TokenVaultMixin {
 
     constructor(
         NotionalProxy notional_, 
-        AuraVaultDeploymentParams memory params,
-        address oldRewardPool_
+        AuraVaultDeploymentParams memory params
     ) MetaStable2TokenVaultMixin(notional_, params) { }
 
     function setValuationFactor(address account, uint256 valuationFactor_) external {

@@ -81,8 +81,6 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
         external whenNotLocked onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
-        // No need for emergency settlement during the settlement window
-        _revertInSettlementWindow(maturity);
         Boosted3TokenAuraHelper.settleVaultEmergency(
             _strategyContext(), maturity, data
         );

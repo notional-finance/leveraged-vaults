@@ -22,6 +22,8 @@ import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {Balancer2TokenPoolUtils} from "../internal/pool/Balancer2TokenPoolUtils.sol";
 import {Stable2TokenOracleMath} from "../internal/math/Stable2TokenOracleMath.sol";
 import {VaultStorage} from "../../common/VaultStorage.sol";
+import {Constants} from "../../../global/Constants.sol";
+import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
 library MetaStable2TokenAuraHelper {
@@ -33,6 +35,7 @@ library MetaStable2TokenAuraHelper {
     using SettlementUtils for StrategyContext;
     using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
+    using TypeConvert for uint256;
 
     function deposit(
         MetaStable2TokenAuraStrategyContext memory context,
@@ -73,6 +76,7 @@ library MetaStable2TokenAuraHelper {
             context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
             data
         );
+        bool isSingleSidedExit = params.secondaryTradeParams.length == 0;
 
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
@@ -91,7 +95,7 @@ library MetaStable2TokenAuraHelper {
         });
 
         context.poolContext._unstakeAndExitPool(
-            context.stakingContext, bptToSettle, minPrimary, minSecondary
+            context.stakingContext, bptToSettle, minPrimary, minSecondary, isSingleSidedExit
         );
 
         context.baseStrategy.vaultState.totalPoolClaim -= bptToSettle;
@@ -146,5 +150,22 @@ library MetaStable2TokenAuraHelper {
         strategyContext.vaultState.setStrategyVaultState(); 
 
         emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, poolClaimAmount); 
+    }
+
+    function getExchangeRate(MetaStable2TokenAuraStrategyContext calldata context) 
+        external view returns (int256) {
+        if (context.baseStrategy.vaultState.totalVaultSharesGlobal == 0) {
+            return context.poolContext._getTimeWeightedPrimaryBalance({
+                oracleContext: context.oracleContext,
+                strategyContext: context.baseStrategy,
+                bptAmount: context.baseStrategy.poolClaimPrecision // 1 pool token
+            }).toInt();
+        } else {
+            return context.poolContext._convertStrategyToUnderlying({
+                strategyContext: context.baseStrategy,
+                oracleContext: context.oracleContext,
+                strategyTokenAmount: uint256(Constants.INTERNAL_TOKEN_PRECISION) // 1 vault share
+            });
+        }
     }
 }

@@ -25,7 +25,6 @@ struct DeploymentParams {
     bytes32 balancerPoolId;
     ILiquidityGauge liquidityGauge;
     ITradingModule tradingModule;
-    uint32 settlementPeriodInSeconds;
 }
 
 struct AuraVaultDeploymentParams {
@@ -44,6 +43,7 @@ struct PoolParams {
     IAsset[] assets;
     uint256[] amounts;
     uint256 msgValue;
+    bytes customData;
 }
 
 struct StableOracleContext {
@@ -77,7 +77,7 @@ struct BoostedOracleContext {
 
 struct AuraStakingContext {
     ILiquidityGauge liquidityGauge;
-    IAuraBooster booster;
+    address booster;
     IAuraRewardPool rewardPool;
     uint256 poolId;
     IERC20[] rewardTokens;

@@ -38,14 +38,15 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
 
         IS_CURVE_V2 = isCurveV2;
 
-        CURVE_POOL_TOKEN = IS_CURVE_V2 ? 
-            IERC20(ICurvePoolV2(address(CURVE_POOL)).token()) :
-            IERC20(ICurvePoolV1(address(CURVE_POOL)).lp_token());
+        CURVE_POOL_TOKEN = params.baseParams.isSelfLPToken ? IERC20(CURVE_POOL) : (
+            IS_CURVE_V2 ? 
+                IERC20(ICurvePoolV2(address(CURVE_POOL)).token()) :
+                IERC20(ICurvePoolV1(address(CURVE_POOL)).lp_token())
+        );
     }
 
     function _baseStrategyContext() internal view returns(StrategyContext memory) {
         return StrategyContext({
-            settlementPeriodInSeconds: SETTLEMENT_PERIOD_IN_SECONDS,
             tradingModule: TRADING_MODULE,
             vaultSettings: VaultStorage.getStrategyVaultSettings(),
             vaultState: VaultStorage.getStrategyVaultState(),

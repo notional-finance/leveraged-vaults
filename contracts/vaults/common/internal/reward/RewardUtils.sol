@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import {Deployments} from "../../../../global/Deployments.sol";
+import {Constants} from "../../../../global/Constants.sol";
 import {IERC20} from "../../../../../interfaces/IERC20.sol";
-import {IRewardPool} from "../../../../../interfaces/common/IRewardPool.sol";
+import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../../../../interfaces/convex/IConvexRewardPool.sol";
 import {VaultEvents} from "../../VaultEvents.sol";
 
 library RewardUtils {
@@ -15,7 +17,7 @@ library RewardUtils {
         return false;
     }
 
-    function _claimRewardTokens(IRewardPool rewardPool, IERC20[] memory rewardTokens) 
+    function _claimRewardTokens(function() internal returns(bool) claimFunc, IERC20[] memory rewardTokens) 
         internal returns (uint256[] memory claimedBalances) {
         uint256 numRewardTokens = rewardTokens.length;
 
@@ -24,7 +26,7 @@ library RewardUtils {
             claimedBalances[i] = rewardTokens[i].balanceOf(address(this));
         }
 
-        bool success = rewardPool.getReward(address(this), true); // claimExtraRewards = true
+        bool success = claimFunc();
         require(success);
 
         for (uint256 i; i < numRewardTokens; i++) {

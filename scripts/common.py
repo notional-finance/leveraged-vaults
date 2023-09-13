@@ -7,6 +7,7 @@ from brownie.network.state import Chain
 
 chain = Chain()
 ALT_ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+PRIME_CASH_VAULT_MATURITY = 2 ** 40 - 1
 
 DEX_ID = {
     'UNUSED': 0,
@@ -50,25 +51,31 @@ def deployArtifact(path, constructorArgs, deployer, name, libs=None):
     txn = createdContract.constructor(*constructorArgs).buildTransaction(
         {"from": deployer.address, "nonce": deployer.nonce}
     )
-    # This does a manual deployment of a contract
-    tx_receipt = deployer.transfer(data=txn["data"])
 
-    return Contract.from_abi(name, tx_receipt.contract_address, abi=artifact["abi"], owner=deployer)
+    print(txn["data"])
+
+    # This does a manual deployment of a contract
+    #tx_receipt = deployer.transfer(data=txn["data"])
+
+    #return Contract.from_abi(name, tx_receipt.contract_address, abi=artifact["abi"], owner=deployer)
 
 def get_vault_config(**kwargs):
     return [
         kwargs.get("flags", 0),  # 0: flags
         kwargs.get("currencyId", 1),  # 1: currency id
-        kwargs.get("minAccountBorrowSize", 100),  # 2: min account borrow size
-        kwargs.get("minCollateralRatioBPS", 900),  # 3: 20% collateral ratio
-        kwargs.get("feeRate5BPS", 0),  # 4: 1% fee
-        kwargs.get("liquidationRate", 102),  # 5: 2% liquidation discount
-        kwargs.get("reserveFeeShare", 80),  # 6: 80% reserve fee share
+        kwargs.get("minAccountBorrowSize", 100_000),  # 2: min account borrow size
+        kwargs.get("minCollateralRatioBPS", 2000),  # 3: 20% collateral ratio
+        kwargs.get("feeRate5BPS", 20),  # 4: 1% fee
+        kwargs.get("liquidationRate", 104),  # 5: 4% liquidation discount
+        kwargs.get("reserveFeeShare", 20),  # 6: 20% reserve fee share
         kwargs.get("maxBorrowMarketIndex", 2),  # 7: 20% reserve fee share
-        kwargs.get("maxDeleverageCollateralRatioBPS", 1500),  # 8: 15% max collateral ratio
+        kwargs.get("maxDeleverageCollateralRatioBPS", 4000),  # 8: 40% max collateral ratio
         kwargs.get("secondaryBorrowCurrencies", [0, 0]),  # 9: none set
         kwargs.get("maxRequiredAccountCollateralRatio", 20000),  # 10: none set
+        kwargs.get("minAccountSecondaryBorrow", [0, 0]),  # 10: none set
+        kwargs.get("excessCashLiquidationBonus", 100),  # 10: none set
     ]
+
 
 def set_flags(flags, **kwargs):
     binList = list(format(flags, "b").rjust(16, "0"))
@@ -99,7 +106,6 @@ def get_updated_vault_settings(settings, **kwargs):
         kwargs.get("postMaturitySettlementSlippageLimitPercent", settings["postMaturitySettlementSlippageLimitPercent"]), 
         kwargs.get("emergencySettlementSlippageLimitPercent", settings["emergencySettlementSlippageLimitPercent"]),
         kwargs.get("maxPoolShare", settings["maxPoolShare"]), 
-        kwargs.get("settlementCoolDownInMinutes", settings["settlementCoolDownInMinutes"]), 
         kwargs.get("oraclePriceDeviationLimitPercent", settings["oraclePriceDeviationLimitPercent"]),
         kwargs.get("poolSlippageLimitPercent", settings["poolSlippageLimitPercent"])
     ]
@@ -231,7 +237,9 @@ def get_all_past_maturities(notional, currencyId):
     return res
 
 def get_all_active_maturities(notional, currencyId):
-    return [m[1] for m in notional.getActiveMarkets(currencyId)]
+    mats = [m[1] for m in notional.getActiveMarkets(currencyId)]
+    mats.append(PRIME_CASH_VAULT_MATURITY)
+    return mats
 
 def get_remaining_strategy_tokens(address):
     resp = requests.post("https://api.thegraph.com/subgraphs/name/notional-finance/mainnet-v2",

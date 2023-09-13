@@ -25,7 +25,76 @@ def run_around_tests():
     chain.snapshot()
     yield
     chain.revert()
-    
+
+@pytest.fixture()
+def ArbStratStableETHstETH():
+    env = getEnvironment(network.show_active())
+    strat = "StratStableETHstETH"
+
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault)
+
+    env.tradingModule.setTokenPermissions(
+        vault.address, 
+        env.tokens["wstETH"].address, 
+        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.tradingModuleOwner})
+
+    # Deploy mock contract necessary for liquidation tests
+    mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IBalancer2TokenMetaStableMockVault.abi)
+
+    env.tradingModule.setTokenPermissions(
+        mock.address, 
+        env.tokens["wstETH"].address, 
+        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.tradingModuleOwner})
+
+    return (env, vault, mock)
+
+@pytest.fixture()
+def ArbStratAaveBoostedPoolDAIPrimary():
+    env = getEnvironment(network.show_active())
+    strat = "StratAaveBoostedPoolDAIPrimary"
+
+    impl = env.deployBalancerVault(strat, Boosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault)
+
+    # Deploy mock contract necessary for liquidation tests
+    mockImpl = env.deployBalancerVault(strat, MockBoosted3TokenAuraVault, [Boosted3TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, impl, Boosted3TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockDAIBoostedVault", mock.address, interface.IBalancer3TokenBoostedMockVault.abi)
+
+    return (env, vault, mock)
+
+@pytest.fixture()
+def ArbStratStablestETHETH():
+    env = getEnvironment(network.show_active())
+    strat = "StratStablestETHETH"
+
+    impl = env.deployBalancerVault(strat, MetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+    vault = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault)
+
+    env.tradingModule.setTokenPermissions(
+        vault.address, 
+        ZERO_ADDRESS, 
+        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.tradingModuleOwner})
+
+    # Deploy mock contract necessary for liquidation tests
+    mockImpl = env.deployBalancerVault(strat, MockMetaStable2TokenAuraVault, [MetaStable2TokenAuraHelper])
+    mock = env.deployVaultProxy(strat, impl, MetaStable2TokenAuraVault, mockImpl)
+    mock = Contract.from_abi("MockMetaStable2TokenAuraVault", mock.address, interface.IBalancer2TokenMetaStableMockVault.abi)
+
+    env.tradingModule.setTokenPermissions(
+        mock.address, 
+        ZERO_ADDRESS, 
+        [True, set_dex_flags(0, BALANCER_V2=True, CURVE=True), set_trade_type_flags(0, EXACT_IN_SINGLE=True)], 
+        {"from": env.tradingModuleOwner})
+
+    return (env, vault, mock)
+
 @pytest.fixture()
 def StratStableETHstETH():
     env = getEnvironment(network.show_active())
@@ -46,7 +115,6 @@ def StratStableETHstETH():
         stratConfig["postMaturitySettlementSlippageLimitPercent"], 
         stratConfig["emergencySettlementSlippageLimitPercent"], 
         stratConfig["maxPoolShare"],
-        stratConfig["settlementCoolDownInMinutes"],
         stratConfig["oraclePriceDeviationLimitPercent"],
         stratConfig["poolSlippageLimitPercent"]
     ])

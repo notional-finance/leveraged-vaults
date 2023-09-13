@@ -132,6 +132,8 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         uint256 vaultShares,
         uint256 maturity
     ) public view virtual returns (int256 underlyingValue);
+
+    function getExchangeRate(uint256 maturity) external virtual view returns (int256);
     
     // Vaults need to implement these two methods
     function _depositFromNotional(

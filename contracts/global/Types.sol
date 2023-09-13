@@ -538,7 +538,10 @@ struct VaultConfigStorage {
     uint16 maxRequiredAccountCollateralRatioBPS;
     // Specified in whole tokens in 1e8 precision, allows a 4.2 billion min borrow size
     uint32[2] minAccountSecondaryBorrow;
-    // 16 bytes left
+    // Specified as a percent discount off the exchange rate of the excess cash that will be paid to
+    // the liquidator during liquidateExcessVaultCash
+    uint8 excessCashLiquidationBonus;
+    // 8 bytes left
 }
 
 struct VaultBorrowCapacityStorage {
