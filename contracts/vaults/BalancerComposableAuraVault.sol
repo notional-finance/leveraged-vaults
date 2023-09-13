@@ -20,7 +20,7 @@ import {
 } from "./common/VaultTypes.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
-import {Balancer3TokenPoolMixin} from "./balancer/mixins/Balancer3TokenPoolMixin.sol";
+import {BalancerComposablePoolMixin} from "./balancer/mixins/BalancerComposablePoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
@@ -28,17 +28,17 @@ import {SettlementUtils} from "./common/internal/settlement/SettlementUtils.sol"
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 
-contract Balancer3TokenAuraVault is Balancer3TokenPoolMixin {
+contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     using StrategyUtils for StrategyContext;
     using VaultStorage for StrategyVaultState;
     using SettlementUtils for StrategyContext;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        Balancer3TokenPoolMixin(notional_, params)
+        BalancerComposablePoolMixin(notional_, params)
     {}
 
     function strategy() external override view returns (bytes4) {
-        return bytes4(keccak256("Balancer3TokenAuraVault"));
+        return bytes4(keccak256("BalancerComposableAuraVault"));
     }
 
     function initialize(InitParams calldata params)

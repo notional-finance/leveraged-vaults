@@ -115,8 +115,9 @@ struct Boosted3TokenAuraStrategyContext {
 
 struct BalancerComposablePoolContext {
     ComposablePoolContext basePool;
-    // Scale factors?
+    uint256[] scalingFactors;
     bytes32 poolId;
+    uint8 bptIndex;
 }
 
 struct BalancerComposableAuraStrategyContext {

@@ -24,35 +24,33 @@ import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 
-abstract contract Balancer3TokenPoolMixin is BalancerPoolMixin, ISingleSidedLPStrategyVault {
+abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSidedLPStrategyVault {
     using TypeConvert for uint256;
 
     error InvalidPrimaryToken(address token);
 
     uint8 internal constant NOT_FOUND = type(uint8).max;
+    uint256 internal constant MAX_TOKENS = 5;
 
-    address internal immutable PRIMARY_TOKEN;
-    address internal immutable SECONDARY_TOKEN;
-    address internal immutable TERTIARY_TOKEN;
     uint8 internal immutable PRIMARY_INDEX;
-    uint8 internal immutable SECONDARY_INDEX;
-    uint8 internal immutable TERTIARY_INDEX;
     uint8 internal immutable BPT_INDEX;
-    uint8 internal immutable PRIMARY_DECIMALS;
-    uint8 internal immutable SECONDARY_DECIMALS;
-    uint8 internal immutable TERTIARY_DECIMALS;
+    address internal immutable TOKEN_1;
+    address internal immutable TOKEN_2;
+    address internal immutable TOKEN_3;
+    address internal immutable TOKEN_4;
+    address internal immutable TOKEN_5;
+    uint8 internal immutable DECIMALS_1;
+    uint8 internal immutable DECIMALS_2;
+    uint8 internal immutable DECIMALS_3;
+    uint8 internal immutable DECIMALS_4;
+    uint8 internal immutable DECIMALS_5;
+    uint8 internal immutable NUM_TOKENS;
 
     constructor(
         NotionalProxy notional_, 
         AuraVaultDeploymentParams memory params
     ) BalancerPoolMixin(notional_, params) {
-        address primaryAddress = BalancerUtils.getTokenAddress(
-            _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId)
-        );
-        
-        if (address(notional_) != address(0)) {
-            revert("here");
-        }
+        address primaryAddress = _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId);
 
         // prettier-ignore
         (
@@ -61,78 +59,74 @@ abstract contract Balancer3TokenPoolMixin is BalancerPoolMixin, ISingleSidedLPSt
             /* uint256 lastChangeBlock */
         ) = Deployments.BALANCER_VAULT.getPoolTokens(params.baseParams.balancerPoolId);
 
-        // Boosted pools contain 4 tokens (3 tokens + 1 LP token)
-        require(tokens.length == 4);
+        require(tokens.length <= MAX_TOKENS);
+        NUM_TOKENS = uint8(tokens.length);
+
+        TOKEN_1 = NUM_TOKENS > 0 ? tokens[0] : address(0);
+        TOKEN_2 = NUM_TOKENS > 1 ? tokens[1] : address(0);
+        TOKEN_3 = NUM_TOKENS > 2 ? tokens[2] : address(0);
+        TOKEN_4 = NUM_TOKENS > 3 ? tokens[3] : address(0);
+        TOKEN_5 = NUM_TOKENS > 4 ? tokens[4] : address(0);
 
         uint8 primaryIndex = NOT_FOUND;
-        uint8 secondaryIndex = NOT_FOUND;
-        uint8 tertiaryIndex = NOT_FOUND;
         uint8 bptIndex = NOT_FOUND;
-        for (uint256 i; i < 4; i++) {
-            // Skip pool token
-            if (tokens[i] == address(BALANCER_POOL_TOKEN)) {
-                bptIndex = uint8(i);
-            } else if (ILinearPool(tokens[i]).getMainToken() == primaryAddress) {
-                primaryIndex = uint8(i);
-            } else {
-                if (secondaryIndex == NOT_FOUND) {
-                    secondaryIndex = uint8(i);
-                } else {
-                    tertiaryIndex = uint8(i);
-                }
+        for (uint8 i; i < NUM_TOKENS; i++) {
+            if (tokens[i] == primaryAddress) {
+                primaryIndex = i; 
+            } else if (tokens[i] == address(BALANCER_POOL_TOKEN)) {
+                bptIndex = i;
             }
         }
 
         require(primaryIndex != NOT_FOUND);
+        require(bptIndex != NOT_FOUND);
 
         PRIMARY_INDEX = primaryIndex;
-        SECONDARY_INDEX = secondaryIndex;
-        TERTIARY_INDEX = tertiaryIndex;
         BPT_INDEX = bptIndex;
 
-        PRIMARY_TOKEN = tokens[PRIMARY_INDEX];
-        SECONDARY_TOKEN = tokens[SECONDARY_INDEX];
-        TERTIARY_TOKEN = tokens[TERTIARY_INDEX];
-
-        uint256 primaryDecimals = IERC20(ILinearPool(PRIMARY_TOKEN).getMainToken()).decimals();
-
-        // Do not allow decimal places greater than 18
-        require(primaryDecimals <= 18);
-        PRIMARY_DECIMALS = uint8(primaryDecimals);
-
-        // If the SECONDARY_TOKEN is ETH, it will be rewritten as WETH
-        uint256 secondaryDecimals = IERC20(ILinearPool(SECONDARY_TOKEN).getMainToken()).decimals();
-
-        // Do not allow decimal places greater than 18
-        require(secondaryDecimals <= 18);
-        SECONDARY_DECIMALS = uint8(secondaryDecimals);
-        
-        // If the TERTIARY_TOKEN is ETH, it will be rewritten as WETH
-        uint256 tertiaryDecimals = IERC20(ILinearPool(TERTIARY_TOKEN).getMainToken()).decimals();
-
-        // Do not allow decimal places greater than 18
-        require(tertiaryDecimals <= 18);
-        TERTIARY_DECIMALS = uint8(tertiaryDecimals);
+        DECIMALS_1 = TOKEN_1 == address(0) ? 0 : _getTokenDecimals(TOKEN_1);
+        DECIMALS_2 = TOKEN_2 == address(0) ? 0 : _getTokenDecimals(TOKEN_2);
+        DECIMALS_3 = TOKEN_3 == address(0) ? 0 : _getTokenDecimals(TOKEN_3);
+        DECIMALS_4 = TOKEN_4 == address(0) ? 0 : _getTokenDecimals(TOKEN_4);
+        DECIMALS_5 = TOKEN_5 == address(0) ? 0 : _getTokenDecimals(TOKEN_5);
     }
 
+    function _getTokenDecimals(address token) private view returns (uint8 decimals) {
+        decimals = token ==
+            Deployments.ETH_ADDRESS
+            ? 18
+            : IERC20(token).decimals();
+        require(decimals <= 18);
+    }
+    
     function _composablePoolContext() 
         internal view returns (BalancerComposablePoolContext memory) {
-        address[] memory tokens = new address[](3);
-        uint8[] memory indices = new uint8[](3);
-        uint256[] memory balances = new uint256[](3);
+        (
+            /* address[] memory tokens */,
+            uint256[] memory balances,
+            /* uint256 lastChangeBlock */
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(BALANCER_POOL_ID);
 
-        indices[0] = PRIMARY_INDEX;
-        indices[1] = SECONDARY_INDEX;
-        indices[2] = TERTIARY_INDEX;
+        uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
+
+        address[] memory tokens = new address[](NUM_TOKENS);
+
+        if (NUM_TOKENS > 0) tokens[0] = TOKEN_1;
+        if (NUM_TOKENS > 1) tokens[1] = TOKEN_2;
+        if (NUM_TOKENS > 2) tokens[2] = TOKEN_3;
+        if (NUM_TOKENS > 3) tokens[3] = TOKEN_4;
+        if (NUM_TOKENS > 4) tokens[4] = TOKEN_5;
 
         return BalancerComposablePoolContext({
             basePool: ComposablePoolContext({
                 tokens: tokens,
-                indices: indices,
                 balances: balances,
-                poolToken: BALANCER_POOL_TOKEN
+                poolToken: BALANCER_POOL_TOKEN,
+                primaryIndex: PRIMARY_INDEX
             }),
-            poolId: BALANCER_POOL_ID
+            poolId: BALANCER_POOL_ID,
+            scalingFactors: scalingFactors,
+            bptIndex: BPT_INDEX
         });
     }
 
