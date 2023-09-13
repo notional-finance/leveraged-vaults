@@ -52,7 +52,7 @@ library BalancerUtils {
         IERC20 poolToken,
         PoolParams memory params
     ) internal returns (uint256 bptAmount) {
-        bptAmount = poolToken.balanceOf(address(this));
+        bptAmount = poolToken.balanceOf(address(this));        
         Deployments.BALANCER_VAULT.joinPool{value: params.msgValue}(
             poolId,
             address(this),
@@ -64,6 +64,7 @@ library BalancerUtils {
                 false // Don't use internal balances
             )
         );
+
         bptAmount = poolToken.balanceOf(address(this)) - bptAmount;
     }
 

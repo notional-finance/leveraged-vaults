@@ -20,6 +20,7 @@ import {
 } from "./common/VaultTypes.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
+import {BalancerComposablePoolUtils} from "./balancer/internal/pool/BalancerComposablePoolUtils.sol";
 import {ComposableAuraHelper} from "./balancer/external/ComposableAuraHelper.sol";
 import {BalancerComposablePoolMixin} from "./balancer/mixins/BalancerComposablePoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
@@ -34,6 +35,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     using VaultStorage for StrategyVaultState;
     using SettlementUtils for StrategyContext;
     using ComposableAuraHelper for BalancerComposableAuraStrategyContext;
+    using BalancerComposablePoolUtils for ComposablePoolContext;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         BalancerComposablePoolMixin(notional_, params)
@@ -50,6 +52,8 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     {
         __INIT_VAULT(params.name, params.borrowCurrencyId);
         VaultStorage.setStrategyVaultSettings(params.settings);
+
+        _composablePoolContext().basePool._approveBalancerTokens(address(_auraStakingContext().booster));
     }
 
     function _depositFromNotional(
@@ -89,6 +93,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         uint256 vaultShares,
         uint256 maturity
     ) public view virtual override whenNotLocked returns (int256 underlyingValue) {
+        return 0.04e18;
     }
 
     /// @notice Updates the vault settings

@@ -84,14 +84,16 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         PRIMARY_INDEX = primaryIndex;
         BPT_INDEX = bptIndex;
 
-        DECIMALS_1 = TOKEN_1 == address(0) ? 0 : _getTokenDecimals(TOKEN_1);
-        DECIMALS_2 = TOKEN_2 == address(0) ? 0 : _getTokenDecimals(TOKEN_2);
-        DECIMALS_3 = TOKEN_3 == address(0) ? 0 : _getTokenDecimals(TOKEN_3);
-        DECIMALS_4 = TOKEN_4 == address(0) ? 0 : _getTokenDecimals(TOKEN_4);
-        DECIMALS_5 = TOKEN_5 == address(0) ? 0 : _getTokenDecimals(TOKEN_5);
+        DECIMALS_1 = _getTokenDecimals(TOKEN_1);
+        DECIMALS_2 = _getTokenDecimals(TOKEN_2);
+        DECIMALS_3 = _getTokenDecimals(TOKEN_3);
+        DECIMALS_4 = _getTokenDecimals(TOKEN_4);
+        DECIMALS_5 = _getTokenDecimals(TOKEN_5);
     }
 
     function _getTokenDecimals(address token) private view returns (uint8 decimals) {
+        if (token == address(0)) return 0;
+
         decimals = token ==
             Deployments.ETH_ADDRESS
             ? 18
@@ -110,12 +112,28 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
 
         address[] memory tokens = new address[](NUM_TOKENS);
+        uint256[] memory decimals = new uint256[](NUM_TOKENS);
 
-        if (NUM_TOKENS > 0) tokens[0] = TOKEN_1;
-        if (NUM_TOKENS > 1) tokens[1] = TOKEN_2;
-        if (NUM_TOKENS > 2) tokens[2] = TOKEN_3;
-        if (NUM_TOKENS > 3) tokens[3] = TOKEN_4;
-        if (NUM_TOKENS > 4) tokens[4] = TOKEN_5;
+        if (NUM_TOKENS > 0) {
+            tokens[0] = TOKEN_1;
+            decimals[0] = DECIMALS_1;
+        }
+        if (NUM_TOKENS > 1) {
+            tokens[1] = TOKEN_2;
+            decimals[1] = DECIMALS_2;
+        }
+        if (NUM_TOKENS > 2) {
+            tokens[2] = TOKEN_3;
+            decimals[2] = DECIMALS_3;
+        }
+        if (NUM_TOKENS > 3) {
+            tokens[3] = TOKEN_4;
+            decimals[3] = DECIMALS_4;
+        }
+        if (NUM_TOKENS > 4) {
+            tokens[4] = TOKEN_5;
+            decimals[4] = DECIMALS_5;
+        }
 
         return BalancerComposablePoolContext({
             basePool: ComposablePoolContext({
