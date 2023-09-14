@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import {
-    UnderlyingPoolContext,
+    ComposableOracleContext,
     AuraVaultDeploymentParams,
     BalancerComposablePoolContext,
     BalancerComposableAuraStrategyContext,
@@ -17,7 +17,7 @@ import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {ISingleSidedLPStrategyVault} from "../../../../interfaces/notional/IStrategyVault.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
-import {IBalancerPool, IBoostedPool, ILinearPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
+import {IBalancerPool, IComposablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
@@ -112,7 +112,7 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         uint256[] memory scalingFactors = IBalancerPool(address(BALANCER_POOL_TOKEN)).getScalingFactors();
 
         address[] memory tokens = new address[](NUM_TOKENS);
-        uint256[] memory decimals = new uint256[](NUM_TOKENS);
+        uint8[] memory decimals = new uint8[](NUM_TOKENS);
 
         if (NUM_TOKENS > 0) {
             tokens[0] = TOKEN_1;
@@ -139,6 +139,7 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
             basePool: ComposablePoolContext({
                 tokens: tokens,
                 balances: balances,
+                decimals: decimals,
                 poolToken: BALANCER_POOL_TOKEN,
                 primaryIndex: PRIMARY_INDEX
             }),
@@ -148,9 +149,26 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         });
     }
 
+    function _composableOracleContext() internal view returns (ComposableOracleContext memory) {
+        IComposablePool pool = IComposablePool(address(BALANCER_POOL_TOKEN));
+
+        (
+            uint256 value,
+            /* bool isUpdating */,
+            uint256 precision
+        ) = IComposablePool(address(BALANCER_POOL_TOKEN)).getAmplificationParameter();
+        require(precision == StableMath._AMP_PRECISION);
+        
+        return ComposableOracleContext({
+            ampParam: value,
+            virtualSupply: pool.getActualSupply()
+        });
+    }
+
     function _strategyContext() internal view returns (BalancerComposableAuraStrategyContext memory) {
         return BalancerComposableAuraStrategyContext({
             poolContext: _composablePoolContext(),
+            oracleContext: _composableOracleContext(),
             stakingContext: _auraStakingContext(),
             baseStrategy: _baseStrategyContext()
         });

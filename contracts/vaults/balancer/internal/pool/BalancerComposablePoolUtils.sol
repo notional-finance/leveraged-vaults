@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import {
     BalancerComposablePoolContext, 
-    StableOracleContext, 
+    ComposableOracleContext, 
     PoolParams,
     AuraStakingContext
 } from "../../BalancerVaultTypes.sol";
@@ -21,9 +21,11 @@ import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalanc
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
+import {TypeConvert} from "../../../../global/TypeConvert.sol";
 
 library BalancerComposablePoolUtils {
     using TokenUtils for IERC20;
+    using TypeConvert for uint256;
     using StrategyUtils for StrategyContext;
 
     /// @notice Returns parameters for joining and exiting Balancer pools
@@ -84,6 +86,61 @@ library BalancerComposablePoolUtils {
         }
     }
 
+    function _getOraclePairPrice(
+        StrategyContext memory strategyContext,
+        address token1,
+        address token2
+    ) internal view returns (uint256 oraclePairPrice) {
+        (int256 rate, int256 decimals) = strategyContext.tradingModule.getOraclePrice(
+            token1, token2
+        );
+        require(rate > 0);
+        require(decimals >= 0);
+
+        if (uint256(decimals) != strategyContext.poolClaimPrecision) {
+            rate = (rate * int256(strategyContext.poolClaimPrecision)) / decimals;
+        }
+
+        // No overflow in rate conversion, checked above
+        oraclePairPrice = uint256(rate);
+    }
+
+    function _checkPriceLimit(
+        BalancerComposablePoolContext memory poolContext, 
+        StrategyContext memory strategyContext,
+        uint256 index1, 
+        uint256 index2
+    ) internal view {
+
+    }
+
+    function _convertToPrimary(
+        BalancerComposablePoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        ComposableOracleContext memory oracleContext,
+        uint256 poolClaim,
+        uint256 index
+    ) internal view returns (uint256 amountInPrimary) {
+        amountInPrimary = poolContext.basePool.balances[index] * poolClaim / oracleContext.virtualSupply;
+
+        if (index != poolContext.basePool.primaryIndex) {
+            // Conversion is only necessary if index != primaryIndex
+            uint256 oraclePrice = _getOraclePairPrice(
+                strategyContext,
+                poolContext.basePool.tokens[poolContext.basePool.primaryIndex],
+                poolContext.basePool.tokens[index]
+            );
+
+            // Scale secondary balance to primaryPrecision
+            uint256 primaryPrecision = 10 ** poolContext.basePool.decimals[poolContext.basePool.primaryIndex];
+            uint256 secondaryPrecision = 10 ** poolContext.basePool.decimals[index];
+            amountInPrimary = amountInPrimary * primaryPrecision / secondaryPrecision;
+
+            // Value the secondary balance in terms of the primary token using the oraclePairPrice
+            amountInPrimary = amountInPrimary * strategyContext.poolClaimPrecision / oraclePrice;
+        }
+    }
+
     /// @notice Gets the time-weighted primary token balance for a given bptAmount
     /// @param poolContext pool context variables
     /// @param oracleContext oracle context variables
@@ -91,10 +148,45 @@ library BalancerComposablePoolUtils {
     /// @return primaryAmount primary token balance
     function _getTimeWeightedPrimaryBalance(
         BalancerComposablePoolContext memory poolContext,
-        StableOracleContext memory oracleContext,
+        ComposableOracleContext memory oracleContext,
         StrategyContext memory strategyContext,
         uint256 bptAmount
     ) internal view returns (uint256 primaryAmount) {
+        uint256 numTokens = poolContext.basePool.tokens.length;
+
+        for (uint256 i; i < numTokens; i++) {
+            if (i == poolContext.bptIndex) continue;
+            uint256 j = i + 1;
+            if (j == poolContext.bptIndex) j++;
+            if (j >= numTokens) {
+                primaryAmount += _convertToPrimary({
+                    poolContext: poolContext, 
+                    strategyContext: strategyContext,
+                    oracleContext: oracleContext,
+                    poolClaim: bptAmount,
+                    index: j
+                });
+                break;
+            }
+
+            uint256 oraclePrice = _getOraclePairPrice(
+                strategyContext,
+                poolContext.basePool.tokens[i],
+                poolContext.basePool.tokens[j]
+            );
+
+            _checkPriceLimit(poolContext, strategyContext, i, j);
+
+            primaryAmount += _convertToPrimary({
+                poolContext: poolContext, 
+                strategyContext: strategyContext,
+                oracleContext: oracleContext,
+                poolClaim: bptAmount,
+                index: i
+            });
+        }
+
+
         /*uint256 oraclePairPrice = poolContext.basePool._getOraclePairPrice(strategyContext);
 
         // tokenIndex == 0 because _getOraclePairPrice always returns the price in terms of
@@ -266,14 +358,13 @@ library BalancerComposablePoolUtils {
     function _convertStrategyToUnderlying(
         BalancerComposablePoolContext memory poolContext,
         StrategyContext memory strategyContext,
-        StableOracleContext memory oracleContext,
+        ComposableOracleContext memory oracleContext,
         uint256 strategyTokenAmount
-    ) internal view returns (int256 underlyingValue) {
-        
-      /*  uint256 bptClaim 
+    ) internal view returns (int256 underlyingValue) {  
+        uint256 bptClaim 
             = strategyContext._convertStrategyTokensToPoolClaim(strategyTokenAmount);
 
         underlyingValue 
-            = poolContext._getTimeWeightedPrimaryBalance(oracleContext, strategyContext, bptClaim).toInt(); */
+            = _getTimeWeightedPrimaryBalance(poolContext, oracleContext, strategyContext, bptClaim).toInt();
     }
 }

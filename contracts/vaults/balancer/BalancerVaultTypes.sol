@@ -76,6 +76,13 @@ struct BoostedOracleContext {
     UnderlyingPoolContext[] underlyingPools;
 }
 
+struct ComposableOracleContext {
+    /// @notice Amplification parameter
+    uint256 ampParam;
+    /// @notice Virtual supply
+    uint256 virtualSupply;
+}
+
 struct AuraStakingContext {
     ILiquidityGauge liquidityGauge;
     address booster;
@@ -122,6 +129,7 @@ struct BalancerComposablePoolContext {
 
 struct BalancerComposableAuraStrategyContext {
     BalancerComposablePoolContext poolContext;
+    ComposableOracleContext oracleContext;
     AuraStakingContext stakingContext;
     StrategyContext baseStrategy;
 }

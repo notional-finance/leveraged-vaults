@@ -7,7 +7,8 @@ import {TokenUtils} from "../utils/TokenUtils.sol";
 import {
     AuraVaultDeploymentParams,
     InitParams,
-    BalancerComposableAuraStrategyContext
+    BalancerComposableAuraStrategyContext,
+    BalancerComposablePoolContext
 } from "./balancer/BalancerVaultTypes.sol";
 import {
     StrategyContext,
@@ -36,6 +37,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     using SettlementUtils for StrategyContext;
     using ComposableAuraHelper for BalancerComposableAuraStrategyContext;
     using BalancerComposablePoolUtils for ComposablePoolContext;
+    using BalancerComposablePoolUtils for BalancerComposablePoolContext;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
         BalancerComposablePoolMixin(notional_, params)
@@ -113,5 +115,11 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     }
 
     function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
+        BalancerComposableAuraStrategyContext memory context = _strategyContext();
+        poolClaimToSettle = uint256(context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
+            oracleContext: context.oracleContext,
+            strategyTokenAmount: maturity
+        }));
     }
 }

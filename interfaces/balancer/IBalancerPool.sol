@@ -28,6 +28,15 @@ interface IBoostedPool is IBalancerPool {
     function getActualSupply() external view returns (uint256);
 }
 
+interface IComposablePool is IBalancerPool {
+    function getAmplificationParameter() external view returns (
+        uint256 value,
+        bool isUpdating,
+        uint256 precision
+    );
+    function getActualSupply() external view returns (uint256);
+}
+
 interface IMetaStablePool is IBalancerPool {
     function getAmplificationParameter() external view returns (
         uint256 value,
