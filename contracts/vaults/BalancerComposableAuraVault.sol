@@ -16,7 +16,6 @@ import {
     StrategyVaultState,
     ComposablePoolContext,
     DepositParams,
-    RedeemParams,
     ReinvestRewardParams
 } from "./common/VaultTypes.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
@@ -73,6 +72,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         uint256 maturity,
         bytes calldata data
     ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+        finalPrimaryBalance = _strategyContext().redeem(vaultShares, data);
     }
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
@@ -95,7 +95,12 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         uint256 vaultShares,
         uint256 maturity
     ) public view virtual override whenNotLocked returns (int256 underlyingValue) {
-        return 0.04e18;
+        BalancerComposableAuraStrategyContext memory context = _strategyContext();
+        underlyingValue = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
+            oracleContext: context.oracleContext,
+            strategyTokenAmount: vaultShares
+        });
     }
 
     /// @notice Updates the vault settings
@@ -115,11 +120,5 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     }
 
     function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
-        BalancerComposableAuraStrategyContext memory context = _strategyContext();
-        poolClaimToSettle = uint256(context.poolContext._convertStrategyToUnderlying({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
-            strategyTokenAmount: maturity
-        }));
     }
 }

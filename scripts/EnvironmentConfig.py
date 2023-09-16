@@ -53,8 +53,7 @@ class Environment:
         self.notional = Contract.from_abi(
             "Notional", addresses["notional"], NotionalABI
         )
-        # TODO: TEMP_OWNER use self.notional.owner() after ownership transfer
-        self.tradingModuleOwner = accounts.at("0xE6FB62c2218fd9e3c948f0549A2959B509a293C8", force=True)
+        self.tradingModuleOwner = self.notional.owner()
 
         self.tokens = {}
         for (symbol, obj) in addresses["tokens"].items():

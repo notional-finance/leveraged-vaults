@@ -7,7 +7,7 @@ import {
     StrategyVaultState,
     TwoTokenPoolContext,
     DepositParams,
-    RedeemParams,
+    ComposableRedeemParams,
     ReinvestRewardParams
 } from "../../common/VaultTypes.sol";
 import {
@@ -30,9 +30,25 @@ library ComposableAuraHelper {
         DepositParams memory params = abi.decode(data, (DepositParams));
 
         strategyTokensMinted = context.poolContext._deposit({
+            oracleContext: context.oracleContext,
             strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,
             deposit: deposit,
+            params: params
+        });
+    }
+
+    function redeem(
+        BalancerComposableAuraStrategyContext memory context,
+        uint256 strategyTokens,
+        bytes calldata data
+    ) external returns (uint256 finalPrimaryBalance) {
+        ComposableRedeemParams memory params = abi.decode(data, (ComposableRedeemParams));
+
+        finalPrimaryBalance = context.poolContext._redeem({
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
+            strategyTokens: strategyTokens,
             params: params
         });
     }

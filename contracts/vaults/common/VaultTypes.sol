@@ -29,6 +29,16 @@ struct RedeemParams {
     bytes secondaryTradeParams;
 }
 
+struct ComposableDepositParams {
+    uint256 minPoolClaim;
+    Trade[] depositTrades;
+}
+
+struct ComposableRedeemParams {
+    uint256[] minAmounts;
+    TradeParams[] redemptionTrades;
+}
+
 struct ReinvestRewardParams {
     bytes tradeData;
     uint256 minPoolClaim;
