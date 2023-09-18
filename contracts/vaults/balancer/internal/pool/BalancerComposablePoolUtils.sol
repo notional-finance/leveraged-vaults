@@ -23,6 +23,7 @@ import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
+import {ComposableOracleMath} from "../math/ComposableOracleMath.sol";
 import {IAuraBoosterBase} from "../../../../../interfaces/aura/IAuraBooster.sol";
 import {DexId} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
@@ -33,6 +34,7 @@ library BalancerComposablePoolUtils {
     using StrategyUtils for StrategyContext;
     using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
+    using ComposableOracleMath for ComposableOracleContext;
 
     /// @notice Returns parameters for joining and exiting Balancer pools
     /// @param bptAmount minBptAmount if isJoin is true, bptExitAmount if isJoin is false
@@ -113,11 +115,20 @@ library BalancerComposablePoolUtils {
 
     function _checkPriceLimit(
         BalancerComposablePoolContext memory poolContext, 
+        ComposableOracleContext memory oracleContext,
         StrategyContext memory strategyContext,
         uint256 index1, 
         uint256 index2
     ) internal view {
+        uint256 oraclePrice = _getOraclePairPrice(
+            strategyContext,
+            poolContext.basePool.tokens[index1],
+            poolContext.basePool.tokens[index2]
+        );
 
+        uint256 spotPrice = oracleContext._getSpotPrice(poolContext,index1, index2);
+
+        strategyContext._checkPriceLimit(oraclePrice, spotPrice);
     }
 
     function _convertToPrimary(
@@ -175,13 +186,7 @@ library BalancerComposablePoolUtils {
                 break;
             }
 
-            uint256 oraclePrice = _getOraclePairPrice(
-                strategyContext,
-                poolContext.basePool.tokens[i],
-                poolContext.basePool.tokens[j]
-            );
-
-            _checkPriceLimit(poolContext, strategyContext, i, j);
+            _checkPriceLimit(poolContext, oracleContext, strategyContext, i, j);
 
             primaryAmount += _convertToPrimary({
                 poolContext: poolContext, 
@@ -191,25 +196,6 @@ library BalancerComposablePoolUtils {
                 index: i
             });
         }
-
-
-        /*uint256 oraclePairPrice = poolContext.basePool._getOraclePairPrice(strategyContext);
-
-        // tokenIndex == 0 because _getOraclePairPrice always returns the price in terms of
-        // the primary currency
-        uint256 spotPrice = oracleContext._getSpotPrice({
-            poolContext: poolContext,
-            primaryBalance: poolContext.basePool.primaryBalance,
-            secondaryBalance: poolContext.basePool.secondaryBalance,
-            tokenIndex: 0
-        });
-
-        primaryAmount = poolContext.basePool._getTimeWeightedPrimaryBalance({
-            strategyContext: strategyContext,
-            poolClaim: bptAmount,
-            oraclePrice: oraclePairPrice,
-            spotPrice: spotPrice
-        });*/
     }
 
     function _approveBalancerTokens(ComposablePoolContext memory poolContext, address bptSpender) internal {

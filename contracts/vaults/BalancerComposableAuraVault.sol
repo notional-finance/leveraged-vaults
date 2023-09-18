@@ -21,6 +21,7 @@ import {
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "./balancer/internal/BalancerConstants.sol";
 import {BalancerComposablePoolUtils} from "./balancer/internal/pool/BalancerComposablePoolUtils.sol";
+import {ComposableOracleMath} from "./balancer/internal/math/ComposableOracleMath.sol";
 import {ComposableAuraHelper} from "./balancer/external/ComposableAuraHelper.sol";
 import {BalancerComposablePoolMixin} from "./balancer/mixins/BalancerComposablePoolMixin.sol";
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
@@ -117,6 +118,13 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     }
 
     function getSpotPrice(uint8 tokenIndex) external view returns (uint256 spotPrice) {
+        BalancerComposableAuraStrategyContext memory context = _strategyContext();
+        spotPrice = ComposableOracleMath._getSpotPrice(
+            context.oracleContext, 
+            context.poolContext,
+            context.poolContext.basePool.primaryIndex,
+            tokenIndex
+        );
     }
 
     function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
