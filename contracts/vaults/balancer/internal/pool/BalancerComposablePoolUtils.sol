@@ -12,8 +12,9 @@ import {
     StrategyContext,
     StrategyVaultSettings,
     StrategyVaultState,
+    ComposableRewardTradeParams,
     ComposablePoolContext,
-    DepositParams,
+    ComposableDepositParams,
     ComposableRedeemParams
 } from "../../../common/VaultTypes.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
@@ -213,21 +214,10 @@ library BalancerComposablePoolUtils {
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         uint256 deposit,
-        DepositParams memory params
+        ComposableDepositParams memory params
     ) internal returns (uint256 strategyTokensMinted) {
-        uint256[] memory amounts = new uint256[](poolContext.basePool.tokens.length);
 
-       /* if (params.tradeData.length != 0) {
-            // Allows users to trade on a different DEX instead of Balancer when joining
-            (uint256 primarySold, uint256 secondaryBought) = poolContext.basePool._tradePrimaryForSecondary({
-                strategyContext: strategyContext,
-                data: params.tradeData
-            });
-            deposit -= primarySold;
-            secondaryAmount = secondaryBought;
-        }*/
-
-        amounts[poolContext.basePool.primaryIndex] = deposit;
+        uint256[] memory amounts = _handleDepositTrades(poolContext, strategyContext, deposit, params);
 
         uint256 bptMinted = _joinPoolAndStake({
             poolContext: poolContext,
@@ -241,18 +231,50 @@ library BalancerComposablePoolUtils {
         strategyTokensMinted = strategyContext._mintStrategyTokens(bptMinted);
     }
 
+    function _handleDepositTrades(
+        BalancerComposablePoolContext memory poolContext,
+        StrategyContext memory strategyContext,
+        uint256 deposit,
+        ComposableDepositParams memory params
+    ) private returns (uint256[] memory amounts) {
+        uint256 numTokens = poolContext.basePool.tokens.length;
+        amounts = new uint256[](poolContext.basePool.tokens.length);
+
+        if (params.depositTrades.length > 0) {
+            uint256 tradeIndex;
+            for (uint256 i; i < numTokens; i++) {
+                if (i == poolContext.bptIndex || i == poolContext.basePool.primaryIndex) continue;
+
+                uint256 sellAmount = params.depositTrades[tradeIndex].tradeAmount;
+                uint256 amountBought = _sellToken({
+                    strategyContext: strategyContext, 
+                    params: params.depositTrades[tradeIndex].tradeParams,
+                    sellToken: poolContext.basePool.tokens[poolContext.basePool.primaryIndex],
+                    buyToken: poolContext.basePool.tokens[i],
+                    sellAmount: sellAmount
+                });
+
+                deposit -= sellAmount;
+                amounts[i] = amountBought;
+                tradeIndex++;
+            }
+        }
+
+        amounts[poolContext.basePool.primaryIndex] = deposit;
+    }
+
     function _sellToken(
         StrategyContext memory strategyContext,
         TradeParams memory params,
         address sellToken,
         address buyToken,
         uint256 sellAmount
-    ) internal returns (uint256 primaryPurchased) {
+    ) internal returns (uint256 buyAmount) {
         if (DexId(params.dexId) == DexId.ZERO_EX) {
             revert Errors.InvalidDexId(params.dexId);
         }
 
-        ( /*uint256 amountSold */, primaryPurchased) = 
+        ( /*uint256 amountSold */, buyAmount) = 
             strategyContext._executeTradeExactIn({
                 params: params,
                 sellToken: sellToken,
@@ -270,6 +292,7 @@ library BalancerComposablePoolUtils {
     ) internal returns (uint256 primaryPurchased) {
         address[] memory tokens = poolContext.basePool.tokens;
         uint256 primaryIndex = poolContext.basePool.primaryIndex;
+        uint256 tradeIndex;
         for (uint256 i; i < tokens.length; i++) {
             if (i == poolContext.bptIndex) continue;
 
@@ -279,12 +302,13 @@ library BalancerComposablePoolUtils {
                 if (exitBalances[i] > 0) {
                     primaryPurchased += _sellToken({        
                         strategyContext: strategyContext,
-                        params: params.redemptionTrades[i],
+                        params: params.redemptionTrades[tradeIndex],
                         sellToken: tokens[i],
                         buyToken: tokens[primaryIndex],
                         sellAmount: exitBalances[i]
                     });
                 }
+                tradeIndex++;
             }
         }
     }
@@ -398,5 +422,18 @@ library BalancerComposablePoolUtils {
 
         underlyingValue 
             = _getTimeWeightedPrimaryBalance(poolContext, oracleContext, strategyContext, bptClaim).toInt();
+    }
+
+    function _executeRewardTrades(
+        BalancerComposablePoolContext calldata poolContext,
+        StrategyContext memory strategyContext,
+        IERC20[] memory rewardTokens,
+        bytes calldata data
+    ) internal returns (address rewardToken, uint256 amountSold, uint256[] memory amounts) {
+        ComposableRewardTradeParams memory params = abi.decode(
+            data,
+            (ComposableRewardTradeParams)
+        );
+
     }
 }

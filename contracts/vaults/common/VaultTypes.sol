@@ -31,7 +31,7 @@ struct RedeemParams {
 
 struct ComposableDepositParams {
     uint256 minPoolClaim;
-    Trade[] depositTrades;
+    DepositTradeParams[] depositTrades;
 }
 
 struct ComposableRedeemParams {
@@ -47,6 +47,10 @@ struct ReinvestRewardParams {
 struct Proportional2TokenRewardTradeParams {
     SingleSidedRewardTradeParams primaryTrade;
     SingleSidedRewardTradeParams secondaryTrade;
+}
+
+struct ComposableRewardTradeParams {
+    SingleSidedRewardTradeParams[] rewardTrades;
 }
 
 struct SingleSidedRewardTradeParams {

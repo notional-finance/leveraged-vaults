@@ -78,9 +78,34 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
 
     function settleVaultEmergency(uint256 maturity, bytes calldata data) 
         external whenNotLocked onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
+        ComposableAuraHelper.settleVaultEmergency(
+            _strategyContext(), maturity, data
+        );
+        _lockVault();
     }
 
     function restoreVault(uint256 minBPT) external whenLocked onlyNotionalOwner {
+        BalancerComposableAuraStrategyContext memory context = _strategyContext();
+
+        uint256[] memory amounts = new uint256[](context.poolContext.basePool.tokens.length);
+
+        for (uint256 i; i < context.poolContext.basePool.tokens.length; i++) {
+            if (i == context.poolContext.bptIndex) continue;
+            amounts[i] = TokenUtils.tokenBalance(context.poolContext.basePool.tokens[i]);
+        }
+
+        uint256 bptAmount = context.poolContext._joinPoolAndStake({
+            oracleContext: context.oracleContext,
+            strategyContext: context.baseStrategy,
+            stakingContext: context.stakingContext,
+            amounts: amounts,
+            minBPT: minBPT
+        });
+
+        context.baseStrategy.vaultState.totalPoolClaim += bptAmount;
+        context.baseStrategy.vaultState.setStrategyVaultState(); 
+
+        _unlockVault();
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) 
@@ -89,6 +114,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
             uint256 amountSold, 
             uint256 poolClaimAmount
     ) {
+        return ComposableAuraHelper.reinvestReward(_strategyContext(), params);
     }
 
     function convertStrategyToUnderlying(
@@ -128,5 +154,10 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     }
 
     function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
+        BalancerComposableAuraStrategyContext memory context = _strategyContext();
+        poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
+            maturity: maturity, 
+            totalPoolSupply: context.oracleContext.virtualSupply
+        });
     }
 }
