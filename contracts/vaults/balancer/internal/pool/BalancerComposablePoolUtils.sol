@@ -21,6 +21,7 @@ import {Deployments} from "../../../../global/Deployments.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
+import {VaultConstants} from "../../../common/VaultConstants.sol";
 import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
@@ -176,18 +177,9 @@ library BalancerComposablePoolUtils {
             if (i == poolContext.bptIndex) continue;
             uint256 j = i + 1;
             if (j == poolContext.bptIndex) j++;
-            if (j >= numTokens) {
-                primaryAmount += _convertToPrimary({
-                    poolContext: poolContext, 
-                    strategyContext: strategyContext,
-                    oracleContext: oracleContext,
-                    poolClaim: bptAmount,
-                    index: i
-                });
-                break;
+            if (j < numTokens) {
+                _checkPriceLimit(poolContext, oracleContext, strategyContext, i, j);
             }
-
-            _checkPriceLimit(poolContext, oracleContext, strategyContext, i, j);
 
             primaryAmount += _convertToPrimary({
                 poolContext: poolContext, 
@@ -424,16 +416,30 @@ library BalancerComposablePoolUtils {
             = _getTimeWeightedPrimaryBalance(poolContext, oracleContext, strategyContext, bptClaim).toInt();
     }
 
-    function _executeRewardTrades(
-        BalancerComposablePoolContext calldata poolContext,
+    /// @notice calculates the expected primary and secondary amounts based on
+    /// the given spot price and oracle price
+    function _getMinExitAmounts(
+        BalancerComposablePoolContext memory poolContext,
+        ComposableOracleContext memory oracleContext,
         StrategyContext memory strategyContext,
-        IERC20[] memory rewardTokens,
-        bytes calldata data
-    ) internal returns (address rewardToken, uint256 amountSold, uint256[] memory amounts) {
-        ComposableRewardTradeParams memory params = abi.decode(
-            data,
-            (ComposableRewardTradeParams)
-        );
+        uint256 poolClaim
+    ) internal view returns (uint256[] memory minAmounts) {
 
+        // min amounts are calculated based on the share of the Balancer pool with a small discount applied
+        uint256 numTokens = poolContext.basePool.tokens.length;
+        minAmounts = new uint256[](numTokens);
+
+        for (uint256 i; i < numTokens; i++) {
+            if (i == poolContext.bptIndex) continue;
+            uint256 j = i + 1;
+            if (j == poolContext.bptIndex) j++;
+            if (j < numTokens) {
+                _checkPriceLimit(poolContext, oracleContext, strategyContext, i, j);
+            }
+
+            minAmounts[i] = (poolContext.basePool.balances[i] * poolClaim * 
+                strategyContext.vaultSettings.poolSlippageLimitPercent) / 
+                (oracleContext.virtualSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
+        }
     }
 }

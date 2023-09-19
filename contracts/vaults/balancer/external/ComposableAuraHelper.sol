@@ -7,7 +7,8 @@ import {
     StrategyVaultState,
     ComposableDepositParams,
     ComposableRedeemParams,
-    ReinvestRewardParams
+    ReinvestRewardParams,
+    TradeParams
 } from "../../common/VaultTypes.sol";
 import {
     AuraVaultDeploymentParams,
@@ -16,14 +17,19 @@ import {
     ComposableOracleContext,
     AuraStakingContext
 } from "../BalancerVaultTypes.sol";
+import {Errors} from "../../../global/Errors.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
-import {BalancerComposablePoolUtils} from "../internal/pool/BalancerComposablePoolUtils.sol";
 import {VaultStorage} from "../../common/VaultStorage.sol";
+import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.sol";
+import {BalancerComposablePoolUtils} from "../internal/pool/BalancerComposablePoolUtils.sol";
+import {ComposableAuraRewardUtils} from "../internal/reward/ComposableAuraRewardUtils.sol";
 
 library ComposableAuraHelper {
     using BalancerComposablePoolUtils for BalancerComposablePoolContext;
+    using ComposableAuraRewardUtils for BalancerComposablePoolContext;
     using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
+    using SettlementUtils for StrategyContext;
 
     function deposit(
         BalancerComposableAuraStrategyContext memory context,
@@ -56,41 +62,58 @@ library ComposableAuraHelper {
         });
     }
 
+    /// @notice Validates that the slippage passed in by the caller
+    /// does not exceed the designated threshold.
+    /// @param slippageLimitPercent configured limit on the slippage from the oracle price allowed
+    /// @param data trade parameters passed into settlement
+    /// @return params abi decoded redemption parameters
+    function _decodeParamsAndValidate(
+        uint32 slippageLimitPercent,
+        bytes memory data
+    ) internal view returns (ComposableRedeemParams memory params) {
+        params = abi.decode(data, (ComposableRedeemParams));
+        if (params.redemptionTrades.length != 0) {
+            for (uint256 i; i < params.redemptionTrades.length; i++) {
+                TradeParams memory tradeParams = params.redemptionTrades[i];
+
+                if (slippageLimitPercent < tradeParams.oracleSlippagePercentOrLimit) {
+                    revert Errors.SlippageTooHigh(tradeParams.oracleSlippagePercentOrLimit, slippageLimitPercent);
+                }
+            }
+        }
+    }
+
     function settleVaultEmergency(
         BalancerComposableAuraStrategyContext memory context, 
         uint256 maturity, 
         bytes calldata data
     ) external {
-        /*ComposableRedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+        ComposableRedeemParams memory params = _decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
             data
         );
-        bool isSingleSidedExit = params.secondaryTradeParams.length == 0;
-
+        bool isSingleSidedExit = params.redemptionTrades.length == 0;
+        
         uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
             maturity: maturity, 
             totalPoolSupply: context.oracleContext.virtualSupply
         });
 
-        uint256 oraclePrice = context.poolContext.basePool._getOraclePairPrice(context.baseStrategy);
-
-        /// @notice params.minPrimary and params.minSecondary are not required to be passed in by the caller
-        /// for this strategy vault
-        (uint256 minPrimary, uint256 minSecondary) = context.oracleContext._getMinExitAmounts({
-            poolContext: context.poolContext,
+        /// @notice minAmounts are not required to be passed in by the caller for this strategy vault
+        uint256[] memory minAmounts = context.poolContext._getMinExitAmounts({
+            oracleContext: context.oracleContext,
             strategyContext: context.baseStrategy,
-            oraclePrice: oraclePrice,
-            bptAmount: bptToSettle
+            poolClaim: bptToSettle
         });
 
         context.poolContext._unstakeAndExitPool(
-            context.stakingContext, bptToSettle, minPrimary, minSecondary, isSingleSidedExit
+            context.stakingContext, bptToSettle, minAmounts, isSingleSidedExit
         );
 
         context.baseStrategy.vaultState.totalPoolClaim -= bptToSettle;
         context.baseStrategy.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, 0); */
+        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, 0);
     }
 
     function reinvestReward(
