@@ -140,13 +140,9 @@ library ComposableAuraHelper {
         });
 
         // Make sure we are joining with the right proportion to minimize slippage
-        /*oracleContext._validateSpotPriceAndPairPrice({
-            poolContext: poolContext,
-            strategyContext: strategyContext,
-            oraclePrice: poolContext.basePool._getOraclePairPrice(strategyContext),
-            primaryAmount: primaryAmount,
-            secondaryAmount: secondaryAmount
-        });*/
+        poolContext._getTimeWeightedPrimaryBalance(
+            oracleContext, strategyContext, 0, true // validateOnly = true
+        );
 
         poolClaimAmount = poolContext._joinPoolAndStake({
             strategyContext: strategyContext,

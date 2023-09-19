@@ -164,12 +164,14 @@ library BalancerComposablePoolUtils {
     /// @param poolContext pool context variables
     /// @param oracleContext oracle context variables
     /// @param bptAmount amount of balancer pool lp tokens
+    /// @param validateOnly true if the function is only used to validate pool prices
     /// @return primaryAmount primary token balance
     function _getTimeWeightedPrimaryBalance(
         BalancerComposablePoolContext memory poolContext,
         ComposableOracleContext memory oracleContext,
         StrategyContext memory strategyContext,
-        uint256 bptAmount
+        uint256 bptAmount,
+        bool validateOnly
     ) internal view returns (uint256 primaryAmount) {
         uint256 numTokens = poolContext.basePool.tokens.length;
 
@@ -181,13 +183,15 @@ library BalancerComposablePoolUtils {
                 _checkPriceLimit(poolContext, oracleContext, strategyContext, i, j);
             }
 
-            primaryAmount += _convertToPrimary({
-                poolContext: poolContext, 
-                strategyContext: strategyContext,
-                oracleContext: oracleContext,
-                poolClaim: bptAmount,
-                index: i
-            });
+            if (!validateOnly) {
+                primaryAmount += _convertToPrimary({
+                    poolContext: poolContext, 
+                    strategyContext: strategyContext,
+                    oracleContext: oracleContext,
+                    poolClaim: bptAmount,
+                    index: i
+                });
+            }
         }
     }
 
@@ -413,7 +417,9 @@ library BalancerComposablePoolUtils {
             = strategyContext._convertStrategyTokensToPoolClaim(strategyTokenAmount);
 
         underlyingValue 
-            = _getTimeWeightedPrimaryBalance(poolContext, oracleContext, strategyContext, bptClaim).toInt();
+            = _getTimeWeightedPrimaryBalance(
+                poolContext, oracleContext, strategyContext, bptClaim, false // validateOnly = false
+            ).toInt();
     }
 
     /// @notice calculates the expected primary and secondary amounts based on

@@ -469,7 +469,7 @@ library Balancer3TokenBoostedPoolUtils {
         uint256 strategyTokenAmount
     ) internal view returns (int256 underlyingValue) {
         uint256 bptClaim = strategyContext._convertStrategyTokensToPoolClaim(strategyTokenAmount);
-
+        
         underlyingValue = poolContext._getTimeWeightedPrimaryBalance(
             oracleContext, strategyContext, bptClaim
         ).toInt();
