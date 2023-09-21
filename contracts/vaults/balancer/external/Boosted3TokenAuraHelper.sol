@@ -112,8 +112,7 @@ library Boosted3TokenAuraHelper {
         ReinvestRewardParams calldata params
     ) external returns (
         address rewardToken,
-        uint256 primaryAmount,
-        uint256 secondaryAmount,
+        uint256 amountSold, 
         uint256 poolClaimAmount
     ) {
         StrategyContext memory strategyContext = context.baseStrategy;
@@ -121,7 +120,8 @@ library Boosted3TokenAuraHelper {
         AuraStakingContext calldata stakingContext = context.stakingContext;
         Balancer3TokenPoolContext calldata poolContext = context.poolContext;
 
-        (rewardToken, primaryAmount) = context.poolContext.basePool._executeRewardTrades({
+        uint256 primaryAmount;
+        (rewardToken, amountSold, primaryAmount) = context.poolContext.basePool._executeRewardTrades({
             strategyContext: strategyContext,
             rewardTokens: stakingContext.rewardTokens,
             data: params.tradeData
@@ -150,7 +150,7 @@ library Boosted3TokenAuraHelper {
         strategyContext.vaultState.totalPoolClaim += poolClaimAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, poolClaimAmount); 
+        emit VaultEvents.RewardReinvested(rewardToken, amountSold, poolClaimAmount); 
     }
 
     function convertStrategyToUnderlying(

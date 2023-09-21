@@ -109,17 +109,19 @@ library MetaStable2TokenAuraHelper {
         ReinvestRewardParams calldata params
     ) external returns (
         address rewardToken,
-        uint256 primaryAmount,
-        uint256 secondaryAmount,
+        uint256 amountSold, 
         uint256 poolClaimAmount
     ) {
         StrategyContext memory strategyContext = context.baseStrategy;
         Balancer2TokenPoolContext calldata poolContext = context.poolContext; 
         StableOracleContext calldata oracleContext = context.oracleContext;
 
+        uint256 primaryAmount;
+        uint256 secondaryAmount;
         (
             rewardToken, 
-            primaryAmount, 
+            amountSold,
+            primaryAmount,
             secondaryAmount
         ) = poolContext.basePool._executeRewardTrades({
             strategyContext: strategyContext,
@@ -149,7 +151,7 @@ library MetaStable2TokenAuraHelper {
         strategyContext.vaultState.totalPoolClaim += poolClaimAmount;
         strategyContext.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.RewardReinvested(rewardToken, primaryAmount, secondaryAmount, poolClaimAmount); 
+        emit VaultEvents.RewardReinvested(rewardToken, amountSold, poolClaimAmount); 
     }
 
     function getExchangeRate(MetaStable2TokenAuraStrategyContext calldata context) 

@@ -107,8 +107,7 @@ contract Boosted3TokenAuraVault is Boosted3TokenPoolMixin {
     function reinvestReward(ReinvestRewardParams calldata params) 
         external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
             address rewardToken,
-            uint256 primaryAmount,
-            uint256 secondaryAmount,
+            uint256 amountSold, 
             uint256 poolClaimAmount
     ) {
         return Boosted3TokenAuraHelper.reinvestReward(_strategyContext(), params);

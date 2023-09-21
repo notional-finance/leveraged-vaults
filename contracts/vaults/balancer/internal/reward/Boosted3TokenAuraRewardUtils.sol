@@ -38,12 +38,12 @@ library Boosted3TokenAuraRewardUtils {
         StrategyContext memory strategyContext,
         IERC20[] memory rewardTokens,
         bytes calldata data
-    ) internal returns (address rewardToken, uint256 primaryAmount) {
+    ) internal returns (address rewardToken, uint256 amountSold, uint256 primaryAmount) {
         SingleSidedRewardTradeParams memory params = abi.decode(data, (SingleSidedRewardTradeParams));
 
         _validateTrade(rewardTokens, params, poolContext.basePool.primaryToken);
 
-        (/*uint256 amountSold*/, primaryAmount) = strategyContext._executeTradeExactIn({
+        (amountSold, primaryAmount) = strategyContext._executeTradeExactIn({
             params: params.tradeParams,
             sellToken: params.sellToken,
             buyToken: params.buyToken,
