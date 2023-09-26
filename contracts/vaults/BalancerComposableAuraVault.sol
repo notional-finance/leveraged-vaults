@@ -123,11 +123,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         uint256 maturity
     ) public view virtual override whenNotLocked returns (int256 underlyingValue) {
         BalancerComposableAuraStrategyContext memory context = _strategyContext();
-        underlyingValue = context.poolContext._convertStrategyToUnderlying({
-            strategyContext: context.baseStrategy,
-            oracleContext: context.oracleContext,
-            strategyTokenAmount: vaultShares
-        });
+        underlyingValue = context.convertStrategyToUnderlying(vaultShares);
     }
 
     /// @notice Updates the vault settings
@@ -145,12 +141,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
 
     function getSpotPrice(uint8 tokenIndex) external view returns (uint256 spotPrice) {
         BalancerComposableAuraStrategyContext memory context = _strategyContext();
-        spotPrice = ComposableOracleMath._getSpotPrice(
-            context.oracleContext, 
-            context.poolContext,
-            context.poolContext.basePool.primaryIndex,
-            tokenIndex
-        );
+        spotPrice = ComposableAuraHelper.getSpotPrice(context, tokenIndex);
     }
 
     function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {

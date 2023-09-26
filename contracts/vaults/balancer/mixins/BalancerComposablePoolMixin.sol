@@ -23,6 +23,7 @@ import {Deployments} from "../../../global/Deployments.sol";
 import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
+import {ComposableAuraHelper} from "../external/ComposableAuraHelper.sol";
 
 abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSidedLPStrategyVault {
     using TypeConvert for uint256;
@@ -175,6 +176,8 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
     }
 
     function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
+        BalancerComposableAuraStrategyContext memory context = _strategyContext();
+        return ComposableAuraHelper.getExchangeRate(context);
     }
 
     function getStrategyVaultInfo() public view override returns (SingleSidedLPStrategyVaultInfo memory) {

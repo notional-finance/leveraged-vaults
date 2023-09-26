@@ -18,11 +18,14 @@ import {
     AuraStakingContext
 } from "../BalancerVaultTypes.sol";
 import {Errors} from "../../../global/Errors.sol";
+import {Constants} from "../../../global/Constants.sol";
+import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
 import {VaultStorage} from "../../common/VaultStorage.sol";
 import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.sol";
 import {BalancerComposablePoolUtils} from "../internal/pool/BalancerComposablePoolUtils.sol";
 import {ComposableAuraRewardUtils} from "../internal/reward/ComposableAuraRewardUtils.sol";
+import {ComposableOracleMath} from "../internal/math/ComposableOracleMath.sol";
 
 library ComposableAuraHelper {
     using BalancerComposablePoolUtils for BalancerComposablePoolContext;
@@ -30,6 +33,7 @@ library ComposableAuraHelper {
     using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
     using SettlementUtils for StrategyContext;
+    using TypeConvert for uint256;
 
     function deposit(
         BalancerComposableAuraStrategyContext memory context,
@@ -158,5 +162,45 @@ library ComposableAuraHelper {
         strategyContext.vaultState.setStrategyVaultState(); 
 
         emit VaultEvents.RewardReinvested(rewardToken, amountSold, poolClaimAmount); 
+    }
+
+    function convertStrategyToUnderlying(
+        BalancerComposableAuraStrategyContext memory context,
+        uint256 strategyTokenAmount
+    ) external view returns (int256 underlyingValue) {
+        underlyingValue = context.poolContext._convertStrategyToUnderlying({
+            strategyContext: context.baseStrategy,
+            oracleContext: context.oracleContext,
+            strategyTokenAmount: strategyTokenAmount
+        });
+    }
+
+    function getSpotPrice(
+        BalancerComposableAuraStrategyContext memory context,
+        uint8 tokenIndex
+    ) external view returns (uint256 spotPrice) {
+        spotPrice = ComposableOracleMath._getSpotPrice(
+            context.oracleContext, 
+            context.poolContext,
+            context.poolContext.basePool.primaryIndex,
+            tokenIndex
+        );
+    }
+
+    function getExchangeRate(BalancerComposableAuraStrategyContext calldata context) external view returns (int256) {
+        if (context.baseStrategy.vaultState.totalVaultSharesGlobal == 0) {
+            return context.poolContext._getTimeWeightedPrimaryBalance({
+                oracleContext: context.oracleContext,
+                strategyContext: context.baseStrategy,
+                bptAmount: context.baseStrategy.poolClaimPrecision, // 1 pool token
+                validateOnly: false
+            }).toInt();
+        } else {
+            return context.poolContext._convertStrategyToUnderlying({
+                strategyContext: context.baseStrategy,
+                oracleContext: context.oracleContext,
+                strategyTokenAmount: uint256(Constants.INTERNAL_TOKEN_PRECISION) // 1 vault share
+            });
+        }
     }
 }
