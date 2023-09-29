@@ -62,18 +62,13 @@ library Curve2TokenConvexHelper {
 
     function settleVaultEmergency(
         Curve2TokenConvexStrategyContext memory context, 
-        uint256 maturity, 
+        uint256 poolClaimToSettle,
         bytes calldata data
     ) external {
         RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
             data
         );
-
-        uint256 poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
-            maturity: maturity, 
-            totalPoolSupply: context.poolContext.basePool.poolToken.totalSupply()
-        });
 
         context.poolContext._unstakeAndExitPool({
             stakingContext: context.stakingContext,
@@ -84,7 +79,7 @@ library Curve2TokenConvexHelper {
         context.baseStrategy.vaultState.totalPoolClaim -= poolClaimToSettle;
         context.baseStrategy.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.EmergencyVaultSettlement(maturity, poolClaimToSettle, 0);  
+        emit VaultEvents.EmergencyVaultSettlement(poolClaimToSettle);  
     }
 
     function reinvestReward(

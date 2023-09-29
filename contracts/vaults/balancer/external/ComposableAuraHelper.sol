@@ -89,7 +89,7 @@ library ComposableAuraHelper {
 
     function settleVaultEmergency(
         BalancerComposableAuraStrategyContext memory context, 
-        uint256 maturity, 
+        uint256 poolClaimToSettle,
         bytes calldata data
     ) external {
         ComposableRedeemParams memory params = _decodeParamsAndValidate(
@@ -98,26 +98,21 @@ library ComposableAuraHelper {
         );
         bool isSingleSidedExit = params.redemptionTrades.length == 0;
         
-        uint256 bptToSettle = context.baseStrategy._getEmergencySettlementParams({
-            maturity: maturity, 
-            totalPoolSupply: context.oracleContext.virtualSupply
-        });
-
         /// @notice minAmounts are not required to be passed in by the caller for this strategy vault
         uint256[] memory minAmounts = context.poolContext._getMinExitAmounts({
             oracleContext: context.oracleContext,
             strategyContext: context.baseStrategy,
-            poolClaim: bptToSettle
+            poolClaim: poolClaimToSettle
         });
 
         context.poolContext._unstakeAndExitPool(
-            context.stakingContext, bptToSettle, minAmounts, isSingleSidedExit
+            context.stakingContext, poolClaimToSettle, minAmounts, isSingleSidedExit
         );
 
-        context.baseStrategy.vaultState.totalPoolClaim -= bptToSettle;
+        context.baseStrategy.vaultState.totalPoolClaim -= poolClaimToSettle;
         context.baseStrategy.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.EmergencyVaultSettlement(maturity, bptToSettle, 0);
+        emit VaultEvents.EmergencyVaultSettlement(poolClaimToSettle);
     }
 
     function reinvestReward(

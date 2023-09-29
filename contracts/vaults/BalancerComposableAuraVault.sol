@@ -76,10 +76,10 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         finalPrimaryBalance = _strategyContext().redeem(vaultShares, data);
     }
 
-    function settleVaultEmergency(uint256 maturity, bytes calldata data) 
+    function settleVaultEmergency(uint256 poolClaimToSettle, bytes calldata data) 
         external whenNotLocked onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
         ComposableAuraHelper.settleVaultEmergency(
-            _strategyContext(), maturity, data
+            _strategyContext(), poolClaimToSettle, data
         );
         _lockVault();
     }
@@ -142,13 +142,5 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     function getSpotPrice(uint8 tokenIndex) external view returns (uint256 spotPrice) {
         BalancerComposableAuraStrategyContext memory context = _strategyContext();
         spotPrice = ComposableAuraHelper.getSpotPrice(context, tokenIndex);
-    }
-
-    function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
-        BalancerComposableAuraStrategyContext memory context = _strategyContext();
-        poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
-            maturity: maturity, 
-            totalPoolSupply: context.oracleContext.virtualSupply
-        });
     }
 }

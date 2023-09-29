@@ -77,35 +77,7 @@ library SettlementUtils {
         VaultState memory vaultState = Deployments.NOTIONAL.getVaultState(address(this), maturity);
         return vaultState.totalVaultShares;
     }
-
-    function _getEmergencySettlementParams(
-        StrategyContext memory strategyContext,
-        uint256 maturity,
-        uint256 totalPoolSupply
-    )  internal view returns(uint256 poolClaimToSettle) {
-        StrategyVaultSettings memory settings = strategyContext.vaultSettings;
-        StrategyVaultState memory state = strategyContext.vaultState;
-
-        // Not in settlement window, check if pool claim held is greater than maxPoolShare * total pool supply
-        uint256 emergencyPooLClaimWithdrawThreshold = settings._poolClaimThreshold(totalPoolSupply);
-
-        if (strategyContext.vaultState.totalPoolClaim <= emergencyPooLClaimWithdrawThreshold)
-            revert Errors.InvalidEmergencySettlement();
-
-        uint256 poolClaimInMaturity = _getPoolClaimHeldInMaturity(
-            state,
-            _totalSupplyInMaturity(maturity),
-            strategyContext.vaultState.totalPoolClaim
-        );
-
-        poolClaimToSettle = _getEmergencySettlementPoolClaimAmount({
-            totalPoolSupply: totalPoolSupply,
-            maxPoolShare: settings.maxPoolShare,
-            totalPoolClaim: strategyContext.vaultState.totalPoolClaim,
-            poolClaimInMaturity: poolClaimInMaturity
-        });
-    }
-
+    
     function _getPoolClaimHeldInMaturity(
         StrategyVaultState memory strategyVaultState, 
         uint256 totalSupplyInMaturity,

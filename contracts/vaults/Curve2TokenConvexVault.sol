@@ -80,10 +80,10 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
     }   
 
-    function settleVaultEmergency(uint256 maturity, bytes calldata data) 
+    function settleVaultEmergency(uint256 poolClaimToSettle, bytes calldata data) 
         external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
         Curve2TokenConvexHelper.settleVaultEmergency(
-            _strategyContext(), maturity, data
+            _strategyContext(), poolClaimToSettle, data
         );
         _lockVault();
     }
@@ -103,14 +103,6 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         context.baseStrategy.vaultState.setStrategyVaultState(); 
 
         _unlockVault();
-    }
-
-    function getEmergencySettlementPoolClaimAmount(uint256 maturity) external view returns (uint256 poolClaimToSettle) {
-        Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        poolClaimToSettle = context.baseStrategy._getEmergencySettlementParams({
-            maturity: maturity, 
-            totalPoolSupply: context.poolContext.basePool.poolToken.totalSupply()
-        });
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) 
