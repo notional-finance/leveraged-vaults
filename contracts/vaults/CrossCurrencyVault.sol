@@ -57,7 +57,7 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
     uint8 public LEND_DECIMALS;
     uint8 public BORROW_DECIMALS;
     bool public LEND_ETH;
-    // NOTE: 2 bytes left in first storage slot here
+    // NOTE: 1 byte left in first storage slot here
 
     constructor(
         NotionalProxy notional_,
@@ -70,7 +70,7 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
     }
 
     function strategy() external override view returns (bytes4) {
-        return bytes4(keccak256("CrossCurrencyfCash"));
+        return bytes4(keccak256("CrossCurrencyVault"));
     }
 
     function initialize(
@@ -94,7 +94,6 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
     }
 
     function getWrappedFCashAddress(uint256 maturity) public view returns (IWrappedfCash) {
-        // NOTE: this will revert if the wrapper is not deployed...
         require(maturity < PRIME_CASH_VAULT_MATURITY);
         return IWrappedfCash(WRAPPED_FCASH_FACTORY.computeAddress(LEND_CURRENCY_ID, uint40(maturity)));
     }
@@ -245,8 +244,6 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
         uint256 balanceAfter = _lendUnderlyingBalance(isETH);
         primeVaultShares = _depositToPrimeCash(isETH, balanceAfter - balanceBefore);
     }
-
-    function _checkReentrancyContext() internal override {} 
 
     function _lendUnderlyingBalance(bool isETH) private view returns (uint256) {
         return isETH ? address(this).balance : LEND_UNDERLYING_TOKEN.balanceOf(address(this));
