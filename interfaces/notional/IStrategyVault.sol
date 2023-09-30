@@ -67,11 +67,10 @@ interface ISingleSidedLPStrategyVault {
     function getStrategyVaultInfo() external view returns (SingleSidedLPStrategyVaultInfo memory);
 }
 
-interface ICrossCurrencyfCashStrategyVault  {
-
+interface ICrossCurrencyVault {
     function convertVaultSharesToPrimeMaturity(
         address account,
         uint256 vaultShares,
         uint256 maturity
-    ) external returns (uint256 primeStrategyTokens);
+    ) external returns (uint256 primeVaultShares);
 }
