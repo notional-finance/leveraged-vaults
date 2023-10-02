@@ -174,3 +174,37 @@ contract CrossChainVault is BaseStrategyVault, ICrossCurrencyVault {
     // ONLY_VAULT_SETTLE
     // ONLY_VAULT_DELEVERAGE
 }
+
+contract CrossChainVaultReceiver {
+    function receiveAndLend(
+        uint16 currencyId,
+        uint256 maturity
+        uint256 depositAmount
+        uint256 minShares,
+        bytes calldata returnFundsTx
+    ) onlySocket { 
+        // transfer from socket
+        // previewDeposit
+        if (shares < minShares) {
+            // execute return funds tx
+        }
+
+        try {
+            // execute deposit on wrapped fCash
+        } catch {
+            // execute return funds tx
+        }
+
+        // assign shares to chain id...
+    }
+
+    function redeemPostMaturity(
+        uint16 currencyId,
+        uint256 maturity
+        uint256 chainId
+    ) onlyManager {
+        require(wfCash.hasMatured());
+        uint256 assets = wfCash.redeem(wfCash.balanceOf(address(this)), address(this), address(this));
+        // execute return funds tx
+    }
+}
