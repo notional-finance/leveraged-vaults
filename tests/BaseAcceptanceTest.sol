@@ -43,6 +43,7 @@ abstract contract BaseAcceptanceTest is Test {
     uint256[] maturities;
     IERC20 primaryBorrowToken;
     uint256 precision;
+    uint256 roundingPrecision;
     bool isETH;
     mapping(uint256 => uint256) totalVaultShares;
 
@@ -62,7 +63,9 @@ abstract contract BaseAcceptanceTest is Test {
         (/* */, Token memory underlyingToken) = NOTIONAL.getCurrency(config.borrowCurrencyId);
         primaryBorrowToken = IERC20(underlyingToken.tokenAddress);
         isETH = underlyingToken.tokenType == TokenType.Ether;
+        uint16 decimals = isETH ? 18 : primaryBorrowToken.decimals();
         precision = uint256(underlyingToken.decimals);
+        roundingPrecision = decimals > 8 ? 10 ** (decimals - 8) : 10 ** (8 - decimals);
     }
 
     function assertAbsDiff(uint256 a, uint256 b, uint256 diff, string memory m) internal {
@@ -78,6 +81,9 @@ abstract contract BaseAcceptanceTest is Test {
 
     function deployVault() internal virtual returns (IStrategyVault);
     function getVaultConfig() internal pure virtual returns (VaultConfigParams memory);
+    function getPrimaryVaultToken(uint256 /* maturity */) internal virtual returns (address) {
+        return address(0);
+    }
 
     // NOTE: no need to override this unless there is some specific test.
     function getMaxPrimaryBorrow() internal pure virtual returns (uint80) { return type(uint80).max; }
@@ -226,29 +232,47 @@ abstract contract BaseAcceptanceTest is Test {
         vault.convertVaultSharesToPrimeMaturity(account, 0.01e18, maturities[0]);
     }
 
+    function test_DonationToVault_NoAffectValuation(uint256 maturityIndex) public {
+        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
+        uint256 maturity = maturities[maturityIndex];
+
+        address vaultToken = getPrimaryVaultToken(maturity);
+        if (vaultToken == address(0)) return;
+
+        uint256 depositAmount = 0.1e18;
+        address account = makeAddr("account");
+
+        uint256 vaultShares = enterVaultBypass(
+            account,
+            depositAmount,
+            maturity,
+            getDepositParams(depositAmount, maturity)
+        );
+
+        int256 valuationBefore = vault.convertStrategyToUnderlying(
+            account, vaultShares, maturity
+        );
+
+        deal(vaultToken, address(vault), 100 * 10 ** IERC20(vaultToken).decimals(), true);
+
+        int256 valuationAfter = vault.convertStrategyToUnderlying(
+            account, vaultShares, maturity
+        );
+
+        assertAbsDiff(
+            uint256(valuationBefore),
+            uint256(valuationAfter),
+            roundingPrecision,
+            "Valuation Change"
+        );
+    }
+
+
     // function test_RollVault() public virtual {}
+    // TODO: these need to be made generic
     // function test_EmergencyExit() public virtual {}
     // function test_RevertIf_EnterWhenLocked() public virtual {}
     // function test_RevertIf_ExitWhenLocked() public virtual {}
 
-    // function test_DonationToVault_NoAffectValuation(
-    //     uint256 depositAmount,
-    //     uint256 maturity
-    // ) public virtual {
-    //     address acct = makeAddr("account");
-    //     enterVault(acct, depositAmount, maturity);
-    //     uint256 valuationBefore = vault.convertStrategyToUnderlying(
-    //         acct, vaultShares, maturity
-    //     );
-
-    //     deal(primaryVaultToken, vault, donationAmount, true);
-    //     uint256 valuationAfter = vault.convertStrategyToUnderlying(
-    //         acct, vaultShares, maturity
-    //     );
-
-    //     assertEq(valuationBefore, valuationAfter);
-
-    //     checkInvariants();
-    // }
 
 }

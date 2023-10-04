@@ -126,6 +126,15 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
         }
     }
 
+    function getPrimaryVaultToken(uint256 maturity) internal override returns (address) {
+        if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {
+            // NOTE: donations do not work with pCash
+            return address(0);
+        } else {
+            return address(WRAPPED_FCASH_FACTORY.deployWrapper(lendCurrencyId, uint40(maturity)));
+        }
+    }
+
     // function test_RevertIf_depositPrimeAboveSupplyCap()
     // function test_RevertIf_lendFCashFails()
     // function test_RevertIf_redeemFCashFails()
