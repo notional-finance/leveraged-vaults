@@ -122,7 +122,6 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
         uint256 /* depositAmount */
     ) internal override {
         if (maturity != Constants.PRIME_CASH_VAULT_MATURITY) {
-            console.log("Maturity %s", maturity);
             WRAPPED_FCASH_FACTORY.deployWrapper(lendCurrencyId, uint40(maturity));
         }
     }

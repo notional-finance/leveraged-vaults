@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import {Token, TokenType} from "../global/Types.sol";
 import {Deployments} from "../global/Deployments.sol";
+import {Constants} from "../global/Constants.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -150,6 +151,14 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         bytes calldata data
     ) internal virtual returns (uint256 tokensFromRedeem);
 
+    function _convertVaultSharesToPrimeMaturity(
+        address /* account */,
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal virtual returns (uint256 /* primeVaultShares */) {
+        revert();
+    }
+
     function _checkReentrancyContext() internal virtual;
 
     /**************************************************************************/
@@ -195,6 +204,15 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
             if (transferToReceiver > 0) _UNDERLYING_TOKEN.checkTransfer(receiver, transferToReceiver);
             if (transferToNotional > 0) _UNDERLYING_TOKEN.checkTransfer(address(NOTIONAL), transferToNotional);
         }
+    }
+
+    function convertVaultSharesToPrimeMaturity(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity
+    ) external onlyNotional returns (uint256 primeVaultShares) { 
+        require(maturity != Constants.PRIME_CASH_VAULT_MATURITY);
+        return _convertVaultSharesToPrimeMaturity(account, vaultShares, maturity);
     }
 
     function deleverageAccount(

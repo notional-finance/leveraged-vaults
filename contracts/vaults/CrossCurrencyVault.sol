@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IWrappedfCashFactory} from "../../interfaces/notional/IWrappedfCashFactory.sol";
 import {IWrappedfCashComplete as IWrappedfCash} from "../../interfaces/notional/IWrappedfCash.sol";
-import {ICrossCurrencyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
@@ -19,7 +18,7 @@ import {ITradingModule, DexId, TradeType, Trade} from "../../interfaces/trading/
  * and lends on Notional in that currency. It will be paired with another vault
  * that lends and borrows in the opposite direction.
  */
-contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
+contract CrossCurrencyVault is BaseStrategyVault {
     using TypeConvert for uint256;
 
     struct DepositParams {
@@ -230,12 +229,11 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
         (/* */, borrowedCurrencyAmount) = _executeTrade(params.dexId, trade);
     }
 
-    function convertVaultSharesToPrimeMaturity(
+    function _convertVaultSharesToPrimeMaturity(
         address /* account */,
         uint256 vaultShares,
         uint256 maturity
-    ) external override returns (uint256 primeVaultShares) { 
-        require(maturity != Constants.PRIME_CASH_VAULT_MATURITY);
+    ) internal override returns (uint256 primeVaultShares) { 
         bool isETH = LEND_ETH;
         uint256 balanceBefore = _lendUnderlyingBalance(isETH);
         _redeemfCash(isETH, maturity, vaultShares);

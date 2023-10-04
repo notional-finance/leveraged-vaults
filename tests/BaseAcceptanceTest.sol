@@ -99,6 +99,7 @@ abstract contract BaseAcceptanceTest is Test {
         } else {
             deal(address(primaryBorrowToken), address(vault), depositAmount, true);
         }
+        hook_beforeEnterVault(account, maturity, depositAmount);
 
         vm.prank(address(NOTIONAL));
         vaultShares = vault.depositFromNotional(account, depositAmount, maturity, data);
@@ -124,8 +125,6 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 maturity = maturities[maturityIndex];
 
         uint256 depositAmount = 0.1e18;
-        hook_beforeEnterVault(account, maturity, depositAmount);
-
         uint256 vaultShares = enterVaultBypass(
             account,
             depositAmount,
@@ -149,10 +148,8 @@ abstract contract BaseAcceptanceTest is Test {
     function test_ExitVault(address account, uint256 maturityIndex) public {
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
-        console.log("INDEX %s %s", maturityIndex, maturity);
-
         uint256 depositAmount = 0.1e18;
-        hook_beforeEnterVault(account, maturity, depositAmount);
+
         uint256 vaultShares = enterVaultBypass(
             account,
             depositAmount,
@@ -183,11 +180,40 @@ abstract contract BaseAcceptanceTest is Test {
         checkInvariants();
     }
 
-    // function test_RollVault() public virtual {}
-    // function test_MatureVault_Enter() public virtual {}
-    // function test_MatureVault_Exit() public virtual {}
-    // function test_MatureVault_Roll() public virtual {}
+    function test_SettleVault() public {
+        if (config.flags & VAULT_MUST_SETTLE != VAULT_MUST_SETTLE) return;
+        address account = makeAddr("user");
 
+        // Can only use the 3 mo maturity to test this
+        uint256 maturity = maturities[1];
+
+        uint256 depositAmount = 0.1e18;
+        uint256 vaultShares = enterVaultBypass(
+            account,
+            depositAmount,
+            maturity,
+            getDepositParams(depositAmount, maturity)
+        );
+
+        vm.roll(5);
+        vm.warp(maturity);
+        NOTIONAL.initializeMarkets(WSTETH, false);
+
+        vm.prank(address(NOTIONAL));
+        uint256 primeVaultShares = vault.convertVaultSharesToPrimeMaturity(
+            account,
+            vaultShares * 90 / 100,
+            maturity
+        );
+
+        totalVaultShares[maturity] -= vaultShares * 90 / 100;
+        totalVaultShares[Constants.PRIME_CASH_VAULT_MATURITY] += primeVaultShares;
+
+        checkInvariants();
+    }
+
+    // function test_RollVault() public virtual {}
+    // function test_VaultAuthentication() public virtual {}
     // function test_EmergencyExit() public virtual {}
     // function test_RevertIf_EnterWhenLocked() public virtual {}
     // function test_RevertIf_ExitWhenLocked() public virtual {}

@@ -48,6 +48,12 @@ interface IStrategyVault {
         uint16 currencyIndex,
         int256 depositUnderlyingInternal
     ) external payable returns (uint256 vaultSharesFromLiquidation, int256 depositAmountPrimeCash);
+
+    function convertVaultSharesToPrimeMaturity(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity
+    ) external returns (uint256 primeVaultShares);
 }
 
 interface ISingleSidedLPStrategyVault {
@@ -59,12 +65,4 @@ interface ISingleSidedLPStrategyVault {
     }
 
     function getStrategyVaultInfo() external view returns (SingleSidedLPStrategyVaultInfo memory);
-}
-
-interface ICrossCurrencyVault {
-    function convertVaultSharesToPrimeMaturity(
-        address account,
-        uint256 vaultShares,
-        uint256 maturity
-    ) external returns (uint256 primeVaultShares);
 }
