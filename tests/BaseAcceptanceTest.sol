@@ -212,8 +212,21 @@ abstract contract BaseAcceptanceTest is Test {
         checkInvariants();
     }
 
+    function test_VaultAuthentication() public {
+        address account = makeAddr("account");
+        vm.startPrank(makeAddr("random"));
+
+        vm.expectRevert("Unauthorized");
+        vault.depositFromNotional(account, 0.01e18, maturities[0], "");
+
+        vm.expectRevert("Unauthorized");
+        vault.redeemFromNotional(account, account, 0.01e18, maturities[0], 0, "");
+
+        vm.expectRevert("Unauthorized");
+        vault.convertVaultSharesToPrimeMaturity(account, 0.01e18, maturities[0]);
+    }
+
     // function test_RollVault() public virtual {}
-    // function test_VaultAuthentication() public virtual {}
     // function test_EmergencyExit() public virtual {}
     // function test_RevertIf_EnterWhenLocked() public virtual {}
     // function test_RevertIf_ExitWhenLocked() public virtual {}

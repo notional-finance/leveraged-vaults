@@ -45,12 +45,12 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     /* Global Modifiers, Constructor and Initializer                          */
     /**************************************************************************/
     modifier onlyNotional() {
-        require(msg.sender == address(NOTIONAL));
+        require(msg.sender == address(NOTIONAL), "Unauthorized");
         _;
     }
 
     modifier onlyNotionalOwner() {
-        require(msg.sender == address(NOTIONAL.owner()));
+        require(msg.sender == address(NOTIONAL.owner()), "Unauthorized");
         _;
     }
     
