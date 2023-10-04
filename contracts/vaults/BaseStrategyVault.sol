@@ -152,13 +152,6 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
 
     function _checkReentrancyContext() internal virtual;
 
-    // This can be overridden if the vault borrows in a secondary currency, but reverts by default.
-    function _repaySecondaryBorrowCallback(
-        address token,  uint256 underlyingRequired, bytes calldata data
-    ) internal virtual returns (bytes memory returnData) {
-        revert();
-    }
-
     /**************************************************************************/
     /* Default External Method Implementations                                */
     /**************************************************************************/
@@ -204,12 +197,6 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         }
     }
 
-    function repaySecondaryBorrowCallback(
-        address token, uint256 underlyingRequired, bytes calldata data
-    ) external onlyNotional returns (bytes memory returnData) {
-        return _repaySecondaryBorrowCallback(token, underlyingRequired, data);
-    }
-
     function deleverageAccount(
         address account,
         address vault,
@@ -224,7 +211,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         );
     }
 
-    function getRoles() external view returns (StrategyVaultRoles memory) {
+    function getRoles() external pure returns (StrategyVaultRoles memory) {
         return StrategyVaultRoles({
             normalSettlement: NORMAL_SETTLEMENT_ROLE,
             emergencySettlement: EMERGENCY_SETTLEMENT_ROLE,

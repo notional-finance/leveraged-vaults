@@ -21,7 +21,6 @@ import {ITradingModule, DexId, TradeType, Trade} from "../../interfaces/trading/
  */
 contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
     using TypeConvert for uint256;
-    uint256 internal constant PRIME_CASH_VAULT_MATURITY = type(uint40).max;
 
     struct DepositParams {
         // Minimum purchase amount of the lend underlying token, this is
@@ -69,7 +68,7 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
         WETH = weth;
     }
 
-    function strategy() external override view returns (bytes4) {
+    function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("CrossCurrencyVault"));
     }
 
@@ -94,7 +93,7 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
     }
 
     function getWrappedFCashAddress(uint256 maturity) public view returns (IWrappedfCash) {
-        require(maturity < PRIME_CASH_VAULT_MATURITY);
+        require(maturity < Constants.PRIME_CASH_VAULT_MATURITY);
         return IWrappedfCash(WRAPPED_FCASH_FACTORY.computeAddress(LEND_CURRENCY_ID, uint40(maturity)));
     }
 
@@ -111,7 +110,7 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
         uint256 maturity
     ) public override view returns (int256 underlyingValue) {
         int256 pvExternalUnderlying;
-        if (maturity == PRIME_CASH_VAULT_MATURITY) {
+        if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {
             pvExternalUnderlying = NOTIONAL.convertCashBalanceToExternal(
                 LEND_CURRENCY_ID,
                 vaultShares.toInt(),
@@ -167,7 +166,7 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
         (/* */, uint256 lendUnderlyingTokens) = _executeTrade(params.dexId, trade);
         bool isETH = LEND_ETH;
         
-        if (maturity == PRIME_CASH_VAULT_MATURITY) {
+        if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {
             // Lend variable
             vaultShares = _depositToPrimeCash(isETH, lendUnderlyingTokens);
         } else {
@@ -189,14 +188,13 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
     /**
      * @notice Withdraws lent fCash from Notional (by selling it prior to maturity or withdrawing post maturity),
      * and trades it all back to the borrowed currency.
-     * @param account the account that is doing the redemption
      * @param vaultShares the amount of fCash to redeem
      * @param maturity the maturity of the fCash
      * @param data RedeemParams
      * @return borrowedCurrencyAmount the amount of borrowed currency raised by the redemption
      */
     function _redeemFromNotional(
-        address account,
+        address /* account */,
         uint256 vaultShares,
         uint256 maturity,
         bytes calldata data
@@ -206,7 +204,7 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
         bool isETH = LEND_ETH;
         uint256 balanceBefore = _lendUnderlyingBalance(isETH);
 
-        if (maturity == PRIME_CASH_VAULT_MATURITY) {
+        if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {
             // It should never be possible that this contract has a negative cash balance
             require(vaultShares <= type(uint88).max);
 
@@ -233,11 +231,11 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
     }
 
     function convertVaultSharesToPrimeMaturity(
-        address account,
+        address /* account */,
         uint256 vaultShares,
         uint256 maturity
     ) external override returns (uint256 primeVaultShares) { 
-        require(maturity != PRIME_CASH_VAULT_MATURITY);
+        require(maturity != Constants.PRIME_CASH_VAULT_MATURITY);
         bool isETH = LEND_ETH;
         uint256 balanceBefore = _lendUnderlyingBalance(isETH);
         _redeemfCash(isETH, maturity, vaultShares);
@@ -265,4 +263,6 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
             lendUnderlyingTokens
         );
     }
+
+    function _checkReentrancyContext() internal override {}
 }

@@ -41,12 +41,6 @@ interface IStrategyVault {
 
     function getExchangeRate(uint256 maturity) external view returns (int256);
 
-    function repaySecondaryBorrowCallback(
-        address token,
-        uint256 underlyingRequired,
-        bytes calldata data
-    ) external returns (bytes memory returnData);
-
     function deleverageAccount(
         address account,
         address vault,
