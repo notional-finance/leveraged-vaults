@@ -7,6 +7,7 @@ import "../contracts/proxy/nUpgradeableBeacon.sol";
 import "../contracts/proxy/nBeaconProxy.sol";
 import "../contracts/trading/TradingModule.sol";
 import "../interfaces/notional/IWrappedfCashFactory.sol";
+import "../interfaces/trading/ITradingModule.sol";
 
 contract TestCrossCurrencyVault is BaseAcceptanceTest {
     IWrappedfCashFactory constant WRAPPED_FCASH_FACTORY = IWrappedfCashFactory(0x5D051DeB5db151C2172dCdCCD42e6A2953E27261);
@@ -16,6 +17,17 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
         bytes memory callData = abi.encodeWithSelector(CrossCurrencyVault.initialize.selector, "Vault", ETH, WSTETH);
         nUpgradeableBeacon beacon = new nUpgradeableBeacon(address(impl));
         nBeaconProxy proxy = new nBeaconProxy(address(beacon), callData);
+
+        vm.prank(0xE6FB62c2218fd9e3c948f0549A2959B509a293C8);
+        TRADING_MODULE.setTokenPermissions(
+            address(proxy),
+            address(0),
+            ITradingModule.TokenPermissions({
+                allowSell: true,
+                dexFlags: uint32(1 << uint32(DexId.CURVE_V2)),
+                tradeTypeFlags: uint32(1 << uint32(TradeType.EXACT_IN_SINGLE)) | uint32(1 << uint32(TradeType.EXACT_OUT_SINGLE))
+            })
+        );
 
         return IStrategyVault(address(proxy));
     }
@@ -53,6 +65,8 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
 
     function test_EnterVault() public {
         address acct = makeAddr("user");
+        WRAPPED_FCASH_FACTORY.deployWrapper(WSTETH, uint40(maturities[1]));
+
         uint256 vaultShares = enterVaultBypass(acct, 0.01e18, maturities[1]);
         console.log("Vault Shares %s", vaultShares);
 

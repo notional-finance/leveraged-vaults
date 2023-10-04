@@ -76,7 +76,11 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 depositAmount,
         uint256 maturity
     ) internal virtual returns (uint256 vaultShares) {
-        deal(address(primaryBorrowToken), address(vault), depositAmount, true);
+        if (isETH) {
+            deal(address(vault), depositAmount);
+        } else {
+            deal(address(primaryBorrowToken), address(vault), depositAmount, true);
+        }
         vm.prank(address(NOTIONAL));
         return vault.depositFromNotional(
             account,
