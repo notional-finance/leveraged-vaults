@@ -63,19 +63,49 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
         return abi.encode(d);
     }
 
+    function checkInvariants() internal override {
+        uint16 lendCurrencyId = CrossCurrencyVault(payable(address(vault))).LEND_CURRENCY_ID();
+        IERC20 pCash = IERC20(NOTIONAL.pCashAddress(lendCurrencyId));
+
+        assertEq(
+            totalVaultShares[maturities[0]],
+            pCash.balanceOf(address(vault)),
+            "Prime Cash Balance"
+        );
+
+        for (uint256 i = 1; i < maturities.length; i++) {
+            IERC20 w = IERC20(
+                address(WRAPPED_FCASH_FACTORY.deployWrapper(lendCurrencyId, uint40(maturities[i])))
+            );
+            assertEq(
+                totalVaultShares[maturities[i]],
+                w.balanceOf(address(vault)),
+                "fCash Balance"
+            );
+        }
+    }
+
     function test_EnterVault() public {
         address acct = makeAddr("user");
         WRAPPED_FCASH_FACTORY.deployWrapper(WSTETH, uint40(maturities[1]));
 
-        uint256 vaultShares = enterVaultBypass(acct, 0.01e18, maturities[1]);
-        console.log("Vault Shares %s", vaultShares);
+        uint256 depositAmount = 0.1e18;
+        uint256 vaultShares = enterVaultBypass(acct, depositAmount, maturities[1]);
+        int256 valuationAfter = vault.convertStrategyToUnderlying(
+            acct, vaultShares, maturities[1]
+        );
 
-        assertEq(true, true);
+        assertRelDiff(
+            uint256(valuationAfter),
+            depositAmount,
+            10 * BASIS_POINT,
+            "Valuation and Deposit"
+        );
+
+        checkInvariants();
     }
 
-    function test_RevertIf_depositPrimeAboveSupplyCap() public {
-        assertEq(true, true);
-    }
+    // function test_RevertIf_depositPrimeAboveSupplyCap()
     // function test_RevertIf_lendFCashFails()
     // function test_RevertIf_redeemFCashFails()
     // function test_RevertIf_tradeFails()

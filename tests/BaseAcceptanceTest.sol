@@ -14,6 +14,7 @@ abstract contract BaseAcceptanceTest is Test {
     WETH9 constant WETH = WETH9(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     NotionalProxy constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
     ITradingModule constant TRADING_MODULE = ITradingModule(0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8);
+    uint256 constant BASIS_POINT = 1e5;
 
     uint16 internal constant ENABLED                         = 1 << 0;
     uint16 internal constant ALLOW_ROLL_POSITION             = 1 << 1;
@@ -41,7 +42,9 @@ abstract contract BaseAcceptanceTest is Test {
     VaultConfigParams config;
     uint256[] maturities;
     IERC20 primaryBorrowToken;
+    uint256 precision;
     bool isETH;
+    mapping(uint256 => uint256) totalVaultShares;
 
     function setUp() public virtual {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
@@ -59,6 +62,18 @@ abstract contract BaseAcceptanceTest is Test {
         (/* */, Token memory underlyingToken) = NOTIONAL.getCurrency(config.borrowCurrencyId);
         primaryBorrowToken = IERC20(underlyingToken.tokenAddress);
         isETH = underlyingToken.tokenType == TokenType.Ether;
+        precision = uint256(underlyingToken.decimals);
+    }
+
+    function assertAbsDiff(uint256 a, uint256 b, uint256 diff, string memory m) internal {
+        uint256 d = a > b ? a - b : b - a;
+        assertLe(d, diff, m);
+    }
+
+    function assertRelDiff(uint256 a, uint256 b, uint256 rel, string memory m) internal {
+        uint256 d = a > b ? a - b : b - a;
+        uint256 r = d * 1e9 / precision;
+        assertLe(r, rel, m);
     }
 
     function deployVault() internal virtual returns (IStrategyVault);
@@ -69,7 +84,7 @@ abstract contract BaseAcceptanceTest is Test {
 
     function getDepositParams(uint256 depositAmount, uint256 maturity) internal view virtual returns (bytes memory);
     // function getRedeemParams() internal virtual returns (bytes memory);
-    // function checkInvariants() internal virtual;
+    function checkInvariants() internal virtual;
 
     function enterVaultBypass(
         address account,
@@ -81,13 +96,16 @@ abstract contract BaseAcceptanceTest is Test {
         } else {
             deal(address(primaryBorrowToken), address(vault), depositAmount, true);
         }
+
         vm.prank(address(NOTIONAL));
-        return vault.depositFromNotional(
+        vaultShares = vault.depositFromNotional(
             account,
             depositAmount,
             maturity,
             getDepositParams(depositAmount, maturity)
         );
+
+        totalVaultShares[maturity] += vaultShares;
     }
 
     // function test_DonationToVault_NoAffectValuation(
