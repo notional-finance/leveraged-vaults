@@ -174,7 +174,7 @@ contract CrossCurrencyVault is BaseStrategyVault, ICrossCurrencyVault {
             IWrappedfCash wfCash = getWrappedFCashAddress(maturity);
             if (isETH) {
                 WETH.deposit{value: lendUnderlyingTokens}();
-                WETH.approve(address(wfCash), lendUnderlyingTokens);
+                IERC20(address(WETH)).approve(address(wfCash), lendUnderlyingTokens);
             } else {
                 LEND_UNDERLYING_TOKEN.approve(address(wfCash), lendUnderlyingTokens);
             }
