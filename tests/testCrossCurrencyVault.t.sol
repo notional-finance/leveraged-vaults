@@ -12,6 +12,21 @@ import "../interfaces/trading/ITradingModule.sol";
 contract TestCrossCurrencyVault is BaseAcceptanceTest {
     IWrappedfCashFactory constant WRAPPED_FCASH_FACTORY = IWrappedfCashFactory(0x5D051DeB5db151C2172dCdCCD42e6A2953E27261);
     uint16 lendCurrencyId;
+    uint16 primaryBorrowCurrency;
+    uint16 primaryDexId;
+    bytes exchangeData;
+
+    function setUp() public override {
+        primaryBorrowCurrency = ETH;
+        primaryDexId = uint16(DexId.CURVE_V2);
+
+        CurveV2Adapter.CurveV2SingleData memory c;
+        // wsteth/ETH pool
+        c.pool = 0x6eB2dc694eB516B16Dc9FBc678C60052BbdD7d80;
+        exchangeData = abi.encode(c);
+
+        super.setUp();
+    }
 
     function deployVault() internal override returns (IStrategyVault) {
         IStrategyVault impl = new CrossCurrencyVault(NOTIONAL, TRADING_MODULE, WRAPPED_FCASH_FACTORY, WETH);
@@ -23,34 +38,32 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
         nUpgradeableBeacon beacon = new nUpgradeableBeacon(address(impl));
         nBeaconProxy proxy = new nBeaconProxy(address(beacon), callData);
 
-        vm.startPrank(0xE6FB62c2218fd9e3c948f0549A2959B509a293C8);
-        TRADING_MODULE.setTokenPermissions(
+        setTokenPermissions(
             address(proxy),
             address(0),
             ITradingModule.TokenPermissions({
                 allowSell: true,
-                dexFlags: uint32(1 << uint32(DexId.CURVE_V2)),
+                dexFlags: uint32(1 << uint32(primaryDexId)),
                 tradeTypeFlags: uint32(1 << uint32(TradeType.EXACT_IN_SINGLE))
             })
         );
 
-        TRADING_MODULE.setTokenPermissions(
+        setTokenPermissions(
             address(proxy),
             address(CrossCurrencyVault(payable(address(proxy))).LEND_UNDERLYING_TOKEN()),
             ITradingModule.TokenPermissions({
                 allowSell: true,
-                dexFlags: uint32(1 << uint32(DexId.CURVE_V2)),
+                dexFlags: uint32(1 << uint32(primaryDexId)),
                 tradeTypeFlags: uint32(1 << uint32(TradeType.EXACT_IN_SINGLE))
             })
         );
-        vm.stopPrank();
 
         return IStrategyVault(address(proxy));
     }
 
-    function getVaultConfig() internal pure override returns (VaultConfigParams memory p) {
+    function getVaultConfig() internal view override returns (VaultConfigParams memory p) {
         p.flags = ENABLED | ALLOW_REENTRANCY | ENABLE_FCASH_DISCOUNT | VAULT_MUST_SETTLE;
-        p.borrowCurrencyId = ETH;
+        p.borrowCurrencyId = primaryBorrowCurrency;
         p.minAccountBorrowSize = 0.01e8;
         p.minCollateralRatioBPS = 5000;
         p.feeRate5BPS = 5;
@@ -65,16 +78,12 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
     function getDepositParams(
         uint256 /* depositAmount */,
         uint256 /* maturity */
-    ) internal pure override returns (bytes memory) {
+    ) internal view override returns (bytes memory) {
         CrossCurrencyVault.DepositParams memory d;
         d.minPurchaseAmount = 0;
         d.minVaultShares = 0;
-        d.dexId = uint16(DexId.CURVE_V2);
-
-        CurveV2Adapter.CurveV2SingleData memory c;
-        // wsteth/ETH pool
-        c.pool = 0x6eB2dc694eB516B16Dc9FBc678C60052BbdD7d80;
-        d.exchangeData = abi.encode(c);
+        d.dexId = primaryDexId;
+        d.exchangeData = exchangeData;
 
         return abi.encode(d);
     }
@@ -82,15 +91,11 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
     function getRedeemParams(
         uint256 /* vaultShares */,
         uint256 /* maturity */
-    ) internal pure override returns (bytes memory) {
+    ) internal view override returns (bytes memory) {
         CrossCurrencyVault.RedeemParams memory d;
         d.minPurchaseAmount = 0;
-        d.dexId = uint16(DexId.CURVE_V2);
-
-        CurveV2Adapter.CurveV2SingleData memory c;
-        // wsteth/ETH pool
-        c.pool = 0x6eB2dc694eB516B16Dc9FBc678C60052BbdD7d80;
-        d.exchangeData = abi.encode(c);
+        d.dexId = primaryDexId;
+        d.exchangeData = exchangeData;
 
         return abi.encode(d);
     }
@@ -135,8 +140,7 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
         }
     }
 
-    // function test_RevertIf_depositPrimeAboveSupplyCap()
     // function test_RevertIf_lendFCashFails()
     // function test_RevertIf_redeemFCashFails()
-    // function test_RevertIf_tradeFails()
+    // function test_RevertIf_depositPrimeAboveSupplyCap()
 }

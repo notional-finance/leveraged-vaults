@@ -79,8 +79,18 @@ abstract contract BaseAcceptanceTest is Test {
         assertLe(r, rel, m);
     }
 
+    function setTokenPermissions(
+        address vault_,
+        address token,
+        ITradingModule.TokenPermissions memory permissions
+    ) internal {
+        // NOTE: this address needs to get reverted back to NOTIONAL.owner()
+        vm.prank(0xE6FB62c2218fd9e3c948f0549A2959B509a293C8);
+        TRADING_MODULE.setTokenPermissions(vault_, token, permissions);
+    }
+
     function deployVault() internal virtual returns (IStrategyVault);
-    function getVaultConfig() internal pure virtual returns (VaultConfigParams memory);
+    function getVaultConfig() internal view virtual returns (VaultConfigParams memory);
     function getPrimaryVaultToken(uint256 /* maturity */) internal virtual returns (address) {
         return address(0);
     }
@@ -91,7 +101,7 @@ abstract contract BaseAcceptanceTest is Test {
     function hook_beforeExitVault(address account, uint256 maturity, uint256 depositAmount) internal virtual {}
 
     function getDepositParams(uint256 depositAmount, uint256 maturity) internal view virtual returns (bytes memory);
-    function getRedeemParams(uint256 vaultShares, uint256 maturity) internal virtual returns (bytes memory);
+    function getRedeemParams(uint256 vaultShares, uint256 maturity) internal view virtual returns (bytes memory);
     function checkInvariants() internal virtual;
 
     function enterVaultBypass(
