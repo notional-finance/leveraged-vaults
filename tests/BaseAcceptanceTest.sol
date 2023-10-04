@@ -29,6 +29,11 @@ abstract contract BaseAcceptanceTest is Test {
     uint16 constant ETH = 1;
     uint16 constant DAI = 2;
     uint16 constant USDC = 3;
+    uint16 constant WBTC = 4;
+    uint16 constant WSTETH = 5;
+    uint16 constant FRAX = 6;
+    uint16 constant RETH = 7;
+    uint16 constant USDT = 8;
 
     string RPC_URL = vm.envString("RPC_URL");
     uint256 FORK_BLOCK = 137439907;
@@ -62,19 +67,24 @@ abstract contract BaseAcceptanceTest is Test {
     // NOTE: no need to override this unless there is some specific test.
     function getMaxPrimaryBorrow() internal pure virtual returns (uint80) { return type(uint80).max; }
 
-    // function getDepositParams() internal virtual returns (bytes memory);
+    function getDepositParams(uint256 depositAmount, uint256 maturity) internal view virtual returns (bytes memory);
     // function getRedeemParams() internal virtual returns (bytes memory);
     // function checkInvariants() internal virtual;
 
-    // function enterVault(
-    //     address account
-    //     uint256 depositAmount,
-    //     uint256 maturity
-    // ) internal virtual returns (uint256 vaultShares) {
-    //     vm.prank(NOTIONAL);
-    //     deal(primaryBorrowToken, vault, depositAmount, true);
-    //     return vault.depositFromNotional(account, depositAmount, maturity, getDepositParams());
-    // }
+    function enterVaultBypass(
+        address account,
+        uint256 depositAmount,
+        uint256 maturity
+    ) internal virtual returns (uint256 vaultShares) {
+        deal(address(primaryBorrowToken), address(vault), depositAmount, true);
+        vm.prank(address(NOTIONAL));
+        return vault.depositFromNotional(
+            account,
+            depositAmount,
+            maturity,
+            getDepositParams(depositAmount, maturity)
+        );
+    }
 
     // function test_DonationToVault_NoAffectValuation(
     //     uint256 depositAmount,
