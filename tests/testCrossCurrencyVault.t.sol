@@ -116,59 +116,15 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
         }
     }
 
-    function test_EnterVault(uint256 maturityIndex) public {
-        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
-        uint256 maturity = maturities[maturityIndex];
-        address acct = makeAddr("user");
-
+    function hook_beforeEnterVault(
+        address /* account */,
+        uint256 maturity,
+        uint256 /* depositAmount */
+    ) internal override {
         if (maturity != Constants.PRIME_CASH_VAULT_MATURITY) {
+            console.log("Maturity %s", maturity);
             WRAPPED_FCASH_FACTORY.deployWrapper(lendCurrencyId, uint40(maturity));
         }
-
-        uint256 depositAmount = 0.1e18;
-        uint256 vaultShares = enterVaultBypass(acct, depositAmount, maturity);
-        int256 valuationAfter = vault.convertStrategyToUnderlying(
-            acct, vaultShares, maturity
-        );
-
-        assertRelDiff(
-            uint256(valuationAfter),
-            depositAmount,
-            10 * BASIS_POINT,
-            "Valuation and Deposit"
-        );
-
-        checkInvariants();
-    }
-
-    function test_ExitVault(uint256 maturityIndex) public {
-        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
-        uint256 maturity = maturities[maturityIndex];
-        address acct = makeAddr("user");
-
-        if (maturity != Constants.PRIME_CASH_VAULT_MATURITY) {
-            WRAPPED_FCASH_FACTORY.deployWrapper(lendCurrencyId, uint40(maturity));
-        }
-
-        uint256 depositAmount = 0.1e18;
-        uint256 vaultShares = enterVaultBypass(acct, depositAmount, maturity);
-
-        vm.roll(5);
-        vm.warp(block.timestamp + 3600);
-
-        int256 valuationBefore = vault.convertStrategyToUnderlying(
-            acct, vaultShares, maturity
-        );
-        uint256 underlyingToReceiver = exitVaultBypass(acct, vaultShares, maturity);
-
-        assertRelDiff(
-            uint256(valuationBefore),
-            underlyingToReceiver,
-            10 * BASIS_POINT,
-            "Valuation and Deposit"
-        );
-
-        checkInvariants();
     }
 
     // function test_RevertIf_depositPrimeAboveSupplyCap()

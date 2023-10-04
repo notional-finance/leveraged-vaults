@@ -81,6 +81,8 @@ abstract contract BaseAcceptanceTest is Test {
 
     // NOTE: no need to override this unless there is some specific test.
     function getMaxPrimaryBorrow() internal pure virtual returns (uint80) { return type(uint80).max; }
+    function hook_beforeEnterVault(address account, uint256 maturity, uint256 depositAmount) internal virtual {}
+    function hook_beforeExitVault(address account, uint256 maturity, uint256 depositAmount) internal virtual {}
 
     function getDepositParams(uint256 depositAmount, uint256 maturity) internal view virtual returns (bytes memory);
     function getRedeemParams(uint256 vaultShares, uint256 maturity) internal virtual returns (bytes memory);
@@ -89,7 +91,8 @@ abstract contract BaseAcceptanceTest is Test {
     function enterVaultBypass(
         address account,
         uint256 depositAmount,
-        uint256 maturity
+        uint256 maturity,
+        bytes memory data
     ) internal virtual returns (uint256 vaultShares) {
         if (isETH) {
             deal(address(vault), depositAmount);
@@ -98,12 +101,7 @@ abstract contract BaseAcceptanceTest is Test {
         }
 
         vm.prank(address(NOTIONAL));
-        vaultShares = vault.depositFromNotional(
-            account,
-            depositAmount,
-            maturity,
-            getDepositParams(depositAmount, maturity)
-        );
+        vaultShares = vault.depositFromNotional(account, depositAmount, maturity, data);
 
         totalVaultShares[maturity] += vaultShares;
     }
@@ -111,20 +109,88 @@ abstract contract BaseAcceptanceTest is Test {
     function exitVaultBypass(
         address account,
         uint256 vaultShares,
-        uint256 maturity
+        uint256 maturity,
+        bytes memory data
     ) internal virtual returns (uint256 totalToReceiver) {
         vm.prank(address(NOTIONAL));
-        totalToReceiver = vault.redeemFromNotional(
-            account,
-            account,
-            vaultShares,
-            maturity,
-            0,
-            getRedeemParams(vaultShares, maturity)
-        );
+        totalToReceiver = vault.redeemFromNotional(account, account, vaultShares, maturity, 0, data);
 
         totalVaultShares[maturity] -= vaultShares;
     }
+
+
+    function test_EnterVault(address account, uint256 maturityIndex) public {
+        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 depositAmount = 0.1e18;
+        hook_beforeEnterVault(account, maturity, depositAmount);
+
+        uint256 vaultShares = enterVaultBypass(
+            account,
+            depositAmount,
+            maturity,
+            getDepositParams(maturity, depositAmount)
+        );
+        int256 valuationAfter = vault.convertStrategyToUnderlying(
+            account, vaultShares, maturity
+        );
+
+        assertRelDiff(
+            uint256(valuationAfter),
+            depositAmount,
+            10 * BASIS_POINT,
+            "Valuation and Deposit"
+        );
+
+        checkInvariants();
+    }
+
+    function test_ExitVault(address account, uint256 maturityIndex) public {
+        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
+        uint256 maturity = maturities[maturityIndex];
+        console.log("INDEX %s %s", maturityIndex, maturity);
+
+        uint256 depositAmount = 0.1e18;
+        hook_beforeEnterVault(account, maturity, depositAmount);
+        uint256 vaultShares = enterVaultBypass(
+            account,
+            depositAmount,
+            maturity,
+            getDepositParams(depositAmount, maturity)
+        );
+
+        vm.roll(5);
+        vm.warp(block.timestamp + 3600);
+
+        int256 valuationBefore = vault.convertStrategyToUnderlying(
+            account, vaultShares, maturity
+        );
+        uint256 underlyingToReceiver = exitVaultBypass(
+            account,
+            vaultShares,
+            maturity,
+            getRedeemParams(depositAmount, maturity)
+        );
+
+        assertRelDiff(
+            uint256(valuationBefore),
+            underlyingToReceiver,
+            10 * BASIS_POINT,
+            "Valuation and Deposit"
+        );
+
+        checkInvariants();
+    }
+
+    // function test_RollVault() public virtual {}
+    // function test_MatureVault_Enter() public virtual {}
+    // function test_MatureVault_Exit() public virtual {}
+    // function test_MatureVault_Roll() public virtual {}
+
+    // function test_EmergencyExit() public virtual {}
+    // function test_RevertIf_EnterWhenLocked() public virtual {}
+    // function test_RevertIf_ExitWhenLocked() public virtual {}
 
     // function test_DonationToVault_NoAffectValuation(
     //     uint256 depositAmount,
@@ -146,47 +212,4 @@ abstract contract BaseAcceptanceTest is Test {
     //     checkInvariants();
     // }
 
-    // function test_EnterVault(
-    //     address account,
-    //     uint256 depositAmount,
-    //     uint256 maturity
-    // ) public virtual {
-    //     uint256 valuationBefore = vault.convertStrategyToUnderlying(
-    //         acct, vaultShares, maturity
-    //     );
-    //     enterVault(account, depositAmount, maturity);
-    //     uint256 valuationAfter = vault.convertStrategyToUnderlying(
-    //         acct, vaultShares, maturity
-    //     );
-    //     assertEq(valuationBefore, valuationAfter);
-
-    //     checkInvariants();
-    // }
-
-    // function test_ExitVault() public virtual {
-    //     uint256 vaultShares = enterVault(account, depositAmount, maturity);
-
-    //     vm.roll(5);
-    //     vm.warp(3600);
-
-    //     uint256 valuationBefore = vault.convertStrategyToUnderlying(
-    //         acct, vaultShares, maturity
-    //     );
-    //     redeemVault(account, depositAmount, maturity);
-    //     uint256 valuationAfter = vault.convertStrategyToUnderlying(
-    //         acct, vaultShares, maturity
-    //     );
-    //     assertEq(valuationBefore, valuationAfter);
-
-    //     checkInvariants();
-    // }
-
-    // function test_RollVault() public virtual {}
-    // function test_MatureVault_Enter() public virtual {}
-    // function test_MatureVault_Exit() public virtual {}
-    // function test_MatureVault_Roll() public virtual {}
-
-    // function test_EmergencyExit() public virtual {}
-    // function test_RevertIf_EnterWhenLocked() public virtual {}
-    // function test_RevertIf_ExitWhenLocked() public virtual {}
 }
