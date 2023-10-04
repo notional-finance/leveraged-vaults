@@ -83,7 +83,7 @@ abstract contract BaseAcceptanceTest is Test {
     function getMaxPrimaryBorrow() internal pure virtual returns (uint80) { return type(uint80).max; }
 
     function getDepositParams(uint256 depositAmount, uint256 maturity) internal view virtual returns (bytes memory);
-    // function getRedeemParams() internal virtual returns (bytes memory);
+    function getRedeemParams(uint256 vaultShares, uint256 maturity) internal virtual returns (bytes memory);
     function checkInvariants() internal virtual;
 
     function enterVaultBypass(
@@ -106,6 +106,24 @@ abstract contract BaseAcceptanceTest is Test {
         );
 
         totalVaultShares[maturity] += vaultShares;
+    }
+
+    function exitVaultBypass(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity
+    ) internal virtual returns (uint256 totalToReceiver) {
+        vm.prank(address(NOTIONAL));
+        totalToReceiver = vault.redeemFromNotional(
+            account,
+            account,
+            vaultShares,
+            maturity,
+            0,
+            getRedeemParams(vaultShares, maturity)
+        );
+
+        totalVaultShares[maturity] -= vaultShares;
     }
 
     // function test_DonationToVault_NoAffectValuation(
