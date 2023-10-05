@@ -15,8 +15,7 @@ import {TradingUtils} from "./TradingUtils.sol";
 
 import {IERC20} from "../utils/TokenUtils.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
-import "../../interfaces/trading/IVaultExchange.sol";
+import {ITradingModule, Trade, TradeType, DexId} from "../../interfaces/trading/ITradingModule.sol";
 import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 /// @notice TradingModule is meant to be an upgradeable contract deployed to help Strategy Vaults

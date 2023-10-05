@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
-import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 import {nProxy} from "../proxy/nProxy.sol";
 

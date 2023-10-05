@@ -3,8 +3,6 @@ pragma solidity 0.8.17;
 
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
-import {CErc20Interface} from "../../interfaces/compound/CErc20Interface.sol";
-import {CEtherInterface} from "../../interfaces/compound/CEtherInterface.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {Constants} from "../global/Constants.sol";
