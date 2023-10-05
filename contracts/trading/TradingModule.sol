@@ -29,6 +29,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     error SellTokenEqualsBuyToken();
     error UnknownDEX();
     error InsufficientPermissions();
+    error Unauthorized();
 
     struct PriceOracle {
         AggregatorV2V3Interface oracle;
@@ -51,7 +52,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     modifier onlyNotionalOwner() {
-        require(msg.sender == NOTIONAL.owner());
+        if (msg.sender != NOTIONAL.owner()) revert Unauthorized();
         _;
     }
 
@@ -77,11 +78,13 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     function setTokenPermissions(
-        address sender, 
-        address token, 
+        address sender,
+        address token,
         TokenPermissions calldata permissions
     ) external override onlyNotionalOwner {
         /// @dev update these if we are adding new DEXes or types
+        // Validates that the permissions being set do not exceed the max values set
+        // by the token.
         for (uint32 i = uint32(DexId.CURVE_V2) + 1; i < 32; i++) {
             require(!_hasPermission(permissions.dexFlags, uint32(1 << i)));
         }
