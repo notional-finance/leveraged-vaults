@@ -198,7 +198,7 @@ library TradingUtils {
             );
 
         if (tradeType == TradeType.EXACT_OUT_SINGLE || tradeType == TradeType.EXACT_OUT_BATCH) {
-            // type(uint256).max means no slippage limit
+            // type(uint32).max means no slippage limit
             if (slippageLimit == type(uint32).max) {
                 return sellToken == Deployments.ETH_ADDRESS
                     ? address(from).balance
@@ -220,7 +220,7 @@ library TradingUtils {
             // convert it to sellToken precision
             limitAmount = (limitAmount * sellTokenDecimals) / buyTokenDecimals;
         } else {
-            // type(uint256).max means no slippage limit
+            // type(uint32).max means no slippage limit
             if (slippageLimit == type(uint32).max) {
                 return 0;
             }
