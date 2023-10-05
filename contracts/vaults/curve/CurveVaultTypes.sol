@@ -25,12 +25,6 @@ struct ConvexVaultDeploymentParams {
     DeploymentParams baseParams;
 }
 
-struct InitParams {
-    string name;
-    uint16 borrowCurrencyId;
-    StrategyVaultSettings settings;
-}
-
 struct Curve2TokenPoolContext {
     TwoTokenPoolContext basePool;
     address curvePool;

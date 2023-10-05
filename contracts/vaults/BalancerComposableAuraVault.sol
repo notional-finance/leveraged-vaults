@@ -6,7 +6,6 @@ import {Deployments} from "../global/Deployments.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
 import {
     AuraVaultDeploymentParams,
-    InitParams,
     BalancerComposableAuraStrategyContext,
     BalancerComposablePoolContext
 } from "./balancer/BalancerVaultTypes.sol";
@@ -15,6 +14,7 @@ import {
     StrategyVaultSettings,
     StrategyVaultState,
     ComposablePoolContext,
+    InitParams,
     DepositParams,
     ReinvestRewardParams
 } from "./common/VaultTypes.sol";

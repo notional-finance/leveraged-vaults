@@ -3,11 +3,11 @@ pragma solidity 0.8.17;
 
 import {
     ConvexVaultDeploymentParams, 
-    InitParams, 
     Curve2TokenPoolContext,
     Curve2TokenConvexStrategyContext
 } from "./curve/CurveVaultTypes.sol";
 import {
+    InitParams, 
     StrategyContext,
     StrategyVaultState,
     StrategyVaultSettings,

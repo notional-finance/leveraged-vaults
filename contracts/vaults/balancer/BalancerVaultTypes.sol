@@ -33,12 +33,6 @@ struct AuraVaultDeploymentParams {
     DeploymentParams baseParams;
 }
 
-struct InitParams {
-    string name;
-    uint16 borrowCurrencyId;
-    StrategyVaultSettings settings;
-}
-
 /// @notice Parameters for joining/exiting Balancer pools
 struct PoolParams {
     IAsset[] assets;

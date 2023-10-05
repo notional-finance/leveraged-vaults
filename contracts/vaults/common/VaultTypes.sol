@@ -4,6 +4,12 @@ pragma solidity 0.8.17;
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 
+struct InitParams {
+    string name;
+    uint16 borrowCurrencyId;
+    StrategyVaultSettings settings;
+}
+
 /// @notice Parameters for trades
 struct TradeParams {
     uint16 dexId;
