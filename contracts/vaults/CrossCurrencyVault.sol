@@ -151,6 +151,8 @@ contract CrossCurrencyVault is BaseStrategyVault {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 vaultShares) {
+        if (depositUnderlyingExternal == 0) return 0;
+
         DepositParams memory params = abi.decode(data, (DepositParams));
         Trade memory trade = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
@@ -198,6 +200,7 @@ contract CrossCurrencyVault is BaseStrategyVault {
         uint256 maturity,
         bytes calldata data
     ) internal override returns (uint256 borrowedCurrencyAmount) {
+        if (vaultShares == 0) return 0;
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         bool isETH = LEND_ETH;

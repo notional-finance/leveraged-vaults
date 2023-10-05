@@ -47,6 +47,11 @@ abstract contract BaseAcceptanceTest is Test {
     bool isETH;
     mapping(uint256 => uint256) totalVaultShares;
 
+    uint256 maxDeposit;
+    uint256 minDeposit;
+    uint256 maxRelEntryValuation;
+    uint256 maxRelExitValuation;
+
     function setUp() public virtual {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
         vault = deployVault();
@@ -94,6 +99,10 @@ abstract contract BaseAcceptanceTest is Test {
     function getPrimaryVaultToken(uint256 /* maturity */) internal virtual returns (address) {
         return address(0);
     }
+    function boundDepositAmount(uint256 depositAmount) internal view virtual returns (uint256) {
+        return bound(depositAmount, minDeposit, maxDeposit);
+    }
+
 
     // NOTE: no need to override this unless there is some specific test.
     function getMaxPrimaryBorrow() internal pure virtual returns (uint80) { return type(uint80).max; }
@@ -135,11 +144,11 @@ abstract contract BaseAcceptanceTest is Test {
     }
 
 
-    function test_EnterVault(address account, uint256 maturityIndex) public {
+    function test_EnterVault(address account, uint256 maturityIndex, uint256 depositAmount) public {
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
+        depositAmount = boundDepositAmount(depositAmount);
 
-        uint256 depositAmount = 0.1e18;
         hook_beforeEnterVault(account, maturity, depositAmount);
         uint256 vaultShares = enterVaultBypass(
             account,
@@ -154,17 +163,17 @@ abstract contract BaseAcceptanceTest is Test {
         assertRelDiff(
             uint256(valuationAfter),
             depositAmount,
-            10 * BASIS_POINT,
+            maxRelEntryValuation,
             "Valuation and Deposit"
         );
 
         checkInvariants();
     }
 
-    function test_ExitVault(address account, uint256 maturityIndex) public {
+    function test_ExitVault(address account, uint256 maturityIndex, uint256 depositAmount) public {
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
-        uint256 depositAmount = 0.1e18;
+        depositAmount = boundDepositAmount(depositAmount);
 
         hook_beforeEnterVault(account, maturity, depositAmount);
         uint256 vaultShares = enterVaultBypass(
@@ -190,7 +199,7 @@ abstract contract BaseAcceptanceTest is Test {
         assertRelDiff(
             uint256(valuationBefore),
             underlyingToReceiver,
-            10 * BASIS_POINT,
+            maxRelExitValuation,
             "Valuation and Deposit"
         );
 
@@ -200,11 +209,11 @@ abstract contract BaseAcceptanceTest is Test {
     function test_SettleVault() public {
         if (config.flags & VAULT_MUST_SETTLE != VAULT_MUST_SETTLE) return;
         address account = makeAddr("user");
+        uint256 depositAmount = boundDepositAmount(type(uint256).max);
 
         // Can only use the 3 mo maturity to test this
         uint256 maturity = maturities[1];
 
-        uint256 depositAmount = 0.1e18;
         hook_beforeEnterVault(account, maturity, depositAmount);
         uint256 vaultShares = enterVaultBypass(
             account,
@@ -251,7 +260,7 @@ abstract contract BaseAcceptanceTest is Test {
         address vaultToken = getPrimaryVaultToken(maturity);
         if (vaultToken == address(0)) return;
 
-        uint256 depositAmount = 0.1e18;
+        uint256 depositAmount = boundDepositAmount(type(uint256).max);
         address account = makeAddr("account");
 
         hook_beforeEnterVault(account, maturity, depositAmount);

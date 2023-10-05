@@ -24,6 +24,10 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
         // wsteth/ETH pool
         c.pool = 0x6eB2dc694eB516B16Dc9FBc678C60052BbdD7d80;
         exchangeData = abi.encode(c);
+        maxDeposit = 1e18;
+        minDeposit = 0.001e18;
+        maxRelEntryValuation = 15 * BASIS_POINT;
+        maxRelExitValuation = 30 * BASIS_POINT;
 
         super.setUp();
     }
@@ -174,5 +178,19 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
 
         vm.expectRevert(TradeFailed.selector);
         exitVaultBypass(account, vaultShares, maturities[1], abi.encode(r));
+    }
+
+    function test_ShortCircuitOnZeroDeposit() public {
+        address account = makeAddr("account");
+        vm.expectCall(address(NOTIONAL), "", 0);
+        uint256 vaultShares = enterVaultBypass(account, 0, maturities[1], "");
+        assertEq(vaultShares, 0);
+    }
+
+    function test_ShortCircuitOnZeroRedeem() public {
+        address account = makeAddr("account");
+        vm.expectCall(address(NOTIONAL), "", 0);
+        uint256 amount = exitVaultBypass(account, 0, maturities[1], "");
+        assertEq(amount, 0);
     }
 }
