@@ -113,6 +113,24 @@ abstract contract BaseAcceptanceTest is Test {
     function getRedeemParams(uint256 vaultShares, uint256 maturity) internal view virtual returns (bytes memory);
     function checkInvariants() internal virtual;
 
+    function expectRevert_enterVaultBypass(
+        address account,
+        uint256 depositAmount,
+        uint256 maturity,
+        bytes memory data,
+        bytes memory revertMsg
+    ) internal virtual {
+        if (isETH) {
+            deal(address(vault), depositAmount);
+        } else {
+            deal(address(primaryBorrowToken), address(vault), depositAmount, false);
+        }
+
+        vm.prank(address(NOTIONAL));
+        vm.expectRevert(revertMsg);
+        vault.depositFromNotional(account, depositAmount, maturity, data);
+    }
+
     function enterVaultBypass(
         address account,
         uint256 depositAmount,
@@ -122,7 +140,7 @@ abstract contract BaseAcceptanceTest is Test {
         if (isETH) {
             deal(address(vault), depositAmount);
         } else {
-            deal(address(primaryBorrowToken), address(vault), depositAmount, true);
+            deal(address(primaryBorrowToken), address(vault), depositAmount, false);
         }
 
         vm.prank(address(NOTIONAL));
@@ -144,7 +162,8 @@ abstract contract BaseAcceptanceTest is Test {
     }
 
 
-    function test_EnterVault(address account, uint256 maturityIndex, uint256 depositAmount) public {
+    function test_EnterVault(uint256 maturityIndex, uint256 depositAmount) public {
+        address account = makeAddr("account");
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
         depositAmount = boundDepositAmount(depositAmount);
@@ -170,7 +189,8 @@ abstract contract BaseAcceptanceTest is Test {
         checkInvariants();
     }
 
-    function test_ExitVault(address account, uint256 maturityIndex, uint256 depositAmount) public {
+    function test_ExitVault(uint256 maturityIndex, uint256 depositAmount) public {
+        address account = makeAddr("account");
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
         depositAmount = boundDepositAmount(depositAmount);
@@ -224,7 +244,7 @@ abstract contract BaseAcceptanceTest is Test {
 
         vm.roll(5);
         vm.warp(maturity);
-        NOTIONAL.initializeMarkets(WSTETH, false);
+        for (uint16 i = 1; i <= USDT; i++) NOTIONAL.initializeMarkets(i, false);
 
         vm.prank(address(NOTIONAL));
         uint256 primeVaultShares = vault.convertVaultSharesToPrimeMaturity(
