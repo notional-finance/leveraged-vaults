@@ -115,7 +115,6 @@ abstract contract BaseAcceptanceTest is Test {
         } else {
             deal(address(primaryBorrowToken), address(vault), depositAmount, true);
         }
-        hook_beforeEnterVault(account, maturity, depositAmount);
 
         vm.prank(address(NOTIONAL));
         vaultShares = vault.depositFromNotional(account, depositAmount, maturity, data);
@@ -141,6 +140,7 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 maturity = maturities[maturityIndex];
 
         uint256 depositAmount = 0.1e18;
+        hook_beforeEnterVault(account, maturity, depositAmount);
         uint256 vaultShares = enterVaultBypass(
             account,
             depositAmount,
@@ -166,6 +166,7 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 maturity = maturities[maturityIndex];
         uint256 depositAmount = 0.1e18;
 
+        hook_beforeEnterVault(account, maturity, depositAmount);
         uint256 vaultShares = enterVaultBypass(
             account,
             depositAmount,
@@ -204,6 +205,7 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 maturity = maturities[1];
 
         uint256 depositAmount = 0.1e18;
+        hook_beforeEnterVault(account, maturity, depositAmount);
         uint256 vaultShares = enterVaultBypass(
             account,
             depositAmount,
@@ -252,6 +254,7 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 depositAmount = 0.1e18;
         address account = makeAddr("account");
 
+        hook_beforeEnterVault(account, maturity, depositAmount);
         uint256 vaultShares = enterVaultBypass(
             account,
             depositAmount,
@@ -283,6 +286,4 @@ abstract contract BaseAcceptanceTest is Test {
     // function test_EmergencyExit() public virtual {}
     // function test_RevertIf_EnterWhenLocked() public virtual {}
     // function test_RevertIf_ExitWhenLocked() public virtual {}
-
-
 }

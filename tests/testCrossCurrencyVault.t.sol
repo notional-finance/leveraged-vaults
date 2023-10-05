@@ -140,7 +140,39 @@ contract TestCrossCurrencyVault is BaseAcceptanceTest {
         }
     }
 
-    // function test_RevertIf_lendFCashFails()
-    // function test_RevertIf_redeemFCashFails()
-    // function test_RevertIf_depositPrimeAboveSupplyCap()
+    function test_RevertIf_LendSlippageFails() public {
+        address account = makeAddr("account");
+        CrossCurrencyVault.DepositParams memory d;
+        d.minPurchaseAmount = 0;
+        d.minVaultShares = 100e8;
+        d.dexId = primaryDexId;
+        d.exchangeData = exchangeData;
+
+        bytes memory params = abi.encode(d);
+        hook_beforeEnterVault(account, maturities[1], 0.01e18);
+
+        vm.expectRevert("Slippage: Vault Shares");
+        enterVaultBypass(account, 0.01e18, maturities[1], params);
+    }
+
+    function test_RevertIf_BorrowSlippageFails() public {
+        address account = makeAddr("account");
+        CrossCurrencyVault.DepositParams memory d;
+        d.minPurchaseAmount = 0;
+        d.minVaultShares = 0;
+        d.dexId = primaryDexId;
+        d.exchangeData = exchangeData;
+
+        bytes memory params = abi.encode(d);
+        hook_beforeEnterVault(account, maturities[1], 0.01e18);
+        uint256 vaultShares = enterVaultBypass(account, 0.01e18, maturities[1], params);
+
+        CrossCurrencyVault.RedeemParams memory r;
+        r.minPurchaseAmount = 100e18;
+        r.dexId = primaryDexId;
+        r.exchangeData = exchangeData;
+
+        vm.expectRevert(TradeFailed.selector);
+        exitVaultBypass(account, vaultShares, maturities[1], abi.encode(r));
+    }
 }
