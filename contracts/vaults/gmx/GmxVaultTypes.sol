@@ -5,6 +5,7 @@ import {StrategyContext} from "../common/VaultTypes.sol";
 import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
 import {IGmxExchangeRouter} from "../../../interfaces/gmx/IGmxExchangeRouter.sol";
 import {IGmxReader} from "../../../interfaces/gmx/IGmxReader.sol";
+import {OrderType} from "../../../interfaces/gmx/GmxTypes.sol";
 
 struct DeploymentParams {
     uint16 primaryBorrowCurrencyId;
@@ -16,9 +17,16 @@ struct DeploymentParams {
     ITradingModule tradingModule;
 }
 
+struct GmxVaultState {
+    bytes32 orderHash;
+    bytes32 positionHash;
+    OrderType orderType;
+}
+
 struct GmxFundingStrategyContext {
     IGmxExchangeRouter gmxRouter;
     IGmxReader gmxReader;
     address orderVault;
+    GmxVaultState gmxState;
     StrategyContext baseStrategy;
 }

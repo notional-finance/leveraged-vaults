@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {GmxFundingStrategyContext} from "./gmx/GmxVaultTypes.sol";
+import {GmxFundingStrategyContext, DeploymentParams, GmxVaultState} from "./gmx/GmxVaultTypes.sol";
 import {
     InitParams, 
     DepositParams, 
@@ -13,21 +13,16 @@ import {Errors} from "../global/Errors.sol";
 import {TypeConvert} from "../global/TypeConvert.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
 import {GmxFundingVaultMixin} from "./gmx/mixins/GmxFundingVaultMixin.sol";
-import {DeploymentParams} from "./gmx/GmxVaultTypes.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {OrderType} from "../../interfaces/gmx/GmxTypes.sol";
 import {IGmxExchangeRouter} from "../../interfaces/gmx/IGmxExchangeRouter.sol";
+import {IGmxOrderCallbackReceiver} from "../../interfaces/gmx/IGmxOrderCallbackReceiver.sol";
 import {IGmxReader} from "../../interfaces/gmx/IGmxReader.sol";
 import {DexId} from "../../interfaces/trading/ITradingModule.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 
-struct GmxVaultState {
-    bytes32 orderHash;
-    bytes32 positionHash;
-}
-
-contract GmxFundingVault is GmxFundingVaultMixin {
+contract GmxFundingVault is GmxFundingVaultMixin, IGmxOrderCallbackReceiver {
     using TokenUtils for IERC20;
     using TypeConvert for int256;
     using TypeConvert for uint256;
@@ -67,6 +62,7 @@ contract GmxFundingVault is GmxFundingVaultMixin {
 
     function _getNumbers(
         uint256 positionSize,
+        uint256 collateralDelta,
         uint256 executionFee,
         uint256 acceptablePrice
     )
@@ -74,22 +70,25 @@ contract GmxFundingVault is GmxFundingVaultMixin {
         returns (IGmxExchangeRouter.CreateOrderParamsNumbers memory params)
     {
         params.sizeDeltaUsd = positionSize;
+        params.initialCollateralDeltaAmount = collateralDelta;
         params.executionFee = executionFee;
         params.acceptablePrice = acceptablePrice;
     }
 
     function _getOrderParams(
         uint256 positionSize,
+        uint256 collateralDelta,
         uint256 executionFee,
         uint256 acceptablePrice,
         OrderType orderType
     ) private returns (IGmxExchangeRouter.CreateOrderParams memory params) {
         params.addresses = _getAddresses();
-        params.numbers = _getNumbers(
-            positionSize,
-            executionFee,
-            acceptablePrice
-        );
+        params.numbers = _getNumbers({
+            positionSize: positionSize,
+            collateralDelta: collateralDelta,
+            executionFee: executionFee,
+            acceptablePrice: acceptablePrice
+        });
         params.orderType = orderType;
         params.isLong = true;
     }
@@ -125,51 +124,48 @@ contract GmxFundingVault is GmxFundingVaultMixin {
 
         // Trade from primaryToken to collateralToken
 
-        uint256 executionFee = 759100000000000; // Is this calculated?
-        uint256 amountBought = 66592403;
+        uint256 executionFee = 0.5e18; // Is this calculated?
 
-        //(/* */, amountBought) = _tradePrimaryToCollateral(context.baseStrategy, params.tradeData);
+        (/* */, uint256 amountBought) = _tradePrimaryToCollateral(context.baseStrategy, params.tradeData);
 
-        if (vaultState.positionHash == bytes32(0)) {
-            // Create new position
-            bytes[] memory data = new bytes[](3);
-            uint256 positionSize = (amountBought * GMX_PRECISION) /
-                COLLATERAL_PRECISION;
+        // Market increase
+        bytes[] memory data = new bytes[](3);
+        uint256 positionSize = amountBought * GMX_PRECISION /
+            COLLATERAL_PRECISION;
 
-            data[0] = abi.encodeWithSelector(
-                IGmxExchangeRouter.sendWnt.selector,
-                ORDER_VAULT,
-                executionFee
-            );
-            data[1] = abi.encodeWithSelector(
-                IGmxExchangeRouter.sendTokens.selector,
-                COLLATERAL_TOKEN,
-                ORDER_VAULT,
-                amountBought
-            );
-            data[2] = abi.encodeWithSelector(
-                IGmxExchangeRouter.createOrder.selector,
-                _getOrderParams(
-                    positionSize,
-                    executionFee,
-                    params.minPoolClaim,
-                    OrderType.MarketIncrease
-                )
-            );
+        data[0] = abi.encodeWithSelector(
+            IGmxExchangeRouter.sendWnt.selector,
+            ORDER_VAULT,
+            executionFee
+        );
+        data[1] = abi.encodeWithSelector(
+            IGmxExchangeRouter.sendTokens.selector,
+            COLLATERAL_TOKEN,
+            ORDER_VAULT,
+            amountBought
+        );
+        data[2] = abi.encodeWithSelector(
+            IGmxExchangeRouter.createOrder.selector,
+            _getOrderParams(
+                positionSize: positionSize,
+                collateralDelta: 0,
+                executionFee: executionFee,
+                acceptablePrice: params.minPoolClaim,
+                orderType: OrderType.MarketIncrease
+            )
+        );
 
-            bytes[] memory results = GMX_ROUTER.multicall{value: executionFee}(data);
+        bytes[] memory results = GMX_ROUTER.multicall{value: executionFee}(data);
 
-            vaultState.orderHash = abi.decode(results[2], (bytes32));
+        vaultState.orderHash = abi.decode(results[2], (bytes32));
+        vaultState.orderType = OrderType.MarketIncrease
 
-            vaultSharesMinted = StrategyUtils._mintStrategyTokens(
-                context.baseStrategy,
-                positionSize
-            );
+        vaultSharesMinted = StrategyUtils._mintStrategyTokens(
+            context.baseStrategy,
+            positionSize
+        );
 
-            _lockVault();
-        } else {
-            // Update existing position
-        }
+        _lockVault();
     }
 
     function _depositFromNotional(
@@ -181,16 +177,65 @@ contract GmxFundingVault is GmxFundingVaultMixin {
         vaultSharesMinted = _deposit(_strategyContext(), deposit, data);
     }
 
+    function _redeem(
+        GmxFundingStrategyContext memory context,
+        uint256 vaultShares,
+        bytes calldata data
+    ) internal returns (uint256 finalPrimaryBalance) {
+        uint256 positionSize = context.baseStrategy._convertStrategyTokensToPoolClaim(vaultShares);
+        uint256 executionFee = 0.5e18; // Is this calculated?
+
+        // Since our leverage ratio is always 1, collateralDelta is basically positionSize in underlying precision
+        uint256 collateralDelta = positionSize * COLLATERAL_PRECISION / GMX_PRECISION;
+
+        bytes[] memory data = new bytes[](2);
+
+        // Market decrease
+        data[0] = abi.encodeWithSelector(
+            IGmxExchangeRouter.sendWnt.selector,
+            ORDER_VAULT,
+            executionFee
+        );
+        data[1] = abi.encodeWithSelector(
+            IGmxExchangeRouter.createOrder.selector,
+            _getOrderParams(
+                positionSize: positionSize,
+                collateralDelta: collateralDelta,
+                executionFee: executionFee,
+                acceptablePrice: params.minPoolClaim,
+                orderType: OrderType.MarketDecrease
+            )
+        );
+
+        bytes[] memory results = GMX_ROUTER.multicall{value: executionFee}(data);
+
+        vaultState.orderHash = abi.decode(results[2], (bytes32));
+        vaultState.orderType = OrderType.MarketDecrease;
+
+        finalPrimaryBalance = _convertCollateralToPrimary(collateralDelta);
+
+        _lockVault();
+    }
+
     function _redeemFromNotional(
         address account,
         uint256 vaultShares,
         uint256 maturity,
         bytes calldata data
-    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {}
+    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+        finalPrimaryBalance = _redeem(_strategyContext(), vaultShares, data);
+    }
 
     function testGetOrder() external view returns (IGmxReader.OrderProps memory params) {
         GmxFundingStrategyContext memory context = _strategyContext();
         params = context.gmxReader.getOrder(GMX_DATASTORE, vaultState.orderHash);
+    }
+
+    function _convertCollateralToPrimary(uint256 collateralBalance) private view returns (uint256) {
+        (int256 price, int256 decimals) = context.baseStrategy.tradingModule.getOraclePrice(COLLATERAL_TOKEN, PRIMARY_TOKEN);
+        uint256 collateralBalanceInPrimary = collateralBalance * price.toUint() / COLLATERAL_PRECISION;
+
+        return collateralBalanceInPrimary * PRIMARY_PRECISION / decimals.toUint();
     }
 
     function convertStrategyToUnderlying(
@@ -210,10 +255,7 @@ contract GmxFundingVault is GmxFundingVaultMixin {
 
         if (vaultState.orderHash != bytes32(0)) {
             IGmxReader.OrderProps memory params = context.gmxReader.getOrder(GMX_DATASTORE, vaultState.orderHash);
-            (int256 price, int256 decimals) = context.baseStrategy.tradingModule.getOraclePrice(COLLATERAL_TOKEN, PRIMARY_TOKEN);
-            uint256 secondaryBalanceInPrimary = params.numbers.initialCollateralDeltaAmount * price.toUint() / COLLATERAL_PRECISION;
-
-            totalCollateral += secondaryBalanceInPrimary * PRIMARY_PRECISION / decimals.toUint();
+            totalCollateral += _convertCollateralToPrimary(params.numbers.initialCollateralDeltaAmount);
         }
         if (vaultState.positionHash != bytes32(0)) {
             // getPosition
@@ -240,6 +282,7 @@ contract GmxFundingVault is GmxFundingVaultMixin {
                 gmxRouter: GMX_ROUTER,
                 gmxReader: GMX_READER,
                 orderVault: ORDER_VAULT,
+                gmxState: vaultState,
                 baseStrategy: StrategyContext({
                     tradingModule: TRADING_MODULE,
                     vaultSettings: VaultStorage.getStrategyVaultSettings(),
@@ -263,4 +306,30 @@ contract GmxFundingVault is GmxFundingVaultMixin {
     function getExchangeRate(
         uint256 maturity
     ) external view override returns (int256) {}
+
+    function afterOrderExecution(
+        bytes32 key,
+        IGmxReader.OrderProps memory order,
+        EventLogData memory eventData
+    ) external override {
+        revert("here");
+
+        _unlockVault();
+    }
+
+    function afterOrderCancellation(
+        bytes32 key,
+        IGmxReader.OrderProps memory order,
+        EventLogData memory eventData
+    ) external override {
+        _unlockVault();
+    }
+
+    function afterOrderFrozen(
+        bytes32 key,
+        IGmxReader.OrderProps memory order,
+        EventLogData memory eventData
+    ) external override {
+        _unlockVault();
+    }
 }
