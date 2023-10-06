@@ -13,14 +13,13 @@ import {VaultEvents} from "../../../common/VaultEvents.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
-import {RewardUtils} from "../../../common/internal/reward/RewardUtils.sol";
 import {IERC20} from "../../../../../interfaces/IERC20.sol";
 
 library ComposableAuraRewardUtils {
     using StrategyUtils for StrategyContext;
 
     function _validateTrade(
-        IERC20[] memory poolTokens,
+        address[] memory poolTokens,
         SingleSidedRewardTradeParams memory params,
         address token
     ) private view {

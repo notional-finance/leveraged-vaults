@@ -12,7 +12,6 @@ import {
 } from "../../VaultTypes.sol";
 import {VaultConstants} from "../../VaultConstants.sol";
 import {StrategyUtils} from "../strategy/StrategyUtils.sol";
-import {RewardUtils} from "../reward/RewardUtils.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {ITradingModule, DexId} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {IERC20} from "../../../../../interfaces/IERC20.sol";
@@ -143,7 +142,10 @@ library TwoTokenPoolUtils {
         address poolToken
     ) private pure {
         // Make sure we are not selling one of the core tokens
-        if (primaryTrade.sellToken == primaryToken || primaryTrade.sellToken == secondaryToken || primaryTrade.poolToken) {
+        if (primaryTrade.sellToken == primaryToken || 
+            primaryTrade.sellToken == secondaryToken || 
+            primaryTrade.sellToken == poolToken
+        ) {
             revert Errors.InvalidRewardToken(primaryTrade.sellToken);
         }
         if (secondaryTrade.sellToken != primaryTrade.sellToken) {
@@ -172,7 +174,7 @@ library TwoTokenPoolUtils {
             params.secondaryTrade,
             poolContext.primaryToken,
             poolContext.secondaryToken,
-            poolContext.poolToken
+            address(poolContext.poolToken)
         );
 
         (/* amountSold */, primaryAmount) = strategyContext._executeTradeExactIn({

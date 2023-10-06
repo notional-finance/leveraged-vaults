@@ -13,7 +13,6 @@ library VaultEvents {
         uint256 strategyTokensRedeemed
     );
     event EmergencyVaultSettlement(uint256 poolClaimToSettle);
-    event ClaimedRewardTokens(IERC20[] rewardTokens, uint256[] claimedBalances);
     event VaultLocked();
     event VaultUnlocked();
 }

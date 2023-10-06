@@ -88,7 +88,6 @@ struct AuraStakingContext {
     address booster;
     IAuraRewardPool rewardPool;
     uint256 poolId;
-    IERC20[] rewardTokens;
 }
 
 struct Balancer2TokenPoolContext {

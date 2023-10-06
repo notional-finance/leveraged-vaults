@@ -41,7 +41,6 @@ struct ConvexStakingContext {
     address booster;
     address rewardPool;
     uint256 poolId;
-    IERC20[] rewardTokens;
 }
 
 struct Curve2TokenConvexStrategyContext {
