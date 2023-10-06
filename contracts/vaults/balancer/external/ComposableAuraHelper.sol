@@ -22,7 +22,6 @@ import {Constants} from "../../../global/Constants.sol";
 import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
 import {VaultStorage} from "../../common/VaultStorage.sol";
-import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.sol";
 import {BalancerComposablePoolUtils} from "../internal/pool/BalancerComposablePoolUtils.sol";
 import {ComposableAuraRewardUtils} from "../internal/reward/ComposableAuraRewardUtils.sol";
 import {ComposableOracleMath} from "../internal/math/ComposableOracleMath.sol";
@@ -32,7 +31,6 @@ library ComposableAuraHelper {
     using ComposableAuraRewardUtils for BalancerComposablePoolContext;
     using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
-    using SettlementUtils for StrategyContext;
     using TypeConvert for uint256;
 
     function deposit(
@@ -87,29 +85,23 @@ library ComposableAuraHelper {
         }
     }
 
-    function settleVaultEmergency(
+    function emergencyExit(
         BalancerComposableAuraStrategyContext memory context, 
-        uint256 poolClaimToSettle,
         bytes calldata data
     ) external {
         ComposableRedeemParams memory params = _decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
             data
         );
-        bool isSingleSidedExit = params.redemptionTrades.length == 0;
         
-        /// @notice minAmounts are not required to be passed in by the caller for this strategy vault
-        uint256[] memory minAmounts = context.poolContext._getMinExitAmounts({
-            oracleContext: context.oracleContext,
-            strategyContext: context.baseStrategy,
-            poolClaim: poolClaimToSettle
-        });
-
+        uint256 poolClaimToSettle = context.baseStrategy.vaultState.totalPoolClaim;
+        uint256[] memory minAmounts = new uint256[](context.poolContext.basePool.tokens.length);
+        
         context.poolContext._unstakeAndExitPool(
-            context.stakingContext, poolClaimToSettle, minAmounts, isSingleSidedExit
+            context.stakingContext, poolClaimToSettle, minAmounts, false
         );
 
-        context.baseStrategy.vaultState.totalPoolClaim -= poolClaimToSettle;
+        context.baseStrategy.vaultState.totalPoolClaim = 0;
         context.baseStrategy.vaultState.setStrategyVaultState(); 
 
         emit VaultEvents.EmergencyVaultSettlement(poolClaimToSettle);
@@ -134,7 +126,6 @@ library ComposableAuraHelper {
             amounts
         ) = poolContext._executeRewardTrades({
             strategyContext: strategyContext,
-            rewardTokens: context.stakingContext.rewardTokens,
             data: params.tradeData
         });
 

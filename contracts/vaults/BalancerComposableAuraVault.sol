@@ -27,14 +27,12 @@ import {BalancerComposablePoolMixin} from "./balancer/mixins/BalancerComposableP
 import {AuraStakingMixin} from "./balancer/mixins/AuraStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
-import {SettlementUtils} from "./common/internal/settlement/SettlementUtils.sol";
 import {IBalancerPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 
 contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     using StrategyUtils for StrategyContext;
     using VaultStorage for StrategyVaultState;
-    using SettlementUtils for StrategyContext;
     using ComposableAuraHelper for BalancerComposableAuraStrategyContext;
     using BalancerComposablePoolUtils for ComposablePoolContext;
     using BalancerComposablePoolUtils for BalancerComposablePoolContext;
@@ -76,10 +74,10 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         finalPrimaryBalance = _strategyContext().redeem(vaultShares, data);
     }
 
-    function settleVaultEmergency(uint256 poolClaimToSettle, bytes calldata data) 
+    function emergencyExit(bytes calldata data) 
         external whenNotLocked onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
-        ComposableAuraHelper.settleVaultEmergency(
-            _strategyContext(), poolClaimToSettle, data
+        ComposableAuraHelper.emergencyExit(
+            _strategyContext(), data
         );
         _lockVault();
     }

@@ -12,14 +12,15 @@ import {
     TwoTokenPoolContext,
     DepositParams,
     RedeemParams,
+    TradeParams,
     ReinvestRewardParams
 } from "../../common/VaultTypes.sol";
 import {TwoTokenPoolUtils} from "../../common/internal/pool/TwoTokenPoolUtils.sol";
-import {SettlementUtils} from "../../common/internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "../../common/VaultStorage.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
 import {VaultConstants} from "../../common/VaultConstants.sol";
+import {Errors} from "../../../global/Errors.sol";
 import {Curve2TokenPoolUtils} from "../internal/pool/Curve2TokenPoolUtils.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 
@@ -27,7 +28,6 @@ library Curve2TokenConvexHelper {
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
     using StrategyUtils for StrategyContext;
-    using SettlementUtils for StrategyContext;
     using VaultStorage for StrategyVaultState;
 
     function deposit(
@@ -60,15 +60,37 @@ library Curve2TokenConvexHelper {
         });
     }
 
-    function settleVaultEmergency(
+    /// @notice Validates that the slippage passed in by the caller
+    /// does not exceed the designated threshold.
+    /// @param slippageLimitPercent configured limit on the slippage from the oracle price allowed
+    /// @param data trade parameters passed into settlement
+    /// @return params abi decoded redemption parameters
+    function _decodeParamsAndValidate(
+        uint32 slippageLimitPercent,
+        bytes memory data
+    ) internal view returns (RedeemParams memory params) {
+        params = abi.decode(data, (RedeemParams));
+        if (params.secondaryTradeParams.length != 0) {
+            TradeParams memory callbackData = abi.decode(
+                params.secondaryTradeParams, (TradeParams)
+            );
+
+            if (slippageLimitPercent < callbackData.oracleSlippagePercentOrLimit) {
+                revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercentOrLimit, slippageLimitPercent);
+            }
+        }
+    }
+
+    function emergencyExit(
         Curve2TokenConvexStrategyContext memory context, 
-        uint256 poolClaimToSettle,
         bytes calldata data
     ) external {
-        RedeemParams memory params = SettlementUtils._decodeParamsAndValidate(
+        RedeemParams memory params = _decodeParamsAndValidate(
             context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
             data
         );
+
+        uint256 poolClaimToSettle = context.baseStrategy.vaultState.totalPoolClaim;
 
         context.poolContext._unstakeAndExitPool({
             stakingContext: context.stakingContext,
@@ -76,7 +98,7 @@ library Curve2TokenConvexHelper {
             params: params
         });
 
-        context.baseStrategy.vaultState.totalPoolClaim -= poolClaimToSettle;
+        context.baseStrategy.vaultState.totalPoolClaim = 0;
         context.baseStrategy.vaultState.setStrategyVaultState(); 
 
         emit VaultEvents.EmergencyVaultSettlement(poolClaimToSettle);  
@@ -102,7 +124,6 @@ library Curve2TokenConvexHelper {
             secondaryAmount
         ) = poolContext.basePool._executeRewardTrades({
             strategyContext: strategyContext,
-            rewardTokens: context.stakingContext.rewardTokens,
             data: params.tradeData
         });
 

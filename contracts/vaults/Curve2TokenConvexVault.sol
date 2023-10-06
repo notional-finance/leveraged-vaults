@@ -25,14 +25,12 @@ import {Curve2TokenVaultMixin} from "./curve/mixins/Curve2TokenVaultMixin.sol";
 import {Curve2TokenPoolUtils} from "./curve/internal/pool/Curve2TokenPoolUtils.sol";
 import {Curve2TokenConvexHelper} from "./curve/external/Curve2TokenConvexHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {SettlementUtils} from "./common/internal/settlement/SettlementUtils.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 
 contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     using TypeConvert for uint256;
     using TypeConvert for int256;
     using TokenUtils for IERC20;
-    using SettlementUtils for StrategyContext;
     using VaultStorage for StrategyVaultState;
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
     using Curve2TokenConvexHelper for Curve2TokenConvexStrategyContext;
@@ -80,11 +78,9 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
     }   
 
-    function settleVaultEmergency(uint256 poolClaimToSettle, bytes calldata data) 
+    function emergencyExit(bytes calldata data) 
         external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
-        Curve2TokenConvexHelper.settleVaultEmergency(
-            _strategyContext(), poolClaimToSettle, data
-        );
+        Curve2TokenConvexHelper.emergencyExit(_strategyContext(), data);
         _lockVault();
     }
 

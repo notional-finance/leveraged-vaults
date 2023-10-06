@@ -58,23 +58,12 @@ abstract contract AuraStakingMixin is VaultBase {
         AURA_TOKEN = auraToken;
     }
 
-    function _rewardTokens() private view returns (IERC20[] memory tokens) {
-        uint256 rewardTokenCount = LIQUIDITY_GAUGE.reward_count() + 2;
-        tokens = new IERC20[](rewardTokenCount);
-        tokens[0] = BAL_TOKEN;
-        tokens[1] = AURA_TOKEN;
-        for (uint256 i = 2; i < rewardTokenCount; i++) {
-            tokens[i] = IERC20(LIQUIDITY_GAUGE.reward_tokens(i - 2));
-        }
-    }
-
     function _auraStakingContext() internal view returns (AuraStakingContext memory) {
         return AuraStakingContext({
             liquidityGauge: LIQUIDITY_GAUGE,
             booster: AURA_BOOSTER,
             rewardPool: AURA_REWARD_POOL,
             poolId: AURA_POOL_ID,
-            rewardTokens: _rewardTokens()
         });
     }
 

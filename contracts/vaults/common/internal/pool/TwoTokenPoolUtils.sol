@@ -136,14 +136,14 @@ library TwoTokenPoolUtils {
     }
 
     function _validateTrades(
-        IERC20[] memory rewardTokens,
         SingleSidedRewardTradeParams memory primaryTrade,
         SingleSidedRewardTradeParams memory secondaryTrade,
         address primaryToken,
-        address secondaryToken
+        address secondaryToken,
+        address poolToken
     ) private pure {
-        // Validate trades
-        if (!RewardUtils._isValidRewardToken(rewardTokens, primaryTrade.sellToken)) {
+        // Make sure we are not selling one of the core tokens
+        if (primaryTrade.sellToken == primaryToken || primaryTrade.sellToken == secondaryToken || primaryTrade.poolToken) {
             revert Errors.InvalidRewardToken(primaryTrade.sellToken);
         }
         if (secondaryTrade.sellToken != primaryTrade.sellToken) {
@@ -160,7 +160,6 @@ library TwoTokenPoolUtils {
     function _executeRewardTrades(
         TwoTokenPoolContext calldata poolContext,
         StrategyContext memory strategyContext,
-        IERC20[] memory rewardTokens,
         bytes calldata data
     ) internal returns (address rewardToken, uint256 amountSold, uint256 primaryAmount, uint256 secondaryAmount) {
         Proportional2TokenRewardTradeParams memory params = abi.decode(
@@ -169,11 +168,11 @@ library TwoTokenPoolUtils {
         );
 
         _validateTrades(
-            rewardTokens,
             params.primaryTrade,
             params.secondaryTrade,
             poolContext.primaryToken,
-            poolContext.secondaryToken
+            poolContext.secondaryToken,
+            poolContext.poolToken
         );
 
         (/* amountSold */, primaryAmount) = strategyContext._executeTradeExactIn({

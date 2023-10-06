@@ -20,13 +20,15 @@ library ComposableAuraRewardUtils {
     using StrategyUtils for StrategyContext;
 
     function _validateTrade(
-        IERC20[] memory rewardTokens,
+        IERC20[] memory poolTokens,
         SingleSidedRewardTradeParams memory params,
         address token
     ) private view {
-        // Validate trades
-        if (!RewardUtils._isValidRewardToken(rewardTokens, params.sellToken)) {
-            revert Errors.InvalidRewardToken(params.sellToken);
+        // Make sure we are not selling one of the core tokens
+        for (uint256 i; i < poolTokens.length; i++) {
+            if (params.sellToken == poolTokens[i]) {
+                revert Errors.InvalidRewardToken(params.sellToken);
+            }            
         }
         if (params.buyToken != token) {
             revert Errors.InvalidRewardToken(params.buyToken);
@@ -49,7 +51,6 @@ library ComposableAuraRewardUtils {
     function _executeRewardTrades(
         BalancerComposablePoolContext calldata poolContext,
         StrategyContext memory strategyContext,
-        IERC20[] memory rewardTokens,
         bytes calldata data
     ) internal returns (address rewardToken, uint256 amountSold, uint256[] memory amounts) {
         ComposableRewardTradeParams memory params = abi.decode(
@@ -64,7 +65,7 @@ library ComposableAuraRewardUtils {
         for (uint256 i; i < numTokens; i++) {
             if (i == poolContext.bptIndex) continue;
 
-            _validateTrade(rewardTokens, params.rewardTrades[tradeIndex], poolContext.basePool.tokens[i]);
+            _validateTrade(poolContext.basePool.tokens, params.rewardTrades[tradeIndex], poolContext.basePool.tokens[i]);
 
             (amountSold, amounts[i]) = _executeTrade(strategyContext, params.rewardTrades[tradeIndex]);
             
