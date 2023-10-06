@@ -20,6 +20,7 @@ import {
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
+import {IComposablePool} from "../../../../../interfaces/balancer/IBalancerPool.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 import {VaultConstants} from "../../../common/VaultConstants.sol";
 import {VaultStorage} from "../../../common/VaultStorage.sol";
@@ -355,7 +356,7 @@ library BalancerComposablePoolUtils {
         // Check BPT threshold to make sure our share of the pool is
         // below maxPoolShare
         uint256 bptThreshold = strategyContext.vaultSettings._poolClaimThreshold(
-            oracleContext.virtualSupply
+            IComposablePool(address(poolContext.basePool.poolToken)).getActualSupply()
         );
         uint256 bptHeldAfterJoin = strategyContext.vaultState.totalPoolClaim + bptMinted;
         if (bptHeldAfterJoin > bptThreshold)
