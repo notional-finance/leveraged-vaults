@@ -5,8 +5,6 @@ import {
     StrategyContext, 
     StrategyVaultSettings, 
     TradeParams,
-    TwoTokenPoolContext,
-    ThreeTokenPoolContext,
     ComposablePoolContext
 } from "../common/VaultTypes.sol";
 import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
@@ -47,35 +45,6 @@ struct PoolParams {
     bytes customData;
 }
 
-struct StableOracleContext {
-    /// @notice Amplification parameter
-    uint256 ampParam;
-}
-
-struct UnderlyingPoolContext {
-    uint256 mainScaleFactor;
-    uint256 mainBalance;
-    uint256 wrappedScaleFactor;
-    uint256 wrappedBalance;
-    uint256 virtualSupply;
-    uint256 fee;
-    uint256 lowerTarget;
-    uint256 upperTarget;
-}
-
-struct BoostedOracleContext {
-    /// @notice Amplification parameter
-    uint256 ampParam;
-    /// @notice BPT balance in the pool
-    uint256 bptBalance;
-    /// @notice Boosted pool swap fee
-    uint256 swapFeePercentage;
-    /// @notice Virtual supply
-    uint256 virtualSupply;
-    /// @notice Underlying linear pool for the primary token
-    UnderlyingPoolContext[] underlyingPools;
-}
-
 struct ComposableOracleContext {
     /// @notice Amplification parameter
     uint256 ampParam;
@@ -88,35 +57,6 @@ struct AuraStakingContext {
     address booster;
     IAuraRewardPool rewardPool;
     uint256 poolId;
-}
-
-struct Balancer2TokenPoolContext {
-    TwoTokenPoolContext basePool;
-    uint256 primaryScaleFactor;
-    uint256 secondaryScaleFactor;
-    bytes32 poolId;
-}
-
-struct Balancer3TokenPoolContext {
-    ThreeTokenPoolContext basePool;
-    uint256 primaryScaleFactor;
-    uint256 secondaryScaleFactor;
-    uint256 tertiaryScaleFactor;
-    bytes32 poolId;
-}
-
-struct MetaStable2TokenAuraStrategyContext {
-    Balancer2TokenPoolContext poolContext;
-    StableOracleContext oracleContext;
-    AuraStakingContext stakingContext;
-    StrategyContext baseStrategy;
-}
-
-struct Boosted3TokenAuraStrategyContext {
-    Balancer3TokenPoolContext poolContext;
-    BoostedOracleContext oracleContext;
-    AuraStakingContext stakingContext;
-    StrategyContext baseStrategy;
 }
 
 struct BalancerComposablePoolContext {
