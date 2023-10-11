@@ -48,14 +48,14 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
 
     function convertStrategyToUnderlying(
         address account,
-        uint256 strategyTokenAmount,
+        uint256 vaultShareAmount,
         uint256 maturity
     ) public view override returns (int256 underlyingValue) {
         uint256 valuationFactor = valuationFactors[account];
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
-            strategyTokenAmount: strategyTokenAmount
+            vaultShareAmount: vaultShareAmount
         });
         if (valuationFactor > 0) {
             underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;            

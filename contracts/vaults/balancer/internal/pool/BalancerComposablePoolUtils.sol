@@ -314,10 +314,10 @@ library BalancerComposablePoolUtils {
         BalancerComposablePoolContext memory poolContext,
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
-        uint256 strategyTokens,
+        uint256 vaultShares,
         ComposableRedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = strategyContext._redeemStrategyTokens(strategyTokens);
+        uint256 bptClaim = strategyContext._redeemStrategyTokens(vaultShares);
         bool isSingleSidedExit = params.redemptionTrades.length == 0;
 
         // Underlying token balances from exiting the pool
@@ -406,16 +406,16 @@ library BalancerComposablePoolUtils {
     /// @param poolContext pool context variables
     /// @param strategyContext strategy context variables
     /// @param oracleContext oracle context variables
-    /// @param strategyTokenAmount amount of strategy tokens
+    /// @param vaultShareAmount amount of strategy tokens
     /// @return underlyingValue underlying value of strategy tokens
     function _convertStrategyToUnderlying(
         BalancerComposablePoolContext memory poolContext,
         StrategyContext memory strategyContext,
         ComposableOracleContext memory oracleContext,
-        uint256 strategyTokenAmount
+        uint256 vaultShareAmount
     ) internal view returns (int256 underlyingValue) {  
         uint256 bptClaim 
-            = strategyContext._convertStrategyTokensToPoolClaim(strategyTokenAmount);
+            = strategyContext._convertStrategyTokensToPoolClaim(vaultShareAmount);
 
         underlyingValue 
             = _getTimeWeightedPrimaryBalance(

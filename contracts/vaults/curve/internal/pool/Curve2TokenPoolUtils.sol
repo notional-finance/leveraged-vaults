@@ -148,16 +148,16 @@ library Curve2TokenPoolUtils {
     /// primary balance is used in order to prevent pool manipulation.
     /// @param poolContext pool context variables
     /// @param strategyContext strategy context variables
-    /// @param strategyTokenAmount amount of strategy tokens
+    /// @param vaultShareAmount amount of vault shares
     /// @return underlyingValue underlying value of strategy tokens
     function _convertStrategyToUnderlying(
         Curve2TokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
-        uint256 strategyTokenAmount
+        uint256 vaultShareAmount
     ) internal view returns (int256 underlyingValue) {
         
         uint256 poolClaim 
-            = strategyContext._convertStrategyTokensToPoolClaim(strategyTokenAmount);
+            = strategyContext._convertStrategyTokensToPoolClaim(vaultShareAmount);
 
         (uint256 spotPrice, uint256 oraclePrice) = _getSpotPriceAndOraclePrice(poolContext, strategyContext);
 

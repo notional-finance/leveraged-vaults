@@ -55,7 +55,7 @@ abstract contract Curve2TokenVaultMixin is Curve2TokenPoolMixin {
         } else {
             return context.poolContext._convertStrategyToUnderlying({
                 strategyContext: context.baseStrategy,
-                strategyTokenAmount: uint256(Constants.INTERNAL_TOKEN_PRECISION) // 1 vault share
+                vaultShareAmount: uint256(Constants.INTERNAL_TOKEN_PRECISION) // 1 vault share
             });
         }
     }
