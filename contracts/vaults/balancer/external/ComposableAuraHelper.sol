@@ -140,6 +140,7 @@ library ComposableAuraHelper {
         StrategyContext memory strategyContext = context.baseStrategy;
         BalancerComposablePoolContext calldata poolContext = context.poolContext; 
         ComposableOracleContext calldata oracleContext = context.oracleContext;
+        AuraStakingContext calldata stakingContext = context.stakingContext;
 
         uint256[] memory amounts;
         (
@@ -148,6 +149,7 @@ library ComposableAuraHelper {
             amounts
         ) = poolContext._executeRewardTrades({
             strategyContext: strategyContext,
+            stakingContext: stakingContext,
             data: params.tradeData
         });
 

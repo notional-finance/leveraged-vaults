@@ -8,7 +8,7 @@ import {
     StrategyContext,
     ComposableRewardTradeParams
 } from "../../../common/VaultTypes.sol";
-import {BalancerComposablePoolContext} from "../../BalancerVaultTypes.sol";
+import {BalancerComposablePoolContext, AuraStakingContext} from "../../BalancerVaultTypes.sol";
 import {VaultEvents} from "../../../common/VaultEvents.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
@@ -21,9 +21,13 @@ library ComposableAuraRewardUtils {
     function _validateTrade(
         address[] memory poolTokens,
         SingleSidedRewardTradeParams memory params,
+        address stakedPoolToken,
         address token
     ) private view {
         // Make sure we are not selling one of the core tokens
+        if (params.sellToken == stakedPoolToken) {
+            revert Errors.InvalidRewardToken(params.sellToken);
+        }
         for (uint256 i; i < poolTokens.length; i++) {
             if (params.sellToken == poolTokens[i]) {
                 revert Errors.InvalidRewardToken(params.sellToken);
@@ -34,6 +38,7 @@ library ComposableAuraRewardUtils {
         }
     }
 
+    /// @notice internal function to avoid stack issues
     function _executeTrade(
         StrategyContext memory strategyContext, 
         SingleSidedRewardTradeParams memory params
@@ -50,6 +55,7 @@ library ComposableAuraRewardUtils {
     function _executeRewardTrades(
         BalancerComposablePoolContext calldata poolContext,
         StrategyContext memory strategyContext,
+        AuraStakingContext calldata stakingContext,
         bytes calldata data
     ) internal returns (address rewardToken, uint256 amountSold, uint256[] memory amounts) {
         ComposableRewardTradeParams memory params = abi.decode(
@@ -64,7 +70,12 @@ library ComposableAuraRewardUtils {
         for (uint256 i; i < numTokens; i++) {
             if (i == poolContext.bptIndex) continue;
 
-            _validateTrade(poolContext.basePool.tokens, params.rewardTrades[tradeIndex], poolContext.basePool.tokens[i]);
+            _validateTrade(
+                poolContext.basePool.tokens, 
+                params.rewardTrades[tradeIndex], 
+                poolContext.basePool.tokens[i],
+                address(stakingContext.rewardPool)
+            );
 
             (amountSold, amounts[i]) = _executeTrade(strategyContext, params.rewardTrades[tradeIndex]);
             
