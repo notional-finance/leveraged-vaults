@@ -512,18 +512,34 @@ struct AccountBalance {
 }
 
 struct VaultConfigParams {
+    // Vault Flags (documented in VaultConfiguration.sol)
     uint16 flags;
+    // Primary currency the vault borrows in
     uint16 borrowCurrencyId;
+    // Specified in whole tokens in 1e8 precision, allows a 4.2 billion min borrow size
     uint256 minAccountBorrowSize;
+    // Minimum collateral ratio for a vault specified in basis points, valid values are greater than 10_000
+    // where the largest minimum collateral ratio is 65_536 which is much higher than anything reasonable.
     uint16 minCollateralRatioBPS;
+    // Allows up to a 12.75% annualized fee
     uint8 feeRate5BPS;
+    // A percentage that represents the share of the cash raised that will go to the liquidator
     uint8 liquidationRate;
+    // A percentage of the fee given to the protocol
     uint8 reserveFeeShare;
+    // Maximum market index where a vault can borrow from
     uint8 maxBorrowMarketIndex;
+    // Maximum collateral ratio that a liquidator can push a an account to during deleveraging
     uint16 maxDeleverageCollateralRatioBPS;
+    // An optional list of secondary borrow currencies
     uint16[2] secondaryBorrowCurrencies;
+    // Required collateral ratio for accounts to stay inside a vault, prevents accounts
+    // from "free riding" on vaults. Enforced on entry and exit, not on deleverage.
     uint16 maxRequiredAccountCollateralRatioBPS;
+    // Specified in whole tokens in 1e8 precision, allows a 4.2 billion min borrow size
     uint256[2] minAccountSecondaryBorrow;
+    // Specified as a percent discount off the exchange rate of the excess cash that will be paid to
+    // the liquidator during liquidateExcessVaultCash
     uint8 excessCashLiquidationBonus;
 }
 

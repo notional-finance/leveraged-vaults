@@ -29,7 +29,7 @@ struct DepositTradeParams {
 
 /// @notice Deposit parameters
 struct DepositParams {
-    /// @notice Pool claim slippage control
+    /// @notice min pool claim for slippage control
     uint256 minPoolClaim;
     /// @notice DepositTradeParams or empty (single-sided entry)
     bytes tradeData;
@@ -47,7 +47,7 @@ struct RedeemParams {
 
 /// @notice Deposit parameters for the composable pool
 struct ComposableDepositParams {
-    /// @notice Pool claim slippage control
+    /// @notice min pool claim for slippage control
     uint256 minPoolClaim;
     /// @notice Deposit trades or empty (single-sided entry)
     DepositTradeParams[] depositTrades;
@@ -63,32 +63,49 @@ struct ComposableRedeemParams {
 
 /// @notice Reward reinvestment parameters
 struct ReinvestRewardParams {
+    /// @notice Trading parameters
     bytes tradeData;
+    /// @notice min pool claim for slippage control
     uint256 minPoolClaim;
 }
 
+/// @notice Proportional reinvestment trading parameters
 struct Proportional2TokenRewardTradeParams {
+    /// @notice Primary token trade params
     SingleSidedRewardTradeParams primaryTrade;
+    /// @notice Secondary token trade params
     SingleSidedRewardTradeParams secondaryTrade;
 }
 
+/// @notice Composable reinvestment trading parameters
 struct ComposableRewardTradeParams {
+    /// @notice Trades for different reward tokens
     SingleSidedRewardTradeParams[] rewardTrades;
 }
 
+/// @notice Single-sided reinvestment trading parameters
 struct SingleSidedRewardTradeParams {
+    /// @notice Address of the token to sell (typically one of the reward tokens)
     address sellToken;
+    /// @notice Address of the token to buy (typically one of the pool tokens)
     address buyToken;
+    /// @notice Amount of tokens to sell
     uint256 amount;
+    /// @notice Trade params
     TradeParams tradeParams;
 }
 
 /// @notice Base strategy context
 struct StrategyContext {
+    /// @notice Trading module proxy
     ITradingModule tradingModule;
+    /// @notice Vault settings
     StrategyVaultSettings vaultSettings;
+    /// @notice Vault state
     StrategyVaultState vaultState;
+    /// @notice Precision used by the liquidity pool
     uint256 poolClaimPrecision;
+    /// @notice Specifies if the vault can trade using static slippage
     bool canUseStaticSlippage;
 }
 
@@ -116,22 +133,38 @@ struct StrategyVaultState {
     uint32 flags;
 }
 
+/// @notice Pool context for 2-token pools (currently used by the Curve strategy)
 struct TwoTokenPoolContext {
+    /// @notice Primary token address
     address primaryToken;
+    /// @notice Secondary token address
     address secondaryToken;
+    /// @notice Primary token index
     uint8 primaryIndex;
+    /// @notice Secondary token index
     uint8 secondaryIndex;
+    /// @notice Primary token decimals
     uint8 primaryDecimals;
+    /// @notice Secondary token decimals
     uint8 secondaryDecimals;
+    /// @notice Primary token balance
     uint256 primaryBalance;
+    /// @notice Secondary token balance
     uint256 secondaryBalance;
+    /// @notice LP token address
     IERC20 poolToken;
 }
 
+/// @notice Composable pool context
 struct ComposablePoolContext {
+    /// @notice Pool tokens
     address[] tokens;
+    /// @notice Token balances
     uint256[] balances;
+    /// @notice Token decimals
     uint8[] decimals;
+    /// @notice LP token address
     IERC20 poolToken;
+    /// @notice Index of the primary token
     uint8 primaryIndex;
 }

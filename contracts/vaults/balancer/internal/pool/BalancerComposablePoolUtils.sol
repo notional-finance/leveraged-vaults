@@ -396,8 +396,7 @@ library BalancerComposablePoolUtils {
                 isJoin: false,
                 isSingleSided: isSingleSidedExit,
                 bptAmount: bptClaim
-            }),
-            bptExitAmount: bptClaim
+            })
         });
     }
 

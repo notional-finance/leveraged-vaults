@@ -144,14 +144,10 @@ library ComposableAuraHelper {
 
         uint256[] memory amounts;
         (
-            rewardToken, 
-            amountSold,
-            amounts
-        ) = poolContext._executeRewardTrades({
-            strategyContext: strategyContext,
-            stakingContext: stakingContext,
-            data: params.tradeData
-        });
+            rewardToken, amountSold, amounts
+        ) = poolContext._executeRewardTrades(
+            strategyContext, stakingContext, params.tradeData
+        );
 
         // Make sure we are joining with the right proportion to minimize slippage
         poolContext._getTimeWeightedPrimaryBalance(

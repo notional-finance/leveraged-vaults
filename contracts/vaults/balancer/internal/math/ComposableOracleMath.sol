@@ -5,7 +5,6 @@ import {ComposableOracleContext, BalancerComposablePoolContext, StrategyContext}
 import {TwoTokenPoolContext} from "../../../common/VaultTypes.sol";
 import {VaultConstants} from "../../../common/VaultConstants.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
-import {TwoTokenPoolUtils} from "../../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
