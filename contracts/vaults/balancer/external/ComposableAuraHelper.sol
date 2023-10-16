@@ -123,7 +123,7 @@ library ComposableAuraHelper {
         context.baseStrategy.vaultState.totalPoolClaim = 0;
         context.baseStrategy.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.EmergencyVaultSettlement(poolClaimToSettle);
+        emit VaultEvents.EmergencyExit(poolClaimToSettle);
     }
 
     /// @notice Reinvests the reward tokens

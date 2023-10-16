@@ -38,7 +38,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         return bytes4(keccak256("BalancerComposableAuraVault"));
     }
     /// @notice Initializes the strategy
-    /// @param params initi parameters
+    /// @param params init parameters
     function initialize(InitParams calldata params) external initializer onlyNotionalOwner {
         // Initialize the base vault
         __INIT_VAULT(params.name, params.borrowCurrencyId);

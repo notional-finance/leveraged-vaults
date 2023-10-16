@@ -101,7 +101,7 @@ library Curve2TokenConvexHelper {
         context.baseStrategy.vaultState.totalPoolClaim = 0;
         context.baseStrategy.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.EmergencyVaultSettlement(poolClaimToSettle);  
+        emit VaultEvents.EmergencyExit(poolClaimToSettle);  
     }
 
     function reinvestReward(
