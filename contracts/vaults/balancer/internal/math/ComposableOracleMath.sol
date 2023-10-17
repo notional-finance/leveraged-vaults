@@ -1,26 +1,30 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {ComposableOracleContext, BalancerComposablePoolContext, StrategyContext} from "../../BalancerVaultTypes.sol";
-import {TwoTokenPoolContext} from "../../../common/VaultTypes.sol";
-import {VaultConstants} from "../../../common/VaultConstants.sol";
-import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
+import {ComposableOracleContext, BalancerComposablePoolContext} from "../../BalancerVaultTypes.sol";
 import {BalancerConstants} from "../BalancerConstants.sol";
-import {Errors} from "../../../../global/Errors.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
 import {StableMath} from "./StableMath.sol";
-import {ITradingModule} from "../../../../../interfaces/trading/ITradingModule.sol";
 
+/**
+ * Helper function for calculating the spot price
+ */
 library ComposableOracleMath {
     using TypeConvert for int256;
-    using StrategyUtils for StrategyContext;
 
+    /// @notice Gets the current spot price of poolTokens[index1] with respect to poolTokens[index2]
+    /// @param oracleContext oracle context
+    /// @param poolContext pool context
+    /// @param index1 first token index
+    /// @param index2 second token index
+    /// @return spotPrice spot price of 1 vault share
     function _getSpotPrice(
         ComposableOracleContext memory oracleContext, 
         BalancerComposablePoolContext memory poolContext, 
         uint256 index1,
         uint256 index2
     ) internal view returns (uint256 spotPrice) {
+        // BPT index is not supported
         require(
             index1 != poolContext.bptIndex && index1 < poolContext.basePool.tokens.length
         ); /// @dev invalid token index
@@ -28,6 +32,7 @@ library ComposableOracleMath {
             index2 != poolContext.bptIndex && index2 < poolContext.basePool.tokens.length
         ); /// @dev invalid token index
 
+        // Return 1 if token1 and token2 are the same token
         if (index1 == index2) {
             return BalancerConstants.BALANCER_PRECISION;
         }
@@ -45,12 +50,9 @@ library ComposableOracleMath {
             oracleContext.ampParam, StableMath._balances(balanceX, balanceY), true // round up
         );
 
-        spotPrice = StableMath._calcSpotPrice({
-            amplificationParameter: oracleContext.ampParam,
-            invariant: invariant,
-            balanceX: balanceX,
-            balanceY: balanceY
-        });
+        spotPrice = StableMath._calcSpotPrice(
+            oracleContext.ampParam, invariant, balanceX, balanceY
+        );
 
         /// Apply secondary scale factor in reverse
         uint256 scaleFactor = poolContext.scalingFactors[index2] * BalancerConstants.BALANCER_PRECISION 

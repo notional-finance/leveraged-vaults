@@ -8,17 +8,11 @@ import {
     BalancerComposableAuraStrategyContext,
     AuraStakingContext
 } from "../BalancerVaultTypes.sol";
-import {
-    StrategyContext, 
-    ComposablePoolContext
-} from "../../common/VaultTypes.sol";
-import {Constants} from "../../../global/Constants.sol";
+import {StrategyContext, ComposablePoolContext} from "../../common/VaultTypes.sol";
 import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {ISingleSidedLPStrategyVault} from "../../../../interfaces/notional/IStrategyVault.sol";
-import {BalancerConstants} from "../internal/BalancerConstants.sol";
 import {IBalancerPool, IComposablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
-import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";

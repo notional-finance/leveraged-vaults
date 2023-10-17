@@ -1,22 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {
-    StrategyContext, 
-    StrategyVaultSettings, 
-    TradeParams,
-    ComposablePoolContext
-} from "../common/VaultTypes.sol";
-import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
-import {VaultConfig} from "../../../interfaces/notional/IVaultController.sol";
-import {IAuraBooster} from "../../../interfaces/aura/IAuraBooster.sol";
+import {StrategyContext, StrategyVaultSettings, ComposablePoolContext} from "../common/VaultTypes.sol";
 import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
-import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
-import {IBalancerMinter} from "../../../interfaces/balancer/IBalancerMinter.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
-import {IERC20} from "../../../interfaces/IERC20.sol";
 
 /// @notice Deployment parameters
 struct DeploymentParams {
@@ -72,16 +60,26 @@ struct AuraStakingContext {
     uint256 poolId;
 }
 
+/// @notice Balancer composable pool context
 struct BalancerComposablePoolContext {
+    /// @notice base pool context
     ComposablePoolContext basePool;
+    /// @notice scaling factors
     uint256[] scalingFactors;
+    /// @notice Balancer pool ID
     bytes32 poolId;
+    /// @notice BPT index
     uint8 bptIndex;
 }
 
+/// @notice Balancer composable with Aura staking strategy context
 struct BalancerComposableAuraStrategyContext {
+    /// @notice pool context
     BalancerComposablePoolContext poolContext;
+    /// @notice oracle context
     ComposableOracleContext oracleContext;
+    /// @notice staking context
     AuraStakingContext stakingContext;
+    /// @notice base strategy context
     StrategyContext baseStrategy;
 }
