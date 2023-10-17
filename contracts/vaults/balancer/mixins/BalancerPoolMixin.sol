@@ -12,10 +12,15 @@ import {VaultStorage} from "../../common/VaultStorage.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
 import {BalancerConstants} from "../internal/BalancerConstants.sol";
 
+/**
+ * Base class for all Balancer LP strategies
+ */
 abstract contract BalancerPoolMixin is AuraStakingMixin {
     using StrategyUtils for StrategyContext;
 
+    /// @notice Balancer pool ID
     bytes32 internal immutable BALANCER_POOL_ID;
+    /// @notice Balancer LP token
     IERC20 internal immutable BALANCER_POOL_TOKEN;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
@@ -25,11 +30,13 @@ abstract contract BalancerPoolMixin is AuraStakingMixin {
         BALANCER_POOL_TOKEN = IERC20(pool);
     }
 
+    /// @notice the re-entrancy context is checked during liquidation
     function _checkReentrancyContext() internal override {
         IBalancerVault.UserBalanceOp[] memory noop = new IBalancerVault.UserBalanceOp[](0);
         Deployments.BALANCER_VAULT.manageUserBalance(noop);
     }
 
+    /// @notice returns the base strategy context
     function _baseStrategyContext() internal view returns(StrategyContext memory) {
         return StrategyContext({
             tradingModule: TRADING_MODULE,
@@ -41,12 +48,16 @@ abstract contract BalancerPoolMixin is AuraStakingMixin {
     }
 
     /// @notice Converts pool claim to strategy tokens
+    /// @param poolClaim amount of pool tokens
+    /// @return strategyTokenAmount amount of vault shares
     function convertPoolClaimToStrategyTokens(uint256 poolClaim)
         external view returns (uint256 strategyTokenAmount) {
         return _baseStrategyContext()._convertPoolClaimToStrategyTokens(poolClaim);
     }
 
     /// @notice Converts strategy tokens to pool claim
+    /// @param strategyTokenAmount amount of vault shares
+    /// @return poolClaim amount of pool tokens
     function convertStrategyTokensToPoolClaim(uint256 strategyTokenAmount) 
         external view returns (uint256 poolClaim) {
         return _baseStrategyContext()._convertStrategyTokensToPoolClaim(strategyTokenAmount);

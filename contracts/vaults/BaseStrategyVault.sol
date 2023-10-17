@@ -17,9 +17,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     using TokenUtils for IERC20;
     using TradeHandler for Trade;
 
-    bytes32 internal constant NORMAL_SETTLEMENT_ROLE = keccak256("NORMAL_SETTLEMENT_ROLE");
-    bytes32 internal constant EMERGENCY_SETTLEMENT_ROLE = keccak256("EMERGENCY_SETTLEMENT_ROLE");
-    bytes32 internal constant POST_MATURITY_SETTLEMENT_ROLE = keccak256("POST_MATURITY_SETTLEMENT_ROLE");
+    bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
     bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
     bytes32 internal constant STATIC_SLIPPAGE_TRADING_ROLE = keccak256("STATIC_SLIPPAGE_TRADING_ROLE");
 
@@ -226,9 +224,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
 
     function getRoles() external view returns (StrategyVaultRoles memory) {
         return StrategyVaultRoles({
-            normalSettlement: NORMAL_SETTLEMENT_ROLE,
-            emergencySettlement: EMERGENCY_SETTLEMENT_ROLE,
-            postMaturitySettlement: POST_MATURITY_SETTLEMENT_ROLE,
+            emergencyExit: EMERGENCY_EXIT_ROLE,
             rewardReinvestment: REWARD_REINVESTMENT_ROLE,
             staticSlippageTrading: STATIC_SLIPPAGE_TRADING_ROLE
         });

@@ -75,7 +75,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     /// @notice Remove liquidity from Balancer in the event of an emergency (i.e. pool gets hacked)
     /// @notice Vault will be locked after an emergency exit, restoreVault can be used to unlock the vault
     /// @param data optional custom data
-    function emergencyExit(bytes calldata data) external whenNotLocked onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
+    function emergencyExit(bytes calldata data) external whenNotLocked onlyRole(EMERGENCY_EXIT_ROLE) {
         ComposableAuraHelper.emergencyExit(_strategyContext(), data);
 
         // Lock vault after emergency settlement

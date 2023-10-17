@@ -79,7 +79,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     }   
 
     function emergencyExit(bytes calldata data) 
-        external onlyRole(EMERGENCY_SETTLEMENT_ROLE) {
+        external onlyRole(EMERGENCY_EXIT_ROLE) {
         Curve2TokenConvexHelper.emergencyExit(_strategyContext(), data);
         _lockVault();
     }

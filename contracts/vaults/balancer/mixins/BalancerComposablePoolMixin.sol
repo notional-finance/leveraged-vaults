@@ -19,6 +19,9 @@ import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 import {ComposableAuraHelper} from "../external/ComposableAuraHelper.sol";
 
+/**
+ * Base class for all Balancer composable pools
+ */
 abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSidedLPStrategyVault {
     using TypeConvert for uint256;
 
@@ -27,8 +30,11 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
     uint8 internal constant NOT_FOUND = type(uint8).max;
     uint256 internal constant MAX_TOKENS = 5;
 
+    /// @notice primary token index
     uint8 internal immutable PRIMARY_INDEX;
+    /// @notice pool token index
     uint8 internal immutable BPT_INDEX;
+    /// @notice this implementation currently supports up to 5 tokens
     address internal immutable TOKEN_1;
     address internal immutable TOKEN_2;
     address internal immutable TOKEN_3;
@@ -39,12 +45,12 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
     uint8 internal immutable DECIMALS_3;
     uint8 internal immutable DECIMALS_4;
     uint8 internal immutable DECIMALS_5;
+    /// @notice keep track of the total number of tokens
     uint8 internal immutable NUM_TOKENS;
 
-    constructor(
-        NotionalProxy notional_, 
-        AuraVaultDeploymentParams memory params
-    ) BalancerPoolMixin(notional_, params) {
+    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
+        BalancerPoolMixin(notional_, params) {
+        // get primary address from currency ID
         address primaryAddress = _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId);
 
         // prettier-ignore
@@ -73,6 +79,7 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
             }
         }
 
+        // make sure primary index and BPT index exist
         require(primaryIndex != NOT_FOUND);
         require(bptIndex != NOT_FOUND);
 
@@ -86,16 +93,17 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         DECIMALS_5 = _getTokenDecimals(TOKEN_5);
     }
 
+    /// @notice gets the token decimals
+    /// @param token token address
+    /// @return decimals token decimals
     function _getTokenDecimals(address token) private view returns (uint8 decimals) {
         if (token == address(0)) return 0;
 
-        decimals = token ==
-            Deployments.ETH_ADDRESS
-            ? 18
-            : IERC20(token).decimals();
+        decimals = (token == Deployments.ETH_ADDRESS) ? 18 : IERC20(token).decimals();
         require(decimals <= 18);
     }
-    
+
+    /// @notice returns the composable pool context    
     function _composablePoolContext() 
         internal view returns (BalancerComposablePoolContext memory) {
         (
@@ -109,26 +117,12 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         address[] memory tokens = new address[](NUM_TOKENS);
         uint8[] memory decimals = new uint8[](NUM_TOKENS);
 
-        if (NUM_TOKENS > 0) {
-            tokens[0] = TOKEN_1;
-            decimals[0] = DECIMALS_1;
-        }
-        if (NUM_TOKENS > 1) {
-            tokens[1] = TOKEN_2;
-            decimals[1] = DECIMALS_2;
-        }
-        if (NUM_TOKENS > 2) {
-            tokens[2] = TOKEN_3;
-            decimals[2] = DECIMALS_3;
-        }
-        if (NUM_TOKENS > 3) {
-            tokens[3] = TOKEN_4;
-            decimals[3] = DECIMALS_4;
-        }
-        if (NUM_TOKENS > 4) {
-            tokens[4] = TOKEN_5;
-            decimals[4] = DECIMALS_5;
-        }
+        // Assign token addresses and decimals
+        if (NUM_TOKENS > 0) (tokens[0], decimals[0]) = (TOKEN_1, DECIMALS_1);
+        if (NUM_TOKENS > 1) (tokens[1], decimals[1]) = (TOKEN_2, DECIMALS_2);
+        if (NUM_TOKENS > 2) (tokens[2], decimals[2]) = (TOKEN_3, DECIMALS_3);
+        if (NUM_TOKENS > 3) (tokens[3], decimals[3]) = (TOKEN_4, DECIMALS_4);
+        if (NUM_TOKENS > 4) (tokens[4], decimals[4]) = (TOKEN_5, DECIMALS_5);
 
         return BalancerComposablePoolContext({
             basePool: ComposablePoolContext({
@@ -144,6 +138,7 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         });
     }
 
+    /// @notice returns the composable oracle context
     function _composableOracleContext() internal view returns (ComposableOracleContext memory) {
         IComposablePool pool = IComposablePool(address(BALANCER_POOL_TOKEN));
 
@@ -160,6 +155,7 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         });
     }
 
+    /// @notice returns the composable pool strategy context
     function _strategyContext() internal view returns (BalancerComposableAuraStrategyContext memory) {
         return BalancerComposableAuraStrategyContext({
             poolContext: _composablePoolContext(),
@@ -169,11 +165,14 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         });
     }
 
+    /// @notice returns the value of 1 vault share
+    /// @return exchange rate of 1 vault share
     function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
         BalancerComposableAuraStrategyContext memory context = _strategyContext();
         return ComposableAuraHelper.getExchangeRate(context);
     }
 
+    /// @notice returns strategy vault information for the UI
     function getStrategyVaultInfo() public view override returns (SingleSidedLPStrategyVaultInfo memory) {
         StrategyContext memory context = _baseStrategyContext();
         return SingleSidedLPStrategyVaultInfo({
