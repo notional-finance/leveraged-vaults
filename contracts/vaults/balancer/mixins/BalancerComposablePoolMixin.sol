@@ -17,6 +17,7 @@ import {Deployments} from "../../../global/Deployments.sol";
 import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
+import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {ComposableAuraHelper} from "../external/ComposableAuraHelper.sol";
 
 /**
@@ -53,6 +54,8 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         // get primary address from currency ID
         address primaryAddress = _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId);
 
+        primaryAddress = BalancerUtils.getTokenAddress(primaryAddress);
+
         // prettier-ignore
         (
             address[] memory tokens,
@@ -63,11 +66,11 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         require(tokens.length <= MAX_TOKENS);
         NUM_TOKENS = uint8(tokens.length);
 
-        TOKEN_1 = NUM_TOKENS > 0 ? tokens[0] : address(0);
-        TOKEN_2 = NUM_TOKENS > 1 ? tokens[1] : address(0);
-        TOKEN_3 = NUM_TOKENS > 2 ? tokens[2] : address(0);
-        TOKEN_4 = NUM_TOKENS > 3 ? tokens[3] : address(0);
-        TOKEN_5 = NUM_TOKENS > 4 ? tokens[4] : address(0);
+        TOKEN_1 = NUM_TOKENS > 0 ? _getTokenAddress(tokens[0]) : address(0);
+        TOKEN_2 = NUM_TOKENS > 1 ? _getTokenAddress(tokens[1]) : address(0);
+        TOKEN_3 = NUM_TOKENS > 2 ? _getTokenAddress(tokens[2]) : address(0);
+        TOKEN_4 = NUM_TOKENS > 3 ? _getTokenAddress(tokens[3]) : address(0);
+        TOKEN_5 = NUM_TOKENS > 4 ? _getTokenAddress(tokens[4]) : address(0);
 
         uint8 primaryIndex = NOT_FOUND;
         uint8 bptIndex = NOT_FOUND;
@@ -86,19 +89,22 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         PRIMARY_INDEX = primaryIndex;
         BPT_INDEX = bptIndex;
 
-        DECIMALS_1 = _getTokenDecimals(TOKEN_1);
-        DECIMALS_2 = _getTokenDecimals(TOKEN_2);
-        DECIMALS_3 = _getTokenDecimals(TOKEN_3);
-        DECIMALS_4 = _getTokenDecimals(TOKEN_4);
-        DECIMALS_5 = _getTokenDecimals(TOKEN_5);
+        DECIMALS_1 = NUM_TOKENS > 0 ? _getTokenDecimals(TOKEN_1) : 0;
+        DECIMALS_2 = NUM_TOKENS > 1 ? _getTokenDecimals(TOKEN_2) : 0;
+        DECIMALS_3 = NUM_TOKENS > 2 ? _getTokenDecimals(TOKEN_3) : 0;
+        DECIMALS_4 = NUM_TOKENS > 3 ? _getTokenDecimals(TOKEN_4) : 0;
+        DECIMALS_5 = NUM_TOKENS > 4 ? _getTokenDecimals(TOKEN_5) : 0;
     }
+
+    function _getTokenAddress(address token) private view returns (address) {
+        return token == address(Deployments.WETH) ? Deployments.ETH_ADDRESS : address(token);
+    }
+
 
     /// @notice gets the token decimals
     /// @param token token address
     /// @return decimals token decimals
     function _getTokenDecimals(address token) private view returns (uint8 decimals) {
-        if (token == address(0)) return 0;
-
         decimals = (token == Deployments.ETH_ADDRESS) ? 18 : IERC20(token).decimals();
         require(decimals <= 18);
     }

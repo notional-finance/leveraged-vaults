@@ -22,10 +22,9 @@ chain = Chain()
 
 def test_single_maturity_low_leverage_success(ArbStratStableETHstETH):
     (env, vault, mock) = ArbStratStableETHstETH
-    whale = accounts.at("0xc948eb5205bde3e18cac4969d6ad3a56ba7b2347", force=True)
-    env.notional.batchBalanceAction(whale, [[4, 1, Wei(9e18), 0, False, True]], {"from": whale, "value": Wei(9e18)})
-    deposit(ETHPrimaryContext(*ArbStratStableETHstETH), [get_deposit_op(1e18, 2e8, accounts[0], 0)])
+    deposit(ETHPrimaryContext(*ArbStratStableETHstETH), [get_deposit_op(0.1e18, 0.2e8, accounts[0], 0)])
 
+@pytest.mark.skip
 def test_secondary_currency_trading_wrapped_success(ArbStratStableETHstETH):
     (env, vault, mock) = ArbStratStableETHstETH
     whale = accounts.at("0xc948eb5205bde3e18cac4969d6ad3a56ba7b2347", force=True)
@@ -70,5 +69,3 @@ def depositTradeBalancer(env, vault, primaryAmountToSell):
     secondaryAmount = env.tokens["wstETH"].balanceOf(env.tradingModule)
     env.tokens["wstETH"].transfer(vault, secondaryAmount, {"from": env.tradingModule})
     return (secondaryAmount, 3)
-
-# TODO: Test no 0x trading

@@ -140,7 +140,7 @@ def get_expected_pool_claim_amount(context, depositAmount, expectedBorrowAmount,
         res = tradeFunc(env, vault, primaryAmountToSell)
         secondaryAmount = res[0]
         undoCount += res[1]
-    expectedPoolClaimAmount = vault.joinPoolAndStake.call(primaryAmount, secondaryAmount, 0)
+    expectedPoolClaimAmount = vault.joinPoolAndStake.call([secondaryAmount, primaryAmount, 0], 0)
     if undoCount > 0:
         chain.undo(undoCount)
     return expectedPoolClaimAmount

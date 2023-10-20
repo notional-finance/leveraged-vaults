@@ -188,16 +188,18 @@ library ComposableAuraHelper {
     /// @notice Gets the current spot price with a given token index
     /// @notice Spot price is always denominated in the primary token
     /// @param context composable pool strategy context
-    /// @param tokenIndex pool token index, BPT index is not allowed
+    /// @param index1 first pool token index, BPT index is not allowed
+    /// @param index2 second pool token index, BPT index is not allowed
     function getSpotPrice(
         BalancerComposableAuraStrategyContext memory context,
-        uint8 tokenIndex
+        uint8 index1,
+        uint8 index2
     ) external view returns (uint256 spotPrice) {
         spotPrice = ComposableOracleMath._getSpotPrice(
             context.oracleContext, 
             context.poolContext,
-            context.poolContext.basePool.primaryIndex,
-            tokenIndex
+            index1,
+            index2
         );
     }
 

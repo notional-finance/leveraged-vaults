@@ -150,9 +150,10 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
 
     /// @notice Gets the current spot price with a given token index
     /// @notice Spot price is always denominated in the primary token
-    /// @param tokenIndex pool token index, BPT index is not allowed
+    /// @param index1 first pool token index, BPT index is not allowed
+    /// @param index2 second pool token index, BPT index is not allowed
     /// @return spotPrice spot price of 1 vault share
-    function getSpotPrice(uint8 tokenIndex) external view returns (uint256 spotPrice) {
-        spotPrice = ComposableAuraHelper.getSpotPrice(_strategyContext(), tokenIndex);
+    function getSpotPrice(uint8 index1, uint8 index2) external view returns (uint256 spotPrice) {
+        spotPrice = ComposableAuraHelper.getSpotPrice(_strategyContext(), index1, index2);
     }
 }

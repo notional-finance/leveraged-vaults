@@ -3,10 +3,6 @@ from brownie import (
     accounts,
     nProxy,
     nMockProxy,
-    MetaStable2TokenAuraVault,
-    Boosted3TokenAuraVault,
-    Boosted3TokenAuraHelper,
-    MetaStable2TokenAuraHelper,
     EulerFlashLiquidator,
     AaveFlashLiquidator,
     nMockProxy
@@ -166,9 +162,9 @@ StrategyConfig = {
                 "maxPrimaryBorrowCapacity": 100_000_000e8,
                 "name": "Balancer Stable ETH-stETH Strategy",
                 "primaryCurrency": 1, # ETH
-                "poolId": "0x36bf227d6bac96e2ab1ebb5492ecec69c691943f000200000000000000000316",
-                "liquidityGauge": "0x8f0b53f3ba19ee31c0a73a6f6d84106340fadf5f",
-                "auraRewardPool": "0x49e998899ff11598182918098588e8b90d7f60d3",
+                "poolId": "0x9791d590788598535278552eecd4b211bfc790cb000000000000000000000498",
+                "liquidityGauge": "0x260cbb867359a1084ec97de4157d06ca74e89415",
+                "auraRewardPool": "0xa7bdad177d474f946f3cdeb4bcea9d24cf017471",
                 "maxUnderlyingSurplus": 2000e18, # 2000 ETH
                 "maxPoolShare": Wei(1.5e3), # 15%
                 "settlementSlippageLimitPercent": Wei(3e6), # 3%
@@ -189,9 +185,9 @@ StrategyConfig = {
                 "maxPrimaryBorrowCapacity": 100_000_000e8,
                 "name": "Balancer Stable stETH-ETH Strategy",
                 "primaryCurrency": 5, # stETH
-                "poolId": "0x36bf227d6bac96e2ab1ebb5492ecec69c691943f000200000000000000000316",
-                "liquidityGauge": "0x8f0b53f3ba19ee31c0a73a6f6d84106340fadf5f",
-                "auraRewardPool": "0x49e998899ff11598182918098588e8b90d7f60d3",
+                "poolId": "0x9791d590788598535278552eecd4b211bfc790cb000000000000000000000498",
+                "liquidityGauge": "0x260cbb867359a1084ec97de4157d06ca74e89415",
+                "auraRewardPool": "0xa7bdad177d474f946f3cdeb4bcea9d24cf017471",
                 "maxUnderlyingSurplus": 2000e18, # 2000 ETH
                 "maxPoolShare": Wei(1.5e3), # 15%
                 "settlementSlippageLimitPercent": Wei(3e6), # 3%
@@ -277,7 +273,6 @@ class BalancerEnvironment(Environment):
                 [
                     stratConfig["primaryCurrency"],
                     stratConfig["poolId"],
-                    stratConfig["liquidityGauge"],
                     self.tradingModule.address
                 ]
             ],
@@ -297,9 +292,6 @@ class BalancerEnvironment(Environment):
                 stratConfig["name"],
                 stratConfig["primaryCurrency"],
                 [
-                    stratConfig["maxUnderlyingSurplus"],
-                    stratConfig["settlementSlippageLimitPercent"], 
-                    stratConfig["postMaturitySettlementSlippageLimitPercent"], 
                     stratConfig["emergencySettlementSlippageLimitPercent"], 
                     stratConfig["maxPoolShare"],
                     stratConfig["oraclePriceDeviationLimitPercent"],
@@ -347,55 +339,3 @@ def getEnvironment(network = "mainnet"):
 def main():
     env = getEnvironment(network.show_active())
     maturity = env.notional.getActiveMarkets(1)[0][1]
-
-    stETHVaultImpl = env.deployBalancerVault(
-        "StratStableETHstETH", 
-        MetaStable2TokenAuraVault,
-        [MetaStable2TokenAuraHelper]
-    )
-    stETHVault = env.deployVaultProxy("StratStableETHstETH", stETHVaultImpl, MetaStable2TokenAuraVault)
-    aaveBoostedDAIImpl = env.deployBalancerVault(
-        "StratAaveBoostedPoolDAIPrimary", 
-        Boosted3TokenAuraVault,
-        [Boosted3TokenAuraHelper]
-    )
-    aaveBoostedDAI = env.deployVaultProxy("StratAaveBoostedPoolDAIPrimary", aaveBoostedDAIImpl, Boosted3TokenAuraVault)
-    aaveBoostedUSDCImpl = env.deployBalancerVault(
-        "StratAaveBoostedPoolUSDCPrimary", 
-        Boosted3TokenAuraVault,
-        [Boosted3TokenAuraHelper]
-    )
-    aaveBoostedUSDC = env.deployVaultProxy("StratAaveBoostedPoolUSDCPrimary", aaveBoostedUSDCImpl, Boosted3TokenAuraVault)
-    eulerBoostedDAIImpl = env.deployBalancerVault(
-        "StratEulerBoostedPoolDAIPrimary", 
-        Boosted3TokenAuraVault,
-        [Boosted3TokenAuraHelper]
-    )
-    eulerBoostedDAI = env.deployVaultProxy("StratEulerBoostedPoolDAIPrimary", eulerBoostedDAIImpl, Boosted3TokenAuraVault)
-
-    env.notional.updateVault(
-        eulerBoostedDAI.address, 
-        [
-            set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True, ONLY_VAULT_DELEVERAGE=True),
-            2, 100, 500, 150, 102, 80, 2, 800, [0, 0], 10000
-        ], 
-        Wei(5000000e8),
-        {"from": env.notional.owner()}
-    )
-
-    eulerBoostedUSDCImpl = env.deployBalancerVault(
-        "StratEulerBoostedPoolUSDCPrimary", 
-        Boosted3TokenAuraVault,
-        [Boosted3TokenAuraHelper]
-    )
-    eulerBoostedUSDC = env.deployVaultProxy("StratEulerBoostedPoolUSDCPrimary", eulerBoostedUSDCImpl, Boosted3TokenAuraVault)
-
-    env.notional.updateVault(
-        eulerBoostedUSDC.address, 
-        [
-            set_flags(0, ENABLED=True, ALLOW_ROLL_POSITION=True, ONLY_VAULT_DELEVERAGE=True),
-            3, 100, 500, 150, 102, 80, 2, 800, [0, 0], 10000
-        ], 
-        Wei(5000000e8),
-        {"from": env.notional.owner()}
-    )

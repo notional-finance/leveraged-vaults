@@ -129,7 +129,7 @@ library BalancerComposablePoolUtils {
             poolContext.basePool.tokens[index2]
         );
 
-        uint256 spotPrice = oracleContext._getSpotPrice(poolContext,index1, index2);
+        uint256 spotPrice = oracleContext._getSpotPrice(poolContext, index1, index2);
 
         strategyContext._checkPriceLimit(oraclePrice, spotPrice);
     }
@@ -243,16 +243,20 @@ library BalancerComposablePoolUtils {
                 if (i == poolContext.bptIndex || i == poolContext.basePool.primaryIndex) continue;
 
                 uint256 sellAmount = params.depositTrades[tradeIndex].tradeAmount;
-                uint256 amountBought = _sellToken({
-                    strategyContext: strategyContext, 
-                    params: params.depositTrades[tradeIndex].tradeParams,
-                    sellToken: poolContext.basePool.tokens[poolContext.basePool.primaryIndex],
-                    buyToken: poolContext.basePool.tokens[i],
-                    sellAmount: sellAmount
-                });
 
-                deposit -= sellAmount;
-                amounts[i] = amountBought;
+                if (sellAmount > 0) {
+                    uint256 amountBought = _sellToken({
+                        strategyContext: strategyContext, 
+                        params: params.depositTrades[tradeIndex].tradeParams,
+                        sellToken: poolContext.basePool.tokens[poolContext.basePool.primaryIndex],
+                        buyToken: poolContext.basePool.tokens[i],
+                        sellAmount: sellAmount
+                    });
+
+                    deposit -= sellAmount;
+                    amounts[i] = amountBought;                    
+                }
+
                 tradeIndex++;
             }
         }

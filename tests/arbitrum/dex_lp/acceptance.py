@@ -29,7 +29,7 @@ class ETHPrimaryContext:
         self.mock = mock
         self.currencyId = 1
         self.token = ZERO_ADDRESS
-        self.whale = env.whales["ETH"]
+        self.whale = accounts[1]
         self.primaryPrecision = 1e18
     def balance(self, account):
         return account.balance()

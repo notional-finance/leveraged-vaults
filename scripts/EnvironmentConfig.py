@@ -29,9 +29,6 @@ with open("abi/nCEther.json") as a:
 with open("abi/ERC20.json") as a:
     ERC20ABI = json.load(a)
 
-with open("abi/Notional.json") as a:
-    NotionalABI = json.load(a)
-
 networks = {}
 
 with open("v2.mainnet.json", "r") as f:
@@ -51,7 +48,7 @@ class Environment:
         self.addresses = addresses
         self.deployer = accounts.at(addresses["deployer"], force=True)
         self.notional = Contract.from_abi(
-            "Notional", addresses["notional"], NotionalABI
+            "Notional", addresses["notional"], interface.NotionalProxy.abi
         )
         self.tradingModuleOwner = self.notional.owner()
 
