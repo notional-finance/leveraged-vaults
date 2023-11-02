@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import {Token, TokenType} from "../global/Types.sol";
 import {Deployments} from "../global/Deployments.sol";
+import {Constants} from "../global/Constants.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -42,12 +43,12 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     /* Global Modifiers, Constructor and Initializer                          */
     /**************************************************************************/
     modifier onlyNotional() {
-        require(msg.sender == address(NOTIONAL));
+        require(msg.sender == address(NOTIONAL), "Unauthorized");
         _;
     }
 
     modifier onlyNotionalOwner() {
-        require(msg.sender == address(NOTIONAL.owner()));
+        require(msg.sender == address(NOTIONAL.owner()), "Unauthorized");
         _;
     }
     
@@ -148,14 +149,15 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         bytes calldata data
     ) internal virtual returns (uint256 tokensFromRedeem);
 
-    function _checkReentrancyContext() internal virtual;
-
-    // This can be overridden if the vault borrows in a secondary currency, but reverts by default.
-    function _repaySecondaryBorrowCallback(
-        address token,  uint256 underlyingRequired, bytes calldata data
-    ) internal virtual returns (bytes memory returnData) {
+    function _convertVaultSharesToPrimeMaturity(
+        address /* account */,
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal virtual returns (uint256 /* primeVaultShares */) {
         revert();
     }
+
+    function _checkReentrancyContext() internal virtual;
 
     /**************************************************************************/
     /* Default External Method Implementations                                */
@@ -202,10 +204,13 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         }
     }
 
-    function repaySecondaryBorrowCallback(
-        address token, uint256 underlyingRequired, bytes calldata data
-    ) external onlyNotional returns (bytes memory returnData) {
-        return _repaySecondaryBorrowCallback(token, underlyingRequired, data);
+    function convertVaultSharesToPrimeMaturity(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity
+    ) external onlyNotional returns (uint256 primeVaultShares) { 
+        require(maturity != Constants.PRIME_CASH_VAULT_MATURITY);
+        return _convertVaultSharesToPrimeMaturity(account, vaultShares, maturity);
     }
 
     function deleverageAccount(
@@ -222,7 +227,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         );
     }
 
-    function getRoles() external view returns (StrategyVaultRoles memory) {
+    function getRoles() external pure returns (StrategyVaultRoles memory) {
         return StrategyVaultRoles({
             emergencyExit: EMERGENCY_EXIT_ROLE,
             rewardReinvestment: REWARD_REINVESTMENT_ROLE,

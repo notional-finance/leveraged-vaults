@@ -9,6 +9,6 @@ def write_abi(name):
 
 
 def main():
-    abis = ["TradingModule", "MetaStable2TokenAuraVault", "Boosted3TokenAuraVault"]
+    abis = ["TradingModule", "MetaStable2TokenAuraVault", "Boosted3TokenAuraVault", "ISingleSidedLPStrategyVault"]
     for abi in abis:
         write_abi(abi)

@@ -33,6 +33,8 @@ struct Trade {
 }
 
 error InvalidTrade();
+error DynamicTradeFailed();
+error TradeFailed();
 
 interface ITradingModule {
     struct TokenPermissions {

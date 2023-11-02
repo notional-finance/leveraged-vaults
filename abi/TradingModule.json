@@ -299,6 +299,19 @@
         "type": "function"
     },
     {
+        "inputs": [],
+        "name": "TEMP_OWNER",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "inputs": [
             {
                 "internalType": "address",
@@ -584,6 +597,11 @@
     },
     {
         "inputs": [
+            {
+                "internalType": "address",
+                "name": "from",
+                "type": "address"
+            },
             {
                 "internalType": "enum TradeType",
                 "name": "tradeType",
