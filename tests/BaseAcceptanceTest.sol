@@ -46,6 +46,7 @@ abstract contract BaseAcceptanceTest is Test {
     uint256 roundingPrecision;
     bool isETH;
     mapping(uint256 => uint256) totalVaultShares;
+    uint256 totalVaultSharesAllMaturities;
 
     uint256 maxDeposit;
     uint256 minDeposit;
@@ -147,6 +148,7 @@ abstract contract BaseAcceptanceTest is Test {
         vaultShares = vault.depositFromNotional(account, depositAmount, maturity, data);
 
         totalVaultShares[maturity] += vaultShares;
+        totalVaultSharesAllMaturities += vaultShares;
     }
 
     function exitVaultBypass(
@@ -159,6 +161,7 @@ abstract contract BaseAcceptanceTest is Test {
         totalToReceiver = vault.redeemFromNotional(account, account, vaultShares, maturity, 0, data);
 
         totalVaultShares[maturity] -= vaultShares;
+        totalVaultSharesAllMaturities -= vaultShares;
     }
 
 
@@ -255,6 +258,8 @@ abstract contract BaseAcceptanceTest is Test {
 
         totalVaultShares[maturity] -= vaultShares * 90 / 100;
         totalVaultShares[Constants.PRIME_CASH_VAULT_MATURITY] += primeVaultShares;
+        totalVaultSharesAllMaturities -= vaultShares * 90 / 100;
+        totalVaultSharesAllMaturities += primeVaultShares;
 
         checkInvariants();
     }

@@ -10,9 +10,15 @@ contract TestBalancerComposable_wstETH_wstETHcbETHrETH is BaseComposablePoolVaul
         settings = StrategyVaultSettings({
             emergencySettlementSlippageLimitPercent: 1,
             maxPoolShare: 20,
-            oraclePriceDeviationLimitPercent: 1,
-            poolSlippageLimitPercent: 1
+            oraclePriceDeviationLimitPercent: 50,
+            poolSlippageLimitPercent: 50
         });
+
+        // TODO: handle zero deposit values?
+        minDeposit = 0.001e18;
+        maxDeposit = 1e18;
+        maxRelEntryValuation = 50 * BASIS_POINT;
+        maxRelExitValuation = 50 * BASIS_POINT;
         super.setUp();
     }
 

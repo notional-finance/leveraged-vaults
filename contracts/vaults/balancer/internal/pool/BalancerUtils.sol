@@ -24,7 +24,7 @@ library BalancerUtils {
     /// @return bptAmount amount of BPT minted
     function _joinPoolExactTokensIn(bytes32 poolId, IERC20 poolToken, PoolParams memory params) 
         internal returns (uint256 bptAmount) {
-        bptAmount = poolToken.balanceOf(address(this));        
+        bptAmount = poolToken.balanceOf(address(this));
         Deployments.BALANCER_VAULT.joinPool{value: params.msgValue}(
             poolId,
             address(this), // sender

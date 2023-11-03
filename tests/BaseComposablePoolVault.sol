@@ -6,14 +6,20 @@ import "../contracts/vaults/BalancerComposableAuraVault.sol";
 import "../contracts/vaults/common/VaultTypes.sol";
 import "../contracts/vaults/balancer/BalancerVaultTypes.sol";
 import "../contracts/proxy/nProxy.sol";
+import "../interfaces/balancer/IBalancerPool.sol";
+import "../interfaces/notional/IStrategyVault.sol";
 
 abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
     uint16 primaryBorrowCurrency;
     bytes32 balancerPoolId;
+    IBalancerPool balancerPool;
     StrategyVaultSettings settings;
     IAuraRewardPool rewardPool;
 
     function deployVault() internal override returns (IStrategyVault) {
+        balancerPool = IBalancerPool(rewardPool.asset());
+        balancerPoolId = balancerPool.getPoolId();
+
         IStrategyVault impl = new BalancerComposableAuraVault(
             NOTIONAL, AuraVaultDeploymentParams({
                 rewardPool: rewardPool,
@@ -33,6 +39,7 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
             })
         );
 
+        vm.prank(NOTIONAL.owner());
         nProxy proxy = new nProxy(address(impl), initData);
 
         // NOTE: no token permissions set, single sided join by default
@@ -76,4 +83,22 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
         return abi.encode(d);
     }
 
+    function checkInvariants() internal override {
+        ISingleSidedLPStrategyVault v = ISingleSidedLPStrategyVault(address(vault));
+        ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory s = v.getStrategyVaultInfo();
+
+        assertEq(
+            totalVaultSharesAllMaturities,
+            s.totalVaultShares,
+            "Total Vault Shares"
+        );
+
+        assertGe(
+            s.totalLPTokens,
+            s.totalVaultShares * 1e18 / 1e8,
+            "Total LP Tokens"
+        );
+
+        // below max pool share
+    }
 }
