@@ -23,6 +23,8 @@ contract TestTradingModule is Test {
     address internal constant WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
     address internal constant WSTETH = 0x5979D7b546E38E414F7E9822514be443A4800529;
     address internal constant WETH = address(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
+    address internal constant cbETH = address(0x1DEBd73E752bEaF79865Fd6446b0c970EaE7732f);
+    address internal constant rETH = address(0xEC70Dcb4A1EFa46b8F2D97C310C9c4790ba5ffA8);
 
     string RPC_URL = vm.envString("RPC_URL");
     uint256 FORK_BLOCK = 137439907;
@@ -53,7 +55,7 @@ contract TestTradingModule is Test {
 
         maxTokenIndex = 6;
 
-        // Initialize trade params here
+        /****** CURVE V2 Trades *****/
         tradeParams.push(Params(
             DexId.CURVE_V2,
             Trade({
@@ -81,6 +83,39 @@ contract TestTradingModule is Test {
                 deadline: 0,
                 exchangeData: abi.encode(
                     CurveV2Adapter.CurveV2SingleData({ pool: 0x6eB2dc694eB516B16Dc9FBc678C60052BbdD7d80 })
+                )
+            }),
+            false
+        ));
+
+        /****** Balancer V2 Trades *****/
+        tradeParams.push(Params(
+            DexId.BALANCER_V2,
+            Trade({
+                tradeType: TradeType.EXACT_IN_SINGLE,
+                sellToken: WSTETH,
+                buyToken: rETH,
+                amount: 1e18,
+                limit: 0,
+                deadline: block.timestamp,
+                exchangeData: abi.encode(
+                    BalancerV2Adapter.SingleSwapData({ poolId: 0x4a2f6ae7f3e5d715689530873ec35593dc28951b000000000000000000000481 })
+                )
+            }),
+            false
+        ));
+
+        tradeParams.push(Params(
+            DexId.BALANCER_V2,
+            Trade({
+                tradeType: TradeType.EXACT_IN_SINGLE,
+                sellToken: cbETH,
+                buyToken: rETH,
+                amount: 1e18,
+                limit: 0,
+                deadline: block.timestamp,
+                exchangeData: abi.encode(
+                    BalancerV2Adapter.SingleSwapData({ poolId: 0x4a2f6ae7f3e5d715689530873ec35593dc28951b000000000000000000000481 })
                 )
             }),
             false
@@ -259,7 +294,7 @@ contract TestTradingModule is Test {
             deal(sellToken, address(this), p.t.amount, true);
         }
 
-        (address spender, address target, uint256 msgValue, /* */) = TRADING_MODULE.getExecutionData(
+        (address spender, /* */, /* */, /* */) = TRADING_MODULE.getExecutionData(
             uint16(p.dexId),
             address(this),
             p.t

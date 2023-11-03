@@ -71,7 +71,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     }
 
     /// @notice All strategy vaults MUST implement 8 decimal precision
-    function decimals() public override view returns (uint8) {
+    function decimals() public override pure returns (uint8) {
         return INTERNAL_TOKEN_DECIMALS;
     }
 

@@ -9,17 +9,18 @@ library ZeroExAdapter {
     /// sets and revokes all approvals. We are also only calling a trusted
     /// zero ex proxy in this case. Therefore no order validation is done
     /// to allow for flexibility.
-    function getExecutionData(address from, Trade memory trade)
+    function getExecutionData(address /* from */, Trade memory trade)
         internal pure returns (
             address spender,
             address target,
-            uint256 /* msgValue */,
+            uint256 msgValue,
             bytes memory executionCallData
         )
     {
         spender = Deployments.ZERO_EX;
         target = Deployments.ZERO_EX;
-        // msgValue is always zero
         executionCallData = trade.exchangeData;
+        // msgValue is always zero
+        msgValue = 0;
     }
 }

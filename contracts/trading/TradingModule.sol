@@ -108,19 +108,12 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint16 dexId,
         address from,
         Trade calldata trade
-    )
-        external
-        view
-        override
-        returns (
-            address spender,
-            address target,
-            uint256 msgValue,
-            bytes memory executionCallData
-        )
-    {
-        return _getExecutionData(dexId, from, trade);
-    }
+    ) external pure override returns (
+        address spender,
+        address target,
+        uint256 msgValue,
+        bytes memory executionCallData
+    ) { return _getExecutionData(dexId, from, trade); }
 
     /// @notice Executes a trade with a dynamic slippage limit based on chainlink oracles.
     /// @dev Expected to be called via delegatecall on the implementation directly. This means that

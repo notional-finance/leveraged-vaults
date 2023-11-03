@@ -90,13 +90,14 @@ library UniV3Adapter {
         internal pure returns (
             address spender,
             address target,
-            uint256 /* msgValue */,
+            uint256 msgValue,
             bytes memory executionCallData
         )
     {
         spender = address(Deployments.UNIV3_ROUTER);
         target = address(Deployments.UNIV3_ROUTER);
         // msgValue is always zero for uniswap
+        msgValue = 0;
 
         if (trade.tradeType == TradeType.EXACT_IN_SINGLE) {
             executionCallData = _exactInSingle(from, trade);

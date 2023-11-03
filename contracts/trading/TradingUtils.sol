@@ -49,7 +49,7 @@ library TradingUtils {
         // Get post-trade token balances
         (uint256 postTradeSellBalance, uint256 postTradeBuyBalance) = _getBalances(trade);
 
-        _postValidate(trade, dexId, postTradeBuyBalance - preTradeBuyBalance);
+        _postValidate(trade, postTradeBuyBalance - preTradeBuyBalance);
 
         // No need to revoke ETH trades
         if (spender != Deployments.ETH_ADDRESS && DexId(dexId) != DexId.NOTIONAL_VAULT) {
@@ -101,7 +101,7 @@ library TradingUtils {
         }
     }
 
-    function _postValidate(Trade memory trade, uint16 dexId, uint256 amountReceived) private pure {
+    function _postValidate(Trade memory trade, uint256 amountReceived) private pure {
         if (_isExactIn(trade) && amountReceived < trade.limit) {
             revert PostValidationExactIn(trade.limit, amountReceived);
         }
