@@ -254,7 +254,7 @@ library BalancerComposablePoolUtils {
                     });
 
                     deposit -= sellAmount;
-                    amounts[i] = amountBought;                    
+                    amounts[i] = amountBought;
                 }
 
                 tradeIndex++;
@@ -301,7 +301,7 @@ library BalancerComposablePoolUtils {
                 primaryPurchased += exitBalances[i];
             } else {
                 if (exitBalances[i] > 0) {
-                    primaryPurchased += _sellToken({        
+                    primaryPurchased += _sellToken({
                         strategyContext: strategyContext,
                         params: params.redemptionTrades[tradeIndex],
                         sellToken: tokens[i],

@@ -15,6 +15,7 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
     IBalancerPool balancerPool;
     StrategyVaultSettings settings;
     IAuraRewardPool rewardPool;
+    uint256 numTokens;
 
     function deployVault() internal override returns (IStrategyVault) {
         balancerPool = IBalancerPool(rewardPool.asset());
@@ -74,11 +75,9 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
     function getRedeemParams(
         uint256 /* vaultShares */,
         uint256 /* maturity */
-    ) internal pure override returns (bytes memory) {
-        RedeemParams memory d;
-        d.minPrimary = 0;
-        d.minSecondary = 0;
-        d.secondaryTradeParams = "";
+    ) internal view override returns (bytes memory) {
+        ComposableRedeemParams memory d;
+        d.minAmounts = new uint256[](numTokens);
 
         return abi.encode(d);
     }

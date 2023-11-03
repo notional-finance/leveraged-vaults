@@ -35,12 +35,12 @@ library ComposableAuraHelper {
 
     /// @notice Deposits underlying tokens into Balancer and mint strategy tokens
     /// @param context composable pool strategy context
-    /// @param deposit token deposit amount
+    /// @param depositAmount token deposit amount
     /// @param data custom deposit data
     /// @return vaultSharesMinted amount of vault shares minted
     function deposit(
         BalancerComposableAuraStrategyContext memory context,
-        uint256 deposit,
+        uint256 depositAmount,
         bytes calldata data
     ) external returns (uint256 vaultSharesMinted) {
         ComposableDepositParams memory params = abi.decode(data, (ComposableDepositParams));
@@ -49,7 +49,7 @@ library ComposableAuraHelper {
             oracleContext: context.oracleContext,
             strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,
-            deposit: deposit,
+            deposit: depositAmount,
             params: params
         });
     }
@@ -161,7 +161,7 @@ library ComposableAuraHelper {
             amounts: amounts,
             /// @notice minBPT is not required to be set by the caller because primaryAmount
             /// and secondaryAmount are already validated
-            minBPT: params.minPoolClaim      
+            minBPT: params.minPoolClaim
         });
 
         // Increase LP token amount without minting additional vault shares

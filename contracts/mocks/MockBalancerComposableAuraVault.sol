@@ -16,7 +16,7 @@ contract MockBalancerComposableAuraVault is BalancerComposablePoolMixin {
         AuraVaultDeploymentParams memory params
     ) BalancerComposablePoolMixin(notional_, params) { }
 
-    function strategy() external override view returns (bytes4) {
+    function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("BalancerComposableAuraVault"));
     }
 

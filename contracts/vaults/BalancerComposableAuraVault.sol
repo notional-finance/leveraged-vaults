@@ -34,7 +34,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     {}
 
     /// @notice strategy identifier
-    function strategy() external override view returns (bytes4) {
+    function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("BalancerComposableAuraVault"));
     }
     /// @notice Initializes the strategy

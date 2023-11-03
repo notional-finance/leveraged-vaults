@@ -14,6 +14,8 @@ contract TestBalancerComposable_wstETH_wstETHcbETHrETH is BaseComposablePoolVaul
             poolSlippageLimitPercent: 50
         });
 
+        // NOTE: includes BPT token
+        numTokens = 4;
         // TODO: handle zero deposit values?
         minDeposit = 0.001e18;
         maxDeposit = 1e18;
