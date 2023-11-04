@@ -69,10 +69,17 @@ library BalancerComposablePoolUtils {
             );
         } else {
             if (isSingleSided) {
+                // See this line here:
+                // https://github.com/balancer/balancer-v2-monorepo/blob/c7d4abbea39834e7778f9ff7999aaceb4e8aa048/pkg/pool-stable/contracts/ComposableStablePool.sol#L927
+                // While "assets" sent to the vault include the BPT token the tokenIndex passed in by this
+                // function does not include the BPT. primaryIndex in this code is inclusive of the BPT token in
+                // the assets array. Therefore, if primaryIndex > bptIndex subtract one to ensure that the primaryIndex
+                // does not include the BPT token here.
+                uint256 primaryIndex = context.basePool.primaryIndex;
                 customData = abi.encode(
                     IBalancerVault.ComposableExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
                     bptAmount,
-                    context.basePool.primaryIndex
+                    primaryIndex < context.bptIndex ?  primaryIndex : primaryIndex - 1
                 );
             } else {
                 customData = abi.encode(

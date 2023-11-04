@@ -48,10 +48,15 @@ library BalancerUtils {
     /// @param exitBalances underlying token balances after the exit
     function _exitPoolExactBPTIn(bytes32 poolId, IERC20 poolToken, PoolParams memory params)
         internal returns (uint256[] memory exitBalances) {
+        // For composable pools, the asset array includes the BPT token (i.e. poolToken). The balance
+        // will decrease in an exit while all of the other balances increase, causing a subtraction
+        // underflow in the final loop. For that reason, exit balances are not calculated of the poolToken
+        // is included in the array of assets.
         uint256 numAssets = params.assets.length;
         exitBalances = new uint256[](numAssets);
 
         for (uint256 i; i < numAssets; i++) {
+            if (address(params.assets[i]) == address(poolToken)) continue;
             exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i]));
         }
 
@@ -69,7 +74,9 @@ library BalancerUtils {
 
         // Calculate the amounts of underlying tokens after the exit
         for (uint256 i; i < numAssets; i++) {
-            exitBalances[i] = TokenUtils.tokenBalance(address(params.assets[i])) - exitBalances[i];
+            if (address(params.assets[i]) == address(poolToken)) continue;
+            uint256 balanceAfter = TokenUtils.tokenBalance(address(params.assets[i]));
+            exitBalances[i] = balanceAfter - exitBalances[i];
         }
     }
 }

@@ -66,11 +66,11 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         require(tokens.length <= MAX_TOKENS);
         NUM_TOKENS = uint8(tokens.length);
 
-        TOKEN_1 = NUM_TOKENS > 0 ? _getTokenAddress(tokens[0]) : address(0);
-        TOKEN_2 = NUM_TOKENS > 1 ? _getTokenAddress(tokens[1]) : address(0);
-        TOKEN_3 = NUM_TOKENS > 2 ? _getTokenAddress(tokens[2]) : address(0);
-        TOKEN_4 = NUM_TOKENS > 3 ? _getTokenAddress(tokens[3]) : address(0);
-        TOKEN_5 = NUM_TOKENS > 4 ? _getTokenAddress(tokens[4]) : address(0);
+        TOKEN_1 = NUM_TOKENS > 0 ? _rewriteWETH(tokens[0]) : address(0);
+        TOKEN_2 = NUM_TOKENS > 1 ? _rewriteWETH(tokens[1]) : address(0);
+        TOKEN_3 = NUM_TOKENS > 2 ? _rewriteWETH(tokens[2]) : address(0);
+        TOKEN_4 = NUM_TOKENS > 3 ? _rewriteWETH(tokens[3]) : address(0);
+        TOKEN_5 = NUM_TOKENS > 4 ? _rewriteWETH(tokens[4]) : address(0);
 
         uint8 primaryIndex = NOT_FOUND;
         uint8 bptIndex = NOT_FOUND;
@@ -96,7 +96,7 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         DECIMALS_5 = NUM_TOKENS > 4 ? _getTokenDecimals(TOKEN_5) : 0;
     }
 
-    function _getTokenAddress(address token) private view returns (address) {
+    function _rewriteWETH(address token) private view returns (address) {
         return token == address(Deployments.WETH) ? Deployments.ETH_ADDRESS : address(token);
     }
 
