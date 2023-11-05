@@ -35,9 +35,10 @@ abstract contract BaseAcceptanceTest is Test {
     uint16 constant FRAX = 6;
     uint16 constant RETH = 7;
     uint16 constant USDT = 8;
+    uint16 constant CBETH = 9;
 
     string RPC_URL = vm.envString("RPC_URL");
-    uint256 FORK_BLOCK = 137439907;
+    uint256 FORK_BLOCK = 147058900;
     IStrategyVault vault;
     VaultConfigParams config;
     uint256[] maturities;
@@ -90,8 +91,7 @@ abstract contract BaseAcceptanceTest is Test {
         address token,
         ITradingModule.TokenPermissions memory permissions
     ) internal {
-        // NOTE: this address needs to get reverted back to NOTIONAL.owner()
-        vm.prank(0xE6FB62c2218fd9e3c948f0549A2959B509a293C8);
+        vm.prank(NOTIONAL.owner());
         TRADING_MODULE.setTokenPermissions(vault_, token, permissions);
     }
 
@@ -314,8 +314,6 @@ abstract contract BaseAcceptanceTest is Test {
         );
     }
 
-
-    // function test_RollVault() public virtual {}
     // TODO: these need to be made generic
     // function test_EmergencyExit() public virtual {}
     // function test_RevertIf_EnterWhenLocked() public virtual {}
