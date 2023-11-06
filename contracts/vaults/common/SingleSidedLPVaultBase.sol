@@ -160,7 +160,9 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         DepositParams memory params = abi.decode(data, (DepositParams));
         // XXX: validate and handle deposit trades
         require(params.depositTrades.length == 0);
-        uint256 lpTokens = _joinPoolAndStake(deposit, params);
+        // TODO: set deposit amount to primary index...
+        uint256[] memory amounts;
+        uint256 lpTokens = _joinPoolAndStake(amounts, params);
 
         // Ensure that we do not exceed the max LP pool threshold
         context._checkPoolThreshold(_totalPoolSupply(), lpTokens);
@@ -174,7 +176,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         uint256 poolClaim = context._redeemStrategyTokens(vaultShares);
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
-        uint256[] memory exitBalances = _unstakeAndExitPool(poolClaim, params);
+        bool isSingleSided = params.redemptionTrades.length == 0;
+        uint256[] memory exitBalances = _unstakeAndExitPool(poolClaim, params, isSingleSided);
         // XXX: validate and handle exit trades
         require(params.redemptionTrades.length == 0);
     }
@@ -234,11 +237,11 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function _totalPoolSupply() internal view virtual returns (uint256);
 
     function _joinPoolAndStake(
-        uint256 deposit, DepositParams memory params
+        uint256[] memory amounts, DepositParams memory params
     ) internal virtual returns (uint256 lpTokens);
 
     function _unstakeAndExitPool(
-        uint256 vaultShares, RedeemParams memory params
+        uint256 poolClaim, RedeemParams memory params, bool isEmergencyExit
     ) internal virtual returns (uint256[] memory exitBalances);
 
     // Storage gap for future potential upgrades

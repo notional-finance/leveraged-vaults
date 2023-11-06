@@ -27,10 +27,10 @@ import {VaultStorage} from "../../../common/VaultStorage.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
 import {BalancerUtils} from "./BalancerUtils.sol";
 import {ComposableOracleMath} from "../math/ComposableOracleMath.sol";
-import {IAuraBoosterBase} from "../../../../../interfaces/aura/IAuraBooster.sol";
 import {DexId} from "../../../../../interfaces/trading/ITradingModule.sol";
 import {TypeConvert} from "../../../../global/TypeConvert.sol";
 
+// TODO: combine this into ComposableAuraHelper
 library BalancerComposablePoolUtils {
     using TokenUtils for IERC20;
     using TypeConvert for uint256;
@@ -39,76 +39,12 @@ library BalancerComposablePoolUtils {
     using VaultStorage for StrategyVaultState;
     using ComposableOracleMath for ComposableOracleContext;
 
-    /// @notice Returns parameters for joining and exiting Balancer pools
-    /// @param bptAmount minBptAmount if isJoin is true, bptExitAmount if isJoin is false
-    function _getPoolParams(
-        BalancerComposablePoolContext memory context,
-        uint256[] memory amounts,
-        bool isJoin,
-        bool isSingleSided,
-        uint256 bptAmount
-    ) internal pure returns (PoolParams memory) {
-        IAsset[] memory assets = new IAsset[](context.basePool.tokens.length);
-
-        uint256 msgValue;
-        for (uint256 i; i < context.basePool.tokens.length; i++) {
-            assets[i] = IAsset(context.basePool.tokens[i]);
-            if (isJoin) {
-                if (assets[i] == IAsset(Deployments.ETH_ADDRESS)) {
-                    msgValue += amounts[i];
-                }
-            }
-        }
-
-        bytes memory customData;
-        if (isJoin) {
-            customData = abi.encode(
-                IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-                _getAmountsWithoutBpt(context, amounts),
-                bptAmount // Apply minBPT to prevent front running
-            );
-        } else {
-            if (isSingleSided) {
-                // See this line here:
-                // https://github.com/balancer/balancer-v2-monorepo/blob/c7d4abbea39834e7778f9ff7999aaceb4e8aa048/pkg/pool-stable/contracts/ComposableStablePool.sol#L927
-                // While "assets" sent to the vault include the BPT token the tokenIndex passed in by this
-                // function does not include the BPT. primaryIndex in this code is inclusive of the BPT token in
-                // the assets array. Therefore, if primaryIndex > bptIndex subtract one to ensure that the primaryIndex
-                // does not include the BPT token here.
-                uint256 primaryIndex = context.basePool.primaryIndex;
-                customData = abi.encode(
-                    IBalancerVault.ComposableExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
-                    bptAmount,
-                    primaryIndex < context.bptIndex ?  primaryIndex : primaryIndex - 1
-                );
-            } else {
-                customData = abi.encode(
-                    IBalancerVault.ComposableExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT,
-                    bptAmount
-                );
-            }
-        }
-
-        return PoolParams(assets, amounts, msgValue, customData);
-    }
-
-    function _getAmountsWithoutBpt(BalancerComposablePoolContext memory context, uint256[] memory inAmounts) 
-        private pure returns (uint256[] memory amountsWithoutBpt) {
-        amountsWithoutBpt = new uint256[](inAmounts.length - 1);
-        uint256 j;
-        for (uint256 i; i < inAmounts.length; i++) {
-            if (i == context.bptIndex) {
-                continue;
-            }
-            amountsWithoutBpt[j++] = inAmounts[i];
-        }
-    }
-
     function _getOraclePairPrice(
         StrategyContext memory strategyContext,
         address token1,
         address token2
     ) internal view returns (uint256 oraclePairPrice) {
+        // TODO: why can't this just call TwoTokenPoolUtils?
         (int256 rate, int256 decimals) = strategyContext.tradingModule.getOraclePrice(
             token1, token2
         );
@@ -136,6 +72,7 @@ library BalancerComposablePoolUtils {
             poolContext.basePool.tokens[index2]
         );
 
+        // TODO: this may not work for weighted pool
         uint256 spotPrice = oracleContext._getSpotPrice(poolContext, index1, index2);
 
         strategyContext._checkPriceLimit(oraclePrice, spotPrice);
@@ -210,29 +147,6 @@ library BalancerComposablePoolUtils {
 
         // Allow BPT spender to pull BALANCER_POOL_TOKEN
         poolContext.poolToken.checkApprove(bptSpender, type(uint256).max);
-    }
-
-    function _deposit(
-        BalancerComposablePoolContext memory poolContext,
-        ComposableOracleContext memory oracleContext,
-        StrategyContext memory strategyContext,
-        AuraStakingContext memory stakingContext,
-        uint256 deposit,
-        DepositParams memory params
-    ) internal returns (uint256 strategyTokensMinted) {
-
-        uint256[] memory amounts = _handleDepositTrades(poolContext, strategyContext, deposit, params);
-
-        uint256 bptMinted = _joinPoolAndStake({
-            poolContext: poolContext,
-            oracleContext: oracleContext,
-            strategyContext: strategyContext,
-            stakingContext: stakingContext,
-            amounts: amounts,
-            minBPT: params.minPoolClaim
-        });
-
-        strategyTokensMinted = strategyContext._mintStrategyTokens(bptMinted);
     }
 
     function _handleDepositTrades(
@@ -319,96 +233,6 @@ library BalancerComposablePoolUtils {
                 tradeIndex++;
             }
         }
-    }
-
-    function _redeem(
-        BalancerComposablePoolContext memory poolContext,
-        StrategyContext memory strategyContext,
-        AuraStakingContext memory stakingContext,
-        uint256 vaultShares,
-        RedeemParams memory params
-    ) internal returns (uint256 finalPrimaryBalance) {
-        uint256 bptClaim = strategyContext._redeemStrategyTokens(vaultShares);
-        bool isSingleSidedExit = params.redemptionTrades.length == 0;
-
-        // Underlying token balances from exiting the pool
-        uint256[] memory exitBalances = _unstakeAndExitPool(
-            poolContext, stakingContext, bptClaim, params.minAmounts, isSingleSidedExit
-        );
-
-        finalPrimaryBalance = _convertTokensToPrimary(
-            poolContext, strategyContext, params, exitBalances
-        );
-    }
-
-    function _joinPoolAndStake(
-        BalancerComposablePoolContext memory poolContext,
-        ComposableOracleContext memory oracleContext,
-        StrategyContext memory strategyContext,
-        AuraStakingContext memory stakingContext,
-        uint256[] memory amounts,
-        uint256 minBPT
-    ) internal returns (uint256 bptMinted) {
-        // prettier-ignore
-        PoolParams memory poolParams = _getPoolParams({
-            context: poolContext,
-            amounts: amounts,
-            isJoin: true,
-            isSingleSided: false,
-            bptAmount: minBPT
-        });
-
-        bptMinted = BalancerUtils._joinPoolExactTokensIn({
-            poolId: poolContext.poolId,
-            poolToken: poolContext.basePool.poolToken,
-            params: poolParams
-        });
-
-        // Check BPT threshold to make sure our share of the pool is
-        // below maxPoolShare
-        uint256 bptThreshold = strategyContext.vaultSettings._poolClaimThreshold(
-            IComposablePool(address(poolContext.basePool.poolToken)).getActualSupply()
-        );
-        uint256 bptHeldAfterJoin = strategyContext.vaultState.totalPoolClaim + bptMinted;
-        if (bptHeldAfterJoin > bptThreshold)
-            revert Errors.PoolShareTooHigh(bptHeldAfterJoin, bptThreshold);
-
-        // Transfer token to Aura protocol for boosted staking
-        bool success = IAuraBoosterBase(stakingContext.booster).deposit(stakingContext.poolId, bptMinted, true); // stake = true
-        if (!success) revert Errors.StakeFailed();
-    }
-
-    function _unstakeAndExitPool(
-        BalancerComposablePoolContext memory poolContext,
-        AuraStakingContext memory stakingContext,
-        uint256 bptClaim,
-        uint256[] memory minAmounts,
-        bool isSingleSidedExit
-    ) internal returns (uint256[] memory exitBalances) {
-        // Withdraw BPT tokens back to the vault for redemption
-        bool success = stakingContext.rewardPool.withdrawAndUnwrap(bptClaim, false); // claimRewards = false
-        if (!success) revert Errors.UnstakeFailed();
-
-        return _exitPool(poolContext, bptClaim, minAmounts, isSingleSidedExit);
-    }
-
-    function _exitPool(
-        BalancerComposablePoolContext memory poolContext,
-        uint256 bptClaim,
-        uint256[] memory minAmounts,
-        bool isSingleSidedExit
-    ) private returns (uint256[] memory) {
-        return BalancerUtils._exitPoolExactBPTIn({
-            poolId: poolContext.poolId,
-            poolToken: poolContext.basePool.poolToken,
-            params: _getPoolParams({
-                context: poolContext,
-                amounts: minAmounts,
-                isJoin: false,
-                isSingleSided: isSingleSidedExit,
-                bptAmount: bptClaim
-            })
-        });
     }
 
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted

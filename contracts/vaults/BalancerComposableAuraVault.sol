@@ -83,9 +83,25 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     }
 
     function _unstakeAndExitPool(
-        uint256 vaultShares, RedeemParams memory params
+        uint256 poolClaim, RedeemParams memory params, bool isSingleSided
     ) internal override returns (uint256[] memory exitBalances) {
+        AuraStakingContext memory stakingContext = _auraStakingContext();
+        // Withdraw BPT tokens back to the vault for redemption
+        bool success = stakingContext.rewardPool.withdrawAndUnwrap(poolClaim, false); // claimRewards = false
+        if (!success) revert Errors.UnstakeFailed();
 
+        BalancerComposablePoolContext memory poolContext = _composablePoolContext();
+        exitBalances = BalancerUtils._exitPoolExactBPTIn({
+            poolId: poolContext.poolId,
+            poolToken: poolContext.basePool.poolToken,
+            params: BalancerUtils._getPoolParams({
+                context: poolContext,
+                amounts: params.minAmounts,
+                isJoin: false,
+                isSingleSided: isSingleSided,
+                bptAmount: poolClaim
+            })
+        });
     }
  
 
@@ -93,14 +109,15 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     /// @notice Vault will be locked after an emergency exit, restoreVault can be used to unlock the vault
     /// @param claimToExit amount of LP tokens to withdraw, if set to zero will withdraw all LP tokens
     function _emergencyExitPoolClaim(uint256 claimToExit, bytes calldata /* data */) internal override {
-        BalancerComposableAuraStrategyContext memory context = _strategyContext();
+        BalancerComposablePoolContext memory poolContext = _composablePoolContext();
         // Min amounts are set to 0 here because we want to be sure that the liquidity can
         // be withdrawn in the event of an emergency where the spot price differs significantly
         // from the oracle price.
-        uint256[] memory minAmounts = new uint256[](context.poolContext.basePool.tokens.length);
+        RedeemParams memory r;
+        r.minAmounts = new uint256[](poolContext.basePool.tokens.length);
         
         // Unstake and remove from pool
-        context.poolContext._unstakeAndExitPool(context.stakingContext, claimToExit, minAmounts, false);
+        _unstakeAndExitPool(claimToExit, r, false);
     }
 
     /// @notice Restores and unlocks the vault after an emergency exit
@@ -108,13 +125,13 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     function _restoreVault(
         uint256 minPoolClaim, bytes calldata /* data */
     ) internal override returns (uint256 poolTokens) {
-        BalancerComposableAuraStrategyContext memory context = _strategyContext();
-        uint256[] memory amounts = new uint256[](context.poolContext.basePool.tokens.length);
+        BalancerComposablePoolContext memory poolContext = _composablePoolContext();
+        uint256[] memory amounts = new uint256[](poolContext.basePool.tokens.length);
 
-        for (uint256 i; i < context.poolContext.basePool.tokens.length; i++) {
+        for (uint256 i; i < poolContext.basePool.tokens.length; i++) {
             // Skip BPT index
-            if (i == context.poolContext.bptIndex) continue;
-            amounts[i] = TokenUtils.tokenBalance(context.poolContext.basePool.tokens[i]);
+            if (i == poolContext.bptIndex) continue;
+            amounts[i] = TokenUtils.tokenBalance(poolContext.basePool.tokens[i]);
         }
 
         // No trades are specified so this joins proportionally

@@ -59,7 +59,6 @@ library Curve2TokenPoolUtils {
         }
 
         uint256 poolClaimMinted = poolContext._joinPoolAndStake({
-            strategyContext: strategyContext,
             stakingContext: stakingContext,
             primaryAmount: deposit,
             secondaryAmount: secondaryAmount,
@@ -177,7 +176,6 @@ library Curve2TokenPoolUtils {
 
     function _joinPoolAndStake(
         Curve2TokenPoolContext memory poolContext,
-        StrategyContext memory strategyContext,
         ConvexStakingContext memory stakingContext,
         uint256 primaryAmount,
         uint256 secondaryAmount,

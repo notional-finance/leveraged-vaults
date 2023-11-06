@@ -43,17 +43,16 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         return bytes4(keccak256("Curve2TokenConvexVault"));
     }
 
-    function _depositFromNotional(
-        address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
-    ) internal override returns (uint256 strategyTokensMinted) {
-        strategyTokensMinted = _strategyContext().deposit(deposit, data);
+    function _joinPoolAndStake(
+        uint256[] memory amounts, DepositParams memory params
+    ) internal override returns (uint256 lpTokens) {
     }
 
-    function _redeemFromNotional(
-        address /* account */, uint256 strategyTokens, uint256 /* maturity */, bytes calldata data
-    ) internal override returns (uint256 finalPrimaryBalance) {
-        finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
-    }   
+    function _unstakeAndExitPool(
+        uint256 poolClaim, RedeemParams memory params, bool isSingleSided
+    ) internal override returns (uint256[] memory exitBalances) {
+
+    }
 
     function _emergencyExitPoolClaim(uint256 claimToExit, bytes calldata /* data */) internal override {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();

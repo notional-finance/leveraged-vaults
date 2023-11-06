@@ -94,7 +94,6 @@ library Curve2TokenConvexHelper {
         });
 
         poolClaimAmount = poolContext._joinPoolAndStake({
-            strategyContext: strategyContext,
             stakingContext: context.stakingContext,
             primaryAmount: primaryAmount,
             secondaryAmount: secondaryAmount,
