@@ -2,15 +2,13 @@
 pragma solidity 0.8.17;
 
 import {TokenUtils} from "../utils/TokenUtils.sol";
-import {AuraVaultDeploymentParams, InitParams} from "./balancer/BalancerVaultTypes.sol";
+import {AuraVaultDeploymentParams} from "./balancer/BalancerVaultTypes.sol";
 import {BalancerComposableAuraStrategyContext, BalancerComposablePoolContext} from "./balancer/BalancerVaultTypes.sol";
 import {
     StrategyContext,
-    StrategyVaultSettings,
     StrategyVaultState,
     ComposablePoolContext,
-    DepositParams,
-    ReinvestRewardParams
+    DepositParams
 } from "./common/VaultTypes.sol";
 import {VaultEvents} from "./common/VaultEvents.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
@@ -19,6 +17,9 @@ import {ComposableAuraHelper} from "./balancer/external/ComposableAuraHelper.sol
 import {BalancerComposablePoolMixin} from "./balancer/mixins/BalancerComposablePoolMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
+import {
+    ReinvestRewardParams
+} from "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 /**
  * @notice This vault borrows the primary currency and provides liquidity
@@ -43,19 +44,6 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     /// @notice strategy identifier
     function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("BalancerComposableAuraVault"));
-    }
-
-    /// @notice Initializes the strategy
-    /// @param params init parameters
-    function initialize(InitParams calldata params) external initializer onlyNotionalOwner {
-        // Initialize the base vault
-        __INIT_VAULT(params.name, params.borrowCurrencyId);
-
-        // Settings are validated in setStrategyVaultSettings
-        VaultStorage.setStrategyVaultSettings(params.settings);
-
-        // Approve Aura and Balancer to transfer primary and secondary tokens
-        _composablePoolContext().basePool._approveBalancerTokens(address(_auraStakingContext().booster));
     }
 
     /// @notice Processes a deposit request from Notional
@@ -162,13 +150,6 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         underlyingValue = _strategyContext().convertStrategyToUnderlying(vaultShares);
     }
 
-    /// @notice Updates the vault settings
-    /// @param settings vault settings
-    function setStrategyVaultSettings(StrategyVaultSettings calldata settings) external onlyNotionalOwner {
-        // Settings are validated in setStrategyVaultSettings
-        VaultStorage.setStrategyVaultSettings(settings);
-    }
-    
     /// @notice Returns information related to the strategy
     /// @return strategy context
     function getStrategyContext() external view returns (BalancerComposableAuraStrategyContext memory) {

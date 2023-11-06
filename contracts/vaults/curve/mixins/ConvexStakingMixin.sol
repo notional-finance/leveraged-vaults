@@ -12,7 +12,7 @@ import {IConvexRewardToken} from "../../../../interfaces/convex/IConvexRewardTok
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../../../interfaces/convex/IConvexRewardPool.sol";
 import {IConvexStakingProxy} from "../../../../interfaces/convex/IConvexStakingProxy.sol";
 import {CurveConstants} from "../internal/CurveConstants.sol";
-import {StrategyVaultSettings, VaultStorage} from "../../common/VaultStorage.sol";
+import {VaultStorage} from "../../common/VaultStorage.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
 import {SingleSidedLPVaultBase} from "../../common/SingleSidedLPVaultBase.sol";
 

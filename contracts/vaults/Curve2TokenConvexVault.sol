@@ -3,30 +3,29 @@ pragma solidity 0.8.17;
 
 import {
     ConvexVaultDeploymentParams, 
-    InitParams, 
     Curve2TokenPoolContext,
     Curve2TokenConvexStrategyContext
 } from "./curve/CurveVaultTypes.sol";
 import {
     StrategyContext,
     StrategyVaultState,
-    StrategyVaultSettings,
     RedeemParams,
-    DepositParams,
-    ReinvestRewardParams
+    DepositParams
 } from "./common/VaultTypes.sol";
 import {VaultEvents} from "./common/VaultEvents.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
 import {Errors} from "../global/Errors.sol";
 import {Constants} from "../global/Constants.sol";
 import {TypeConvert} from "../global/TypeConvert.sol";
-import {Deployments} from "../global/Deployments.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {Curve2TokenVaultMixin} from "./curve/mixins/Curve2TokenVaultMixin.sol";
 import {Curve2TokenPoolUtils} from "./curve/internal/pool/Curve2TokenPoolUtils.sol";
 import {Curve2TokenConvexHelper} from "./curve/external/Curve2TokenConvexHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
+import {
+    ReinvestRewardParams
+} from "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     using TypeConvert for uint256;
@@ -41,24 +40,6 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
 
     function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("Curve2TokenConvexVault"));
-    }
-
-    function initialize(InitParams calldata params)
-        external
-        initializer
-        onlyNotionalOwner
-    {
-        __INIT_VAULT(params.name, params.borrowCurrencyId);
-        VaultStorage.setStrategyVaultSettings(params.settings);
-
-        if (PRIMARY_TOKEN != Deployments.ALT_ETH_ADDRESS) {
-            IERC20(PRIMARY_TOKEN).checkApprove(address(CURVE_POOL), type(uint256).max);
-        }
-        if (SECONDARY_TOKEN != Deployments.ALT_ETH_ADDRESS) {
-            IERC20(SECONDARY_TOKEN).checkApprove(address(CURVE_POOL), type(uint256).max);
-        }
-
-        CURVE_POOL_TOKEN.checkApprove(address(CONVEX_BOOSTER), type(uint256).max);
     }
 
     function _depositFromNotional(
@@ -141,14 +122,5 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
 
     function getStrategyContext() external view returns (Curve2TokenConvexStrategyContext memory) {
         return _strategyContext();
-    }
-
-    /// @notice Updates the vault settings
-    /// @param settings vault settings
-    function setStrategyVaultSettings(StrategyVaultSettings calldata settings)
-        external
-        onlyNotionalOwner
-    {
-        VaultStorage.setStrategyVaultSettings(settings);
     }
 }

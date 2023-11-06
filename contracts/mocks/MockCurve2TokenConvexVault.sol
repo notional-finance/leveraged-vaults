@@ -7,11 +7,14 @@ import {
     Curve2TokenPoolContext
 } from "../vaults/curve/CurveVaultTypes.sol";
 import {TwoTokenPoolUtils} from "../vaults/common/internal/pool/TwoTokenPoolUtils.sol";
-import {ReinvestRewardParams, TwoTokenPoolContext} from "../vaults/common/VaultTypes.sol";
+import {TwoTokenPoolContext} from "../vaults/common/VaultTypes.sol";
 import {Curve2TokenVaultMixin} from "../vaults/curve/mixins/Curve2TokenVaultMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {Curve2TokenPoolUtils} from "../vaults/curve/internal/pool/Curve2TokenPoolUtils.sol";
 import {BalancerConstants} from "../vaults/balancer/internal/BalancerConstants.sol";
+import {
+    ReinvestRewardParams
+} from "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;

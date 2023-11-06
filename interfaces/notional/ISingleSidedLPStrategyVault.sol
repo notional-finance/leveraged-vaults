@@ -1,9 +1,31 @@
 // SPDX-License-Identifier: GPL-v3
 pragma solidity >=0.7.6;
 
-import {
-    ReinvestRewardParams
-} from "../../contracts/vaults/common/VaultTypes.sol";
+/// @notice Reward reinvestment parameters
+struct ReinvestRewardParams {
+    /// @notice Trading parameters
+    bytes tradeData;
+    /// @notice min pool claim for slippage control
+    uint256 minPoolClaim;
+}
+
+struct InitParams {
+    string name;
+    uint16 borrowCurrencyId;
+    StrategyVaultSettings settings;
+}
+
+/// @notice Common strategy vault settings
+struct StrategyVaultSettings {
+    /// @notice Slippage limit for emergency settlement (vault owns too much of the pool)
+    uint32 emergencySettlementSlippageLimitPercent;
+    /// @notice Max share of the pool that the vault is allowed to hold
+    uint16 maxPoolShare;
+    /// @notice Limits the amount of allowable deviation from the oracle price
+    uint16 oraclePriceDeviationLimitPercent;
+    /// @notice Slippage limit for joining/exiting pools
+    uint16 poolSlippageLimitPercent;
+}
 
 interface ISingleSidedLPStrategyVault {
     struct SingleSidedLPStrategyVaultInfo {
@@ -12,6 +34,8 @@ interface ISingleSidedLPStrategyVault {
         uint256 totalLPTokens;
         uint256 totalVaultShares;
     }
+
+    function initialize(InitParams calldata params) external;
 
     function getStrategyVaultInfo() external view returns (SingleSidedLPStrategyVaultInfo memory);
     function emergencyExit(uint256 claimToExit, bytes calldata data) external;

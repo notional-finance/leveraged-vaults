@@ -9,7 +9,11 @@ import {StrategyVaultState} from "./VaultTypes.sol";
 import {VaultStorage} from "./VaultStorage.sol";
 import {VaultConstants} from "./VaultConstants.sol";
 
-import {ISingleSidedLPStrategyVault} from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
+import {
+    ISingleSidedLPStrategyVault,
+    StrategyVaultSettings,
+    InitParams
+} from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
 
@@ -68,7 +72,41 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function _authorizeUpgrade(
         address /* newImplementation */
     ) internal override onlyNotionalOwner {}
-    
+
+    /// @notice Updates the vault settings
+    /// @param settings vault settings
+    function setStrategyVaultSettings(StrategyVaultSettings calldata settings) external onlyNotionalOwner {
+        // Settings are validated in setStrategyVaultSettings
+        VaultStorage.setStrategyVaultSettings(settings);
+    }
+
+    /// @notice Initializes the strategy
+    /// @param params init parameters
+    function initialize(InitParams calldata params) external override initializer onlyNotionalOwner {
+        // Initialize the base vault
+        __INIT_VAULT(params.name, params.borrowCurrencyId);
+
+        // Settings are validated in setStrategyVaultSettings
+        VaultStorage.setStrategyVaultSettings(params.settings);
+
+        _initialApproveTokens();
+    }
+
+    // depositFromNotional
+    // redeemFromNotional
+
+
+    // emergencyExit
+    // restoreVault
+    // claimRewardTokens
+    // reinvestReward
+    //    - this needs the most refactoring probably....
+    // convertStrategyToUnderlying
+
+
+    /// @notice Called once during initialization to set the initial token approvals.
+    function _initialApproveTokens() internal virtual;
+
     // Storage gap for future potential upgrades
     uint256[100] private __gap;
 }

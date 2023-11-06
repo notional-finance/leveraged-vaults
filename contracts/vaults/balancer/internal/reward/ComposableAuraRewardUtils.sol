@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import {
-    ReinvestRewardParams, 
     SingleSidedRewardTradeParams,
     StrategyContext,
     ComposableRewardTradeParams
@@ -11,6 +10,9 @@ import {
 import {BalancerComposablePoolContext, AuraStakingContext} from "../../BalancerVaultTypes.sol";
 import {Errors} from "../../../../global/Errors.sol";
 import {StrategyUtils} from "../../../common/internal/strategy/StrategyUtils.sol";
+import {
+    ReinvestRewardParams
+} from "../../../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 /**
  * Utility functions for Aura rewards
@@ -37,7 +39,7 @@ library ComposableAuraRewardUtils {
         for (uint256 i; i < poolTokens.length; i++) {
             if (params.sellToken == poolTokens[i]) {
                 revert Errors.InvalidRewardToken(params.sellToken);
-            }            
+            }
         }
         // Vault can only buy whitelisted tokens
         if (params.buyToken != token) {

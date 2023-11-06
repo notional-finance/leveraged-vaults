@@ -3,11 +3,9 @@ pragma solidity 0.8.17;
 
 import {
     StrategyContext,
-    StrategyVaultSettings,
     StrategyVaultState,
     ComposableDepositParams,
     ComposableRedeemParams,
-    ReinvestRewardParams,
     TradeParams
 } from "../../common/VaultTypes.sol";
 import {
@@ -25,11 +23,13 @@ import {VaultStorage} from "../../common/VaultStorage.sol";
 import {BalancerComposablePoolUtils} from "../internal/pool/BalancerComposablePoolUtils.sol";
 import {ComposableAuraRewardUtils} from "../internal/reward/ComposableAuraRewardUtils.sol";
 import {ComposableOracleMath} from "../internal/math/ComposableOracleMath.sol";
+import {
+    ReinvestRewardParams
+} from "../../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 library ComposableAuraHelper {
     using BalancerComposablePoolUtils for BalancerComposablePoolContext;
     using ComposableAuraRewardUtils for BalancerComposablePoolContext;
-    using VaultStorage for StrategyVaultSettings;
     using VaultStorage for StrategyVaultState;
     using TypeConvert for uint256;
 

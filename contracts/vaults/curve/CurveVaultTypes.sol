@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 
 import {
     StrategyContext, 
-    StrategyVaultSettings, 
     TradeParams, 
     TwoTokenPoolContext
 } from "../common/VaultTypes.sol";
@@ -25,11 +24,6 @@ struct ConvexVaultDeploymentParams {
     DeploymentParams baseParams;
 }
 
-struct InitParams {
-    string name;
-    uint16 borrowCurrencyId;
-    StrategyVaultSettings settings;
-}
 
 struct Curve2TokenPoolContext {
     TwoTokenPoolContext basePool;

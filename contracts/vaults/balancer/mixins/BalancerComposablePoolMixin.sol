@@ -18,12 +18,14 @@ import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {StableMath} from "../internal/math/StableMath.sol";
 import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {ComposableAuraHelper} from "../external/ComposableAuraHelper.sol";
+import {BalancerComposablePoolUtils} from "../internal/pool/BalancerComposablePoolUtils.sol";
 
 /**
  * Base class for all Balancer composable pools
  */
 abstract contract BalancerComposablePoolMixin is BalancerPoolMixin {
     using TypeConvert for uint256;
+    using BalancerComposablePoolUtils for ComposablePoolContext;
 
     error InvalidPrimaryToken(address token);
 
@@ -99,6 +101,10 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin {
         return token == address(Deployments.WETH) ? Deployments.ETH_ADDRESS : address(token);
     }
 
+    function _initialApproveTokens() internal override {
+        // Approve Aura and Balancer to transfer primary and secondary tokens
+        _composablePoolContext().basePool._approveBalancerTokens(address(_auraStakingContext().booster));
+    }
 
     /// @notice gets the token decimals
     /// @param token token address
@@ -108,9 +114,7 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin {
         require(decimals <= 18);
     }
 
-    /// @notice returns the composable pool context    
-    function _composablePoolContext() 
-        internal view returns (BalancerComposablePoolContext memory) {
+    function _composablePoolContext() internal view returns (BalancerComposablePoolContext memory) {
         (
             /* address[] memory tokens */,
             uint256[] memory balances,

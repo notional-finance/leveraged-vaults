@@ -12,8 +12,7 @@ import {
     TwoTokenPoolContext,
     DepositParams,
     RedeemParams,
-    TradeParams,
-    ReinvestRewardParams
+    TradeParams
 } from "../../common/VaultTypes.sol";
 import {TwoTokenPoolUtils} from "../../common/internal/pool/TwoTokenPoolUtils.sol";
 import {StrategyUtils} from "../../common/internal/strategy/StrategyUtils.sol";
@@ -23,6 +22,9 @@ import {VaultConstants} from "../../common/VaultConstants.sol";
 import {Errors} from "../../../global/Errors.sol";
 import {Curve2TokenPoolUtils} from "../internal/pool/Curve2TokenPoolUtils.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
+import {
+    ReinvestRewardParams
+} from "../../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 library Curve2TokenConvexHelper {
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;

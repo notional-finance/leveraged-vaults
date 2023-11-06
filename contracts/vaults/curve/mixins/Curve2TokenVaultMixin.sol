@@ -15,14 +15,28 @@ import {Curve2TokenPoolMixin} from "./Curve2TokenPoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {ICurve2TokenPool} from "../../../../interfaces/curve/ICurvePool.sol";
 import {Curve2TokenPoolUtils} from "../internal/pool/Curve2TokenPoolUtils.sol";
+import {Deployments} from "../../../global/Deployments.sol";
+import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
 
 abstract contract Curve2TokenVaultMixin is Curve2TokenPoolMixin {
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
     using TwoTokenPoolUtils for TwoTokenPoolContext;
+    using TokenUtils for IERC20;
     using TypeConvert for uint256;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params)
         Curve2TokenPoolMixin(notional_, params) { }
+
+    function _initialApproveTokens() internal override {
+        if (PRIMARY_TOKEN != Deployments.ALT_ETH_ADDRESS) {
+            IERC20(PRIMARY_TOKEN).checkApprove(address(CURVE_POOL), type(uint256).max);
+        }
+        if (SECONDARY_TOKEN != Deployments.ALT_ETH_ADDRESS) {
+            IERC20(SECONDARY_TOKEN).checkApprove(address(CURVE_POOL), type(uint256).max);
+        }
+
+        CURVE_POOL_TOKEN.checkApprove(address(CONVEX_BOOSTER), type(uint256).max);
+    }
 
     function _checkReentrancyContext() internal override {
         // We need to set the LP token amount to 1 for Curve V2 pools to bypass

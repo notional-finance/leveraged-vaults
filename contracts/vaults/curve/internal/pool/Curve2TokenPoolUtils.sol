@@ -8,11 +8,10 @@ import {Deployments} from "../../../../global/Deployments.sol";
 import {
     StrategyContext, 
     TwoTokenPoolContext,
-    StrategyVaultSettings, 
+    StrategyVaultSettings,
     StrategyVaultState,
     DepositParams,
-    RedeemParams,
-    ReinvestRewardParams
+    RedeemParams
 } from "../../../common/VaultTypes.sol";
 import {CurveConstants} from "../CurveConstants.sol";
 import {Curve2TokenPoolContext, ConvexStakingContext} from "../../CurveVaultTypes.sol";
@@ -28,6 +27,9 @@ import {
 } from "../../../../../interfaces/curve/ICurvePool.sol";
 import {IConvexBooster, IConvexBoosterArbitrum} from "../../../../../interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../../../../interfaces/convex/IConvexRewardPool.sol";
+import {
+    ReinvestRewardParams
+} from "../../../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 library Curve2TokenPoolUtils {
     using StrategyUtils for StrategyContext;

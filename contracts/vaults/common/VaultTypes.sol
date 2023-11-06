@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
+import {StrategyVaultSettings} from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
 
 /// @notice Parameters for trades
@@ -61,14 +62,6 @@ struct ComposableRedeemParams {
     TradeParams[] redemptionTrades;
 }
 
-/// @notice Reward reinvestment parameters
-struct ReinvestRewardParams {
-    /// @notice Trading parameters
-    bytes tradeData;
-    /// @notice min pool claim for slippage control
-    uint256 minPoolClaim;
-}
-
 /// @notice Proportional reinvestment trading parameters
 struct Proportional2TokenRewardTradeParams {
     /// @notice Primary token trade params
@@ -107,18 +100,6 @@ struct StrategyContext {
     uint256 poolClaimPrecision;
     /// @notice Specifies if the vault can trade using static slippage
     bool canUseStaticSlippage;
-}
-
-/// @notice Common strategy vault settings
-struct StrategyVaultSettings {
-    /// @notice Slippage limit for emergency settlement (vault owns too much of the pool)
-    uint32 emergencySettlementSlippageLimitPercent;
-    /// @notice Max share of the pool that the vault is allowed to hold
-    uint16 maxPoolShare;
-    /// @notice Limits the amount of allowable deviation from the oracle price
-    uint16 oraclePriceDeviationLimitPercent;
-    /// @notice Slippage limit for joining/exiting pools
-    uint16 poolSlippageLimitPercent;
 }
 
 /// @notice Common strategy vault state

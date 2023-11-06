@@ -33,7 +33,7 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
         );
 
         bytes memory initData = abi.encodeWithSelector(
-            BalancerComposableAuraVault.initialize.selector, InitParams({
+            ISingleSidedLPStrategyVault.initialize.selector, InitParams({
                 name: "Vault",
                 borrowCurrencyId: primaryBorrowCurrency,
                 settings: settings

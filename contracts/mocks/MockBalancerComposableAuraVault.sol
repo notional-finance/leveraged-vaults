@@ -5,10 +5,12 @@ import {
     AuraVaultDeploymentParams, 
     BalancerComposableAuraStrategyContext
 } from "../vaults/balancer/BalancerVaultTypes.sol";
-import {ReinvestRewardParams} from "../vaults/common/VaultTypes.sol";
 import {BalancerComposablePoolMixin} from "../vaults/balancer/mixins/BalancerComposablePoolMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerComposablePoolUtils} from "../vaults/balancer/internal/pool/BalancerComposablePoolUtils.sol";
+import {
+    ReinvestRewardParams
+} from "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 contract MockBalancerComposableAuraVault is BalancerComposablePoolMixin {
 

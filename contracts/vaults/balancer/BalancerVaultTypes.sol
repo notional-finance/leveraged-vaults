@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {StrategyContext, StrategyVaultSettings, ComposablePoolContext} from "../common/VaultTypes.sol";
+import {StrategyContext, ComposablePoolContext} from "../common/VaultTypes.sol";
 import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
@@ -22,12 +22,6 @@ struct AuraVaultDeploymentParams {
     IAuraRewardPool rewardPool;
     /// @notice Base deployment parameters
     DeploymentParams baseParams;
-}
-
-struct InitParams {
-    string name;
-    uint16 borrowCurrencyId;
-    StrategyVaultSettings settings;
 }
 
 /// @notice Parameters for joining/exiting Balancer pools
