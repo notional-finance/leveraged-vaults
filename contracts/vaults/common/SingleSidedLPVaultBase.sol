@@ -21,6 +21,7 @@ import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
  * Base vault contract that implements common utility functions
  */
 abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, ISingleSidedLPStrategyVault {
+    using VaultStorage for StrategyVaultState;
 
     constructor(NotionalProxy notional_, ITradingModule tradingModule_) 
         BaseStrategyVault(notional_, tradingModule_) { }
@@ -92,12 +93,47 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         _initialApproveTokens();
     }
 
+    /// @notice Allows the emergency exit role to trigger an emergency exit on the vault.
+    /// In this situation, the `claimToExit` is withdrawn proportionally to the underlying
+    /// tokens and held on the vault. The vault is locked so that no entries, exits or
+    /// valuations of vaultShares can be performed.
+    /// @param claimToExit if this is set to zero, the entire pool claim is withdrawn
+    /// @param data arbitrary data passed to the implementation
+    function emergencyExit(
+        uint256 claimToExit, bytes calldata data
+    ) external override onlyRole(EMERGENCY_EXIT_ROLE) {
+        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        if (claimToExit == 0) claimToExit = state.totalPoolClaim;
+
+        _emergencyExitPoolClaim(claimToExit, data);
+
+        state.totalPoolClaim = state.totalPoolClaim - claimToExit;
+        state.setStrategyVaultState();
+
+        emit VaultEvents.EmergencyExit(claimToExit);
+        _lockVault();
+    }
+
+    /// @notice Restores withdrawn tokens from emergencyExit back into the vault proportionally.
+    /// Unlocks the vault after restoration so that normal functionality is restored.
+    /// @param minPoolClaim slippage limit to prevent front running
+    /// @param data arbitrary data passed to the implementation
+    function restoreVault(
+        uint256 minPoolClaim, bytes calldata data
+    ) external override whenLocked onlyNotionalOwner {
+        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        uint256 poolTokens = _restoreVault(minPoolClaim, data);
+
+        state.totalPoolClaim = state.totalPoolClaim + poolTokens;
+        state.setStrategyVaultState(); 
+
+        _unlockVault();
+    }
+
     // depositFromNotional
     // redeemFromNotional
 
 
-    // emergencyExit
-    // restoreVault
     // claimRewardTokens
     // reinvestReward
     //    - this needs the most refactoring probably....
@@ -106,6 +142,12 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
     /// @notice Called once during initialization to set the initial token approvals.
     function _initialApproveTokens() internal virtual;
+
+    /// @notice Called to exit pool tokens during an emergency
+    function _emergencyExitPoolClaim(uint256 claimToExit, bytes calldata data) internal virtual;
+
+    /// @notice Called to restore exited pool tokens after an emergency passes
+    function _restoreVault(uint256 minPoolClaim, bytes calldata data) internal virtual returns (uint256 poolTokens);
 
     // Storage gap for future potential upgrades
     uint256[100] private __gap;

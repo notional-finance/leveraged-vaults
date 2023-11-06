@@ -54,10 +54,8 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
     }   
 
-    function emergencyExit(uint256 claimToExit, bytes calldata /* data */) external override
-        onlyRole(EMERGENCY_EXIT_ROLE) {
+    function _emergencyExitPoolClaim(uint256 claimToExit, bytes calldata /* data */) internal override {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        if (claimToExit == 0) claimToExit = context.baseStrategy.vaultState.totalPoolClaim;
 
         context.poolContext._unstakeAndExitPool({
             stakingContext: context.stakingContext,
@@ -69,32 +67,20 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
                 secondaryTradeParams: ""
             })
         });
-
-        context.baseStrategy.vaultState.totalPoolClaim =
-            context.baseStrategy.vaultState.totalPoolClaim - claimToExit;
-        context.baseStrategy.vaultState.setStrategyVaultState(); 
-
-        emit VaultEvents.EmergencyExit(claimToExit);
-
-        _lockVault();
     }
 
-    function restoreVault(uint256 minPoolClaim, bytes calldata /* data */) external override
-        whenLocked onlyNotionalOwner {
+    function _restoreVault(
+        uint256 minPoolClaim, bytes calldata /* data */
+    ) internal override returns (uint256 poolTokens) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
 
-        uint256 poolClaimAmount = context.poolContext._joinPoolAndStake({
+        poolTokens = context.poolContext._joinPoolAndStake({
             strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,
             primaryAmount: TokenUtils.tokenBalance(PRIMARY_TOKEN),
             secondaryAmount: TokenUtils.tokenBalance(SECONDARY_TOKEN),
             minPoolClaim: minPoolClaim
         });
-
-        context.baseStrategy.vaultState.totalPoolClaim += poolClaimAmount;
-        context.baseStrategy.vaultState.setStrategyVaultState(); 
-
-        _unlockVault();
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) 

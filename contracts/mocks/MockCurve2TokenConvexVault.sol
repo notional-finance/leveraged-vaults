@@ -84,8 +84,8 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
         });
     }
 
-    function emergencyExit(uint256 /* claimToExit */, bytes calldata /* data */) override external {}
-    function restoreVault(uint256 /* minPoolClaim */, bytes calldata /* data */) override external {}
+    function _emergencyExitPoolClaim(uint256 /* claimToExit */, bytes calldata /* data */) override internal {}
+    function _restoreVault(uint256 /* minPoolClaim */, bytes calldata /* data */) override internal returns (uint256) {}
     function reinvestReward(ReinvestRewardParams calldata params) external returns (
         address rewardToken, uint256 amountSold, uint256 poolClaimAmount
     ) {}

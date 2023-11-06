@@ -71,37 +71,23 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     /// @notice Remove liquidity from Balancer in the event of an emergency (i.e. pool gets hacked)
     /// @notice Vault will be locked after an emergency exit, restoreVault can be used to unlock the vault
     /// @param claimToExit amount of LP tokens to withdraw, if set to zero will withdraw all LP tokens
-    function emergencyExit(uint256 claimToExit, bytes calldata /* data */) external
-        onlyRole(EMERGENCY_EXIT_ROLE) {
+    function _emergencyExitPoolClaim(uint256 claimToExit, bytes calldata /* data */) internal override {
         BalancerComposableAuraStrategyContext memory context = _strategyContext();
-        if (claimToExit == 0) claimToExit = context.baseStrategy.vaultState.totalPoolClaim;
-
         // Min amounts are set to 0 here because we want to be sure that the liquidity can
         // be withdrawn in the event of an emergency where the spot price differs significantly
         // from the oracle price.
         uint256[] memory minAmounts = new uint256[](context.poolContext.basePool.tokens.length);
         
         // Unstake and remove from pool
-        context.poolContext._unstakeAndExitPool(
-            context.stakingContext, claimToExit, minAmounts, false
-        );
-
-        context.baseStrategy.vaultState.totalPoolClaim =
-            context.baseStrategy.vaultState.totalPoolClaim - claimToExit;
-        context.baseStrategy.vaultState.setStrategyVaultState(); 
-
-        emit VaultEvents.EmergencyExit(claimToExit);
-
-        // Lock vault after emergency settlement
-        _lockVault();
+        context.poolContext._unstakeAndExitPool(context.stakingContext, claimToExit, minAmounts, false);
     }
 
     /// @notice Restores and unlocks the vault after an emergency exit
     /// @param minPoolClaim bpt slippage limit
-    function restoreVault(uint256 minPoolClaim, bytes calldata /* data */) external
-        whenLocked onlyNotionalOwner {
+    function _restoreVault(
+        uint256 minPoolClaim, bytes calldata /* data */
+    ) internal override returns (uint256 poolTokens) {
         BalancerComposableAuraStrategyContext memory context = _strategyContext();
-
         uint256[] memory amounts = new uint256[](context.poolContext.basePool.tokens.length);
 
         for (uint256 i; i < context.poolContext.basePool.tokens.length; i++) {
@@ -111,16 +97,9 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         }
 
         // Join proportionally here to minimize slippage
-        uint256 bptAmount = context.poolContext._joinPoolAndStake(
+        poolTokens = context.poolContext._joinPoolAndStake(
             context.oracleContext, context.baseStrategy, context.stakingContext, amounts, minPoolClaim
         );
-
-        // Update internal accounting
-        context.baseStrategy.vaultState.totalPoolClaim += bptAmount;
-        context.baseStrategy.vaultState.setStrategyVaultState(); 
-
-        // Unlock vault after re-entering the Balancer pool
-        _unlockVault();
     }
 
     /// @notice Reinvests the harvested reward tokens
