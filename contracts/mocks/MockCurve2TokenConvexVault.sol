@@ -20,7 +20,7 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
     mapping(address => uint256) public valuationFactors;
 
     constructor(
-        NotionalProxy notional_, 
+        NotionalProxy notional_,
         ConvexVaultDeploymentParams memory params
     ) Curve2TokenVaultMixin(notional_, params) { }
 
@@ -28,7 +28,7 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
         valuationFactors[account] = valuationFactor_;
     }
 
-    function strategy() external override view returns (bytes4) {
+    function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("Curve2TokenConvexVault"));
     }
 
@@ -49,7 +49,7 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
     function convertStrategyToUnderlying(
         address account,
         uint256 vaultShareAmount,
-        uint256 maturity
+        uint256 /* maturity */
     ) public view override returns (int256 underlyingValue) {
         uint256 valuationFactor = valuationFactors[account];
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
@@ -58,7 +58,7 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
             vaultShareAmount: vaultShareAmount
         });
         if (valuationFactor > 0) {
-            underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;            
+            underlyingValue = underlyingValue * int256(valuationFactor) / 1e8;
         }
     }
 

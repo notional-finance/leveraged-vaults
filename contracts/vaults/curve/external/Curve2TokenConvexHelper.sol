@@ -60,27 +60,6 @@ library Curve2TokenConvexHelper {
         });
     }
 
-    /// @notice Validates that the slippage passed in by the caller
-    /// does not exceed the designated threshold.
-    /// @param slippageLimitPercent configured limit on the slippage from the oracle price allowed
-    /// @param data trade parameters passed into settlement
-    /// @return params abi decoded redemption parameters
-    function _decodeParamsAndValidate(
-        uint32 slippageLimitPercent,
-        bytes memory data
-    ) internal view returns (RedeemParams memory params) {
-        params = abi.decode(data, (RedeemParams));
-        if (params.secondaryTradeParams.length != 0) {
-            TradeParams memory callbackData = abi.decode(
-                params.secondaryTradeParams, (TradeParams)
-            );
-
-            if (slippageLimitPercent < callbackData.oracleSlippagePercentOrLimit) {
-                revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercentOrLimit, slippageLimitPercent);
-            }
-        }
-    }
-
     function reinvestReward(
         Curve2TokenConvexStrategyContext calldata context,
         ReinvestRewardParams calldata params
@@ -119,7 +98,7 @@ library Curve2TokenConvexHelper {
             secondaryAmount: secondaryAmount,
             /// @notice minPoolClaim is not required to be set by the caller because primaryAmount
             /// and secondaryAmount are already validated
-            minPoolClaim: params.minPoolClaim      
+            minPoolClaim: params.minPoolClaim
         });
 
         strategyContext.vaultState.totalPoolClaim += poolClaimAmount;

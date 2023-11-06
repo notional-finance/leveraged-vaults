@@ -32,16 +32,17 @@ contract AaveFlashLiquidator is IFlashLoanReceiver, FlashLiquidatorBase {
             address(this),
             abi.encode(asset, amount, withdraw, params),
             0
-        );        
+        );
     }
 
     function executeOperation(
-        address[] calldata assets,
-        uint256[] calldata amounts,
+        address[] calldata /* assets */,
+        uint256[] calldata /* amounts */,
         uint256[] calldata premiums,
-        address initiator,
+        address /* initiator */,
         bytes calldata params
     ) external returns (bool) {
+        // NOTE: caller is checked in handleLiquidation
         super.handleLiquidation(premiums[0], false, params); // repay = false for Aave
         return true;
     }

@@ -74,27 +74,6 @@ library ComposableAuraHelper {
         });
     }
 
-    /// @notice Validates that the slippage passed in by the caller
-    /// does not exceed the designated threshold.
-    /// @param slippageLimitPercent configured limit on the slippage from the oracle price allowed
-    /// @param data trade parameters passed into settlement
-    /// @return params abi decoded redemption parameters
-    function _decodeParamsAndValidate(
-        uint32 slippageLimitPercent,
-        bytes memory data
-    ) internal view returns (ComposableRedeemParams memory params) {
-        params = abi.decode(data, (ComposableRedeemParams));
-        if (params.redemptionTrades.length != 0) {
-            for (uint256 i; i < params.redemptionTrades.length; i++) {
-                TradeParams memory tradeParams = params.redemptionTrades[i];
-
-                if (slippageLimitPercent < tradeParams.oracleSlippagePercentOrLimit) {
-                    revert Errors.SlippageTooHigh(tradeParams.oracleSlippagePercentOrLimit, slippageLimitPercent);
-                }
-            }
-        }
-    }
-
     /// @notice Reinvests the reward tokens
     /// @param context composable pool strategy context
     /// @param params reward reinvestment params
@@ -163,7 +142,7 @@ library ComposableAuraHelper {
         BalancerComposableAuraStrategyContext memory context,
         uint8 index1,
         uint8 index2
-    ) external view returns (uint256 spotPrice) {
+    ) external pure returns (uint256 spotPrice) {
         spotPrice = ComposableOracleMath._getSpotPrice(
             context.oracleContext, 
             context.poolContext,

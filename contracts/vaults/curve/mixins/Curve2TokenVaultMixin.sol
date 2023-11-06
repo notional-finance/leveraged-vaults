@@ -39,7 +39,7 @@ abstract contract Curve2TokenVaultMixin is Curve2TokenPoolMixin {
         });
     }
 
-    function getExchangeRate(uint256 maturity) public view override returns (int256) {
+    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
         if (context.baseStrategy.vaultState.totalVaultSharesGlobal == 0) {
             (uint256 spotPrice, uint256 oraclePrice) = context.poolContext._getSpotPriceAndOraclePrice(

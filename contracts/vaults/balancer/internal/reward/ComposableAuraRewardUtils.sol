@@ -28,7 +28,7 @@ library ComposableAuraRewardUtils {
         SingleSidedRewardTradeParams memory params,
         address stakedPoolToken,
         address token
-    ) private view {
+    ) private pure {
         // Make sure we are not selling the Aura staked BPT
         if (params.sellToken == stakedPoolToken) {
             revert Errors.InvalidRewardToken(params.sellToken);

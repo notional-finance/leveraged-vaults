@@ -39,7 +39,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
         Curve2TokenVaultMixin(notional_, params) {}
 
-    function strategy() external override view returns (bytes4) {
+    function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("Curve2TokenConvexVault"));
     }
 
@@ -62,19 +62,13 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     }
 
     function _depositFromNotional(
-        address /* account */,
-        uint256 deposit,
-        uint256 maturity,
-        bytes calldata data
+        address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
     ) internal override returns (uint256 strategyTokensMinted) {
         strategyTokensMinted = _strategyContext().deposit(deposit, data);
     }
 
     function _redeemFromNotional(
-        address account,
-        uint256 strategyTokens,
-        uint256 maturity,
-        bytes calldata data
+        address /* account */, uint256 strategyTokens, uint256 /* maturity */, bytes calldata data
     ) internal override returns (uint256 finalPrimaryBalance) {
         finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
     }   
@@ -132,10 +126,8 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     }
 
     function convertStrategyToUnderlying(
-        address account,
-        uint256 vaultShareAmount,
-        uint256 maturity
-    ) public view virtual override returns (int256 underlyingValue) {
+        address /* account */, uint256 vaultShareAmount, uint256 /* maturity */
+    ) public view whenNotLocked virtual override returns (int256 underlyingValue) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
         underlyingValue = context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,

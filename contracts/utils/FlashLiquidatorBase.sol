@@ -95,7 +95,7 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
 
     function _getOptimalDeleveragingParams(
         address account, address vault
-    ) private returns (uint16 currencyIndex, int256 maxUnderlying) {
+    ) private view returns (uint16 currencyIndex, int256 maxUnderlying) {
         (
             /* VaultAccountHealthFactors memory h */,
             int256[3] memory maxLiquidatorDepositUnderlying,
@@ -307,7 +307,7 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
 
         bytes32[] memory trades = new bytes32[](1);
 
-        uint256 marketIndex = NOTIONAL.getMarketIndex(currencyId, block.timestamp);
+        uint256 marketIndex = NOTIONAL.getMarketIndex(currencyId, maturity);
         
         trades[0] = bytes32(
             (uint256(TradeActionType.Borrow) << 248) |

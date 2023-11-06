@@ -23,7 +23,7 @@ library ComposableOracleMath {
         BalancerComposablePoolContext memory poolContext, 
         uint256 index1,
         uint256 index2
-    ) internal view returns (uint256 spotPrice) {
+    ) internal pure returns (uint256 spotPrice) {
         // BPT index is not supported
         require(
             index1 != poolContext.bptIndex && index1 < poolContext.basePool.tokens.length

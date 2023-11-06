@@ -35,9 +35,9 @@ contract MockBalancerComposableAuraVault is BalancerComposablePoolMixin {
     ) internal override returns (uint256 finalPrimaryBalance) {}
 
     function convertStrategyToUnderlying(
-        address account,
+        address /* account */,
         uint256 vaultShares,
-        uint256 maturity
+        uint256 /* maturity */
     ) public view override returns (int256 underlyingValue) {
         BalancerComposableAuraStrategyContext memory context = _strategyContext();
         underlyingValue = BalancerComposablePoolUtils._convertStrategyToUnderlying({

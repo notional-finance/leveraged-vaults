@@ -117,7 +117,7 @@ library Curve2TokenPoolUtils {
         Curve2TokenPoolContext calldata poolContext,
         StrategyContext memory strategyContext,
         uint256 oraclePrice,
-        uint256 primaryAmount, 
+        uint256 primaryAmount,
         uint256 secondaryAmount
     ) internal view {
         // Oracle price is always specified in terms of primary, so tokenIndex == 0 for primary
@@ -130,11 +130,12 @@ library Curve2TokenPoolUtils {
         /// the pool is not being manipulated
         strategyContext._checkPriceLimit(oraclePrice, spotPrice);
 
+        /**
+        TODO: below here nothing is returned, the reward reinvestment is the only place this is used
         uint256 primaryPrecision = 10**poolContext.basePool.primaryDecimals;
         uint256 secondaryPrecision = 10**poolContext.basePool.secondaryDecimals;
 
         // Convert input amounts and pool amounts to CURVE_PRECISION (1e18)
-
         primaryAmount = primaryAmount * strategyContext.poolClaimPrecision / primaryPrecision;
         secondaryAmount = secondaryAmount * strategyContext.poolClaimPrecision / secondaryPrecision;
 
@@ -142,6 +143,7 @@ library Curve2TokenPoolUtils {
             / primaryPrecision;
         uint256 secondaryPoolBalance = poolContext.basePool.secondaryBalance * CurveConstants.CURVE_PRECISION 
             / secondaryPrecision;
+        */
     }
     
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted
@@ -218,7 +220,7 @@ library Curve2TokenPoolUtils {
                 stakingContext.poolId, poolClaimMinted
             );
         }
-        require(success);    
+        require(success);
     }
 
     function _unstakeAndExitPool(

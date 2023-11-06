@@ -36,7 +36,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     /// @notice constructor
     /// @param notional_ Notional proxy address
     /// @param params deployment parameters
-    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
+    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
         BalancerComposablePoolMixin(notional_, params)
     {}
 
@@ -44,6 +44,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("BalancerComposableAuraVault"));
     }
+
     /// @notice Initializes the strategy
     /// @param params init parameters
     function initialize(InitParams calldata params) external initializer onlyNotionalOwner {
@@ -60,22 +61,22 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     /// @notice Processes a deposit request from Notional
     /// @notice Can't be called when the vault is locked
     /// @param deposit deposit amount
-    /// @param maturity not used by this strategy
     /// @param data custom deposit data
     /// @return vaultSharesMinted amount of vault shares minted
-    function _depositFromNotional(address /* account */, uint256 deposit, uint256 maturity, bytes calldata data)
-        internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+    function _depositFromNotional(
+        address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
+    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
         vaultSharesMinted = _strategyContext().deposit(deposit, data);
     }
 
     /// @notice Processes a redemption request from notional
     /// @notice Can't be called when the vault is locked
-    /// @param account not used by this strategy
     /// @param vaultShares the amount of vault shares to redeem
-    /// @param maturity not used by this strategy
+    /// @param data custom redeem data
     /// @return finalPrimaryBalance redeemed amount denominated in primary token
-    function _redeemFromNotional(address account, uint256 vaultShares, uint256 maturity, bytes calldata data)
-        internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+    function _redeemFromNotional(
+        address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
+    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
         finalPrimaryBalance = _strategyContext().redeem(vaultShares, data);
     }
 
@@ -153,11 +154,11 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
      * @notice Converts the amount of pool tokens the vault holds into underlying denomination for the
      * borrow currency.
      * @param vaultShares amount of vault shares
-     * @param maturity not used for this strategy
      * @return underlyingValue the value of the BPT in terms of the borrowed currency
      */
-    function convertStrategyToUnderlying(address account, uint256 vaultShares, uint256 maturity) 
-        public view virtual override whenNotLocked returns (int256 underlyingValue) {
+    function convertStrategyToUnderlying(
+        address /* account */, uint256 vaultShares, uint256 /* maturity */
+    ) public view virtual override whenNotLocked returns (int256 underlyingValue) {
         underlyingValue = _strategyContext().convertStrategyToUnderlying(vaultShares);
     }
 

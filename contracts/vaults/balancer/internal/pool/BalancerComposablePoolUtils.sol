@@ -423,40 +423,11 @@ library BalancerComposablePoolUtils {
         StrategyContext memory strategyContext,
         ComposableOracleContext memory oracleContext,
         uint256 vaultShareAmount
-    ) internal view returns (int256 underlyingValue) {  
-        uint256 bptClaim 
-            = strategyContext._convertStrategyTokensToPoolClaim(vaultShareAmount);
+    ) internal view returns (int256 underlyingValue) {
+        uint256 bptClaim = strategyContext._convertStrategyTokensToPoolClaim(vaultShareAmount);
 
-        underlyingValue 
-            = _getTimeWeightedPrimaryBalance(
-                poolContext, oracleContext, strategyContext, bptClaim, false // validateOnly = false
-            ).toInt();
-    }
-
-    /// @notice calculates the expected primary and secondary amounts based on
-    /// the given spot price and oracle price
-    function _getMinExitAmounts(
-        BalancerComposablePoolContext memory poolContext,
-        ComposableOracleContext memory oracleContext,
-        StrategyContext memory strategyContext,
-        uint256 poolClaim
-    ) internal view returns (uint256[] memory minAmounts) {
-
-        // min amounts are calculated based on the share of the Balancer pool with a small discount applied
-        uint256 numTokens = poolContext.basePool.tokens.length;
-        minAmounts = new uint256[](numTokens);
-
-        for (uint256 i; i < numTokens; i++) {
-            if (i == poolContext.bptIndex) continue;
-            uint256 j = i + 1;
-            if (j == poolContext.bptIndex) j++;
-            if (j < numTokens) {
-                _checkPriceLimit(poolContext, oracleContext, strategyContext, i, j);
-            }
-
-            minAmounts[i] = (poolContext.basePool.balances[i] * poolClaim * 
-                strategyContext.vaultSettings.poolSlippageLimitPercent) / 
-                (oracleContext.virtualSupply * uint256(VaultConstants.VAULT_PERCENT_BASIS));
-        }
+        underlyingValue = _getTimeWeightedPrimaryBalance(
+            poolContext, oracleContext, strategyContext, bptClaim, false // validateOnly = false
+        ).toInt();
     }
 }
