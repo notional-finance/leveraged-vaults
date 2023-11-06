@@ -45,7 +45,7 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
         );
     }
 
-    function _baseStrategyContext() internal view returns(StrategyContext memory) {
+    function _baseStrategyContext() internal view override returns(StrategyContext memory) {
         return StrategyContext({
             tradingModule: TRADING_MODULE,
             vaultSettings: VaultStorage.getStrategyVaultSettings(),
@@ -53,18 +53,6 @@ abstract contract CurvePoolMixin is ConvexStakingMixin {
             poolClaimPrecision: CurveConstants.CURVE_PRECISION,
             canUseStaticSlippage: _canUseStaticSlippage()
         });
-    }
-
-    /// @notice Converts LP tokens to strategy tokens
-    function convertPoolClaimToStrategyTokens(uint256 poolClaim)
-        external view returns (uint256 strategyTokenAmount) {
-        return _baseStrategyContext()._convertPoolClaimToStrategyTokens(poolClaim);
-    }
-
-    /// @notice Converts strategy tokens to LP tokens
-    function convertStrategyTokensToPoolClaim(uint256 strategyTokenAmount) 
-        external view returns (uint256 poolClaim) {
-        return _baseStrategyContext()._convertStrategyTokensToPoolClaim(strategyTokenAmount);
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

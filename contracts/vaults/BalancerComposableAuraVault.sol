@@ -123,10 +123,8 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
      * @param vaultShares amount of vault shares
      * @return underlyingValue the value of the BPT in terms of the borrowed currency
      */
-    function convertStrategyToUnderlying(
-        address /* account */, uint256 vaultShares, uint256 /* maturity */
-    ) public view virtual override whenNotLocked returns (int256 underlyingValue) {
-        underlyingValue = _strategyContext().convertStrategyToUnderlying(vaultShares);
+    function _checkPriceAndCalculateValue(uint256 vaultShares) internal view override returns (int256) {
+        return _strategyContext().convertStrategyToUnderlying(vaultShares);
     }
 
     /// @notice Returns information related to the strategy

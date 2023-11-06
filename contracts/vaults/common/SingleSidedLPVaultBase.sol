@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+
 import {BaseStrategyVault} from "../BaseStrategyVault.sol";
 import {Errors} from "../../global/Errors.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {TypeConvert} from "../../global/TypeConvert.sol";
 import {VaultEvents} from "./VaultEvents.sol";
-import {StrategyVaultState} from "./VaultTypes.sol";
+import {
+    StrategyVaultState,
+    StrategyContext,
+    SingleSidedRewardTradeParams
+} from "./VaultTypes.sol";
+import {StrategyUtils} from "./internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "./VaultStorage.sol";
 import {VaultConstants} from "./VaultConstants.sol";
 
@@ -22,6 +29,7 @@ import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
  */
 abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, ISingleSidedLPStrategyVault {
     using VaultStorage for StrategyVaultState;
+    using StrategyUtils for StrategyContext;
 
     constructor(NotionalProxy notional_, ITradingModule tradingModule_) 
         BaseStrategyVault(notional_, tradingModule_) { }
@@ -133,23 +141,22 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         _unlockVault();
     }
 
-    // /// @notice Reverts if the vault is locked during emergency exit.
-    // function convertStrategyToUnderlying(
-    //     address /* */, uint256 vaultShares, uint256 /* */
-    // ) external view override whenNotLocked returns (int256 underlyingValue) {
-    //     // NOTE: much of this code is in StrategyUtils.....
-    //     // TODO: getPoolClaim
-    //     // TODO: checkPriceLimit
-    //     // TODO: valueInUnderlying
-    // }
+    /// @notice Reverts if the vault is locked during emergency exit.
+    function convertStrategyToUnderlying(
+        address /* */, uint256 vaultShares, uint256 /* */
+    ) public view override whenNotLocked returns (int256 underlyingValue) {
+        // Convert the vault shares to pool claims
+        // uint256 poolClaim = _baseStrategyContext()._convertStrategyTokensToPoolClaim(vaultShares);
+        return _checkPriceAndCalculateValue(vaultShares);
+    }
 
     // function _depositFromNotional(
     //     address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
     // ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
-    //     // TODO: decode data
-    //     // TODO: handle deposit trades
+    //     // XXX: decode data
+    //     // XXX: validate and handle deposit trades
     //     // TODO: join pool and stake
-
+    //     // TODO: check pool threshold
     //     _mintStrategyTokens(lpTokens);
     // }
 
@@ -157,20 +164,46 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     //     address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
     // ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
     //     _redeemStrategyTokens(vaultShares);
-
-    //     // TODO: decode data
+    //     // XXX: decode data
     //     // TODO: unstakeAndExitPool
-    //     // TODO: handle exit trades
+    //     // XXX: validate and handle exit trades
     // }
 
     function claimRewardTokens() external override onlyRole(REWARD_REINVESTMENT_ROLE) {
         _claimRewardTokens();
     }
 
+    function reinvestReward(
+        SingleSidedRewardTradeParams[] calldata trades,
+        uint256 minPoolClaim
+    ) external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
+        address rewardToken,
+        uint256 amountSold,
+        uint256 poolClaimAmount
+    ) {
+        // TODO: checkPriceLimit
+        // XXX: validate trades
+        // XXX: handle deposit trades
+        // TODO: join pool and stake
+        // XXX: increase pool claim
+        // TODO: check pool threshold
+    }
 
-    // reinvestReward
-    //    - this needs the most refactoring probably....
+    /// @notice Converts pool claim to strategy tokens
+    /// @param poolClaim amount of pool tokens
+    /// @return strategyTokenAmount amount of vault shares
+    function convertPoolClaimToStrategyTokens(uint256 poolClaim)
+        external view returns (uint256 strategyTokenAmount) {
+        return _baseStrategyContext()._convertPoolClaimToStrategyTokens(poolClaim);
+    }
 
+    /// @notice Converts strategy tokens to pool claim
+    /// @param strategyTokenAmount amount of vault shares
+    /// @return poolClaim amount of pool tokens
+    function convertStrategyTokensToPoolClaim(uint256 strategyTokenAmount) 
+        external view returns (uint256 poolClaim) {
+        return _baseStrategyContext()._convertStrategyTokensToPoolClaim(strategyTokenAmount);
+    }
 
     /// @notice Called once during initialization to set the initial token approvals.
     function _initialApproveTokens() internal virtual;
@@ -183,6 +216,10 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
     /// @notice Called to claim reward tokens
     function _claimRewardTokens() internal virtual;
+
+    function _baseStrategyContext() internal view virtual returns (StrategyContext memory);
+
+    function _checkPriceAndCalculateValue(uint256 vaultShares) internal view virtual returns (int256);
 
     // Storage gap for future potential upgrades
     uint256[100] private __gap;

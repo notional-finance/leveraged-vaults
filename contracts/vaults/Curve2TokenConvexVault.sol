@@ -92,13 +92,11 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         return Curve2TokenConvexHelper.reinvestReward(_strategyContext(), params);
     }
 
-    function convertStrategyToUnderlying(
-        address /* account */, uint256 vaultShareAmount, uint256 /* maturity */
-    ) public view whenNotLocked virtual override returns (int256 underlyingValue) {
+    function _checkPriceAndCalculateValue(uint256 vaultShares) internal view override returns (int256 underlyingValue) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        underlyingValue = context.poolContext._convertStrategyToUnderlying({
+        return context.poolContext._convertStrategyToUnderlying({
             strategyContext: context.baseStrategy,
-            vaultShareAmount: vaultShareAmount
+            vaultShareAmount: vaultShares
         });
     } 
 

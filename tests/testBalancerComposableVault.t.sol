@@ -24,8 +24,10 @@ abstract contract BaseBalancerComposable_wstETHcbETHrETH is BaseComposablePoolVa
     }
 
     // test_RevertIf_oracleDeviationIsTrue_entry_exit()
+    // test_RevertIf_isLocked()
     // test_RevertIf_aboveMaxPoolShare()
     // test_rewardReinvestment()
+    // test_RevertIf_tradesInvalidTokens()
     // test_Exit_withSecondaryTrades()
     // test_Enter_withSecondaryTrades()
     // test_ReentrancyContext
