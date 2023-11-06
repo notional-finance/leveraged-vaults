@@ -47,11 +47,12 @@ library Curve2TokenPoolUtils {
         DepositParams memory params
     ) internal returns (uint256 strategyTokensMinted) {
         uint256 secondaryAmount;
-        if (params.tradeData.length != 0) {
+        if (params.depositTrades.length > 0) {
+            require(params.depositTrades.length == 1);
             // Allows users to trade on a different DEX when joining
             (uint256 primarySold, uint256 secondaryBought) = poolContext.basePool._tradePrimaryForSecondary({
                 strategyContext: strategyContext,
-                data: params.tradeData
+                params: params.depositTrades[0]
             });
             deposit -= primarySold;
             secondaryAmount = secondaryBought;
@@ -245,22 +246,25 @@ library Curve2TokenPoolUtils {
         
         if (!success) revert Errors.UnstakeFailed();
 
-        if (params.secondaryTradeParams.length == 0) {
+        uint8 primaryIndex = poolContext.basePool.primaryIndex;
+        uint8 secondaryIndex = poolContext.basePool.secondaryIndex;
+        ICurve2TokenPool pool = ICurve2TokenPool(address(poolContext.curvePool));
+        if (params.redemptionTrades.length == 0) {
             // Redeem single-sided
-            primaryBalance = ICurve2TokenPool(address(poolContext.curvePool)).remove_liquidity_one_coin(
-                poolClaim, int8(poolContext.basePool.primaryIndex), params.minPrimary
+            primaryBalance = pool.remove_liquidity_one_coin(
+                poolClaim, int8(primaryIndex), params.minAmounts[primaryIndex]
             );
         } else {
             // Redeem proportionally
             uint256[2] memory minAmounts;
-            minAmounts[poolContext.basePool.primaryIndex] = params.minPrimary;
-            minAmounts[poolContext.basePool.secondaryIndex] = params.minSecondary;
-            uint256[2] memory exitBalances = ICurve2TokenPool(address(poolContext.curvePool)).remove_liquidity(
-                poolClaim, minAmounts
-            );
+            minAmounts[primaryIndex] = params.minAmounts[primaryIndex];
+            minAmounts[secondaryIndex] = params.minAmounts[secondaryIndex];
+            uint256[2] memory exitBalances = pool.remove_liquidity(poolClaim, minAmounts);
 
-            (primaryBalance, secondaryBalance) 
-                = (exitBalances[poolContext.basePool.primaryIndex], exitBalances[poolContext.basePool.secondaryIndex]);
+            (primaryBalance, secondaryBalance) = (
+                exitBalances[poolContext.basePool.primaryIndex],
+                exitBalances[poolContext.basePool.secondaryIndex]
+            );
         }
     }
 

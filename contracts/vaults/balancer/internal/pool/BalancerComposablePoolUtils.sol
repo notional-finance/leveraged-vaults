@@ -14,8 +14,8 @@ import {
     StrategyVaultState,
     ComposableRewardTradeParams,
     ComposablePoolContext,
-    ComposableDepositParams,
-    ComposableRedeemParams
+    DepositParams,
+    RedeemParams
 } from "../../../common/VaultTypes.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {Errors} from "../../../../global/Errors.sol";
@@ -218,7 +218,7 @@ library BalancerComposablePoolUtils {
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         uint256 deposit,
-        ComposableDepositParams memory params
+        DepositParams memory params
     ) internal returns (uint256 strategyTokensMinted) {
 
         uint256[] memory amounts = _handleDepositTrades(poolContext, strategyContext, deposit, params);
@@ -239,7 +239,7 @@ library BalancerComposablePoolUtils {
         BalancerComposablePoolContext memory poolContext,
         StrategyContext memory strategyContext,
         uint256 deposit,
-        ComposableDepositParams memory params
+        DepositParams memory params
     ) private returns (uint256[] memory amounts) {
         uint256 numTokens = poolContext.basePool.tokens.length;
         amounts = new uint256[](poolContext.basePool.tokens.length);
@@ -295,7 +295,7 @@ library BalancerComposablePoolUtils {
     function _convertTokensToPrimary(
         BalancerComposablePoolContext memory poolContext,
         StrategyContext memory strategyContext,
-        ComposableRedeemParams memory params,
+        RedeemParams memory params,
         uint256[] memory exitBalances
     ) internal returns (uint256 primaryPurchased) {
         address[] memory tokens = poolContext.basePool.tokens;
@@ -326,7 +326,7 @@ library BalancerComposablePoolUtils {
         StrategyContext memory strategyContext,
         AuraStakingContext memory stakingContext,
         uint256 vaultShares,
-        ComposableRedeemParams memory params
+        RedeemParams memory params
     ) internal returns (uint256 finalPrimaryBalance) {
         uint256 bptClaim = strategyContext._redeemStrategyTokens(vaultShares);
         bool isSingleSidedExit = params.redemptionTrades.length == 0;

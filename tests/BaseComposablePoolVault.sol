@@ -67,7 +67,6 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
     ) internal pure override returns (bytes memory) {
         DepositParams memory d;
         d.minPoolClaim = 0;
-        d.tradeData = "";
 
         return abi.encode(d);
     }
@@ -76,7 +75,7 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
         uint256 /* vaultShares */,
         uint256 /* maturity */
     ) internal view override returns (bytes memory) {
-        ComposableRedeemParams memory d;
+        RedeemParams memory d;
         d.minAmounts = new uint256[](numTokens);
 
         return abi.encode(d);

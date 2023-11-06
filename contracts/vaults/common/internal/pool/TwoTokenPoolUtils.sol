@@ -93,10 +93,8 @@ library TwoTokenPoolUtils {
     function _tradePrimaryForSecondary(
         TwoTokenPoolContext memory poolContext,
         StrategyContext memory strategyContext,
-        bytes memory data
+        DepositTradeParams memory params
     ) internal returns (uint256 primarySold, uint256 secondaryBought) {
-        (DepositTradeParams memory params) = abi.decode(data, (DepositTradeParams));
-
         if (DexId(params.tradeParams.dexId) == DexId.ZERO_EX) {
             revert Errors.InvalidDexId(params.tradeParams.dexId);
         }
@@ -116,9 +114,8 @@ library TwoTokenPoolUtils {
         RedeemParams memory params,
         uint256 secondaryBalance
     ) internal returns (uint256 primaryPurchased) {
-        (TradeParams memory tradeParams) = abi.decode(
-            params.secondaryTradeParams, (TradeParams)
-        );
+        require(params.redemptionTrades.length == 1);
+        TradeParams memory tradeParams = params.redemptionTrades[0];
 
         if (DexId(tradeParams.dexId) == DexId.ZERO_EX) {
             revert Errors.InvalidDexId(tradeParams.dexId);

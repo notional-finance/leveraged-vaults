@@ -33,29 +33,11 @@ struct DepositParams {
     /// @notice min pool claim for slippage control
     uint256 minPoolClaim;
     /// @notice DepositTradeParams or empty (single-sided entry)
-    bytes tradeData;
+    DepositTradeParams[] depositTrades;
 }
 
 /// @notice Redeem parameters
 struct RedeemParams {
-    /// @notice Primary token slippage control
-    uint256 minPrimary;
-    /// @notice Secondary token slippage control
-    uint256 minSecondary;
-    /// @notice TradeParams or empty (single-sided exit)
-    bytes secondaryTradeParams;
-}
-
-/// @notice Deposit parameters for the composable pool
-struct ComposableDepositParams {
-    /// @notice min pool claim for slippage control
-    uint256 minPoolClaim;
-    /// @notice Deposit trades or empty (single-sided entry)
-    DepositTradeParams[] depositTrades;
-}
-
-/// @notice Redeem parameters for the composable pool
-struct ComposableRedeemParams {
     /// @notice min amounts for slippage control
     uint256[] minAmounts;
     /// @notice Redemption trades or empty (single-sided exit)

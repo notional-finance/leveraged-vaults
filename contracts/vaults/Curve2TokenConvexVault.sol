@@ -10,7 +10,8 @@ import {
     StrategyContext,
     StrategyVaultState,
     RedeemParams,
-    DepositParams
+    DepositParams,
+    TradeParams
 } from "./common/VaultTypes.sol";
 import {VaultEvents} from "./common/VaultEvents.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
@@ -62,9 +63,8 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
             poolClaim: claimToExit,
             // Don't use any slippage limits here since we will exit proportionally
             params: RedeemParams({
-                minPrimary: 0,
-                minSecondary: 0,
-                secondaryTradeParams: ""
+                minAmounts: new uint256[](2),
+                redemptionTrades: new TradeParams[](0)
             })
         });
     }

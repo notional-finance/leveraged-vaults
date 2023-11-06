@@ -4,8 +4,8 @@ pragma solidity 0.8.17;
 import {
     StrategyContext,
     StrategyVaultState,
-    ComposableDepositParams,
-    ComposableRedeemParams,
+    DepositParams,
+    RedeemParams,
     TradeParams
 } from "../../common/VaultTypes.sol";
 import {
@@ -36,15 +36,13 @@ library ComposableAuraHelper {
     /// @notice Deposits underlying tokens into Balancer and mint strategy tokens
     /// @param context composable pool strategy context
     /// @param depositAmount token deposit amount
-    /// @param data custom deposit data
+    /// @param params custom deposit data
     /// @return vaultSharesMinted amount of vault shares minted
     function deposit(
         BalancerComposableAuraStrategyContext memory context,
         uint256 depositAmount,
-        bytes calldata data
+        DepositParams calldata params
     ) external returns (uint256 vaultSharesMinted) {
-        ComposableDepositParams memory params = abi.decode(data, (ComposableDepositParams));
-
         vaultSharesMinted = context.poolContext._deposit({
             oracleContext: context.oracleContext,
             strategyContext: context.baseStrategy,
@@ -57,15 +55,13 @@ library ComposableAuraHelper {
     /// @notice Redeem LP tokens from Balancer
     /// @param context composable pool strategy context
     /// @param vaultShares amount of vault shares to redeem
-    /// @param data custom redeem data
+    /// @param params custom redeem data
     /// @return finalPrimaryBalance total amount of underlying tokens redeemed
     function redeem(
         BalancerComposableAuraStrategyContext memory context,
         uint256 vaultShares,
-        bytes calldata data
+        RedeemParams calldata params
     ) external returns (uint256 finalPrimaryBalance) {
-        ComposableRedeemParams memory params = abi.decode(data, (ComposableRedeemParams));
-
         finalPrimaryBalance = context.poolContext._redeem({
             strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,

@@ -10,7 +10,9 @@ import {VaultEvents} from "./VaultEvents.sol";
 import {
     StrategyVaultState,
     StrategyContext,
-    SingleSidedRewardTradeParams
+    SingleSidedRewardTradeParams,
+    DepositParams,
+    RedeemParams
 } from "./VaultTypes.sol";
 import {StrategyUtils} from "./internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "./VaultStorage.sol";
@@ -146,48 +148,54 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         address /* */, uint256 vaultShares, uint256 /* */
     ) public view override whenNotLocked returns (int256 underlyingValue) {
         // Convert the vault shares to pool claims
+        // TODO: is it easier to get the value of 1 pool claim token and just multiply here?
         // uint256 poolClaim = _baseStrategyContext()._convertStrategyTokensToPoolClaim(vaultShares);
         return _checkPriceAndCalculateValue(vaultShares);
     }
 
-    // function _depositFromNotional(
-    //     address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
-    // ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
-    //     // XXX: decode data
-    //     // XXX: validate and handle deposit trades
-    //     // TODO: join pool and stake
-    //     // TODO: check pool threshold
-    //     _mintStrategyTokens(lpTokens);
-    // }
+    function _depositFromNotional(
+        address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
+    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+        StrategyContext memory context = _baseStrategyContext();
+        DepositParams memory params = abi.decode(data, (DepositParams));
+        // XXX: validate and handle deposit trades
+        // TODO: join pool and stake
+        uint256 lpTokens;
+        // TODO: check pool threshold
 
-    // function _redeemFromNotional(
-    //     address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
-    // ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
-    //     _redeemStrategyTokens(vaultShares);
-    //     // XXX: decode data
-    //     // TODO: unstakeAndExitPool
-    //     // XXX: validate and handle exit trades
-    // }
+        return context._mintStrategyTokens(lpTokens);
+    }
+
+    function _redeemFromNotional(
+        address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
+    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+        StrategyContext memory context = _baseStrategyContext();
+        uint256 poolClaim = context._redeemStrategyTokens(vaultShares);
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+
+        // TODO: unstakeAndExitPool
+        // XXX: validate and handle exit trades
+    }
 
     function claimRewardTokens() external override onlyRole(REWARD_REINVESTMENT_ROLE) {
         _claimRewardTokens();
     }
 
-    function reinvestReward(
-        SingleSidedRewardTradeParams[] calldata trades,
-        uint256 minPoolClaim
-    ) external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
-        address rewardToken,
-        uint256 amountSold,
-        uint256 poolClaimAmount
-    ) {
-        // TODO: checkPriceLimit
-        // XXX: validate trades
-        // XXX: handle deposit trades
-        // TODO: join pool and stake
-        // XXX: increase pool claim
-        // TODO: check pool threshold
-    }
+    // function reinvestReward(
+    //     SingleSidedRewardTradeParams[] calldata trades,
+    //     uint256 minPoolClaim
+    // ) external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
+    //     address rewardToken,
+    //     uint256 amountSold,
+    //     uint256 poolClaimAmount
+    // ) {
+    //     // TODO: checkPriceLimit
+    //     // XXX: validate trades
+    //     // XXX: handle deposit trades
+    //     // TODO: join pool and stake
+    //     // XXX: increase pool claim
+    //     // TODO: check pool threshold
+    // }
 
     /// @notice Converts pool claim to strategy tokens
     /// @param poolClaim amount of pool tokens
