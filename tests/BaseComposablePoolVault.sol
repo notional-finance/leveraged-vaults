@@ -7,7 +7,7 @@ import "../contracts/vaults/common/VaultTypes.sol";
 import "../contracts/vaults/balancer/BalancerVaultTypes.sol";
 import "../contracts/proxy/nProxy.sol";
 import "../interfaces/balancer/IBalancerPool.sol";
-import "../interfaces/notional/IStrategyVault.sol";
+import "../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
     uint16 primaryBorrowCurrency;

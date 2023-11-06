@@ -11,7 +11,6 @@ import {
 import {StrategyContext, ComposablePoolContext} from "../../common/VaultTypes.sol";
 import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {ISingleSidedLPStrategyVault} from "../../../../interfaces/notional/IStrategyVault.sol";
 import {IBalancerPool, IComposablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
@@ -23,7 +22,7 @@ import {ComposableAuraHelper} from "../external/ComposableAuraHelper.sol";
 /**
  * Base class for all Balancer composable pools
  */
-abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSidedLPStrategyVault {
+abstract contract BalancerComposablePoolMixin is BalancerPoolMixin {
     using TypeConvert for uint256;
 
     error InvalidPrimaryToken(address token);
@@ -169,10 +168,6 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
             stakingContext: _auraStakingContext(),
             baseStrategy: _baseStrategyContext()
         });
-    }
-
-    function isLocked() public view override returns (bool) {
-        return _isLocked();
     }
 
     /// @notice returns the value of 1 vault share

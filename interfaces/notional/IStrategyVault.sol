@@ -53,17 +53,3 @@ interface IStrategyVault {
         uint256 maturity
     ) external returns (uint256 primeVaultShares);
 }
-
-interface ISingleSidedLPStrategyVault {
-    struct SingleSidedLPStrategyVaultInfo {
-        address pool;
-        uint8 singleSidedTokenIndex;
-        uint256 totalLPTokens;
-        uint256 totalVaultShares;
-    }
-
-    function getStrategyVaultInfo() external view returns (SingleSidedLPStrategyVaultInfo memory);
-    function emergencyExit(uint256 claimToExit, bytes calldata data) external;
-    function restoreVault(uint256 minPoolClaim, bytes calldata data) external;
-    function isLocked() external view returns (bool);
-}

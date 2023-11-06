@@ -5,6 +5,7 @@ import {
     AuraVaultDeploymentParams, 
     BalancerComposableAuraStrategyContext
 } from "../vaults/balancer/BalancerVaultTypes.sol";
+import {ReinvestRewardParams} from "../vaults/common/VaultTypes.sol";
 import {BalancerComposablePoolMixin} from "../vaults/balancer/mixins/BalancerComposablePoolMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {BalancerComposablePoolUtils} from "../vaults/balancer/internal/pool/BalancerComposablePoolUtils.sol";
@@ -65,4 +66,7 @@ contract MockBalancerComposableAuraVault is BalancerComposablePoolMixin {
 
     function emergencyExit(uint256 /* claimToExit */, bytes calldata /* data */) override external {}
     function restoreVault(uint256 /* minPoolClaim */, bytes calldata /* data */) override external {}
+    function reinvestReward(ReinvestRewardParams calldata params) external returns (
+        address rewardToken, uint256 amountSold, uint256 poolClaimAmount
+    ) {}
 }

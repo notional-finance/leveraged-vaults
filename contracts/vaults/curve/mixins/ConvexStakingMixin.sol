@@ -14,9 +14,9 @@ import {IConvexStakingProxy} from "../../../../interfaces/convex/IConvexStakingP
 import {CurveConstants} from "../internal/CurveConstants.sol";
 import {StrategyVaultSettings, VaultStorage} from "../../common/VaultStorage.sol";
 import {VaultEvents} from "../../common/VaultEvents.sol";
-import {VaultBase} from "../../common/VaultBase.sol";
+import {SingleSidedLPVaultBase} from "../../common/SingleSidedLPVaultBase.sol";
 
-abstract contract ConvexStakingMixin is VaultBase {
+abstract contract ConvexStakingMixin is SingleSidedLPVaultBase {
     using TokenUtils for IERC20;
 
     /// @notice Convex booster contract used for staking BPT
@@ -26,7 +26,7 @@ abstract contract ConvexStakingMixin is VaultBase {
     uint256 internal immutable CONVEX_POOL_ID;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
-        VaultBase(notional_, params.baseParams.tradingModule) {
+        SingleSidedLPVaultBase(notional_, params.baseParams.tradingModule) {
         CONVEX_REWARD_POOL = params.rewardPool;
 
         address convexBooster;

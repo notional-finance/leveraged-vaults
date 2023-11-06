@@ -2,8 +2,6 @@
 pragma solidity 0.8.17;
 
 import {BaseStrategyVault} from "../BaseStrategyVault.sol";
-import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
 import {Errors} from "../../global/Errors.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {VaultEvents} from "./VaultEvents.sol";
@@ -11,28 +9,32 @@ import {StrategyVaultState} from "./VaultTypes.sol";
 import {VaultStorage} from "./VaultStorage.sol";
 import {VaultConstants} from "./VaultConstants.sol";
 
+import {ISingleSidedLPStrategyVault} from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
+import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
+
 /**
  * Base vault contract that implements common utility functions
  */
-abstract contract VaultBase is BaseStrategyVault, UUPSUpgradeable {
+abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, ISingleSidedLPStrategyVault {
 
     constructor(NotionalProxy notional_, ITradingModule tradingModule_) 
         BaseStrategyVault(notional_, tradingModule_) { }
 
-    function _isLocked() internal view returns (bool) {
+    function isLocked() public view returns (bool) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         return _hasFlag(state.flags, VaultConstants.FLAG_LOCKED);
     }
 
     /// @notice Allows the function to execute only when the vault is not locked
     modifier whenNotLocked() {
-        if (_isLocked()) revert Errors.VaultLocked();
+        if (isLocked()) revert Errors.VaultLocked();
         _;
     }
 
     /// @notice Allows the function to execute only when the vault is locked
     modifier whenLocked() {
-        if (!_isLocked()) revert Errors.VaultNotLocked();
+        if (!isLocked()) revert Errors.VaultNotLocked();
         _;
     }
 

@@ -5,12 +5,12 @@ import {AuraStakingContext, AuraVaultDeploymentParams} from "../BalancerVaultTyp
 import {IAuraBooster, IAuraBoosterLite} from "../../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../../interfaces/aura/IAuraRewardPool.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
-import {VaultBase} from "../../common/VaultBase.sol";
+import {SingleSidedLPVaultBase} from "../../common/SingleSidedLPVaultBase.sol";
 
 /**
  * Base class for all Aura strategies
  */
-abstract contract AuraStakingMixin is VaultBase {
+abstract contract AuraStakingMixin is SingleSidedLPVaultBase {
 
     /// @notice Aura booster contract used for staking BPT
     address internal immutable AURA_BOOSTER;
@@ -20,7 +20,7 @@ abstract contract AuraStakingMixin is VaultBase {
     uint256 internal immutable AURA_POOL_ID;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params) 
-        VaultBase(notional_, params.baseParams.tradingModule) {
+        SingleSidedLPVaultBase(notional_, params.baseParams.tradingModule) {
         AURA_REWARD_POOL = params.rewardPool;
 
         AURA_BOOSTER = AURA_REWARD_POOL.operator();

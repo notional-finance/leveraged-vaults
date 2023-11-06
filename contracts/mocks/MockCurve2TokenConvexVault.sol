@@ -7,7 +7,7 @@ import {
     Curve2TokenPoolContext
 } from "../vaults/curve/CurveVaultTypes.sol";
 import {TwoTokenPoolUtils} from "../vaults/common/internal/pool/TwoTokenPoolUtils.sol";
-import {TwoTokenPoolContext} from "../vaults/common/VaultTypes.sol";
+import {ReinvestRewardParams, TwoTokenPoolContext} from "../vaults/common/VaultTypes.sol";
 import {Curve2TokenVaultMixin} from "../vaults/curve/mixins/Curve2TokenVaultMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {Curve2TokenPoolUtils} from "../vaults/curve/internal/pool/Curve2TokenPoolUtils.sol";
@@ -80,6 +80,10 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
             spotPrice: spotPrice
         });
     }
+
     function emergencyExit(uint256 /* claimToExit */, bytes calldata /* data */) override external {}
     function restoreVault(uint256 /* minPoolClaim */, bytes calldata /* data */) override external {}
+    function reinvestReward(ReinvestRewardParams calldata params) external returns (
+        address rewardToken, uint256 amountSold, uint256 poolClaimAmount
+    ) {}
 }

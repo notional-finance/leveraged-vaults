@@ -8,11 +8,10 @@ import {Curve2TokenPoolContext, ConvexVaultDeploymentParams} from "../CurveVault
 import {CurveConstants} from "../internal/CurveConstants.sol";
 import {CurvePoolMixin} from "./CurvePoolMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
-import {ISingleSidedLPStrategyVault} from "../../../../interfaces/notional/IStrategyVault.sol";
 import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {ICurvePool} from "../../../../interfaces/curve/ICurvePool.sol";
 
-abstract contract Curve2TokenPoolMixin is CurvePoolMixin, ISingleSidedLPStrategyVault{
+abstract contract Curve2TokenPoolMixin is CurvePoolMixin {
     error InvalidPrimaryToken(address token);
     error InvalidSecondaryToken(address token);
 
@@ -92,10 +91,6 @@ abstract contract Curve2TokenPoolMixin is CurvePoolMixin, ISingleSidedLPStrategy
             curvePool: CURVE_POOL,
             isV2: IS_CURVE_V2
         });
-    }
-
-    function isLocked() public view override returns (bool) {
-        return _isLocked();
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades
