@@ -159,10 +159,11 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         StrategyContext memory context = _baseStrategyContext();
         DepositParams memory params = abi.decode(data, (DepositParams));
         // XXX: validate and handle deposit trades
-        // TODO: join pool and stake
-        uint256 lpTokens;
-        // TODO: check pool threshold
+        require(params.depositTrades.length == 0);
+        uint256 lpTokens = _joinPoolAndStake(deposit, params);
 
+        // Ensure that we do not exceed the max LP pool threshold
+        context._checkPoolThreshold(_totalPoolSupply(), lpTokens);
         return context._mintStrategyTokens(lpTokens);
     }
 
@@ -173,8 +174,9 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         uint256 poolClaim = context._redeemStrategyTokens(vaultShares);
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
-        // TODO: unstakeAndExitPool
+        uint256[] memory exitBalances = _unstakeAndExitPool(poolClaim, params);
         // XXX: validate and handle exit trades
+        require(params.redemptionTrades.length == 0);
     }
 
     function claimRewardTokens() external override onlyRole(REWARD_REINVESTMENT_ROLE) {
@@ -228,6 +230,16 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function _baseStrategyContext() internal view virtual returns (StrategyContext memory);
 
     function _checkPriceAndCalculateValue(uint256 vaultShares) internal view virtual returns (int256);
+
+    function _totalPoolSupply() internal view virtual returns (uint256);
+
+    function _joinPoolAndStake(
+        uint256 deposit, DepositParams memory params
+    ) internal virtual returns (uint256 lpTokens);
+
+    function _unstakeAndExitPool(
+        uint256 vaultShares, RedeemParams memory params
+    ) internal virtual returns (uint256[] memory exitBalances);
 
     // Storage gap for future potential upgrades
     uint256[100] private __gap;

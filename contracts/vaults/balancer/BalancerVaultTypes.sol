@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import {StrategyContext, ComposablePoolContext} from "../common/VaultTypes.sol";
+import {IAuraBoosterBase} from "../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
 import {ITradingModule, Trade, TradeType} from "../../../interfaces/trading/ITradingModule.sol";
 import {IAsset} from "../../../interfaces/balancer/IBalancerVault.sol";
@@ -47,7 +48,7 @@ struct ComposableOracleContext {
 /// @notice Aura staking info
 struct AuraStakingContext {
     /// @notice Aura booster address
-    address booster;
+    IAuraBoosterBase booster;
     /// @notice Aura reward pool address
     IAuraRewardPool rewardPool;
     /// @notice Aura pool ID

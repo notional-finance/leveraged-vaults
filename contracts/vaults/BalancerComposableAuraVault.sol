@@ -2,15 +2,23 @@
 pragma solidity 0.8.17;
 
 import {TokenUtils} from "../utils/TokenUtils.sol";
-import {AuraVaultDeploymentParams} from "./balancer/BalancerVaultTypes.sol";
-import {BalancerComposableAuraStrategyContext, BalancerComposablePoolContext} from "./balancer/BalancerVaultTypes.sol";
+import {
+    AuraStakingContext,
+    AuraVaultDeploymentParams,
+    BalancerComposableAuraStrategyContext,
+    BalancerComposablePoolContext,
+    PoolParams
+} from "./balancer/BalancerVaultTypes.sol";
+import{BalancerUtils} from "./balancer/internal/pool/BalancerUtils.sol";
 import {
     StrategyContext,
     StrategyVaultState,
     ComposablePoolContext,
-    DepositParams
+    DepositParams,
+    RedeemParams
 } from "./common/VaultTypes.sol";
 import {VaultEvents} from "./common/VaultEvents.sol";
+import {Errors} from "../global/Errors.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerComposablePoolUtils} from "./balancer/internal/pool/BalancerComposablePoolUtils.sol";
 import {ComposableAuraHelper} from "./balancer/external/ComposableAuraHelper.sol";
@@ -20,6 +28,9 @@ import {VaultStorage} from "./common/VaultStorage.sol";
 import {
     ReinvestRewardParams
 } from "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
+import {
+    IComposablePool
+} from "../../interfaces/balancer/IBalancerPool.sol";
 
 /**
  * @notice This vault borrows the primary currency and provides liquidity
@@ -46,27 +57,37 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         return bytes4(keccak256("BalancerComposableAuraVault"));
     }
 
-    /// @notice Processes a deposit request from Notional
-    /// @notice Can't be called when the vault is locked
-    /// @param deposit deposit amount
-    /// @param data custom deposit data
-    /// @return vaultSharesMinted amount of vault shares minted
-    function _depositFromNotional(
-        address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
-    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
-        vaultSharesMinted = _strategyContext().deposit(deposit, data);
+    function _joinPoolAndStake(
+        uint256[] memory amounts, DepositParams memory params
+    ) internal override returns (uint256 lpTokens) {
+        BalancerComposablePoolContext memory poolContext = _composablePoolContext();
+
+        PoolParams memory poolParams = BalancerUtils._getPoolParams({
+            context: poolContext,
+            amounts: amounts,
+            isJoin: true,
+            isSingleSided: false,
+            bptAmount: params.minPoolClaim
+        });
+
+        lpTokens = BalancerUtils._joinPoolExactTokensIn({
+            poolId: poolContext.poolId,
+            poolToken: poolContext.basePool.poolToken,
+            params: poolParams
+        });
+
+        // Transfer token to Aura protocol for boosted staking
+        AuraStakingContext memory stakingContext = _auraStakingContext();
+        bool success = stakingContext.booster.deposit(stakingContext.poolId, lpTokens, true); // stake = true
+        if (!success) revert Errors.StakeFailed();
     }
 
-    /// @notice Processes a redemption request from notional
-    /// @notice Can't be called when the vault is locked
-    /// @param vaultShares the amount of vault shares to redeem
-    /// @param data custom redeem data
-    /// @return finalPrimaryBalance redeemed amount denominated in primary token
-    function _redeemFromNotional(
-        address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
-    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
-        finalPrimaryBalance = _strategyContext().redeem(vaultShares, data);
+    function _unstakeAndExitPool(
+        uint256 vaultShares, RedeemParams memory params
+    ) internal override returns (uint256[] memory exitBalances) {
+
     }
+ 
 
     /// @notice Remove liquidity from Balancer in the event of an emergency (i.e. pool gets hacked)
     /// @notice Vault will be locked after an emergency exit, restoreVault can be used to unlock the vault
@@ -96,10 +117,10 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
             amounts[i] = TokenUtils.tokenBalance(context.poolContext.basePool.tokens[i]);
         }
 
-        // Join proportionally here to minimize slippage
-        poolTokens = context.poolContext._joinPoolAndStake(
-            context.oracleContext, context.baseStrategy, context.stakingContext, amounts, minPoolClaim
-        );
+        // No trades are specified so this joins proportionally
+        DepositParams memory params;
+        params.minPoolClaim = minPoolClaim;
+        poolTokens = _joinPoolAndStake(amounts, params);
     }
 
     /// @notice Reinvests the harvested reward tokens
@@ -127,18 +148,22 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         return _strategyContext().convertStrategyToUnderlying(vaultShares);
     }
 
-    /// @notice Returns information related to the strategy
-    /// @return strategy context
-    function getStrategyContext() external view returns (BalancerComposableAuraStrategyContext memory) {
-        return _strategyContext();
+    function _totalPoolSupply() internal view override returns (uint256) {
+        return IComposablePool(address(BALANCER_POOL_TOKEN)).getActualSupply();
     }
 
-    /// @notice Gets the current spot price with a given token index
-    /// @notice Spot price is always denominated in the primary token
-    /// @param index1 first pool token index, BPT index is not allowed
-    /// @param index2 second pool token index, BPT index is not allowed
-    /// @return spotPrice spot price of 1 vault share
-    function getSpotPrice(uint8 index1, uint8 index2) external view returns (uint256 spotPrice) {
-        spotPrice = ComposableAuraHelper.getSpotPrice(_strategyContext(), index1, index2);
-    }
+    // /// @notice Returns information related to the strategy
+    // /// @return strategy context
+    // function getStrategyContext() external view returns (BalancerComposableAuraStrategyContext memory) {
+    //     return _strategyContext();
+    // }
+
+    // /// @notice Gets the current spot price with a given token index
+    // /// @notice Spot price is always denominated in the primary token
+    // /// @param index1 first pool token index, BPT index is not allowed
+    // /// @param index2 second pool token index, BPT index is not allowed
+    // /// @return spotPrice spot price of 1 vault share
+    // function getSpotPrice(uint8 index1, uint8 index2) external view returns (uint256 spotPrice) {
+    //     spotPrice = ComposableAuraHelper.getSpotPrice(_strategyContext(), index1, index2);
+    // }
 }

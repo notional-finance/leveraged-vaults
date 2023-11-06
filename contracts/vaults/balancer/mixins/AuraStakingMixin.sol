@@ -13,7 +13,7 @@ import {SingleSidedLPVaultBase} from "../../common/SingleSidedLPVaultBase.sol";
 abstract contract AuraStakingMixin is SingleSidedLPVaultBase {
 
     /// @notice Aura booster contract used for staking BPT
-    address internal immutable AURA_BOOSTER;
+    IAuraBooster internal immutable AURA_BOOSTER;
     /// @notice Aura reward pool contract used for unstaking and claiming reward tokens
     IAuraRewardPool internal immutable AURA_REWARD_POOL;
     /// @notice Aura pool ID used for staking
@@ -23,7 +23,7 @@ abstract contract AuraStakingMixin is SingleSidedLPVaultBase {
         SingleSidedLPVaultBase(notional_, params.baseParams.tradingModule) {
         AURA_REWARD_POOL = params.rewardPool;
 
-        AURA_BOOSTER = AURA_REWARD_POOL.operator();
+        AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
         AURA_POOL_ID = AURA_REWARD_POOL.pid();
     }
 

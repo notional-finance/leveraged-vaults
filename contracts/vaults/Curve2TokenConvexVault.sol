@@ -75,7 +75,6 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
 
         poolTokens = context.poolContext._joinPoolAndStake({
-            strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,
             primaryAmount: TokenUtils.tokenBalance(PRIMARY_TOKEN),
             secondaryAmount: TokenUtils.tokenBalance(SECONDARY_TOKEN),
@@ -99,6 +98,10 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
             vaultShareAmount: vaultShares
         });
     } 
+
+    function _totalPoolSupply() internal view override returns (uint256) {
+        return CURVE_POOL_TOKEN.totalSupply();
+    }
 
     function getSpotPrice(uint256 tokenIndex) external view returns (uint256 spotPrice) {
         spotPrice = _strategyContext().poolContext._getSpotPrice(tokenIndex);

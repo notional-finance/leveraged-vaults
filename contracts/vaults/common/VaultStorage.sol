@@ -65,13 +65,4 @@ library VaultStorage {
         store[0] = state;
     }
 
-    /// @notice Returns the pool claim threshold, which controls the max number of LP
-    /// tokens the vault is allowed to hold
-    /// @param strategyVaultSettings vault settings
-    /// @param totalPoolSupply total supply of the liquidity pool
-    /// @return upper limit of strategy tokens
-    function _poolClaimThreshold(StrategyVaultSettings memory strategyVaultSettings, uint256 totalPoolSupply) 
-        internal pure returns (uint256) {
-        return (totalPoolSupply * strategyVaultSettings.maxPoolShare) / VaultConstants.VAULT_PERCENT_BASIS;
-    }
 }

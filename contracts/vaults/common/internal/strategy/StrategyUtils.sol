@@ -203,4 +203,20 @@ library StrategyUtils {
         strategyContext.vaultState.totalVaultSharesGlobal -= vaultShares.toUint80();
         strategyContext.vaultState.setStrategyVaultState(); 
     }
+
+    /// @notice Returns the pool claim threshold, which controls the max number of LP
+    /// tokens the vault is allowed to hold
+    /// @param totalPoolSupply total supply of the liquidity pool (after join)
+    /// @param lpTokensMinted new lp tokens minted
+    function _checkPoolThreshold(
+        StrategyContext memory context,
+        uint256 totalPoolSupply,
+        uint256 lpTokensMinted
+    ) internal pure {
+        uint256 maxSupplyThreshold = (totalPoolSupply * context.vaultSettings.maxPoolShare) / VaultConstants.VAULT_PERCENT_BASIS;
+
+        uint256 totalLPTokensAfterJoin = context.vaultState.totalPoolClaim + lpTokensMinted;
+        if (maxSupplyThreshold < totalLPTokensAfterJoin)
+            revert Errors.PoolShareTooHigh(totalLPTokensAfterJoin, maxSupplyThreshold);
+    }
 }

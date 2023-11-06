@@ -9,25 +9,6 @@ interface IBalancerPool is IERC20 {
     function getSwapFeePercentage() external view returns (uint256);
 }
 
-interface ILinearPool is IBalancerPool {
-    function getMainIndex() external view returns (uint256);
-    function getWrappedIndex() external view returns (uint256);
-    function getVirtualSupply() external view returns (uint256);
-    function getTargets() external view returns (uint256 lowerTarget, uint256 upperTarget);
-    function getMainToken() external view returns (address);   
-    function getWrappedToken() external view returns (address);
-    function getWrappedTokenRate() external view returns (uint256);   
-}
-
-interface IBoostedPool is IBalancerPool {
-    function getAmplificationParameter() external view returns (
-        uint256 value,
-        bool isUpdating,
-        uint256 precision
-    );
-    function getActualSupply() external view returns (uint256);
-}
-
 interface IComposablePool is IBalancerPool {
     function getAmplificationParameter() external view returns (
         uint256 value,
@@ -35,12 +16,4 @@ interface IComposablePool is IBalancerPool {
         uint256 precision
     );
     function getActualSupply() external view returns (uint256);
-}
-
-interface IMetaStablePool is IBalancerPool {
-    function getAmplificationParameter() external view returns (
-        uint256 value,
-        bool isUpdating,
-        uint256 precision
-    );
 }

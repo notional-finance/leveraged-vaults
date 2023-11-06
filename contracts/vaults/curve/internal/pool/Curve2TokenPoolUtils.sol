@@ -201,19 +201,10 @@ library Curve2TokenPoolUtils {
         } else {
             poolClaimMinted = ICurve2TokenPoolV1(address(poolContext.curvePool)).add_liquidity{value: msgValue}(
                 amounts, minPoolClaim
-            );            
+            );
         }
 
-        // Check pool claim threshold to make sure our share of the pool is
-        // below maxPoolShare
-        uint256 poolClaimThreshold = strategyContext.vaultSettings._poolClaimThreshold(
-            poolContext.basePool.poolToken.totalSupply()
-        );
-        uint256 poolClaimHeldAfterJoin = strategyContext.vaultState.totalPoolClaim + poolClaimMinted;
-        if (poolClaimThreshold < poolClaimHeldAfterJoin)
-            revert Errors.PoolShareTooHigh(poolClaimHeldAfterJoin, poolClaimThreshold);
-
-        bool success;        
+        bool success;
         if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
             success = IConvexBooster(stakingContext.booster).deposit(
                 stakingContext.poolId, poolClaimMinted, true

@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import {IBalancerVault, IAsset} from "../../../../../interfaces/balancer/IBalancerVault.sol";
-import {PoolParams} from "../../BalancerVaultTypes.sol";
+import {PoolParams, BalancerComposablePoolContext} from "../../BalancerVaultTypes.sol";
 import {Deployments} from "../../../../global/Deployments.sol";
 import {TokenUtils, IERC20} from "../../../../utils/TokenUtils.sol";
 
@@ -15,6 +15,75 @@ library BalancerUtils {
     /// and Balancer uses WETH
     function getTokenAddress(address token) internal pure returns (address) {
         return token == Deployments.ETH_ADDRESS ? address(Deployments.WETH) : address(token);
+    }
+
+    function _filterBPTToken(
+        uint256 bptIndex, uint256[] memory inAmounts
+    ) private pure returns (uint256[] memory) {
+        if (bptIndex == type(uint256).max) return inAmounts;
+
+        uint256[] memory amountsWithoutBpt = new uint256[](inAmounts.length - 1);
+        uint256 j;
+        for (uint256 i; i < inAmounts.length; i++) {
+            if (i == bptIndex) continue;
+            amountsWithoutBpt[j++] = inAmounts[i];
+        }
+
+        return amountsWithoutBpt;
+    }
+
+    /// @notice Returns parameters for joining and exiting Balancer pools
+    function _getPoolParams(
+        BalancerComposablePoolContext memory context,
+        uint256[] memory amounts,
+        bool isJoin,
+        bool isSingleSided,
+        uint256 bptAmount
+    ) internal pure returns (PoolParams memory) {
+        address[] memory tokens = context.basePool.tokens;
+        uint256 primaryIndex = context.basePool.primaryIndex;
+        uint256 bptIndex = context.bptIndex;
+
+        IAsset[] memory assets = new IAsset[](tokens.length);
+
+        uint256 msgValue;
+        for (uint256 i; i < tokens.length; i++) {
+            assets[i] = IAsset(tokens[i]);
+            if (isJoin && tokens[i] == Deployments.ETH_ADDRESS) {
+                msgValue = amounts[i];
+            }
+        }
+
+        bytes memory customData;
+        if (isJoin) {
+            customData = abi.encode(
+                IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+                _filterBPTToken(bptIndex, amounts),
+                bptAmount // Apply minBPT to prevent front running
+            );
+        } else {
+            // TODO: this needs to change for weighted pool exits...
+            if (isSingleSided) {
+                // See this line here:
+                // https://github.com/balancer/balancer-v2-monorepo/blob/c7d4abbea39834e7778f9ff7999aaceb4e8aa048/pkg/pool-stable/contracts/ComposableStablePool.sol#L927
+                // While "assets" sent to the vault include the BPT token the tokenIndex passed in by this
+                // function does not include the BPT. primaryIndex in this code is inclusive of the BPT token in
+                // the assets array. Therefore, if primaryIndex > bptIndex subtract one to ensure that the primaryIndex
+                // does not include the BPT token here.
+                customData = abi.encode(
+                    IBalancerVault.ComposableExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+                    bptAmount,
+                    primaryIndex < bptIndex ?  primaryIndex : primaryIndex - 1
+                );
+            } else {
+                customData = abi.encode(
+                    IBalancerVault.ComposableExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT,
+                    bptAmount
+                );
+            }
+        }
+
+        return PoolParams(assets, amounts, msgValue, customData);
     }
 
     /// @notice Joins a balancer pool using exact tokens in
