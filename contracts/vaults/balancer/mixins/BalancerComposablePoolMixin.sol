@@ -96,7 +96,7 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
         DECIMALS_5 = NUM_TOKENS > 4 ? _getTokenDecimals(TOKEN_5) : 0;
     }
 
-    function _rewriteWETH(address token) private view returns (address) {
+    function _rewriteWETH(address token) private pure returns (address) {
         return token == address(Deployments.WETH) ? Deployments.ETH_ADDRESS : address(token);
     }
 
@@ -169,6 +169,10 @@ abstract contract BalancerComposablePoolMixin is BalancerPoolMixin, ISingleSided
             stakingContext: _auraStakingContext(),
             baseStrategy: _baseStrategyContext()
         });
+    }
+
+    function isLocked() public view override returns (bool) {
+        return _isLocked();
     }
 
     /// @notice returns the value of 1 vault share

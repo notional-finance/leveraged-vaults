@@ -80,4 +80,6 @@ contract MockCurve2TokenConvexVault is Curve2TokenVaultMixin {
             spotPrice: spotPrice
         });
     }
+    function emergencyExit(uint256 /* claimToExit */, bytes calldata /* data */) override external {}
+    function restoreVault(uint256 /* minPoolClaim */, bytes calldata /* data */) override external {}
 }

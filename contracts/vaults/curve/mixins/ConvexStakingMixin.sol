@@ -60,7 +60,7 @@ abstract contract ConvexStakingMixin is VaultBase {
     }
 
     function _claimConvexRewardTokens() private returns (bool) {
-        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {      
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
             return IConvexRewardPool(CONVEX_REWARD_POOL).getReward(address(this), true); // claimExtraRewards = true
         } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
             IConvexRewardPoolArbitrum(CONVEX_REWARD_POOL).getReward(address(this));

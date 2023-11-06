@@ -15,6 +15,7 @@ import {
     DepositParams,
     ReinvestRewardParams
 } from "./common/VaultTypes.sol";
+import {VaultEvents} from "./common/VaultEvents.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
 import {Errors} from "../global/Errors.sol";
 import {Constants} from "../global/Constants.sol";
@@ -47,7 +48,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         initializer
         onlyNotionalOwner
     {
-        __INIT_VAULT(params.name, params.borrowCurrencyId);        
+        __INIT_VAULT(params.name, params.borrowCurrencyId);
         VaultStorage.setStrategyVaultSettings(params.settings);
 
         if (PRIMARY_TOKEN != Deployments.ALT_ETH_ADDRESS) {
@@ -78,13 +79,33 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
         finalPrimaryBalance = _strategyContext().redeem(strategyTokens, data);
     }   
 
-    function emergencyExit(bytes calldata data) 
-        external onlyRole(EMERGENCY_EXIT_ROLE) {
-        Curve2TokenConvexHelper.emergencyExit(_strategyContext(), data);
+    function emergencyExit(uint256 claimToExit, bytes calldata /* data */) external override
+        onlyRole(EMERGENCY_EXIT_ROLE) {
+        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        if (claimToExit == 0) claimToExit = context.baseStrategy.vaultState.totalPoolClaim;
+
+        context.poolContext._unstakeAndExitPool({
+            stakingContext: context.stakingContext,
+            poolClaim: claimToExit,
+            // Don't use any slippage limits here since we will exit proportionally
+            params: RedeemParams({
+                minPrimary: 0,
+                minSecondary: 0,
+                secondaryTradeParams: ""
+            })
+        });
+
+        context.baseStrategy.vaultState.totalPoolClaim =
+            context.baseStrategy.vaultState.totalPoolClaim - claimToExit;
+        context.baseStrategy.vaultState.setStrategyVaultState(); 
+
+        emit VaultEvents.EmergencyExit(claimToExit);
+
         _lockVault();
     }
 
-    function restoreVault(uint256 minPoolClaim) external whenLocked onlyNotionalOwner {
+    function restoreVault(uint256 minPoolClaim, bytes calldata /* data */) external override
+        whenLocked onlyNotionalOwner {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
 
         uint256 poolClaimAmount = context.poolContext._joinPoolAndStake({
@@ -107,7 +128,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
             uint256 amountSold,
             uint256 poolClaimAmount
     ) {
-        return Curve2TokenConvexHelper.reinvestReward(_strategyContext(), params);        
+        return Curve2TokenConvexHelper.reinvestReward(_strategyContext(), params);
     }
 
     function convertStrategyToUnderlying(

@@ -19,21 +19,20 @@ abstract contract VaultBase is BaseStrategyVault, UUPSUpgradeable {
     constructor(NotionalProxy notional_, ITradingModule tradingModule_) 
         BaseStrategyVault(notional_, tradingModule_) { }
 
+    function _isLocked() internal view returns (bool) {
+        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        return _hasFlag(state.flags, VaultConstants.FLAG_LOCKED);
+    }
+
     /// @notice Allows the function to execute only when the vault is not locked
     modifier whenNotLocked() {
-        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
-        if (_hasFlag(state.flags, VaultConstants.FLAG_LOCKED)) {
-            revert Errors.VaultLocked();
-        }
+        if (_isLocked()) revert Errors.VaultLocked();
         _;
     }
 
     /// @notice Allows the function to execute only when the vault is locked
     modifier whenLocked() {
-        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
-        if (!_hasFlag(state.flags, VaultConstants.FLAG_LOCKED)) {
-            revert Errors.VaultNotLocked();
-        }
+        if (!_isLocked()) revert Errors.VaultNotLocked();
         _;
     }
 

@@ -95,37 +95,6 @@ library ComposableAuraHelper {
         }
     }
 
-    /// @notice Remove liquidity from Balancer in the event of an emergency (i.e. pool gets hacked)
-    /// @param context composable pool strategy context
-    /// @param data custom redeem data
-    function emergencyExit(
-        BalancerComposableAuraStrategyContext memory context, 
-        bytes calldata data
-    ) external {
-        // Validate slippage parameter
-        ComposableRedeemParams memory params = _decodeParamsAndValidate(
-            context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
-            data
-        );
-        
-        uint256 poolClaimToSettle = context.baseStrategy.vaultState.totalPoolClaim;
-
-        // Min amounts are set to 0 here because we want to be sure that the liquidity can
-        // be withdrawn in the event of an emergency where the spot price differs significantly
-        // from the oracle price.
-        uint256[] memory minAmounts = new uint256[](context.poolContext.basePool.tokens.length);
-        
-        // Unstake and remove from pool
-        context.poolContext._unstakeAndExitPool(
-            context.stakingContext, poolClaimToSettle, minAmounts, false
-        );
-
-        context.baseStrategy.vaultState.totalPoolClaim = 0;
-        context.baseStrategy.vaultState.setStrategyVaultState(); 
-
-        emit VaultEvents.EmergencyExit(poolClaimToSettle);
-    }
-
     /// @notice Reinvests the reward tokens
     /// @param context composable pool strategy context
     /// @param params reward reinvestment params

@@ -32,7 +32,7 @@ library Curve2TokenConvexHelper {
 
     function deposit(
         Curve2TokenConvexStrategyContext memory context,
-        uint256 deposit,
+        uint256 depositAmount,
         bytes calldata data
     ) external returns (uint256 strategyTokensMinted) {
         DepositParams memory params = abi.decode(data, (DepositParams));
@@ -40,7 +40,7 @@ library Curve2TokenConvexHelper {
         strategyTokensMinted = context.poolContext._deposit({
             strategyContext: context.baseStrategy,
             stakingContext: context.stakingContext,
-            deposit: deposit,
+            deposit: depositAmount,
             params: params
         });
     }
@@ -79,29 +79,6 @@ library Curve2TokenConvexHelper {
                 revert Errors.SlippageTooHigh(callbackData.oracleSlippagePercentOrLimit, slippageLimitPercent);
             }
         }
-    }
-
-    function emergencyExit(
-        Curve2TokenConvexStrategyContext memory context, 
-        bytes calldata data
-    ) external {
-        RedeemParams memory params = _decodeParamsAndValidate(
-            context.baseStrategy.vaultSettings.emergencySettlementSlippageLimitPercent,
-            data
-        );
-
-        uint256 poolClaimToSettle = context.baseStrategy.vaultState.totalPoolClaim;
-
-        context.poolContext._unstakeAndExitPool({
-            stakingContext: context.stakingContext,
-            poolClaim: poolClaimToSettle,
-            params: params
-        });
-
-        context.baseStrategy.vaultState.totalPoolClaim = 0;
-        context.baseStrategy.vaultState.setStrategyVaultState(); 
-
-        emit VaultEvents.EmergencyExit(poolClaimToSettle);  
     }
 
     function reinvestReward(

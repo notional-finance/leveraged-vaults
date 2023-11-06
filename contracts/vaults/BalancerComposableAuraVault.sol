@@ -4,8 +4,15 @@ pragma solidity 0.8.17;
 import {TokenUtils} from "../utils/TokenUtils.sol";
 import {AuraVaultDeploymentParams, InitParams} from "./balancer/BalancerVaultTypes.sol";
 import {BalancerComposableAuraStrategyContext, BalancerComposablePoolContext} from "./balancer/BalancerVaultTypes.sol";
-import {StrategyContext, StrategyVaultSettings, StrategyVaultState} from "./common/VaultTypes.sol";
-import {ComposablePoolContext, DepositParams, ReinvestRewardParams} from "./common/VaultTypes.sol";
+import {
+    StrategyContext,
+    StrategyVaultSettings,
+    StrategyVaultState,
+    ComposablePoolContext,
+    DepositParams,
+    ReinvestRewardParams
+} from "./common/VaultTypes.sol";
+import {VaultEvents} from "./common/VaultEvents.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
 import {BalancerComposablePoolUtils} from "./balancer/internal/pool/BalancerComposablePoolUtils.sol";
 import {ComposableAuraHelper} from "./balancer/external/ComposableAuraHelper.sol";
@@ -74,17 +81,36 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
 
     /// @notice Remove liquidity from Balancer in the event of an emergency (i.e. pool gets hacked)
     /// @notice Vault will be locked after an emergency exit, restoreVault can be used to unlock the vault
-    /// @param data optional custom data
-    function emergencyExit(bytes calldata data) external whenNotLocked onlyRole(EMERGENCY_EXIT_ROLE) {
-        ComposableAuraHelper.emergencyExit(_strategyContext(), data);
+    /// @param claimToExit amount of LP tokens to withdraw, if set to zero will withdraw all LP tokens
+    function emergencyExit(uint256 claimToExit, bytes calldata /* data */) external
+        onlyRole(EMERGENCY_EXIT_ROLE) {
+        BalancerComposableAuraStrategyContext memory context = _strategyContext();
+        if (claimToExit == 0) claimToExit = context.baseStrategy.vaultState.totalPoolClaim;
+
+        // Min amounts are set to 0 here because we want to be sure that the liquidity can
+        // be withdrawn in the event of an emergency where the spot price differs significantly
+        // from the oracle price.
+        uint256[] memory minAmounts = new uint256[](context.poolContext.basePool.tokens.length);
+        
+        // Unstake and remove from pool
+        context.poolContext._unstakeAndExitPool(
+            context.stakingContext, claimToExit, minAmounts, false
+        );
+
+        context.baseStrategy.vaultState.totalPoolClaim =
+            context.baseStrategy.vaultState.totalPoolClaim - claimToExit;
+        context.baseStrategy.vaultState.setStrategyVaultState(); 
+
+        emit VaultEvents.EmergencyExit(claimToExit);
 
         // Lock vault after emergency settlement
         _lockVault();
     }
 
     /// @notice Restores and unlocks the vault after an emergency exit
-    /// @param minBPT BPT slippage limit
-    function restoreVault(uint256 minBPT) external whenLocked onlyNotionalOwner {
+    /// @param minPoolClaim bpt slippage limit
+    function restoreVault(uint256 minPoolClaim, bytes calldata /* data */) external
+        whenLocked onlyNotionalOwner {
         BalancerComposableAuraStrategyContext memory context = _strategyContext();
 
         uint256[] memory amounts = new uint256[](context.poolContext.basePool.tokens.length);
@@ -97,7 +123,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
 
         // Join proportionally here to minimize slippage
         uint256 bptAmount = context.poolContext._joinPoolAndStake(
-            context.oracleContext, context.baseStrategy, context.stakingContext, amounts, minBPT
+            context.oracleContext, context.baseStrategy, context.stakingContext, amounts, minPoolClaim
         );
 
         // Update internal accounting

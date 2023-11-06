@@ -62,4 +62,7 @@ contract MockBalancerComposableAuraVault is BalancerComposablePoolMixin {
             context.poolContext, context.oracleContext, context.baseStrategy, bptAmount, false
         );
     }
+
+    function emergencyExit(uint256 /* claimToExit */, bytes calldata /* data */) override external {}
+    function restoreVault(uint256 /* minPoolClaim */, bytes calldata /* data */) override external {}
 }

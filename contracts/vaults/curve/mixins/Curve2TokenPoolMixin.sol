@@ -87,11 +87,15 @@ abstract contract Curve2TokenPoolMixin is CurvePoolMixin, ISingleSidedLPStrategy
                 secondaryDecimals: SECONDARY_DECIMALS,
                 primaryBalance: ICurvePool(CURVE_POOL).balances(PRIMARY_INDEX),
                 secondaryBalance: ICurvePool(CURVE_POOL).balances(SECONDARY_INDEX),
-                poolToken: CURVE_POOL_TOKEN      
+                poolToken: CURVE_POOL_TOKEN
             }),
             curvePool: CURVE_POOL,
             isV2: IS_CURVE_V2
-        });   
+        });
+    }
+
+    function isLocked() public view override returns (bool) {
+        return _isLocked();
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

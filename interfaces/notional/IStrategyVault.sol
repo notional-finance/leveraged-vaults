@@ -63,4 +63,7 @@ interface ISingleSidedLPStrategyVault {
     }
 
     function getStrategyVaultInfo() external view returns (SingleSidedLPStrategyVaultInfo memory);
+    function emergencyExit(uint256 claimToExit, bytes calldata data) external;
+    function restoreVault(uint256 minPoolClaim, bytes calldata data) external;
+    function isLocked() external view returns (bool);
 }

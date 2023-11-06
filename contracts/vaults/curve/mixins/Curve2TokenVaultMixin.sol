@@ -67,7 +67,7 @@ abstract contract Curve2TokenVaultMixin is Curve2TokenPoolMixin {
             singleSidedTokenIndex: PRIMARY_INDEX,
             totalLPTokens: context.vaultState.totalPoolClaim,
             totalVaultShares: context.vaultState.totalVaultSharesGlobal
-        });        
+        });
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades
