@@ -69,7 +69,7 @@ abstract contract ConvexStakingMixin is SingleSidedLPVaultBase {
         return false;
     }
 
-    function claimRewardTokens() external onlyRole(REWARD_REINVESTMENT_ROLE) {
+    function _claimRewardTokens() internal override {
         bool success = _claimConvexRewardTokens();
         require(success);
     }

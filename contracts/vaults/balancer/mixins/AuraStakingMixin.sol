@@ -38,7 +38,7 @@ abstract contract AuraStakingMixin is SingleSidedLPVaultBase {
     }
     
     /// @notice Claim reward tokens
-    function claimRewardTokens() external onlyRole(REWARD_REINVESTMENT_ROLE) {
+    function _claimRewardTokens() internal override {
         // Claim all reward tokens including extra tokens
         bool success = AURA_REWARD_POOL.getReward(address(this), true); // claimExtraRewards = true
         require(success);

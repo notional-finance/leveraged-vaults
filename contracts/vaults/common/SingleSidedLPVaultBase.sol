@@ -105,6 +105,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         if (claimToExit == 0) claimToExit = state.totalPoolClaim;
 
+        // TODO: replace this with unstakeAndExitPool
         _emergencyExitPoolClaim(claimToExit, data);
 
         state.totalPoolClaim = state.totalPoolClaim - claimToExit;
@@ -122,6 +123,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         uint256 minPoolClaim, bytes calldata data
     ) external override whenLocked onlyNotionalOwner {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+
+        // TODO: replace this joinPoolAndStake
         uint256 poolTokens = _restoreVault(minPoolClaim, data);
 
         state.totalPoolClaim = state.totalPoolClaim + poolTokens;
@@ -130,14 +133,43 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         _unlockVault();
     }
 
-    // depositFromNotional
-    // redeemFromNotional
+    // /// @notice Reverts if the vault is locked during emergency exit.
+    // function convertStrategyToUnderlying(
+    //     address /* */, uint256 vaultShares, uint256 /* */
+    // ) external view override whenNotLocked returns (int256 underlyingValue) {
+    //     // NOTE: much of this code is in StrategyUtils.....
+    //     // TODO: getPoolClaim
+    //     // TODO: checkPriceLimit
+    //     // TODO: valueInUnderlying
+    // }
+
+    // function _depositFromNotional(
+    //     address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
+    // ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+    //     // TODO: decode data
+    //     // TODO: handle deposit trades
+    //     // TODO: join pool and stake
+
+    //     _mintStrategyTokens(lpTokens);
+    // }
+
+    // function _redeemFromNotional(
+    //     address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
+    // ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+    //     _redeemStrategyTokens(vaultShares);
+
+    //     // TODO: decode data
+    //     // TODO: unstakeAndExitPool
+    //     // TODO: handle exit trades
+    // }
+
+    function claimRewardTokens() external override onlyRole(REWARD_REINVESTMENT_ROLE) {
+        _claimRewardTokens();
+    }
 
 
-    // claimRewardTokens
     // reinvestReward
     //    - this needs the most refactoring probably....
-    // convertStrategyToUnderlying
 
 
     /// @notice Called once during initialization to set the initial token approvals.
@@ -148,6 +180,9 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
     /// @notice Called to restore exited pool tokens after an emergency passes
     function _restoreVault(uint256 minPoolClaim, bytes calldata data) internal virtual returns (uint256 poolTokens);
+
+    /// @notice Called to claim reward tokens
+    function _claimRewardTokens() internal virtual;
 
     // Storage gap for future potential upgrades
     uint256[100] private __gap;
