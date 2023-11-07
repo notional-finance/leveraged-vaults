@@ -55,31 +55,20 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
 
     }
 
-    function _emergencyExitPoolClaim(uint256 claimToExit, bytes calldata /* data */) internal override {
-        Curve2TokenConvexStrategyContext memory context = _strategyContext();
-
-        context.poolContext._unstakeAndExitPool({
-            stakingContext: context.stakingContext,
-            poolClaim: claimToExit,
-            // Don't use any slippage limits here since we will exit proportionally
-            params: RedeemParams({
-                minAmounts: new uint256[](2),
-                redemptionTrades: new TradeParams[](0)
-            })
-        });
-    }
-
     function _restoreVault(
         uint256 minPoolClaim, bytes calldata /* data */
     ) internal override returns (uint256 poolTokens) {
-        Curve2TokenConvexStrategyContext memory context = _strategyContext();
+        (IERC20[] memory tokens, /* */) = TOKENS();
+        uint256[] memory amounts = new uint256[](tokens.length);
 
-        // poolTokens = context.poolContext._joinPoolAndStake({
-        //     stakingContext: context.stakingContext,
-        //     primaryAmount: TokenUtils.tokenBalance(PRIMARY_TOKEN),
-        //     secondaryAmount: TokenUtils.tokenBalance(SECONDARY_TOKEN),
-        //     minPoolClaim: minPoolClaim
-        // });
+        for (uint256 i; i < tokens.length; i++) {
+            amounts[i] = TokenUtils.tokenBalance(address(tokens[i]));
+        }
+
+        // No trades are specified so this joins proportionally
+        DepositParams memory params;
+        params.minPoolClaim = minPoolClaim;
+        poolTokens = _joinPoolAndStake(amounts, params);
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) 

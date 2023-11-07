@@ -144,15 +144,18 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// tokens and held on the vault. The vault is locked so that no entries, exits or
     /// valuations of vaultShares can be performed.
     /// @param claimToExit if this is set to zero, the entire pool claim is withdrawn
-    /// @param data arbitrary data passed to the implementation
     function emergencyExit(
-        uint256 claimToExit, bytes calldata data
+        uint256 claimToExit, bytes calldata /* data */
     ) external override onlyRole(EMERGENCY_EXIT_ROLE) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         if (claimToExit == 0) claimToExit = state.totalPoolClaim;
+        RedeemParams memory r;
+        r.minAmounts = new uint256[](NUM_TOKENS());
 
-        // TODO: replace this with unstakeAndExitPool
-        _emergencyExitPoolClaim(claimToExit, data);
+        // By setting min amounts to zero, we will accept whatever tokens come from the pool
+        // in a proportional exit. Front running will not have an effect since no trading will
+        // occur during a proportional exit.
+        _unstakeAndExitPool(claimToExit, r, true);
 
         state.totalPoolClaim = state.totalPoolClaim - claimToExit;
         state.setStrategyVaultState();
@@ -170,7 +173,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     ) external override whenLocked onlyNotionalOwner {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
 
-        // TODO: replace this joinPoolAndStake
         uint256 poolTokens = _restoreVault(minPoolClaim, data);
 
         state.totalPoolClaim = state.totalPoolClaim + poolTokens;
@@ -314,9 +316,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
     /// @notice Called once during initialization to set the initial token approvals.
     function _initialApproveTokens() internal virtual;
-
-    /// @notice Called to exit pool tokens during an emergency
-    function _emergencyExitPoolClaim(uint256 claimToExit, bytes calldata data) internal virtual;
 
     /// @notice Called to restore exited pool tokens after an emergency passes
     function _restoreVault(uint256 minPoolClaim, bytes calldata data) internal virtual returns (uint256 poolTokens);

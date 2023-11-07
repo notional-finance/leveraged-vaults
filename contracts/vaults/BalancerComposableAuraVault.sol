@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenUtils} from "../utils/TokenUtils.sol";
 import {
     AuraStakingContext,
@@ -105,33 +106,18 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     }
  
 
-    /// @notice Remove liquidity from Balancer in the event of an emergency (i.e. pool gets hacked)
-    /// @notice Vault will be locked after an emergency exit, restoreVault can be used to unlock the vault
-    /// @param claimToExit amount of LP tokens to withdraw, if set to zero will withdraw all LP tokens
-    function _emergencyExitPoolClaim(uint256 claimToExit, bytes calldata /* data */) internal override {
-        BalancerComposablePoolContext memory poolContext = _composablePoolContext();
-        // Min amounts are set to 0 here because we want to be sure that the liquidity can
-        // be withdrawn in the event of an emergency where the spot price differs significantly
-        // from the oracle price.
-        RedeemParams memory r;
-        r.minAmounts = new uint256[](poolContext.basePool.tokens.length);
-        
-        // Unstake and remove from pool
-        _unstakeAndExitPool(claimToExit, r, false);
-    }
-
     /// @notice Restores and unlocks the vault after an emergency exit
     /// @param minPoolClaim bpt slippage limit
     function _restoreVault(
         uint256 minPoolClaim, bytes calldata /* data */
     ) internal override returns (uint256 poolTokens) {
-        BalancerComposablePoolContext memory poolContext = _composablePoolContext();
-        uint256[] memory amounts = new uint256[](poolContext.basePool.tokens.length);
+        (IERC20[] memory tokens, /* */) = TOKENS();
+        uint256[] memory amounts = new uint256[](tokens.length);
 
-        for (uint256 i; i < poolContext.basePool.tokens.length; i++) {
+        for (uint256 i; i < tokens.length; i++) {
             // Skip BPT index
-            if (i == poolContext.bptIndex) continue;
-            amounts[i] = TokenUtils.tokenBalance(poolContext.basePool.tokens[i]);
+            if (i == BPT_INDEX) continue;
+            amounts[i] = TokenUtils.tokenBalance(address(tokens[i]));
         }
 
         // No trades are specified so this joins proportionally
