@@ -7,10 +7,10 @@ abstract contract BaseBalancerComposable_wstETHcbETHrETH is BaseComposablePoolVa
     function setUp() public override virtual {
         rewardPool = IAuraRewardPool(0x8cA64Bd82AbFE138E195ce5Cb7268CA285D42245);
         settings = StrategyVaultSettings({
-            emergencySettlementSlippageLimitPercent: 1,
+            deprecated_emergencySettlementSlippageLimitPercent: 0,
+            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 20,
-            oraclePriceDeviationLimitPercent: 50,
-            poolSlippageLimitPercent: 50
+            oraclePriceDeviationLimitPercent: 50
         });
 
         // NOTE: includes BPT token

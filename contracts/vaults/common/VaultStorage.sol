@@ -39,9 +39,7 @@ library VaultStorage {
     function setStrategyVaultSettings(StrategyVaultSettings memory settings) internal {
         // Check limits
         require(settings.maxPoolShare <= VaultConstants.VAULT_PERCENT_BASIS);
-        require(settings.emergencySettlementSlippageLimitPercent <= VaultConstants.SLIPPAGE_LIMIT_PRECISION);
         require(settings.oraclePriceDeviationLimitPercent <= VaultConstants.VAULT_PERCENT_BASIS);
-        require(settings.poolSlippageLimitPercent <= VaultConstants.VAULT_PERCENT_BASIS);
 
         mapping(uint256 => StrategyVaultSettings) storage store = _settings();
         // Hardcode to the zero slot

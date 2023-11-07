@@ -12,13 +12,13 @@ struct InitParams {
 /// @notice Common strategy vault settings
 struct StrategyVaultSettings {
     /// @notice Slippage limit for emergency settlement (vault owns too much of the pool)
-    uint32 emergencySettlementSlippageLimitPercent;
+    uint32 deprecated_emergencySettlementSlippageLimitPercent;
     /// @notice Max share of the pool that the vault is allowed to hold
     uint16 maxPoolShare;
     /// @notice Limits the amount of allowable deviation from the oracle price
     uint16 oraclePriceDeviationLimitPercent;
     /// @notice Slippage limit for joining/exiting pools
-    uint16 poolSlippageLimitPercent;
+    uint16 deprecated_poolSlippageLimitPercent;
 }
 
 interface ISingleSidedLPStrategyVault {

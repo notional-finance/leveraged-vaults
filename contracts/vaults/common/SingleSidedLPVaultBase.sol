@@ -5,6 +5,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 
 import {BaseStrategyVault} from "../BaseStrategyVault.sol";
 import {Errors} from "../../global/Errors.sol";
+import {Constants} from "../../global/Constants.sol";
 import {TypeConvert} from "../../global/TypeConvert.sol";
 import {VaultEvents} from "./VaultEvents.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
@@ -34,6 +35,7 @@ import {ITradingModule, DexId} from "../../../interfaces/trading/ITradingModule.
  * Base vault contract that implements common utility functions
  */
 abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, ISingleSidedLPStrategyVault {
+    using TypeConvert for uint256;
     using VaultStorage for StrategyVaultState;
     using StrategyUtils for StrategyContext;
 
@@ -57,16 +59,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             singleSidedTokenIndex: uint8(PRIMARY_INDEX()),
             totalLPTokens: state.totalPoolClaim,
             totalVaultShares: state.totalVaultSharesGlobal
-        });
-    }
-
-    function _baseStrategyContext() internal view returns(StrategyContext memory) {
-        return StrategyContext({
-            tradingModule: TRADING_MODULE,
-            vaultSettings: VaultStorage.getStrategyVaultSettings(),
-            vaultState: VaultStorage.getStrategyVaultState(),
-            poolClaimPrecision: POOL_PRECISION(),
-            canUseStaticSlippage: _canUseStaticSlippage()
         });
     }
 
@@ -184,7 +176,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         uint256 poolTokens = _joinPoolAndStake(amounts, minPoolClaim);
 
         state.totalPoolClaim = state.totalPoolClaim + poolTokens;
-        state.setStrategyVaultState(); 
+        state.setStrategyVaultState();
 
         _unlockVault();
     }
@@ -202,7 +194,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function _depositFromNotional(
         address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
     ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
-        StrategyContext memory context = _baseStrategyContext();
         DepositParams memory params = abi.decode(data, (DepositParams));
         uint256[] memory amounts = new uint256[](NUM_TOKENS());
         amounts[PRIMARY_INDEX()] = deposit;
@@ -212,17 +203,13 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         }
 
         uint256 lpTokens = _joinPoolAndStake(amounts, params.minPoolClaim);
-
-        // Ensure that we do not exceed the max LP pool threshold
-        context._checkPoolThreshold(_totalPoolSupply(), lpTokens);
-        return context._mintStrategyTokens(lpTokens);
+        return _mintVaultShares(lpTokens);
     }
 
     function _redeemFromNotional(
         address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
     ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
-        StrategyContext memory context = _baseStrategyContext();
-        uint256 poolClaim = context._redeemStrategyTokens(vaultShares);
+        uint256 poolClaim = _redeemVaultShares(vaultShares);
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         bool isSingleSided = params.redemptionTrades.length == 0;
@@ -248,7 +235,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     ) {
         // TODO: checkPriceLimit
 
-        StrategyContext memory context = _baseStrategyContext();
         // Require one trade per token, if we do not want to buy any tokens at a
         // given index then the amount should be set to zero.
         require(trades.length == NUM_TOKENS());
@@ -257,12 +243,13 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
         poolClaimAmount = _joinPoolAndStake(amounts, minPoolClaim);
 
-        // Ensure that we do not exceed the max LP pool threshold
-        context._checkPoolThreshold(_totalPoolSupply(), poolClaimAmount);
+        // TODO: Ensure that we do not exceed the max LP pool threshold
+        // context._checkPoolThreshold(_totalPoolSupply(), poolClaimAmount);
 
         // Increase LP token amount without minting additional vault shares
-        context.vaultState.totalPoolClaim += poolClaimAmount;
-        context.vaultState.setStrategyVaultState(); 
+        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        state.totalPoolClaim += poolClaimAmount;
+        state.setStrategyVaultState();
 
         emit VaultEvents.RewardReinvested(rewardToken, amountSold, poolClaimAmount);
     }
@@ -349,20 +336,34 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         }
     }
 
-    /// @notice Converts pool claim to strategy tokens
-    /// @param poolClaim amount of pool tokens
-    /// @return strategyTokenAmount amount of vault shares
-    function convertPoolClaimToStrategyTokens(uint256 poolClaim)
-        external view returns (uint256 strategyTokenAmount) {
-        return _baseStrategyContext()._convertPoolClaimToStrategyTokens(poolClaim);
+    function _mintVaultShares(uint256 lpTokens) internal returns (uint256 vaultShares) {
+        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        uint256 maxPoolShare = VaultStorage.getStrategyVaultSettings().maxPoolShare;
+        if (state.totalPoolClaim == 0) {
+            // Vault Shares are in 8 decimal precision
+            vaultShares = (lpTokens * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / POOL_PRECISION();
+        } else {
+            vaultShares = (lpTokens * state.totalVaultSharesGlobal) / state.totalPoolClaim;
+        }
+
+        state.totalPoolClaim += lpTokens;
+        state.totalVaultSharesGlobal += vaultShares.toUint80();
+        state.setStrategyVaultState();
+
+        uint256 maxSupplyThreshold = (_totalPoolSupply() * maxPoolShare) / VaultConstants.VAULT_PERCENT_BASIS;
+        if (maxSupplyThreshold < state.totalPoolClaim)
+            revert Errors.PoolShareTooHigh(state.totalPoolClaim, maxSupplyThreshold);
     }
 
-    /// @notice Converts strategy tokens to pool claim
-    /// @param strategyTokenAmount amount of vault shares
-    /// @return poolClaim amount of pool tokens
-    function convertStrategyTokensToPoolClaim(uint256 strategyTokenAmount) 
-        external view returns (uint256 poolClaim) {
-        return _baseStrategyContext()._convertStrategyTokensToPoolClaim(strategyTokenAmount);
+    function _redeemVaultShares(uint256 vaultShares) internal returns (uint256 poolClaim) {
+        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        // Will revert on divide by zero, which is the correct behavior
+        poolClaim = (vaultShares * state.totalPoolClaim) / state.totalVaultSharesGlobal;
+
+        state.totalPoolClaim -= poolClaim;
+        // Will revert on underflow if vault shares is greater than total shares global
+        state.totalVaultSharesGlobal -= vaultShares.toUint80();
+        state.setStrategyVaultState();
     }
 
     function _totalPoolSupply() internal view virtual returns (uint256) {

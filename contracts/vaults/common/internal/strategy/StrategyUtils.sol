@@ -42,35 +42,35 @@ library StrategyUtils {
         }
     }
 
-    /// @notice Converts strategy tokens to LP tokens
-    /// @param context strategy context
-    /// @param strategyTokenAmount amount of strategy tokens (vault shares)
-    /// @return poolClaim amount of pool tokens
-    function _convertStrategyTokensToPoolClaim(StrategyContext memory context, uint256 strategyTokenAmount)
-        internal pure returns (uint256 poolClaim) {
-        require(strategyTokenAmount <= context.vaultState.totalVaultSharesGlobal);
-        if (context.vaultState.totalVaultSharesGlobal > 0) {
-            poolClaim = (strategyTokenAmount * context.vaultState.totalPoolClaim) / context.vaultState.totalVaultSharesGlobal;
-        }
-    }
+    // /// @notice Converts strategy tokens to LP tokens
+    // /// @param context strategy context
+    // /// @param strategyTokenAmount amount of strategy tokens (vault shares)
+    // /// @return poolClaim amount of pool tokens
+    // function _convertStrategyTokensToPoolClaim(StrategyContext memory context, uint256 strategyTokenAmount)
+    //     internal pure returns (uint256 poolClaim) {
+    //     require(strategyTokenAmount <= context.vaultState.totalVaultSharesGlobal);
+    //     if (context.vaultState.totalVaultSharesGlobal > 0) {
+    //         poolClaim = (strategyTokenAmount * context.vaultState.totalPoolClaim) / context.vaultState.totalVaultSharesGlobal;
+    //     }
+    // }
 
-    /// @notice Converts LP tokens to strategy tokens
-    /// @param context strategy context
-    /// @param poolClaim amount of pool tokens
-    /// @return strategyTokenAmount amount of strategy tokens (vault shares)
-    function _convertPoolClaimToStrategyTokens(StrategyContext memory context, uint256 poolClaim)
-        internal pure returns (uint256 strategyTokenAmount) {
-        if (context.vaultState.totalPoolClaim == 0) {
-            // Strategy tokens are in 8 decimal precision. Scale the minted amount according to pool claim precision.
-            return (poolClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
-                context.poolClaimPrecision;
-        }
+    // /// @notice Converts LP tokens to strategy tokens
+    // /// @param context strategy context
+    // /// @param poolClaim amount of pool tokens
+    // /// @return strategyTokenAmount amount of strategy tokens (vault shares)
+    // function _convertPoolClaimToStrategyTokens(StrategyContext memory context, uint256 poolClaim)
+    //     internal pure returns (uint256 strategyTokenAmount) {
+    //     if (context.vaultState.totalPoolClaim == 0) {
+    //         // Strategy tokens are in 8 decimal precision. Scale the minted amount according to pool claim precision.
+    //         return (poolClaim * uint256(Constants.INTERNAL_TOKEN_PRECISION)) / 
+    //             context.poolClaimPrecision;
+    //     }
 
-        // Pool claim in maturity is calculated before the new pool tokens are minted, so this calculation
-        // is the tokens minted that will give the account a corresponding share of the new pool balance held.
-        // The precision here will be the same as strategy token supply.
-        strategyTokenAmount = (poolClaim * context.vaultState.totalVaultSharesGlobal) / context.vaultState.totalPoolClaim;
-    }
+    //     // Pool claim in maturity is calculated before the new pool tokens are minted, so this calculation
+    //     // is the tokens minted that will give the account a corresponding share of the new pool balance held.
+    //     // The precision here will be the same as strategy token supply.
+    //     strategyTokenAmount = (poolClaim * context.vaultState.totalVaultSharesGlobal) / context.vaultState.totalPoolClaim;
+    // }
 
     function _executeDynamicSlippageTradeExactIn(
         ITradingModule tradingModule,
@@ -131,69 +131,5 @@ library StrategyUtils {
 
         // Execute trade using static slippage
         (amountSold, amountBought) = trade._executeTrade(params.dexId, tradingModule);
-    }
-
-    /// @notice Helper function that determins the amount of vaultShares to mint for a given number
-    /// of pool tokens
-    /// @param strategyContext strategy context
-    /// @param poolClaimMinted amount of pool tokens
-    /// @return vaultSharesMinted amount of vault shares minted
-    function _mintStrategyTokens(
-        StrategyContext memory strategyContext,
-        uint256 poolClaimMinted
-    ) internal returns (uint256 vaultSharesMinted) {
-        vaultSharesMinted = _convertPoolClaimToStrategyTokens(strategyContext, poolClaimMinted);
-
-        // 0 vault shares here is usually due to rounding error 
-        if (vaultSharesMinted == 0) {
-            revert Errors.ZeroStrategyTokens();
-        }
-
-        // Update global accounting
-        strategyContext.vaultState.totalPoolClaim += poolClaimMinted;
-        strategyContext.vaultState.totalVaultSharesGlobal += vaultSharesMinted.toUint80();
-        strategyContext.vaultState.setStrategyVaultState(); 
-    }
-
-    /// @notice Helper function that determins the amount of pool claim to redeem for a given number
-    /// of vault shares
-    /// @param strategyContext strategy context
-    /// @param vaultShares amount of vault shares
-    /// @return poolClaim amount of pool tokens to redeem
-    function _redeemStrategyTokens(
-        StrategyContext memory strategyContext,
-        uint256 vaultShares
-    ) internal returns (uint256 poolClaim) {
-        if (vaultShares == 0) {
-            return poolClaim;
-        }
-
-        poolClaim = _convertStrategyTokensToPoolClaim(strategyContext, vaultShares);
-
-        // 0 pool claim here is usually due to rounding error 
-        if (poolClaim == 0) {
-            revert Errors.ZeroPoolClaim();
-        }
-
-        // Update global accounting
-        strategyContext.vaultState.totalPoolClaim -= poolClaim;
-        strategyContext.vaultState.totalVaultSharesGlobal -= vaultShares.toUint80();
-        strategyContext.vaultState.setStrategyVaultState(); 
-    }
-
-    /// @notice Returns the pool claim threshold, which controls the max number of LP
-    /// tokens the vault is allowed to hold
-    /// @param totalPoolSupply total supply of the liquidity pool (after join)
-    /// @param lpTokensMinted new lp tokens minted
-    function _checkPoolThreshold(
-        StrategyContext memory context,
-        uint256 totalPoolSupply,
-        uint256 lpTokensMinted
-    ) internal pure {
-        uint256 maxSupplyThreshold = (totalPoolSupply * context.vaultSettings.maxPoolShare) / VaultConstants.VAULT_PERCENT_BASIS;
-
-        uint256 totalLPTokensAfterJoin = context.vaultState.totalPoolClaim + lpTokensMinted;
-        if (maxSupplyThreshold < totalLPTokensAfterJoin)
-            revert Errors.PoolShareTooHigh(totalLPTokensAfterJoin, maxSupplyThreshold);
     }
 }
