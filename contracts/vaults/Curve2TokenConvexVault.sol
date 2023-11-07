@@ -13,13 +13,14 @@ import {
     DepositParams,
     TradeParams
 } from "./common/VaultTypes.sol";
+import {Constants} from "../global/Constants.sol";
 import {VaultEvents} from "./common/VaultEvents.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
 import {Errors} from "../global/Errors.sol";
 import {Constants} from "../global/Constants.sol";
 import {TypeConvert} from "../global/TypeConvert.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
-import {Curve2TokenVaultMixin} from "./curve/mixins/Curve2TokenVaultMixin.sol";
+import {ConvexStakingMixin} from "./curve/mixins/ConvexStakingMixin.sol";
 import {Curve2TokenPoolUtils} from "./curve/internal/pool/Curve2TokenPoolUtils.sol";
 import {Curve2TokenConvexHelper} from "./curve/external/Curve2TokenConvexHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
@@ -28,7 +29,7 @@ import {
     ReinvestRewardParams
 } from "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
-contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
+contract Curve2TokenConvexVault is ConvexStakingMixin {
     using TypeConvert for uint256;
     using TypeConvert for int256;
     using TokenUtils for IERC20;
@@ -37,7 +38,7 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     using Curve2TokenConvexHelper for Curve2TokenConvexStrategyContext;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
-        Curve2TokenVaultMixin(notional_, params) {}
+        ConvexStakingMixin(notional_, params) {}
 
     function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("Curve2TokenConvexVault"));
@@ -73,12 +74,12 @@ contract Curve2TokenConvexVault is Curve2TokenVaultMixin {
     ) internal override returns (uint256 poolTokens) {
         Curve2TokenConvexStrategyContext memory context = _strategyContext();
 
-        poolTokens = context.poolContext._joinPoolAndStake({
-            stakingContext: context.stakingContext,
-            primaryAmount: TokenUtils.tokenBalance(PRIMARY_TOKEN),
-            secondaryAmount: TokenUtils.tokenBalance(SECONDARY_TOKEN),
-            minPoolClaim: minPoolClaim
-        });
+        // poolTokens = context.poolContext._joinPoolAndStake({
+        //     stakingContext: context.stakingContext,
+        //     primaryAmount: TokenUtils.tokenBalance(PRIMARY_TOKEN),
+        //     secondaryAmount: TokenUtils.tokenBalance(SECONDARY_TOKEN),
+        //     minPoolClaim: minPoolClaim
+        // });
     }
 
     function reinvestReward(ReinvestRewardParams calldata params) 

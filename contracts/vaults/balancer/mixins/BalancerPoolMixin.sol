@@ -18,6 +18,8 @@ import {TokenUtils} from "../../../utils/TokenUtils.sol";
  */
 abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
 
+    uint256 internal constant BALANCER_PRECISION = 1e18;
+
     bytes32 internal immutable BALANCER_POOL_ID;
     IERC20 internal immutable BALANCER_POOL_TOKEN;
 
@@ -38,10 +40,11 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
     uint8 internal immutable DECIMALS_4;
     uint8 internal immutable DECIMALS_5;
 
-    function NUM_TOKENS() internal pure override returns (uint256) { return _NUM_TOKENS; }
-    function PRIMARY_INDEX() internal pure override returns (uint256) { return _PRIMARY_INDEX; }
-    function POOL_TOKEN() internal pure override returns (IERC20) { return BALANCER_POOL_TOKEN; }
-    function TOKENS() internal pure override returns (IERC20[] memory, uint8[] memory) {
+    function NUM_TOKENS() internal view override returns (uint256) { return _NUM_TOKENS; }
+    function PRIMARY_INDEX() internal view override returns (uint256) { return _PRIMARY_INDEX; }
+    function POOL_TOKEN() internal view override returns (IERC20) { return BALANCER_POOL_TOKEN; }
+    function POOL_PRECISION() internal view override returns (uint256) { return BALANCER_PRECISION; }
+    function TOKENS() internal view override returns (IERC20[] memory, uint8[] memory) {
         IERC20[] memory tokens = new IERC20[](_NUM_TOKENS);
         uint8[] memory decimals = new uint8[](_NUM_TOKENS);
 
@@ -107,17 +110,6 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
     function _checkReentrancyContext() internal override {
         IBalancerVault.UserBalanceOp[] memory noop = new IBalancerVault.UserBalanceOp[](0);
         Deployments.BALANCER_VAULT.manageUserBalance(noop);
-    }
-
-    /// @notice returns the base strategy context
-    function _baseStrategyContext() internal view override returns (StrategyContext memory) {
-        return StrategyContext({
-            tradingModule: TRADING_MODULE,
-            vaultSettings: VaultStorage.getStrategyVaultSettings(),
-            vaultState: VaultStorage.getStrategyVaultState(),
-            poolClaimPrecision: BalancerConstants.BALANCER_PRECISION,
-            canUseStaticSlippage: _canUseStaticSlippage()
-        });
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

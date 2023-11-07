@@ -41,10 +41,11 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
      * These constants are intended to be immutables set by the parent constructor,
      * but this is not easily achievable given how the solidity constructor works.
      */
-    function NUM_TOKENS() internal pure virtual returns (uint256);
-    function TOKENS() internal pure virtual returns (IERC20[] memory, uint8[] memory decimals);
-    function POOL_TOKEN() internal pure virtual returns (IERC20);
-    function PRIMARY_INDEX() internal pure virtual returns (uint256);
+    function NUM_TOKENS() internal view virtual returns (uint256);
+    function TOKENS() internal view virtual returns (IERC20[] memory, uint8[] memory decimals);
+    function POOL_TOKEN() internal view virtual returns (IERC20);
+    function PRIMARY_INDEX() internal view virtual returns (uint256);
+    function POOL_PRECISION() internal view virtual returns (uint256);
 
     function getStrategyVaultInfo() public view override returns (SingleSidedLPStrategyVaultInfo memory) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
@@ -53,6 +54,16 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             singleSidedTokenIndex: uint8(PRIMARY_INDEX()),
             totalLPTokens: state.totalPoolClaim,
             totalVaultShares: state.totalVaultSharesGlobal
+        });
+    }
+
+    function _baseStrategyContext() internal view returns(StrategyContext memory) {
+        return StrategyContext({
+            tradingModule: TRADING_MODULE,
+            vaultSettings: VaultStorage.getStrategyVaultSettings(),
+            vaultState: VaultStorage.getStrategyVaultState(),
+            poolClaimPrecision: POOL_PRECISION(),
+            canUseStaticSlippage: _canUseStaticSlippage()
         });
     }
 
@@ -253,8 +264,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
     /// @notice Called to claim reward tokens
     function _claimRewardTokens() internal virtual;
-
-    function _baseStrategyContext() internal view virtual returns (StrategyContext memory);
 
     function _checkPriceAndCalculateValue(uint256 vaultShares) internal view virtual returns (int256);
 

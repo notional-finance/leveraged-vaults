@@ -9,7 +9,8 @@ library TokenUtils {
     error ERC20Error();
 
     function getDecimals(address token) internal view returns (uint8 decimals) {
-        decimals = (token == Deployments.ETH_ADDRESS) ? 18 : IERC20(token).decimals();
+        decimals = (token == Deployments.ETH_ADDRESS || token == Deployments.ALT_ETH_ADDRESS) ?
+            18 : IERC20(token).decimals();
         require(decimals <= 18);
     }
 
