@@ -2,31 +2,19 @@
 pragma solidity 0.8.17;
 
 import {
-    ComposableOracleContext,
     AuraVaultDeploymentParams,
-    BalancerComposablePoolContext,
-    BalancerComposableAuraStrategyContext,
-    AuraStakingContext
+    BalancerComposablePoolContext
 } from "../BalancerVaultTypes.sol";
-import {StrategyContext, ComposablePoolContext} from "../../common/VaultTypes.sol";
-import {TypeConvert} from "../../../global/TypeConvert.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {IBalancerPool, IComposablePool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {AuraStakingMixin} from "./AuraStakingMixin.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
-import {StableMath} from "../internal/math/StableMath.sol";
-import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
-import {ComposableAuraHelper} from "../external/ComposableAuraHelper.sol";
-import {BalancerComposablePoolUtils} from "../internal/pool/BalancerComposablePoolUtils.sol";
 
 /**
  * Base class for all Balancer composable pools
  */
 abstract contract BalancerComposablePoolMixin is AuraStakingMixin {
-    using TypeConvert for uint256;
-    using BalancerComposablePoolUtils for ComposablePoolContext;
-
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
         AuraStakingMixin(notional_, params) {
         // BPT_INDEX must be defined for a composable pool
@@ -71,37 +59,27 @@ abstract contract BalancerComposablePoolMixin is AuraStakingMixin {
     }
 
     /// @notice returns the composable oracle context
-    function _composableOracleContext() internal view returns (ComposableOracleContext memory) {
-        IComposablePool pool = IComposablePool(address(BALANCER_POOL_TOKEN));
+    // function _composableOracleContext() internal view returns (ComposableOracleContext memory) {
+    //     IComposablePool pool = IComposablePool(address(BALANCER_POOL_TOKEN));
 
-        (
-            uint256 value,
-            /* bool isUpdating */,
-            uint256 precision
-        ) = IComposablePool(address(BALANCER_POOL_TOKEN)).getAmplificationParameter();
-        require(precision == StableMath._AMP_PRECISION);
+    //     (
+    //         uint256 value,
+    //         /* bool isUpdating */,
+    //         uint256 precision
+    //     ) = IComposablePool(address(BALANCER_POOL_TOKEN)).getAmplificationParameter();
+    //     require(precision == StableMath._AMP_PRECISION);
         
-        return ComposableOracleContext({
-            ampParam: value,
-            virtualSupply: pool.getActualSupply()
-        });
-    }
-
-    /// @notice returns the composable pool strategy context
-    function _strategyContext() internal view returns (BalancerComposableAuraStrategyContext memory) {
-        // return BalancerComposableAuraStrategyContext({
-        //     poolContext: _composablePoolContext(),
-        //     oracleContext: _composableOracleContext(),
-        //     stakingContext: _auraStakingContext(),
-        //     baseStrategy: _baseStrategyContext()
-        // });
-    }
+    //     return ComposableOracleContext({
+    //         ampParam: value,
+    //         virtualSupply: pool.getActualSupply()
+    //     });
+    // }
 
     /// @notice returns the value of 1 vault share
     /// @return exchange rate of 1 vault share
     function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
-        BalancerComposableAuraStrategyContext memory context = _strategyContext();
-        return ComposableAuraHelper.getExchangeRate(context);
+        // BalancerComposableAuraStrategyContext memory context = _strategyContext();
+        // return ComposableAuraHelper.getExchangeRate(context);
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades

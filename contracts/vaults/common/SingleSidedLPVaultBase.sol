@@ -158,9 +158,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// @notice Restores withdrawn tokens from emergencyExit back into the vault proportionally.
     /// Unlocks the vault after restoration so that normal functionality is restored.
     /// @param minPoolClaim slippage limit to prevent front running
-    /// @param data arbitrary data passed to the implementation
     function restoreVault(
-        uint256 minPoolClaim, bytes calldata data
+        uint256 minPoolClaim, bytes calldata /* data */
     ) external override whenLocked onlyNotionalOwner {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
 

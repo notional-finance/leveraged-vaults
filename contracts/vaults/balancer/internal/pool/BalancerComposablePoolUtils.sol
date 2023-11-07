@@ -239,10 +239,10 @@ library BalancerComposablePoolUtils {
         ComposableOracleContext memory oracleContext,
         uint256 vaultShareAmount
     ) internal view returns (int256 underlyingValue) {
-        uint256 bptClaim = strategyContext._convertStrategyTokensToPoolClaim(vaultShareAmount);
+        // uint256 bptClaim = strategyContext._convertStrategyTokensToPoolClaim(vaultShareAmount);
 
-        underlyingValue = _getTimeWeightedPrimaryBalance(
-            poolContext, oracleContext, strategyContext, bptClaim, false // validateOnly = false
-        ).toInt();
+        // underlyingValue = _getTimeWeightedPrimaryBalance(
+        //     poolContext, oracleContext, strategyContext, bptClaim, false // validateOnly = false
+        // ).toInt();
     }
 }

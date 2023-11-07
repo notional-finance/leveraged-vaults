@@ -2,30 +2,13 @@
 pragma solidity 0.8.17;
 
 import {IERC20} from "../../interfaces/IERC20.sol";
-import {TokenUtils} from "../utils/TokenUtils.sol";
-import {
-    AuraStakingContext,
-    AuraVaultDeploymentParams,
-    BalancerComposableAuraStrategyContext,
-    BalancerComposablePoolContext,
-    PoolParams
-} from "./balancer/BalancerVaultTypes.sol";
-import{BalancerUtils} from "./balancer/internal/pool/BalancerUtils.sol";
-import {
-    StrategyContext,
-    StrategyVaultState,
-    ComposablePoolContext,
-    DepositParams,
-    RedeemParams
-} from "./common/VaultTypes.sol";
-import {VaultEvents} from "./common/VaultEvents.sol";
-import {Errors} from "../global/Errors.sol";
-import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
-import {BalancerComposablePoolUtils} from "./balancer/internal/pool/BalancerComposablePoolUtils.sol";
-import {ComposableAuraHelper} from "./balancer/external/ComposableAuraHelper.sol";
-import {BalancerComposablePoolMixin} from "./balancer/mixins/BalancerComposablePoolMixin.sol";
+import {BalancerUtils, PoolParams} from "./balancer/internal/pool/BalancerUtils.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {VaultStorage} from "./common/VaultStorage.sol";
+import {
+    BalancerComposablePoolMixin,
+    AuraVaultDeploymentParams,
+    BalancerComposablePoolContext
+} from "./balancer/mixins/BalancerComposablePoolMixin.sol";
 import {
     IComposablePool
 } from "../../interfaces/balancer/IBalancerPool.sol";
@@ -37,11 +20,6 @@ import {
  * harvested and sold for more BPT tokens.
  */
 contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
-    using StrategyUtils for StrategyContext;
-    using VaultStorage for StrategyVaultState;
-    using ComposableAuraHelper for BalancerComposableAuraStrategyContext;
-    using BalancerComposablePoolUtils for ComposablePoolContext;
-    using BalancerComposablePoolUtils for BalancerComposablePoolContext;
 
     /// @notice constructor
     /// @param notional_ Notional proxy address
@@ -106,7 +84,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
      * @return underlyingValue the value of the BPT in terms of the borrowed currency
      */
     function _checkPriceAndCalculateValue(uint256 vaultShares) internal view override returns (int256) {
-        return _strategyContext().convertStrategyToUnderlying(vaultShares);
+        // return _strategyContext().convertStrategyToUnderlying(vaultShares);
     }
 
     function _totalPoolSupply() internal view override returns (uint256) {

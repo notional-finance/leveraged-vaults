@@ -73,13 +73,6 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
         ) { revert(); }
     }
 
-    function _strategyContext() internal view returns (Curve2TokenConvexStrategyContext memory) {
-        // return Curve2TokenConvexStrategyContext({
-        //     baseStrategy: _baseStrategyContext(),
-        //     poolContext: _twoTokenPoolContext()
-        // });
-    }
-
     function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
         // Curve2TokenConvexStrategyContext memory context = _strategyContext();
         // if (context.baseStrategy.vaultState.totalVaultSharesGlobal == 0) {

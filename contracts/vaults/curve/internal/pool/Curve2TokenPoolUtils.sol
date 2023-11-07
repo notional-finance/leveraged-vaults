@@ -105,18 +105,18 @@ library Curve2TokenPoolUtils {
         uint256 vaultShareAmount
     ) internal view returns (int256 underlyingValue) {
         
-        uint256 poolClaim 
-            = strategyContext._convertStrategyTokensToPoolClaim(vaultShareAmount);
+        // uint256 poolClaim 
+        //     = strategyContext._convertStrategyTokensToPoolClaim(vaultShareAmount);
 
-        (uint256 spotPrice, uint256 oraclePrice) = _getSpotPriceAndOraclePrice(poolContext, strategyContext);
+        // (uint256 spotPrice, uint256 oraclePrice) = _getSpotPriceAndOraclePrice(poolContext, strategyContext);
 
-        underlyingValue 
-            = poolContext.basePool._getTimeWeightedPrimaryBalance({
-                strategyContext: strategyContext,
-                poolClaim: poolClaim,
-                oraclePrice: oraclePrice, 
-                spotPrice: spotPrice
-            }).toInt();
+        // underlyingValue 
+        //     = poolContext.basePool._getTimeWeightedPrimaryBalance({
+        //         strategyContext: strategyContext,
+        //         poolClaim: poolClaim,
+        //         oraclePrice: oraclePrice, 
+        //         spotPrice: spotPrice
+        //     }).toInt();
     }   
 
     function _getSpotPriceAndOraclePrice(
