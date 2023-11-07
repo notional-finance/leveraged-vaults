@@ -1,21 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {Deployments} from "../../../global/Deployments.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {TokenUtils} from "../../../utils/TokenUtils.sol";
-import {TwoTokenPoolContext, StrategyContext} from "../../common/VaultTypes.sol";
-import {Curve2TokenPoolContext, ConvexVaultDeploymentParams, Curve2TokenConvexStrategyContext} from "../CurveVaultTypes.sol";
-import {CurveConstants} from "../internal/CurveConstants.sol";
-import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {IERC20} from "../../../interfaces/IERC20.sol";
+import {Deployments} from "../../global/Deployments.sol";
+import {Constants} from "../../global/Constants.sol";
+import {TokenUtils} from "../../utils/TokenUtils.sol";
+import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {
     ICurvePool,
     ICurvePoolV1,
     ICurvePoolV2,
     ICurve2TokenPool
-} from "../../../../interfaces/curve/ICurvePool.sol";
-import {SingleSidedLPVaultBase} from "../../common/SingleSidedLPVaultBase.sol";
+} from "../../../interfaces/curve/ICurvePool.sol";
+import {SingleSidedLPVaultBase} from "../common/SingleSidedLPVaultBase.sol";
+import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
+
+struct DeploymentParams {
+    uint16 primaryBorrowCurrencyId;
+    address pool;
+    ITradingModule tradingModule;
+    bool isSelfLPToken;
+}
 
 abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
     uint256 internal constant _NUM_TOKENS = 2;
@@ -26,11 +31,12 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
     bool internal immutable IS_CURVE_V2;
 
     uint8 internal immutable _PRIMARY_INDEX;
-    uint256 internal immutable SECONDARY_INDEX;
+    uint8 internal immutable SECONDARY_INDEX;
     address internal immutable TOKEN_1;
     address internal immutable TOKEN_2;
     uint8 internal immutable DECIMALS_1;
     uint8 internal immutable DECIMALS_2;
+    uint8 internal immutable PRIMARY_DECIMALS;
 
     function NUM_TOKENS() internal pure override returns (uint256) { return _NUM_TOKENS; }
     function PRIMARY_INDEX() internal view override returns (uint256) { return _PRIMARY_INDEX; }
@@ -48,9 +54,9 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
 
     constructor(
         NotionalProxy notional_,
-        ConvexVaultDeploymentParams memory params
-    ) SingleSidedLPVaultBase(notional_, params.baseParams.tradingModule) {
-        CURVE_POOL = params.baseParams.pool;
+        DeploymentParams memory params
+    ) SingleSidedLPVaultBase(notional_, params.tradingModule) {
+        CURVE_POOL = params.pool;
 
         bool isCurveV2 = false;
         if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
@@ -64,13 +70,13 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
             isCurveV2 = (handlers[0] == Deployments.CURVE_V2_HANDLER);
         }
         IS_CURVE_V2 = isCurveV2;
-        CURVE_POOL_TOKEN = params.baseParams.isSelfLPToken ? IERC20(CURVE_POOL) : (
+        CURVE_POOL_TOKEN = params.isSelfLPToken ? IERC20(CURVE_POOL) : (
             IS_CURVE_V2 ? 
                 IERC20(ICurvePoolV2(address(CURVE_POOL)).token()) :
                 IERC20(ICurvePoolV1(address(CURVE_POOL)).lp_token())
         );
 
-        address primaryToken = _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId);
+        address primaryToken = _getNotionalUnderlyingToken(params.primaryBorrowCurrencyId);
         // Curve uses ALT_ETH_ADDRESS
         if (primaryToken == Deployments.ETH_ADDRESS) {
             primaryToken = Deployments.ALT_ETH_ADDRESS;
@@ -83,6 +89,7 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         
         DECIMALS_1 = TokenUtils.getDecimals(TOKEN_1);
         DECIMALS_2 = TokenUtils.getDecimals(TOKEN_2);
+        PRIMARY_DECIMALS = _PRIMARY_INDEX == 0 ? DECIMALS_1 : DECIMALS_2;
     }
 
     function _checkReentrancyContext() internal override {

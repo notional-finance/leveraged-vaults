@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {ConvexVaultDeploymentParams} from "./curve/CurveVaultTypes.sol";
 import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {IERC20} from "../utils/TokenUtils.sol";
-import {ConvexStakingMixin} from "./curve/mixins/ConvexStakingMixin.sol";
+import {ConvexStakingMixin, ConvexVaultDeploymentParams} from "./curve/ConvexStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IConvexBooster, IConvexBoosterArbitrum} from "../../interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../interfaces/convex/IConvexRewardPool.sol";
 import {
+    ICurvePool,
     ICurve2TokenPool,
     ICurve2TokenPoolV1,
     ICurve2TokenPoolV2
@@ -89,15 +89,20 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
         }
     }
 
-    function _checkPriceAndCalculateValue(uint256 vaultShares) internal view override returns (int256 underlyingValue) {
-        // Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        // return context.poolContext._convertStrategyToUnderlying({
-        //     strategyContext: context.baseStrategy,
-        //     vaultShareAmount: vaultShares
-        // });
-    } 
+    function _checkPriceAndCalculateValue() internal view override returns (uint256 oneLPValueInPrimary) {
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = ICurvePool(CURVE_POOL).balances(0);
+        balances[1] = ICurvePool(CURVE_POOL).balances(1);
 
-    function getSpotPrice(uint256 tokenIndex) external view returns (uint256 spotPrice) {
-        // spotPrice = _strategyContext().poolContext._getSpotPrice(tokenIndex);
+        // The primary index spot price is left as zero.
+        uint256[] memory spotPrices = new uint256[](2);
+        uint256 primaryPrecision = 10 ** PRIMARY_DECIMALS;
+
+        // The spot price is converted to POOL_PRECISION
+        spotPrices[SECONDARY_INDEX] = ICurvePool(CURVE_POOL).get_dy(
+            int8(_PRIMARY_INDEX), int8(SECONDARY_INDEX), primaryPrecision
+        ) * POOL_PRECISION() / primaryPrecision;
+
+        return _calculateLPTokenValue(balances, spotPrices);
     }
 }

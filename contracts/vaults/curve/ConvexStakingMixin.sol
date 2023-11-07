@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {ConvexStakingContext, ConvexVaultDeploymentParams, Curve2TokenConvexStrategyContext} from "../CurveVaultTypes.sol";
-import {TokenUtils, IERC20} from "../../../utils/TokenUtils.sol";
-import {Constants} from "../../../global/Constants.sol";
-import {Deployments} from "../../../global/Deployments.sol";
-import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
-import {ICurveGauge} from "../../../../interfaces/curve/ICurveGauge.sol";
-import {IConvexBooster} from "../../../../interfaces/convex/IConvexBooster.sol";
-import {IConvexRewardToken} from "../../../../interfaces/convex/IConvexRewardToken.sol";
-import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../../../interfaces/convex/IConvexRewardPool.sol";
-import {IConvexStakingProxy} from "../../../../interfaces/convex/IConvexStakingProxy.sol";
-import {CurveConstants} from "../internal/CurveConstants.sol";
-import {VaultStorage} from "../../common/VaultStorage.sol";
-import {VaultEvents} from "../../common/VaultEvents.sol";
-import {Curve2TokenPoolMixin} from "./Curve2TokenPoolMixin.sol";
+import {TokenUtils, IERC20} from "../../utils/TokenUtils.sol";
+import {Constants} from "../../global/Constants.sol";
+import {Deployments} from "../../global/Deployments.sol";
+import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {IConvexBooster} from "../../../interfaces/convex/IConvexBooster.sol";
+import {IConvexRewardToken} from "../../../interfaces/convex/IConvexRewardToken.sol";
+import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../../interfaces/convex/IConvexRewardPool.sol";
+import {Curve2TokenPoolMixin, DeploymentParams} from "./Curve2TokenPoolMixin.sol";
+
+struct ConvexVaultDeploymentParams {
+    address rewardPool;
+    DeploymentParams baseParams;
+}
 
 abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
     using TokenUtils for IERC20;
@@ -26,7 +25,7 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
     uint256 internal immutable CONVEX_POOL_ID;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
-        Curve2TokenPoolMixin(notional_, params) {
+        Curve2TokenPoolMixin(notional_, params.baseParams) {
         CONVEX_REWARD_POOL = params.rewardPool;
 
         address convexBooster;

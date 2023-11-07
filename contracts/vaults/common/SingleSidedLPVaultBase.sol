@@ -184,10 +184,12 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function convertStrategyToUnderlying(
         address /* */, uint256 vaultShares, uint256 /* */
     ) public view override whenNotLocked returns (int256 underlyingValue) {
-        // Convert the vault shares to pool claims
-        // TODO: is it easier to get the value of 1 pool claim token and just multiply here?
-        // uint256 poolClaim = _baseStrategyContext()._convertStrategyTokensToPoolClaim(vaultShares);
-        return _checkPriceAndCalculateValue(vaultShares);
+        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        // Will revert on divide by zero, which is the correct behavior
+        uint256 lpTokens = (vaultShares * state.totalPoolClaim) / state.totalVaultSharesGlobal;
+        uint256 oneLPValueInPrimary = _checkPriceAndCalculateValue();
+
+        return (oneLPValueInPrimary * lpTokens / POOL_PRECISION()).toInt();
     }
 
     function _depositFromNotional(
@@ -232,7 +234,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         uint256 amountSold,
         uint256 poolClaimAmount
     ) {
-        // TODO: checkPriceLimit
+        // Will revert if spot prices are not in line with the oracle values
+        _checkPriceAndCalculateValue();
 
         // Require one trade per token, if we do not want to buy any tokens at a
         // given index then the amount should be set to zero.
@@ -369,13 +372,53 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         return POOL_TOKEN().totalSupply();
     }
 
+    function _getOraclePairPrice(address base, address quote) internal view returns (uint256) {
+        (int256 rate, int256 precision) = TRADING_MODULE.getOraclePrice(base, quote);
+        require(rate > 0);
+        require(precision > 0);
+        return uint256(rate) * POOL_PRECISION() / uint256(precision);
+    }
+
+    function _checkPriceAndCalculateValue() internal view virtual returns (uint256 oneLPValueInPrimary);
+
+    function _calculateLPTokenValue(
+        uint256[] memory balances,
+        uint256[] memory spotPrices
+    ) internal view returns (uint256 oneLPValueInPrimary) {
+        (IERC20[] memory tokens, uint8[] memory decimals) = TOKENS();
+        address primaryToken = address(tokens[PRIMARY_INDEX()]);
+        uint256 primaryDecimals = 10 ** decimals[PRIMARY_INDEX()];
+        uint256 totalSupply = _totalPoolSupply();
+        uint256 limit = VaultStorage.getStrategyVaultSettings().oraclePriceDeviationLimitPercent;
+
+        for (uint256 i; i < tokens.length; i++) {
+            // Skip the pool token if it is in the token list (i.e. ComposablePools)
+            if (address(tokens[i]) == address(POOL_TOKEN())) continue;
+            // This is the claim on the pool balance of 1 LP token.
+            uint256 tokenClaim = balances[i] * POOL_PRECISION() / totalSupply;
+            if (i == PRIMARY_INDEX()) {
+                oneLPValueInPrimary += tokenClaim;
+            } else {
+                // Convert the token claim to primary using the oracle pair price
+                uint256 price = _getOraclePairPrice(primaryToken, address(tokens[i]));
+                uint256 lowerLimit = price * (VaultConstants.VAULT_PERCENT_BASIS - limit) / VaultConstants.VAULT_PERCENT_BASIS;
+                uint256 upperLimit = price * (VaultConstants.VAULT_PERCENT_BASIS + limit) / VaultConstants.VAULT_PERCENT_BASIS;
+                if (spotPrices[i] < lowerLimit || upperLimit < spotPrices[i]) {
+                    revert Errors.InvalidPrice(price, spotPrices[i]);
+                }
+
+                uint256 secondaryDecimals = 10 ** decimals[i];
+                oneLPValueInPrimary += (tokenClaim * price * primaryDecimals) / 
+                    (POOL_PRECISION() * secondaryDecimals);
+            }
+        }
+    }
+
     /// @notice Called once during initialization to set the initial token approvals.
     function _initialApproveTokens() internal virtual;
 
     /// @notice Called to claim reward tokens
     function _claimRewardTokens() internal virtual;
-
-    function _checkPriceAndCalculateValue(uint256 vaultShares) internal view virtual returns (int256);
 
     function _validateRewardToken(address token) internal view virtual;
 
