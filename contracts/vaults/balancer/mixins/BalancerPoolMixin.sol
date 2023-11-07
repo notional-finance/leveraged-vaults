@@ -43,7 +43,7 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
     function NUM_TOKENS() internal view override returns (uint256) { return _NUM_TOKENS; }
     function PRIMARY_INDEX() internal view override returns (uint256) { return _PRIMARY_INDEX; }
     function POOL_TOKEN() internal view override returns (IERC20) { return BALANCER_POOL_TOKEN; }
-    function POOL_PRECISION() internal view override returns (uint256) { return BALANCER_PRECISION; }
+    function POOL_PRECISION() internal pure override returns (uint256) { return BALANCER_PRECISION; }
     function TOKENS() internal view override returns (IERC20[] memory, uint8[] memory) {
         IERC20[] memory tokens = new IERC20[](_NUM_TOKENS);
         uint8[] memory decimals = new uint8[](_NUM_TOKENS);
@@ -53,6 +53,8 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
         if (_NUM_TOKENS > 2) (tokens[2], decimals[2]) = (IERC20(TOKEN_3), DECIMALS_3);
         if (_NUM_TOKENS > 3) (tokens[3], decimals[3]) = (IERC20(TOKEN_4), DECIMALS_4);
         if (_NUM_TOKENS > 4) (tokens[4], decimals[4]) = (IERC20(TOKEN_5), DECIMALS_5);
+
+        return (tokens, decimals);
     }
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)

@@ -14,8 +14,6 @@ struct TradeParams {
     /// @notice For dynamic trades, this field specifies the slippage percentage relative to
     /// the oracle price. For static trades, this field specifies the slippage limit amount.
     uint256 oracleSlippagePercentOrLimit;
-    /// @notice Specifies if wrapped tokens (i.e. wstETH) should be unwrapped before trading
-    bool tradeUnwrapped;
     /// @notice DEX specific data
     bytes exchangeData;
 }

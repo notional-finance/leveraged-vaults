@@ -32,17 +32,19 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
     uint8 internal immutable DECIMALS_1;
     uint8 internal immutable DECIMALS_2;
 
-    function NUM_TOKENS() internal view override returns (uint256) { return _NUM_TOKENS; }
+    function NUM_TOKENS() internal pure override returns (uint256) { return _NUM_TOKENS; }
     function PRIMARY_INDEX() internal view override returns (uint256) { return _PRIMARY_INDEX; }
     function POOL_TOKEN() internal view override returns (IERC20) { return CURVE_POOL_TOKEN; }
+    function POOL_PRECISION() internal pure override returns (uint256) { return CURVE_PRECISION; }
     function TOKENS() internal view override returns (IERC20[] memory, uint8[] memory) {
         IERC20[] memory tokens = new IERC20[](_NUM_TOKENS);
         uint8[] memory decimals = new uint8[](_NUM_TOKENS);
 
         (tokens[0], decimals[0]) = (IERC20(TOKEN_1), DECIMALS_1);
         (tokens[1], decimals[1]) = (IERC20(TOKEN_2), DECIMALS_2);
+
+        return (tokens, decimals);
     }
-    function POOL_PRECISION() internal view override returns (uint256) { return CURVE_PRECISION; }
 
     constructor(
         NotionalProxy notional_,

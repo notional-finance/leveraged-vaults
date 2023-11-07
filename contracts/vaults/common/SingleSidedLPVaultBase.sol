@@ -12,7 +12,9 @@ import {
     StrategyContext,
     SingleSidedRewardTradeParams,
     DepositParams,
-    RedeemParams
+    DepositTradeParams,
+    RedeemParams,
+    TradeParams
 } from "./VaultTypes.sol";
 import {StrategyUtils} from "./internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "./VaultStorage.sol";
@@ -25,7 +27,7 @@ import {
     InitParams
 } from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule, DexId} from "../../../interfaces/trading/ITradingModule.sol";
 
 /**
  * Base vault contract that implements common utility functions
@@ -195,8 +197,11 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         uint256[] memory amounts = new uint256[](NUM_TOKENS());
         amounts[PRIMARY_INDEX()] = deposit;
 
-        // XXX: validate and handle deposit trades
-        require(params.depositTrades.length == 0);
+        if (params.depositTrades.length > 0) {
+            // NOTE: this updates amounts in memory
+            amounts = _executeDepositTrades(amounts, params.depositTrades);
+        }
+
         uint256 lpTokens = _joinPoolAndStake(amounts, params);
 
         // Ensure that we do not exceed the max LP pool threshold
@@ -213,8 +218,11 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
         bool isSingleSided = params.redemptionTrades.length == 0;
         uint256[] memory exitBalances = _unstakeAndExitPool(poolClaim, params, isSingleSided);
-        // XXX: validate and handle exit trades
-        require(params.redemptionTrades.length == 0);
+        if (!isSingleSided) {
+            return _executeRedemptionTrades(exitBalances, params.redemptionTrades);
+        } else {
+            return exitBalances[PRIMARY_INDEX()];
+        }
     }
 
     function claimRewardTokens() external override onlyRole(REWARD_REINVESTMENT_ROLE) {
@@ -236,6 +244,57 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     //     // XXX: increase pool claim
     //     // TODO: check pool threshold
     // }
+
+    /// @notice Execute trades from a number of secondary tokens back to the
+    /// primary balance for exits.
+    function _executeDepositTrades(
+        uint256[] memory amounts,
+        DepositTradeParams[] memory depositTrades
+    ) internal returns (uint256[] memory) {
+        (IERC20[] memory tokens, /* */) = TOKENS();
+        address primaryToken = address(tokens[PRIMARY_INDEX()]);
+
+        for (uint256 i; i < amounts.length; i++) {
+            if (i == PRIMARY_INDEX()) continue;
+            DepositTradeParams memory t = depositTrades[i];
+            // Do not allow ZERO_EX trading in this method since we cannot validate
+            // the arbitrary exchange data.
+            if (DexId(t.tradeParams.dexId) == DexId.ZERO_EX) revert Errors.InvalidDexId(uint256(DexId.ZERO_EX));
+
+            (uint256 amountSold, uint256 amountBought) = StrategyUtils._executeDynamicSlippageTradeExactIn(
+                TRADING_MODULE, t.tradeParams, primaryToken, address(tokens[i]), t.tradeAmount
+            );
+
+            amounts[i] = amountBought;
+            amounts[PRIMARY_INDEX()] -= amountSold;
+        }
+
+        return amounts;
+    }
+
+    function _executeRedemptionTrades(
+        uint256[] memory exitBalances,
+        TradeParams[] memory redemptionTrades
+    ) internal returns (uint256 finalPrimaryBalance) {
+        (IERC20[] memory tokens, /* */) = TOKENS();
+        address primaryToken = address(tokens[PRIMARY_INDEX()]);
+
+        for (uint256 i; i < exitBalances.length; i++) {
+            if (i == PRIMARY_INDEX()) finalPrimaryBalance += exitBalances[i];
+            TradeParams memory t = redemptionTrades[i];
+            // Do not allow ZERO_EX trading in this method since we cannot validate
+            // the arbitrary exchange data.
+            if (DexId(t.dexId) == DexId.ZERO_EX) revert Errors.InvalidDexId(uint256(DexId.ZERO_EX));
+
+            if (exitBalances[i] > 0) {
+                (/* */, uint256 amountBought) = StrategyUtils._executeDynamicSlippageTradeExactIn(
+                    TRADING_MODULE, t, address(tokens[i]), primaryToken, exitBalances[i]
+                );
+
+                finalPrimaryBalance += amountBought;
+            }
+        }
+    }
 
     /// @notice Converts pool claim to strategy tokens
     /// @param poolClaim amount of pool tokens
