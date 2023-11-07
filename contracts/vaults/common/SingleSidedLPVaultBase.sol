@@ -18,6 +18,7 @@ import {StrategyUtils} from "./internal/strategy/StrategyUtils.sol";
 import {VaultStorage} from "./VaultStorage.sol";
 import {VaultConstants} from "./VaultConstants.sol";
 
+import {IERC20} from "../../../interfaces/IERC20.sol";
 import {
     ISingleSidedLPStrategyVault,
     StrategyVaultSettings,
@@ -33,8 +34,30 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     using VaultStorage for StrategyVaultState;
     using StrategyUtils for StrategyContext;
 
-    constructor(NotionalProxy notional_, ITradingModule tradingModule_) 
-        BaseStrategyVault(notional_, tradingModule_) { }
+    uint256 internal constant MAX_TOKENS = 5;
+    uint8 internal constant NOT_FOUND = type(uint8).max;
+
+    /**
+     * These constants are intended to be immutables set by the parent constructor,
+     * but this is not easily achievable given how the solidity constructor works.
+     */
+    function NUM_TOKENS() internal pure virtual returns (uint256);
+    function TOKENS() internal pure virtual returns (IERC20[] memory, uint8[] memory decimals);
+    function POOL_TOKEN() internal pure virtual returns (IERC20);
+    function PRIMARY_INDEX() internal pure virtual returns (uint256);
+
+    function getStrategyVaultInfo() public view override returns (SingleSidedLPStrategyVaultInfo memory) {
+        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        return SingleSidedLPStrategyVaultInfo({
+            pool: address(POOL_TOKEN()),
+            singleSidedTokenIndex: uint8(PRIMARY_INDEX()),
+            totalLPTokens: state.totalPoolClaim,
+            totalVaultShares: state.totalVaultSharesGlobal
+        });
+    }
+
+    constructor(NotionalProxy notional_, ITradingModule tradingModule_)
+        BaseStrategyVault(notional_, tradingModule_) {}
 
     function isLocked() public view returns (bool) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
@@ -158,10 +181,11 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
         StrategyContext memory context = _baseStrategyContext();
         DepositParams memory params = abi.decode(data, (DepositParams));
+        uint256[] memory amounts = new uint256[](NUM_TOKENS());
+        amounts[PRIMARY_INDEX()] = deposit;
+
         // XXX: validate and handle deposit trades
         require(params.depositTrades.length == 0);
-        // TODO: set deposit amount to primary index...
-        uint256[] memory amounts;
         uint256 lpTokens = _joinPoolAndStake(amounts, params);
 
         // Ensure that we do not exceed the max LP pool threshold

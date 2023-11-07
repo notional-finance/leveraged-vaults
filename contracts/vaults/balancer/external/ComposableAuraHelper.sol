@@ -33,43 +33,6 @@ library ComposableAuraHelper {
     using VaultStorage for StrategyVaultState;
     using TypeConvert for uint256;
 
-    /// @notice Deposits underlying tokens into Balancer and mint strategy tokens
-    /// @param context composable pool strategy context
-    /// @param depositAmount token deposit amount
-    /// @param params custom deposit data
-    /// @return vaultSharesMinted amount of vault shares minted
-    function deposit(
-        BalancerComposableAuraStrategyContext memory context,
-        uint256 depositAmount,
-        DepositParams calldata params
-    ) external returns (uint256 vaultSharesMinted) {
-        vaultSharesMinted = context.poolContext._deposit({
-            oracleContext: context.oracleContext,
-            strategyContext: context.baseStrategy,
-            stakingContext: context.stakingContext,
-            deposit: depositAmount,
-            params: params
-        });
-    }
-
-    /// @notice Redeem LP tokens from Balancer
-    /// @param context composable pool strategy context
-    /// @param vaultShares amount of vault shares to redeem
-    /// @param params custom redeem data
-    /// @return finalPrimaryBalance total amount of underlying tokens redeemed
-    function redeem(
-        BalancerComposableAuraStrategyContext memory context,
-        uint256 vaultShares,
-        RedeemParams calldata params
-    ) external returns (uint256 finalPrimaryBalance) {
-        finalPrimaryBalance = context.poolContext._redeem({
-            strategyContext: context.baseStrategy,
-            stakingContext: context.stakingContext,
-            vaultShares: vaultShares,
-            params: params
-        });
-    }
-
     /// @notice Reinvests the reward tokens
     /// @param context composable pool strategy context
     /// @param params reward reinvestment params
