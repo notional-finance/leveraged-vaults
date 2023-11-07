@@ -69,24 +69,21 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         });
 
         lpTokens = BalancerUtils._joinPoolExactTokensIn({
-            poolId: poolContext.poolId,
-            poolToken: poolContext.basePool.poolToken,
+            poolId: BALANCER_POOL_ID,
+            poolToken: POOL_TOKEN(),
             params: poolParams
         });
 
         // Transfer token to Aura protocol for boosted staking
-        AuraStakingContext memory stakingContext = _auraStakingContext();
-        bool success = stakingContext.booster.deposit(stakingContext.poolId, lpTokens, true); // stake = true
-        if (!success) revert Errors.StakeFailed();
+        bool success = AURA_BOOSTER.deposit(AURA_POOL_ID, lpTokens, true);
+        require(success);
     }
 
     function _unstakeAndExitPool(
         uint256 poolClaim, uint256[] memory minAmounts, bool isSingleSided
     ) internal override returns (uint256[] memory exitBalances) {
-        AuraStakingContext memory stakingContext = _auraStakingContext();
-        // Withdraw BPT tokens back to the vault for redemption
-        bool success = stakingContext.rewardPool.withdrawAndUnwrap(poolClaim, false); // claimRewards = false
-        if (!success) revert Errors.UnstakeFailed();
+        bool success = AURA_REWARD_POOL.withdrawAndUnwrap(poolClaim, false); // claimRewards = false
+        require(success);
 
         BalancerComposablePoolContext memory poolContext = _composablePoolContext();
         exitBalances = BalancerUtils._exitPoolExactBPTIn({

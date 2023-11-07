@@ -62,20 +62,22 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
         CURVE_POOL_TOKEN.checkApprove(address(CONVEX_BOOSTER), type(uint256).max);
     }
 
-    function _convexStakingContext() internal view returns (ConvexStakingContext memory) {
-        return ConvexStakingContext({
-            booster: CONVEX_BOOSTER,
-            rewardPool: CONVEX_REWARD_POOL,
-            poolId: CONVEX_POOL_ID
-        });
+    function _validateRewardToken(address token) internal override view {
+        if (
+            token == TOKEN_1 ||
+            token == TOKEN_2 ||
+            token == address(CURVE_POOL_TOKEN) ||
+            token == address(CONVEX_REWARD_POOL) ||
+            token == address(CONVEX_BOOSTER) ||
+            token == Deployments.ALT_ETH_ADDRESS
+        ) { revert(); }
     }
 
     function _strategyContext() internal view returns (Curve2TokenConvexStrategyContext memory) {
-        return Curve2TokenConvexStrategyContext({
-            baseStrategy: _baseStrategyContext(),
-            poolContext: _twoTokenPoolContext(),
-            stakingContext: _convexStakingContext()
-        });
+        // return Curve2TokenConvexStrategyContext({
+        //     baseStrategy: _baseStrategyContext(),
+        //     poolContext: _twoTokenPoolContext()
+        // });
     }
 
     function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {

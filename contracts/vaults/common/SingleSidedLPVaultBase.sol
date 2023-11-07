@@ -208,7 +208,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         amounts[PRIMARY_INDEX()] = deposit;
 
         if (params.depositTrades.length > 0) {
-            // NOTE: this updates amounts in memory
             amounts = _executeDepositTrades(amounts, params.depositTrades);
         }
 
@@ -366,6 +365,10 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         return _baseStrategyContext()._convertStrategyTokensToPoolClaim(strategyTokenAmount);
     }
 
+    function _totalPoolSupply() internal view virtual returns (uint256) {
+        return POOL_TOKEN().totalSupply();
+    }
+
     /// @notice Called once during initialization to set the initial token approvals.
     function _initialApproveTokens() internal virtual;
 
@@ -373,8 +376,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function _claimRewardTokens() internal virtual;
 
     function _checkPriceAndCalculateValue(uint256 vaultShares) internal view virtual returns (int256);
-
-    function _totalPoolSupply() internal view virtual returns (uint256);
 
     function _validateRewardToken(address token) internal view virtual;
 

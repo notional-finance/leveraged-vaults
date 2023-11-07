@@ -31,16 +31,6 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
         AURA_POOL_ID = AURA_REWARD_POOL.pid();
     }
 
-    /// @notice returns the Aura staking context
-    /// @return aura staking context
-    function _auraStakingContext() internal view returns (AuraStakingContext memory) {
-        return AuraStakingContext({
-            booster: AURA_BOOSTER,
-            rewardPool: AURA_REWARD_POOL,
-            poolId: AURA_POOL_ID
-        });
-    }
-
     function _initialApproveTokens() internal override {
         (IERC20[] memory tokens, /* */) = TOKENS();
         for (uint256 i; i < tokens.length; i++) {
@@ -51,13 +41,10 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
         POOL_TOKEN().checkApprove(address(AURA_BOOSTER), type(uint256).max);
     }
 
-    
     /// @notice Claim reward tokens
     function _claimRewardTokens() internal override {
         // Claim all reward tokens including extra tokens
         bool success = AURA_REWARD_POOL.getReward(address(this), true); // claimExtraRewards = true
         require(success);
     }
-
-    uint256[40] private __gap; // Storage gap for future potential upgrades
 }

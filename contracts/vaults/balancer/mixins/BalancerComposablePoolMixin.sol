@@ -34,7 +34,16 @@ abstract contract BalancerComposablePoolMixin is AuraStakingMixin {
     }
 
     function _validateRewardToken(address token) internal override view {
-        // TODO
+        if (
+            token == TOKEN_1 ||
+            token == TOKEN_2 ||
+            token == TOKEN_3 ||
+            token == TOKEN_4 ||
+            token == TOKEN_5 ||
+            token == address(AURA_BOOSTER) ||
+            token == address(AURA_REWARD_POOL) ||
+            token == address(Deployments.WETH)
+        ) { revert(); }
     }
 
     function _composablePoolContext() internal view returns (BalancerComposablePoolContext memory) {
@@ -80,12 +89,12 @@ abstract contract BalancerComposablePoolMixin is AuraStakingMixin {
 
     /// @notice returns the composable pool strategy context
     function _strategyContext() internal view returns (BalancerComposableAuraStrategyContext memory) {
-        return BalancerComposableAuraStrategyContext({
-            poolContext: _composablePoolContext(),
-            oracleContext: _composableOracleContext(),
-            stakingContext: _auraStakingContext(),
-            baseStrategy: _baseStrategyContext()
-        });
+        // return BalancerComposableAuraStrategyContext({
+        //     poolContext: _composablePoolContext(),
+        //     oracleContext: _composableOracleContext(),
+        //     stakingContext: _auraStakingContext(),
+        //     baseStrategy: _baseStrategyContext()
+        // });
     }
 
     /// @notice returns the value of 1 vault share

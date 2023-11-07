@@ -67,30 +67,4 @@ library TwoTokenPoolUtils {
 
         primaryAmount = primaryBalance + secondaryAmountInPrimary;
     }
-
-    /// @notice Trade primary cur
-    function _validateTrades(
-        SingleSidedRewardTradeParams memory primaryTrade,
-        SingleSidedRewardTradeParams memory secondaryTrade,
-        address primaryToken,
-        address secondaryToken,
-        address poolToken
-    ) private pure {
-        // Make sure we are not selling one of the core tokens
-        if (primaryTrade.sellToken == primaryToken || 
-            primaryTrade.sellToken == secondaryToken || 
-            primaryTrade.sellToken == poolToken
-        ) {
-            revert Errors.InvalidRewardToken(primaryTrade.sellToken);
-        }
-        if (secondaryTrade.sellToken != primaryTrade.sellToken) {
-            revert Errors.InvalidRewardToken(secondaryTrade.sellToken);
-        }
-        if (primaryTrade.buyToken != primaryToken) {
-            revert Errors.InvalidRewardToken(primaryTrade.buyToken);
-        }
-        if (secondaryTrade.buyToken != secondaryToken) {
-            revert Errors.InvalidRewardToken(secondaryTrade.buyToken);
-        }
-    }
 }

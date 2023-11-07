@@ -25,7 +25,7 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
     IERC20 internal immutable CURVE_POOL_TOKEN;
     bool internal immutable IS_CURVE_V2;
 
-    uint256 internal immutable _PRIMARY_INDEX;
+    uint8 internal immutable _PRIMARY_INDEX;
     uint256 internal immutable SECONDARY_INDEX;
     address internal immutable TOKEN_1;
     address internal immutable TOKEN_2;
@@ -85,35 +85,10 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         DECIMALS_2 = TokenUtils.getDecimals(TOKEN_2);
     }
 
-    function _validateRewardToken(address token) internal override view {
-        // TODO
-    }
-
-    function _twoTokenPoolContext() internal view returns (Curve2TokenPoolContext memory) {
-        // return Curve2TokenPoolContext({
-        //     basePool: TwoTokenPoolContext({
-        //         primaryToken: PRIMARY_TOKEN,
-        //         secondaryToken: SECONDARY_TOKEN,
-        //         primaryIndex: PRIMARY_INDEX,
-        //         secondaryIndex: SECONDARY_INDEX,
-        //         primaryDecimals: PRIMARY_DECIMALS,
-        //         secondaryDecimals: SECONDARY_DECIMALS,
-        //         primaryBalance: ICurvePool(CURVE_POOL).balances(PRIMARY_INDEX),
-        //         secondaryBalance: ICurvePool(CURVE_POOL).balances(SECONDARY_INDEX),
-        //         poolToken: CURVE_POOL_TOKEN
-        //     }),
-        //     curvePool: CURVE_POOL,
-        //     isV2: IS_CURVE_V2
-        // });
-    }
-
     function _checkReentrancyContext() internal override {
         // We need to set the LP token amount to 1 for Curve V2 pools to bypass
         // the underflow check
         uint256[2] memory minAmounts;
         ICurve2TokenPool(address(CURVE_POOL)).remove_liquidity(IS_CURVE_V2 ? 1 : 0, minAmounts);
     }
-
-
-    uint256[40] private __gap; // Storage gap for future potential upgrades
 }
