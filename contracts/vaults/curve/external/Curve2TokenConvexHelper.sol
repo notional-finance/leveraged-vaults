@@ -22,9 +22,6 @@ import {VaultConstants} from "../../common/VaultConstants.sol";
 import {Errors} from "../../../global/Errors.sol";
 import {Curve2TokenPoolUtils} from "../internal/pool/Curve2TokenPoolUtils.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {
-    ReinvestRewardParams
-} from "../../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 library Curve2TokenConvexHelper {
     using Curve2TokenPoolUtils for Curve2TokenPoolContext;
@@ -62,49 +59,49 @@ library Curve2TokenConvexHelper {
         });
     }
 
-    function reinvestReward(
-        Curve2TokenConvexStrategyContext calldata context,
-        ReinvestRewardParams calldata params
-    ) external returns (
-        address rewardToken,
-        uint256 amountSold,
-        uint256 poolClaimAmount
-    ) {
-        StrategyContext memory strategyContext = context.baseStrategy;
-        Curve2TokenPoolContext calldata poolContext = context.poolContext; 
+    // function reinvestReward(
+    //     Curve2TokenConvexStrategyContext calldata context,
+    //     ReinvestRewardParams calldata params
+    // ) external returns (
+    //     address rewardToken,
+    //     uint256 amountSold,
+    //     uint256 poolClaimAmount
+    // ) {
+    //     StrategyContext memory strategyContext = context.baseStrategy;
+    //     Curve2TokenPoolContext calldata poolContext = context.poolContext; 
 
-        uint256 primaryAmount;
-        uint256 secondaryAmount;
-        (
-            rewardToken, 
-            amountSold,
-            primaryAmount,
-            secondaryAmount
-        ) = poolContext.basePool._executeRewardTrades({
-            strategyContext: strategyContext,
-            data: params.tradeData
-        });
+    //     uint256 primaryAmount;
+    //     uint256 secondaryAmount;
+    //     (
+    //         rewardToken, 
+    //         amountSold,
+    //         primaryAmount,
+    //         secondaryAmount
+    //     ) = poolContext.basePool._executeRewardTrades({
+    //         strategyContext: strategyContext,
+    //         data: params.tradeData
+    //     });
 
-        // Make sure we are joining with the right proportion to minimize slippage
-        poolContext._validateSpotPriceAndPairPrice({
-            strategyContext: strategyContext,
-            oraclePrice: poolContext.basePool._getOraclePairPrice(strategyContext),
-            primaryAmount: primaryAmount,
-            secondaryAmount: secondaryAmount
-        });
+    //     // Make sure we are joining with the right proportion to minimize slippage
+    //     poolContext._validateSpotPriceAndPairPrice({
+    //         strategyContext: strategyContext,
+    //         oraclePrice: poolContext.basePool._getOraclePairPrice(strategyContext),
+    //         primaryAmount: primaryAmount,
+    //         secondaryAmount: secondaryAmount
+    //     });
 
-        poolClaimAmount = poolContext._joinPoolAndStake({
-            stakingContext: context.stakingContext,
-            primaryAmount: primaryAmount,
-            secondaryAmount: secondaryAmount,
-            /// @notice minPoolClaim is not required to be set by the caller because primaryAmount
-            /// and secondaryAmount are already validated
-            minPoolClaim: params.minPoolClaim
-        });
+    //     poolClaimAmount = poolContext._joinPoolAndStake({
+    //         stakingContext: context.stakingContext,
+    //         primaryAmount: primaryAmount,
+    //         secondaryAmount: secondaryAmount,
+    //         /// @notice minPoolClaim is not required to be set by the caller because primaryAmount
+    //         /// and secondaryAmount are already validated
+    //         minPoolClaim: params.minPoolClaim
+    //     });
 
-        strategyContext.vaultState.totalPoolClaim += poolClaimAmount;
-        strategyContext.vaultState.setStrategyVaultState(); 
+    //     strategyContext.vaultState.totalPoolClaim += poolClaimAmount;
+    //     strategyContext.vaultState.setStrategyVaultState(); 
 
-        emit VaultEvents.RewardReinvested(rewardToken, amountSold, poolClaimAmount);
-    }
+    //     emit VaultEvents.RewardReinvested(rewardToken, amountSold, poolClaimAmount);
+    // }
 }

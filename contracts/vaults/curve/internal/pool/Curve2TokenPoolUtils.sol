@@ -27,9 +27,6 @@ import {
 } from "../../../../../interfaces/curve/ICurvePool.sol";
 import {IConvexBooster, IConvexBoosterArbitrum} from "../../../../../interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../../../../interfaces/convex/IConvexRewardPool.sol";
-import {
-    ReinvestRewardParams
-} from "../../../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 library Curve2TokenPoolUtils {
     using StrategyUtils for StrategyContext;
@@ -47,16 +44,16 @@ library Curve2TokenPoolUtils {
         DepositParams memory params
     ) internal returns (uint256 strategyTokensMinted) {
         uint256 secondaryAmount;
-        if (params.depositTrades.length > 0) {
-            require(params.depositTrades.length == 1);
-            // Allows users to trade on a different DEX when joining
-            (uint256 primarySold, uint256 secondaryBought) = poolContext.basePool._tradePrimaryForSecondary({
-                strategyContext: strategyContext,
-                params: params.depositTrades[0]
-            });
-            deposit -= primarySold;
-            secondaryAmount = secondaryBought;
-        }
+        // if (params.depositTrades.length > 0) {
+        //     require(params.depositTrades.length == 1);
+        //     // Allows users to trade on a different DEX when joining
+        //     (uint256 primarySold, uint256 secondaryBought) = poolContext.basePool._tradePrimaryForSecondary({
+        //         strategyContext: strategyContext,
+        //         params: params.depositTrades[0]
+        //     });
+        //     deposit -= primarySold;
+        //     secondaryAmount = secondaryBought;
+        // }
 
         uint256 poolClaimMinted = poolContext._joinPoolAndStake({
             stakingContext: stakingContext,
@@ -82,13 +79,13 @@ library Curve2TokenPoolUtils {
             = _unstakeAndExitPool(poolContext, stakingContext, poolClaim, params);
 
         finalPrimaryBalance = primaryBalance;
-        if (secondaryBalance > 0) {
-            uint256 primaryPurchased = poolContext.basePool._sellSecondaryBalance(
-                strategyContext, params, secondaryBalance
-            );
+        // if (secondaryBalance > 0) {
+        //     uint256 primaryPurchased = poolContext.basePool._sellSecondaryBalance(
+        //         strategyContext, params, secondaryBalance
+        //     );
 
-            finalPrimaryBalance += primaryPurchased;
-        }
+        //     finalPrimaryBalance += primaryPurchased;
+        // }
     }
 
     function _getSpotPrice(

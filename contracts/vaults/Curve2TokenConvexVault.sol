@@ -25,9 +25,6 @@ import {Curve2TokenPoolUtils} from "./curve/internal/pool/Curve2TokenPoolUtils.s
 import {Curve2TokenConvexHelper} from "./curve/external/Curve2TokenConvexHelper.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {StrategyUtils} from "./common/internal/strategy/StrategyUtils.sol";
-import {
-    ReinvestRewardParams
-} from "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 contract Curve2TokenConvexVault is ConvexStakingMixin {
     using TypeConvert for uint256;
@@ -45,39 +42,14 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
     }
 
     function _joinPoolAndStake(
-        uint256[] memory amounts, DepositParams memory params
+        uint256[] memory amounts, uint256 minPoolClaim
     ) internal override returns (uint256 lpTokens) {
     }
 
     function _unstakeAndExitPool(
-        uint256 poolClaim, RedeemParams memory params, bool isSingleSided
+        uint256 poolClaim, uint256[] memory minAmounts, bool isSingleSided
     ) internal override returns (uint256[] memory exitBalances) {
 
-    }
-
-    function _restoreVault(
-        uint256 minPoolClaim, bytes calldata /* data */
-    ) internal override returns (uint256 poolTokens) {
-        (IERC20[] memory tokens, /* */) = TOKENS();
-        uint256[] memory amounts = new uint256[](tokens.length);
-
-        for (uint256 i; i < tokens.length; i++) {
-            amounts[i] = TokenUtils.tokenBalance(address(tokens[i]));
-        }
-
-        // No trades are specified so this joins proportionally
-        DepositParams memory params;
-        params.minPoolClaim = minPoolClaim;
-        poolTokens = _joinPoolAndStake(amounts, params);
-    }
-
-    function reinvestReward(ReinvestRewardParams calldata params) 
-        external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
-            address rewardToken,
-            uint256 amountSold,
-            uint256 poolClaimAmount
-    ) {
-        return Curve2TokenConvexHelper.reinvestReward(_strategyContext(), params);
     }
 
     function _checkPriceAndCalculateValue(uint256 vaultShares) internal view override returns (int256 underlyingValue) {

@@ -33,6 +33,10 @@ abstract contract BalancerComposablePoolMixin is AuraStakingMixin {
         require(BPT_INDEX != NOT_FOUND);
     }
 
+    function _validateRewardToken(address token) internal override view {
+        // TODO
+    }
+
     function _composablePoolContext() internal view returns (BalancerComposablePoolContext memory) {
         (
             /* address[] memory tokens */,
@@ -44,6 +48,17 @@ abstract contract BalancerComposablePoolMixin is AuraStakingMixin {
         (IERC20[] memory tokens, uint8[] memory decimals) = TOKENS();
 
         // return BalancerComposablePoolContext({
+        //     basePool: ComposablePoolContext({
+        //         tokens: tokens,
+        //         balances: balances,
+        //         decimals: decimals,
+        //         poolToken: POOL_TOKEN(),
+        //         primaryIndex: PRIMARY_INDEX()
+        //     }),
+        //     poolId: BALANCER_POOL_ID,
+        //     scalingFactors: scalingFactors,
+        //     bptIndex: BPT_INDEX
+        // });
     }
 
     /// @notice returns the composable oracle context

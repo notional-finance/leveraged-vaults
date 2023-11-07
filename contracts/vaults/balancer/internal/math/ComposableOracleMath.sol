@@ -46,6 +46,7 @@ library ComposableOracleMath {
             poolContext.basePool.balances[index2] * poolContext.scalingFactors[index2] 
             / BalancerConstants.BALANCER_PRECISION;
 
+        // TODO: these may not work for Weighted pools?
         uint256 invariant = StableMath._calculateInvariant(
             oracleContext.ampParam, StableMath._balances(balanceX, balanceY), true // round up
         );

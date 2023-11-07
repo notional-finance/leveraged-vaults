@@ -85,6 +85,10 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         DECIMALS_2 = TokenUtils.getDecimals(TOKEN_2);
     }
 
+    function _validateRewardToken(address token) internal override view {
+        // TODO
+    }
+
     function _twoTokenPoolContext() internal view returns (Curve2TokenPoolContext memory) {
         // return Curve2TokenPoolContext({
         //     basePool: TwoTokenPoolContext({

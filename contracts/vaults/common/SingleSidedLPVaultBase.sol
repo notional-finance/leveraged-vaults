@@ -7,6 +7,7 @@ import {BaseStrategyVault} from "../BaseStrategyVault.sol";
 import {Errors} from "../../global/Errors.sol";
 import {TypeConvert} from "../../global/TypeConvert.sol";
 import {VaultEvents} from "./VaultEvents.sol";
+import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {
     StrategyVaultState,
     StrategyContext,
@@ -149,13 +150,11 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     ) external override onlyRole(EMERGENCY_EXIT_ROLE) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         if (claimToExit == 0) claimToExit = state.totalPoolClaim;
-        RedeemParams memory r;
-        r.minAmounts = new uint256[](NUM_TOKENS());
 
         // By setting min amounts to zero, we will accept whatever tokens come from the pool
         // in a proportional exit. Front running will not have an effect since no trading will
         // occur during a proportional exit.
-        _unstakeAndExitPool(claimToExit, r, true);
+        _unstakeAndExitPool(claimToExit, new uint256[](NUM_TOKENS()), true);
 
         state.totalPoolClaim = state.totalPoolClaim - claimToExit;
         state.setStrategyVaultState();
@@ -173,7 +172,16 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     ) external override whenLocked onlyNotionalOwner {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
 
-        uint256 poolTokens = _restoreVault(minPoolClaim, data);
+        (IERC20[] memory tokens, /* */) = TOKENS();
+        uint256[] memory amounts = new uint256[](tokens.length);
+
+        for (uint256 i; i < tokens.length; i++) {
+            if (address(tokens[i]) == address(POOL_TOKEN())) continue;
+            amounts[i] = TokenUtils.tokenBalance(address(tokens[i]));
+        }
+
+        // No trades are specified so this joins proportionally
+        uint256 poolTokens = _joinPoolAndStake(amounts, minPoolClaim);
 
         state.totalPoolClaim = state.totalPoolClaim + poolTokens;
         state.setStrategyVaultState(); 
@@ -204,7 +212,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             amounts = _executeDepositTrades(amounts, params.depositTrades);
         }
 
-        uint256 lpTokens = _joinPoolAndStake(amounts, params);
+        uint256 lpTokens = _joinPoolAndStake(amounts, params.minPoolClaim);
 
         // Ensure that we do not exceed the max LP pool threshold
         context._checkPoolThreshold(_totalPoolSupply(), lpTokens);
@@ -219,7 +227,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         bool isSingleSided = params.redemptionTrades.length == 0;
-        uint256[] memory exitBalances = _unstakeAndExitPool(poolClaim, params, isSingleSided);
+        uint256[] memory exitBalances = _unstakeAndExitPool(poolClaim, params.minAmounts, isSingleSided);
         if (!isSingleSided) {
             return _executeRedemptionTrades(exitBalances, params.redemptionTrades);
         } else {
@@ -231,21 +239,65 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         _claimRewardTokens();
     }
 
-    // function reinvestReward(
-    //     SingleSidedRewardTradeParams[] calldata trades,
-    //     uint256 minPoolClaim
-    // ) external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
-    //     address rewardToken,
-    //     uint256 amountSold,
-    //     uint256 poolClaimAmount
-    // ) {
-    //     // TODO: checkPriceLimit
-    //     // XXX: validate trades
-    //     // XXX: handle deposit trades
-    //     // TODO: join pool and stake
-    //     // XXX: increase pool claim
-    //     // TODO: check pool threshold
-    // }
+    function reinvestReward(
+        SingleSidedRewardTradeParams[] calldata trades,
+        uint256 minPoolClaim
+    ) external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
+        address rewardToken,
+        uint256 amountSold,
+        uint256 poolClaimAmount
+    ) {
+        // TODO: checkPriceLimit
+
+        StrategyContext memory context = _baseStrategyContext();
+        // Require one trade per token, if we do not want to buy any tokens at a
+        // given index then the amount should be set to zero.
+        require(trades.length == NUM_TOKENS());
+        uint256[] memory amounts;
+        (rewardToken, amountSold, amounts) = _executeRewardTrades(trades);
+
+        poolClaimAmount = _joinPoolAndStake(amounts, minPoolClaim);
+
+        // Ensure that we do not exceed the max LP pool threshold
+        context._checkPoolThreshold(_totalPoolSupply(), poolClaimAmount);
+
+        // Increase LP token amount without minting additional vault shares
+        context.vaultState.totalPoolClaim += poolClaimAmount;
+        context.vaultState.setStrategyVaultState(); 
+
+        emit VaultEvents.RewardReinvested(rewardToken, amountSold, poolClaimAmount);
+    }
+
+    function _executeRewardTrades(SingleSidedRewardTradeParams[] calldata trades) internal returns (
+        address rewardToken,
+        uint256 amountSold,
+        uint256[] memory amounts
+    ) {
+        // Ensure that we have sufficient permissions to execute reward trades.
+        require(_canUseStaticSlippage());
+
+        rewardToken = trades[0].sellToken;
+        _validateRewardToken(rewardToken);
+        (IERC20[] memory tokens, /* */) = TOKENS();
+        amounts = new uint256[](trades.length);
+
+        for (uint256 i; i < trades.length; i++) {
+            // All trades must sell the same token.
+            require(trades[i].sellToken == rewardToken);
+            // Bypass certain invalid trades
+            if (trades[i].amount == 0) continue;
+            if (trades[i].buyToken == address(POOL_TOKEN())) continue;
+
+            // The reward trade can only purchase tokens that go into the pool
+            require(trades[i].buyToken == address(tokens[i]));
+
+            (uint256 sold, uint256 bought) = StrategyUtils._executeTradeWithStaticSlippage(
+                TRADING_MODULE, trades[i].tradeParams, rewardToken, trades[i].buyToken, trades[i].amount
+            );
+            amounts[i] = bought;
+            amountSold += sold;
+        }
+    }
 
     /// @notice Execute trades from a number of secondary tokens back to the
     /// primary balance for exits.
@@ -317,9 +369,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// @notice Called once during initialization to set the initial token approvals.
     function _initialApproveTokens() internal virtual;
 
-    /// @notice Called to restore exited pool tokens after an emergency passes
-    function _restoreVault(uint256 minPoolClaim, bytes calldata data) internal virtual returns (uint256 poolTokens);
-
     /// @notice Called to claim reward tokens
     function _claimRewardTokens() internal virtual;
 
@@ -327,12 +376,14 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
     function _totalPoolSupply() internal view virtual returns (uint256);
 
+    function _validateRewardToken(address token) internal view virtual;
+
     function _joinPoolAndStake(
-        uint256[] memory amounts, DepositParams memory params
+        uint256[] memory amounts, uint256 minPoolClaim
     ) internal virtual returns (uint256 lpTokens);
 
     function _unstakeAndExitPool(
-        uint256 poolClaim, RedeemParams memory params, bool isEmergencyExit
+        uint256 poolClaim, uint256[] memory minAmounts, bool isSingleSided
     ) internal virtual returns (uint256[] memory exitBalances);
 
     // Storage gap for future potential upgrades

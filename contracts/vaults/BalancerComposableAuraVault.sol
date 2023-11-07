@@ -27,9 +27,6 @@ import {BalancerComposablePoolMixin} from "./balancer/mixins/BalancerComposableP
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {VaultStorage} from "./common/VaultStorage.sol";
 import {
-    ReinvestRewardParams
-} from "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
-import {
     IComposablePool
 } from "../../interfaces/balancer/IBalancerPool.sol";
 
@@ -59,7 +56,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     }
 
     function _joinPoolAndStake(
-        uint256[] memory amounts, DepositParams memory params
+        uint256[] memory amounts, uint256 minPoolClaim
     ) internal override returns (uint256 lpTokens) {
         BalancerComposablePoolContext memory poolContext = _composablePoolContext();
 
@@ -68,7 +65,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
             amounts: amounts,
             isJoin: true,
             isSingleSided: false,
-            bptAmount: params.minPoolClaim
+            bptAmount: minPoolClaim
         });
 
         lpTokens = BalancerUtils._joinPoolExactTokensIn({
@@ -84,7 +81,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
     }
 
     function _unstakeAndExitPool(
-        uint256 poolClaim, RedeemParams memory params, bool isSingleSided
+        uint256 poolClaim, uint256[] memory minAmounts, bool isSingleSided
     ) internal override returns (uint256[] memory exitBalances) {
         AuraStakingContext memory stakingContext = _auraStakingContext();
         // Withdraw BPT tokens back to the vault for redemption
@@ -97,7 +94,7 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
             poolToken: poolContext.basePool.poolToken,
             params: BalancerUtils._getPoolParams({
                 context: poolContext,
-                amounts: params.minAmounts,
+                amounts: minAmounts,
                 isJoin: false,
                 isSingleSided: isSingleSided,
                 bptAmount: poolClaim
@@ -105,42 +102,6 @@ contract BalancerComposableAuraVault is BalancerComposablePoolMixin {
         });
     }
  
-
-    /// @notice Restores and unlocks the vault after an emergency exit
-    /// @param minPoolClaim bpt slippage limit
-    function _restoreVault(
-        uint256 minPoolClaim, bytes calldata /* data */
-    ) internal override returns (uint256 poolTokens) {
-        (IERC20[] memory tokens, /* */) = TOKENS();
-        uint256[] memory amounts = new uint256[](tokens.length);
-
-        for (uint256 i; i < tokens.length; i++) {
-            // Skip BPT index
-            if (i == BPT_INDEX) continue;
-            amounts[i] = TokenUtils.tokenBalance(address(tokens[i]));
-        }
-
-        // No trades are specified so this joins proportionally
-        DepositParams memory params;
-        params.minPoolClaim = minPoolClaim;
-        poolTokens = _joinPoolAndStake(amounts, params);
-    }
-
-    /// @notice Reinvests the harvested reward tokens
-    /// @notice This function needs to be called multiple times if the strategy
-    /// has multiple reward tokens.
-    /// @notice Can't be called when the vault is locked
-    /// @param params reward reinvestment parameters
-    /// @return rewardToken reward token address
-    /// @return amountSold amount of reward tokens sold
-    /// @return poolClaimAmount amount of pool claim tokens reinvested
-    function reinvestReward(ReinvestRewardParams calldata params) 
-        external whenNotLocked onlyRole(REWARD_REINVESTMENT_ROLE) returns (
-            address rewardToken, uint256 amountSold, uint256 poolClaimAmount
-        ) {
-        return ComposableAuraHelper.reinvestReward(_strategyContext(), params);
-    }
-
     /**
      * @notice Converts the amount of pool tokens the vault holds into underlying denomination for the
      * borrow currency.

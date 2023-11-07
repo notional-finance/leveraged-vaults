@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: GPL-v3
 pragma solidity >=0.7.6;
 
-/// @notice Reward reinvestment parameters
-struct ReinvestRewardParams {
-    /// @notice Trading parameters
-    bytes tradeData;
-    /// @notice min pool claim for slippage control
-    uint256 minPoolClaim;
-}
+import {SingleSidedRewardTradeParams} from "../../contracts/vaults/common/VaultTypes.sol";
 
 struct InitParams {
     string name;
@@ -43,7 +37,8 @@ interface ISingleSidedLPStrategyVault {
     function isLocked() external view returns (bool);
 
     function claimRewardTokens() external;
-    function reinvestReward(ReinvestRewardParams calldata params) external returns (
-        address rewardToken, uint256 amountSold, uint256 poolClaimAmount
-    );
+    function reinvestReward(
+        SingleSidedRewardTradeParams[] calldata trades,
+        uint256 minPoolClaim
+    ) external returns (address rewardToken, uint256 amountSold, uint256 poolClaimAmount);
 }

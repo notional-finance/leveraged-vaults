@@ -140,100 +140,91 @@ library BalancerComposablePoolUtils {
         }
     }
 
-    function _approveBalancerTokens(ComposablePoolContext memory poolContext, address bptSpender) internal {
-        for (uint256 i; i < poolContext.tokens.length; i++) {
-            IERC20(poolContext.tokens[i]).checkApprove(address(Deployments.BALANCER_VAULT), type(uint256).max);
-        }
+    // function _handleDepositTrades(
+    //     BalancerComposablePoolContext memory poolContext,
+    //     StrategyContext memory strategyContext,
+    //     uint256 deposit,
+    //     DepositParams memory params
+    // ) private returns (uint256[] memory amounts) {
+    //     uint256 numTokens = poolContext.basePool.tokens.length;
+    //     amounts = new uint256[](poolContext.basePool.tokens.length);
 
-        // Allow BPT spender to pull BALANCER_POOL_TOKEN
-        poolContext.poolToken.checkApprove(bptSpender, type(uint256).max);
-    }
+    //     if (params.depositTrades.length > 0) {
+    //         uint256 tradeIndex;
+    //         for (uint256 i; i < numTokens; i++) {
+    //             if (i == poolContext.bptIndex || i == poolContext.basePool.primaryIndex) continue;
 
-    function _handleDepositTrades(
-        BalancerComposablePoolContext memory poolContext,
-        StrategyContext memory strategyContext,
-        uint256 deposit,
-        DepositParams memory params
-    ) private returns (uint256[] memory amounts) {
-        uint256 numTokens = poolContext.basePool.tokens.length;
-        amounts = new uint256[](poolContext.basePool.tokens.length);
+    //             uint256 sellAmount = params.depositTrades[tradeIndex].tradeAmount;
 
-        if (params.depositTrades.length > 0) {
-            uint256 tradeIndex;
-            for (uint256 i; i < numTokens; i++) {
-                if (i == poolContext.bptIndex || i == poolContext.basePool.primaryIndex) continue;
+    //             if (sellAmount > 0) {
+    //                 uint256 amountBought = _sellToken({
+    //                     strategyContext: strategyContext, 
+    //                     params: params.depositTrades[tradeIndex].tradeParams,
+    //                     sellToken: poolContext.basePool.tokens[poolContext.basePool.primaryIndex],
+    //                     buyToken: poolContext.basePool.tokens[i],
+    //                     sellAmount: sellAmount
+    //                 });
 
-                uint256 sellAmount = params.depositTrades[tradeIndex].tradeAmount;
+    //                 deposit -= sellAmount;
+    //                 amounts[i] = amountBought;
+    //             }
 
-                if (sellAmount > 0) {
-                    uint256 amountBought = _sellToken({
-                        strategyContext: strategyContext, 
-                        params: params.depositTrades[tradeIndex].tradeParams,
-                        sellToken: poolContext.basePool.tokens[poolContext.basePool.primaryIndex],
-                        buyToken: poolContext.basePool.tokens[i],
-                        sellAmount: sellAmount
-                    });
+    //             tradeIndex++;
+    //         }
+    //     }
 
-                    deposit -= sellAmount;
-                    amounts[i] = amountBought;
-                }
+    //     amounts[poolContext.basePool.primaryIndex] = deposit;
+    // }
 
-                tradeIndex++;
-            }
-        }
+    // function _sellToken(
+    //     StrategyContext memory strategyContext,
+    //     TradeParams memory params,
+    //     address sellToken,
+    //     address buyToken,
+    //     uint256 sellAmount
+    // ) internal returns (uint256 buyAmount) {
+    //     if (DexId(params.dexId) == DexId.ZERO_EX) {
+    //         revert Errors.InvalidDexId(params.dexId);
+    //     }
 
-        amounts[poolContext.basePool.primaryIndex] = deposit;
-    }
+    //     ( /*uint256 amountSold */, buyAmount) = 
+    //         strategyContext._executeTradeExactIn({
+    //             params: params,
+    //             sellToken: sellToken,
+    //             buyToken: buyToken,
+    //             amount: sellAmount,
+    //             useDynamicSlippage: true
+    //         });
+    // }
 
-    function _sellToken(
-        StrategyContext memory strategyContext,
-        TradeParams memory params,
-        address sellToken,
-        address buyToken,
-        uint256 sellAmount
-    ) internal returns (uint256 buyAmount) {
-        if (DexId(params.dexId) == DexId.ZERO_EX) {
-            revert Errors.InvalidDexId(params.dexId);
-        }
+    // function _convertTokensToPrimary(
+    //     BalancerComposablePoolContext memory poolContext,
+    //     StrategyContext memory strategyContext,
+    //     RedeemParams memory params,
+    //     uint256[] memory exitBalances
+    // ) internal returns (uint256 primaryPurchased) {
+    //     address[] memory tokens = poolContext.basePool.tokens;
+    //     uint256 primaryIndex = poolContext.basePool.primaryIndex;
+    //     uint256 tradeIndex;
+    //     for (uint256 i; i < tokens.length; i++) {
+    //         if (i == poolContext.bptIndex) continue;
 
-        ( /*uint256 amountSold */, buyAmount) = 
-            strategyContext._executeTradeExactIn({
-                params: params,
-                sellToken: sellToken,
-                buyToken: buyToken,
-                amount: sellAmount,
-                useDynamicSlippage: true
-            });
-    }
-
-    function _convertTokensToPrimary(
-        BalancerComposablePoolContext memory poolContext,
-        StrategyContext memory strategyContext,
-        RedeemParams memory params,
-        uint256[] memory exitBalances
-    ) internal returns (uint256 primaryPurchased) {
-        address[] memory tokens = poolContext.basePool.tokens;
-        uint256 primaryIndex = poolContext.basePool.primaryIndex;
-        uint256 tradeIndex;
-        for (uint256 i; i < tokens.length; i++) {
-            if (i == poolContext.bptIndex) continue;
-
-            if (i == primaryIndex) {
-                primaryPurchased += exitBalances[i];
-            } else {
-                if (exitBalances[i] > 0) {
-                    primaryPurchased += _sellToken({
-                        strategyContext: strategyContext,
-                        params: params.redemptionTrades[tradeIndex],
-                        sellToken: tokens[i],
-                        buyToken: tokens[primaryIndex],
-                        sellAmount: exitBalances[i]
-                    });
-                }
-                tradeIndex++;
-            }
-        }
-    }
+    //         if (i == primaryIndex) {
+    //             primaryPurchased += exitBalances[i];
+    //         } else {
+    //             if (exitBalances[i] > 0) {
+    //                 primaryPurchased += _sellToken({
+    //                     strategyContext: strategyContext,
+    //                     params: params.redemptionTrades[tradeIndex],
+    //                     sellToken: tokens[i],
+    //                     buyToken: tokens[primaryIndex],
+    //                     sellAmount: exitBalances[i]
+    //                 });
+    //             }
+    //             tradeIndex++;
+    //         }
+    //     }
+    // }
 
     /// @notice We value strategy tokens in terms of the primary balance. The time weighted
     /// primary balance is used in order to prevent pool manipulation.

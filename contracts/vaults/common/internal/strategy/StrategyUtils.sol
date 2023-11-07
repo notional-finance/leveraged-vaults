@@ -92,7 +92,7 @@ library StrategyUtils {
             sellToken,
             buyToken,
             amount,
-            params.oracleSlippagePercentOrLimit,
+            0,
             block.timestamp, // deadline
             params.exchangeData
         );
@@ -102,31 +102,21 @@ library StrategyUtils {
         );
     }
 
-    /// @notice Executes an exact in trade
-    /// @param context strategy context
-    /// @param params trade params
-    /// @param sellToken address of the token to sell
-    /// @param buyToken address of the token to buy
-    /// @param amount token amount
-    /// @param useDynamicSlippage true if the trade should be executed using dynamic slippage
-    function _executeTradeExactIn(
-        StrategyContext memory context,
+    /// @notice Executes a trade with a static slippage limit, only used during
+    /// reward reinvestment trades since oracles between the reward token and the
+    /// purchased tokens may not exist.
+    function _executeTradeWithStaticSlippage(
+        ITradingModule tradingModule,
         TradeParams memory params,
         address sellToken,
         address buyToken,
-        uint256 amount,
-        bool useDynamicSlippage
+        uint256 amount
     ) internal returns (uint256 amountSold, uint256 amountBought) {
         /// @dev this function can only handle exact in trades
         require(
-            params.tradeType == TradeType.EXACT_IN_SINGLE || params.tradeType == TradeType.EXACT_IN_BATCH
+            params.tradeType == TradeType.EXACT_IN_SINGLE ||
+            params.tradeType == TradeType.EXACT_IN_BATCH
         );
-        /// @dev only certain vaults can use static slippage
-        if (useDynamicSlippage) {
-            require(params.oracleSlippagePercentOrLimit <= Constants.SLIPPAGE_LIMIT_PRECISION);
-        } else {
-            require(context.canUseStaticSlippage);
-        }
 
         // Sell residual secondary balance
         Trade memory trade = Trade(
@@ -134,22 +124,13 @@ library StrategyUtils {
             sellToken,
             buyToken,
             amount,
-            useDynamicSlippage ? 0 : params.oracleSlippagePercentOrLimit,
+            params.oracleSlippagePercentOrLimit,
             block.timestamp, // deadline
             params.exchangeData
         );
 
-        if (useDynamicSlippage) {
-            /// @dev params.oracleSlippagePercentOrLimit checked above
-            (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
-                params.dexId, context.tradingModule, uint32(params.oracleSlippagePercentOrLimit)
-            );
-        } else {
-            // Execute trade using static slippage
-            (amountSold, amountBought) = trade._executeTrade(
-                params.dexId, context.tradingModule
-            );
-        }
+        // Execute trade using static slippage
+        (amountSold, amountBought) = trade._executeTrade(params.dexId, tradingModule);
     }
 
     /// @notice Helper function that determins the amount of vaultShares to mint for a given number
