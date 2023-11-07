@@ -72,26 +72,6 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
         ) { revert(); }
     }
 
-    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
-        // Curve2TokenConvexStrategyContext memory context = _strategyContext();
-        // if (context.baseStrategy.vaultState.totalVaultSharesGlobal == 0) {
-        //     (uint256 spotPrice, uint256 oraclePrice) = context.poolContext._getSpotPriceAndOraclePrice(
-        //         context.baseStrategy
-        //     );
-
-        //     return context.poolContext.basePool._getTimeWeightedPrimaryBalance({
-        //         strategyContext: context.baseStrategy,
-        //         poolClaim: context.baseStrategy.poolClaimPrecision, // 1 pool token
-        //         oraclePrice: oraclePrice, 
-        //         spotPrice: spotPrice
-        //     }).toInt();
-        // } else {
-        //     return context.poolContext._convertStrategyToUnderlying({
-        //         strategyContext: context.baseStrategy,
-        //         vaultShareAmount: uint256(Constants.INTERNAL_TOKEN_PRECISION) // 1 vault share
-        //     });
-        // }
-    }
 
     function _claimConvexRewardTokens() private returns (bool) {
         if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {

@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {Deployments} from "../global/Deployments.sol";
+import {ComposablePoolSpotPrice} from "./balancer/ComposablePoolSpotPrice.sol";
 import {
     AuraStakingMixin,
     AuraVaultDeploymentParams,
@@ -18,14 +19,16 @@ import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
  * harvested and sold for more BPT tokens.
  */
 contract BalancerComposableAuraVault is AuraStakingMixin {
+    ComposablePoolSpotPrice immutable SPOT_PRICE;
 
-    /// @notice constructor
-    /// @param notional_ Notional proxy address
-    /// @param params deployment parameters
-    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
-        AuraStakingMixin(notional_, params) {
+    constructor(
+        NotionalProxy notional_,
+        AuraVaultDeploymentParams memory params,
+        ComposablePoolSpotPrice _spotPrice
+    ) AuraStakingMixin(notional_, params) {
         // BPT_INDEX must be defined for a composable pool
         require(BPT_INDEX != NOT_FOUND);
+        SPOT_PRICE = _spotPrice;
     }
 
     function _validateRewardToken(address token) internal override view {
@@ -101,39 +104,24 @@ contract BalancerComposableAuraVault is AuraStakingMixin {
         exitBalances = _exitPoolExactBPTIn(minAmounts, customData);
     }
  
-    /**
-     * @notice Converts the amount of pool tokens the vault holds into underlying denomination for the
-     * borrow currency.
-     * @param vaultShares amount of vault shares
-     * @return underlyingValue the value of the BPT in terms of the borrowed currency
-     */
-    function _checkPriceAndCalculateValue(uint256 vaultShares) internal view override returns (int256) {
-        // return _strategyContext().convertStrategyToUnderlying(vaultShares);
+    function _checkPriceAndCalculateValue() internal view override returns (uint256) {
+        (uint256[] memory balances, uint256[] memory spotPrices) = SPOT_PRICE.getSpotPrices(
+            BALANCER_POOL_ID,
+            address(BALANCER_POOL_TOKEN),
+            PRIMARY_INDEX()
+        );
+
+        // // Spot prices are returned in native decimals, convert them all to POOL_PRECISION
+        // // as required in the _calculateLPTokenValue method.
+        // (/* */, uint8[] memory decimals) = TOKENS();
+        // for (uint256 i; i < spotPrices.length; i++) {
+        //     spotPrices[i] = spotPrices[i] * POOL_PRECISION() / 10 ** decimals[i];
+        // }
+
+        // return _calculateLPTokenValue(balances, spotPrices);
     }
 
     function _totalPoolSupply() internal view override returns (uint256) {
         return IComposablePool(address(BALANCER_POOL_TOKEN)).getActualSupply();
     }
-
-    /// @notice returns the value of 1 vault share
-    /// @return exchange rate of 1 vault share
-    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
-        // BalancerComposableAuraStrategyContext memory context = _strategyContext();
-        // return ComposableAuraHelper.getExchangeRate(context);
-    }
-
-    // /// @notice Returns information related to the strategy
-    // /// @return strategy context
-    // function getStrategyContext() external view returns (BalancerComposableAuraStrategyContext memory) {
-    //     return _strategyContext();
-    // }
-
-    // /// @notice Gets the current spot price with a given token index
-    // /// @notice Spot price is always denominated in the primary token
-    // /// @param index1 first pool token index, BPT index is not allowed
-    // /// @param index2 second pool token index, BPT index is not allowed
-    // /// @return spotPrice spot price of 1 vault share
-    // function getSpotPrice(uint8 index1, uint8 index2) external view returns (uint256 spotPrice) {
-    //     spotPrice = ComposableAuraHelper.getSpotPrice(_strategyContext(), index1, index2);
-    // }
 }

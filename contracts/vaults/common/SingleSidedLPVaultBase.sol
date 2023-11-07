@@ -70,6 +70,10 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         return _hasFlag(state.flags, VaultConstants.FLAG_LOCKED);
     }
 
+    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
+        return _checkPriceAndCalculateValue().toInt();
+    }
+
     /// @notice Allows the function to execute only when the vault is not locked
     modifier whenNotLocked() {
         if (isLocked()) revert Errors.VaultLocked();

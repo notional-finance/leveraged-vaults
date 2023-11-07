@@ -18,6 +18,7 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
     uint256 numTokens;
 
     function deployVault() internal override returns (IStrategyVault) {
+        ComposablePoolSpotPrice spotPrice = new ComposablePoolSpotPrice();
         balancerPool = IBalancerPool(rewardPool.asset());
         balancerPoolId = balancerPool.getPoolId();
 
@@ -29,7 +30,8 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
                     balancerPoolId: balancerPoolId,
                     tradingModule: TRADING_MODULE
                 })
-            })
+            }),
+            spotPrice
         );
 
         bytes memory initData = abi.encodeWithSelector(
