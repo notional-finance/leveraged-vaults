@@ -3,8 +3,8 @@ pragma solidity 0.8.17;
 
 import "./BaseAcceptanceTest.sol";
 import "../contracts/vaults/BalancerComposableAuraVault.sol";
-import "../contracts/vaults/common/VaultTypes.sol";
-import "../contracts/vaults/balancer/BalancerVaultTypes.sol";
+import "../contracts/vaults/balancer/mixins/AuraStakingMixin.sol";
+import "../contracts/vaults/common/SingleSidedLPVaultBase.sol";
 import "../contracts/proxy/nProxy.sol";
 import "../interfaces/balancer/IBalancerPool.sol";
 import "../interfaces/notional/ISingleSidedLPStrategyVault.sol";

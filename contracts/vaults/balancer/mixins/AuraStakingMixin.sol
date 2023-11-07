@@ -3,12 +3,19 @@ pragma solidity 0.8.17;
 
 import {Deployments} from "../../../global/Deployments.sol";
 import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {AuraStakingContext, AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {IAuraBooster, IAuraBoosterLite} from "../../../../interfaces/aura/IAuraBooster.sol";
 import {IAuraRewardPool} from "../../../../interfaces/aura/IAuraRewardPool.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
-import {BalancerPoolMixin} from "./BalancerPoolMixin.sol";
+import {BalancerPoolMixin, DeploymentParams} from "./BalancerPoolMixin.sol";
 import {TokenUtils} from "../../../utils/TokenUtils.sol";
+
+/// @notice Deployment parameters with Aura staking
+struct AuraVaultDeploymentParams {
+    /// @notice Aura reward pool address
+    IAuraRewardPool rewardPool;
+    /// @notice Base deployment parameters
+    DeploymentParams baseParams;
+}
 
 /**
  * Base class for all Aura strategies
@@ -24,7 +31,7 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
     uint256 internal immutable AURA_POOL_ID;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
-        BalancerPoolMixin(notional_, params) {
+        BalancerPoolMixin(notional_, params.baseParams) {
         AURA_REWARD_POOL = params.rewardPool;
 
         AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());

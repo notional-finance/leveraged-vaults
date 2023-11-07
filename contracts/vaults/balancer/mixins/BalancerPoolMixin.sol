@@ -2,16 +2,22 @@
 pragma solidity 0.8.17;
 
 import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {StrategyContext} from "../../common/VaultTypes.sol";
-import {AuraVaultDeploymentParams} from "../BalancerVaultTypes.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
-import {IBalancerVault} from "../../../../interfaces/balancer/IBalancerVault.sol";
-import {VaultStorage} from "../../common/VaultStorage.sol";
-import {BalancerConstants} from "../internal/BalancerConstants.sol";
+import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
 import {SingleSidedLPVaultBase} from "../../common/SingleSidedLPVaultBase.sol";
-import {BalancerUtils} from "../internal/pool/BalancerUtils.sol";
 import {TokenUtils} from "../../../utils/TokenUtils.sol";
+import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
+
+/// @notice Deployment parameters
+struct DeploymentParams {
+    /// @notice primary currency id
+    uint16 primaryBorrowCurrencyId;
+    /// @notice balancer pool ID
+    bytes32 balancerPoolId;
+    /// @notice trading module proxy
+    ITradingModule tradingModule;
+}
 
 /**
  * Base class for all Balancer LP strategies
@@ -57,14 +63,21 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
         return (tokens, decimals);
     }
 
-    constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
-        SingleSidedLPVaultBase(notional_, params.baseParams.tradingModule) {
-        // Returns the primary borrowed currency address
-        address primaryAddress = _getNotionalUnderlyingToken(params.baseParams.primaryBorrowCurrencyId);
-        primaryAddress = BalancerUtils.getTokenAddress(primaryAddress);
+    function ASSETS() private view returns (IAsset[] memory) {
+        IAsset[] memory assets = new IAsset[](_NUM_TOKENS);
+        if (_NUM_TOKENS > 0) assets[0] = IAsset(TOKEN_1);
+        if (_NUM_TOKENS > 1) assets[1] = IAsset(TOKEN_2);
+        if (_NUM_TOKENS > 2) assets[2] = IAsset(TOKEN_3);
+        if (_NUM_TOKENS > 3) assets[3] = IAsset(TOKEN_4);
+        if (_NUM_TOKENS > 4) assets[4] = IAsset(TOKEN_5);
+        return assets;
+    }
 
-        BALANCER_POOL_ID = params.baseParams.balancerPoolId;
-        (address pool, /* */) = Deployments.BALANCER_VAULT.getPool(params.baseParams.balancerPoolId);
+    constructor(NotionalProxy notional_, DeploymentParams memory params)
+        SingleSidedLPVaultBase(notional_, params.tradingModule) {
+
+        BALANCER_POOL_ID = params.balancerPoolId;
+        (address pool, /* */) = Deployments.BALANCER_VAULT.getPool(params.balancerPoolId);
         BALANCER_POOL_TOKEN = IERC20(pool);
 
         // Fetch all the token addresses in the pool
@@ -72,7 +85,7 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
             address[] memory tokens,
             /* uint256[] memory balances */,
             /* uint256 lastChangeBlock */
-        ) = Deployments.BALANCER_VAULT.getPoolTokens(params.baseParams.balancerPoolId);
+        ) = Deployments.BALANCER_VAULT.getPoolTokens(params.balancerPoolId);
 
         require(tokens.length <= MAX_TOKENS);
         _NUM_TOKENS = uint8(tokens.length);
@@ -89,10 +102,18 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
         DECIMALS_4 = _NUM_TOKENS > 3 ? TokenUtils.getDecimals(TOKEN_4) : 0;
         DECIMALS_5 = _NUM_TOKENS > 4 ? TokenUtils.getDecimals(TOKEN_5) : 0;
 
+        // Returns the primary borrowed currency address
+        address primaryAddress = _getNotionalUnderlyingToken(params.primaryBorrowCurrencyId);
+        if (primaryAddress == Deployments.ETH_ADDRESS) {
+            // Balancer uses WETH when calling `getPoolTokens` so rewrite it here to
+            // when we match on the primary index later.
+            primaryAddress = address(Deployments.WETH);
+        }
+
         uint8 primaryIndex = NOT_FOUND;
         uint8 bptIndex = NOT_FOUND;
         for (uint8 i; i < tokens.length; i++) {
-            if (tokens[i] == primaryAddress)  primaryIndex = i; 
+            if (tokens[i] == primaryAddress) primaryIndex = i; 
             else if (tokens[i] == address(BALANCER_POOL_TOKEN)) bptIndex = i;
         }
 
@@ -112,6 +133,75 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
     function _checkReentrancyContext() internal override {
         IBalancerVault.UserBalanceOp[] memory noop = new IBalancerVault.UserBalanceOp[](0);
         Deployments.BALANCER_VAULT.manageUserBalance(noop);
+    }
+
+    /// @notice Joins a balancer pool using exact tokens in
+    function _joinPoolExactTokensIn(
+        uint256[] memory amounts,
+        bytes memory customData
+    ) internal returns (uint256 bptAmount) {
+        uint256 msgValue;
+        IAsset[] memory assets = ASSETS();
+        require(assets.length == amounts.length);
+        for (uint256 i; i < assets.length; i++) {
+            if (address(assets[i]) == Deployments.ETH_ADDRESS) {
+                msgValue = amounts[i];
+                break;
+            }
+        }
+
+        bptAmount = BALANCER_POOL_TOKEN.balanceOf(address(this));
+        Deployments.BALANCER_VAULT.joinPool{value: msgValue}(
+            BALANCER_POOL_ID,
+            address(this), // sender
+            address(this), //  Vault will receive the pool tokens
+            IBalancerVault.JoinPoolRequest(
+                ASSETS(),
+                amounts,
+                customData,
+                false // Don't use internal balances
+            )
+        );
+
+        // Calculate the amount of BPT minted
+        bptAmount = BALANCER_POOL_TOKEN.balanceOf(address(this)) - bptAmount;
+    }
+
+    /// @notice Exits a balancer pool using exact BPT in
+    function _exitPoolExactBPTIn(
+        uint256[] memory amounts,
+        bytes memory customData
+    ) internal returns (uint256[] memory exitBalances) {
+        // For composable pools, the asset array includes the BPT token (i.e. poolToken). The balance
+        // will decrease in an exit while all of the other balances increase, causing a subtraction
+        // underflow in the final loop. For that reason, exit balances are not calculated of the poolToken
+        // is included in the array of assets.
+        exitBalances = new uint256[](_NUM_TOKENS);
+        IAsset[] memory assets = ASSETS();
+
+        for (uint256 i; i < _NUM_TOKENS; i++) {
+            if (address(assets[i]) == address(BALANCER_POOL_TOKEN)) continue;
+            exitBalances[i] = TokenUtils.tokenBalance(address(assets[i]));
+        }
+
+        Deployments.BALANCER_VAULT.exitPool(
+            BALANCER_POOL_ID,
+            address(this), // sender
+            payable(address(this)), // Vault will receive the underlying assets
+            IBalancerVault.ExitPoolRequest(
+                assets,
+                amounts,
+                customData,
+                false // Don't use internal balances
+            )
+        );
+
+        // Calculate the amounts of underlying tokens after the exit
+        for (uint256 i; i < _NUM_TOKENS; i++) {
+            if (address(assets[i]) == address(BALANCER_POOL_TOKEN)) continue;
+            uint256 balanceAfter = TokenUtils.tokenBalance(address(assets[i]));
+            exitBalances[i] = balanceAfter - exitBalances[i];
+        }
     }
 
     uint256[40] private __gap; // Storage gap for future potential upgrades
