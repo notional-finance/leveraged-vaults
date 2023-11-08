@@ -11,14 +11,13 @@ import {VaultEvents} from "./VaultEvents.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {
     StrategyVaultState,
-    StrategyContext,
     SingleSidedRewardTradeParams,
     DepositParams,
     DepositTradeParams,
     RedeemParams,
     TradeParams
 } from "./VaultTypes.sol";
-import {StrategyUtils} from "./internal/strategy/StrategyUtils.sol";
+import {StrategyUtils} from "./StrategyUtils.sol";
 import {VaultStorage} from "./VaultStorage.sol";
 import {VaultConstants} from "./VaultConstants.sol";
 
