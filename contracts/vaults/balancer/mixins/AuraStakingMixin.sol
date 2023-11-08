@@ -35,8 +35,8 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
         AURA_POOL_ID = AURA_REWARD_POOL.pid();
     }
 
-    function _validateRewardToken(address token) internal override view {
-        if (
+    function _isInvalidRewardToken(address token) internal override view returns (bool) {
+        return (
             token == TOKEN_1 ||
             token == TOKEN_2 ||
             token == TOKEN_3 ||
@@ -45,7 +45,7 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
             token == address(AURA_BOOSTER) ||
             token == address(AURA_REWARD_POOL) ||
             token == address(Deployments.WETH)
-        ) { revert(); }
+        );
     }
 
     /// @notice Called once on initialization to set token approvals

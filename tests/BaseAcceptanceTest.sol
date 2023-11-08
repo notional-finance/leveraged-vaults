@@ -132,6 +132,41 @@ abstract contract BaseAcceptanceTest is Test {
         vault.depositFromNotional(account, depositAmount, maturity, data);
     }
 
+    function expectRevert_enterVaultBypass(
+        address account,
+        uint256 depositAmount,
+        uint256 maturity,
+        bytes memory data
+    ) internal virtual {
+        if (isETH) {
+            deal(address(vault), depositAmount);
+        } else {
+            deal(address(primaryBorrowToken), address(vault), depositAmount, false);
+        }
+
+        vm.prank(address(NOTIONAL));
+        vm.expectRevert();
+        vault.depositFromNotional(account, depositAmount, maturity, data);
+    }
+
+    function expectRevert_enterVaultBypass(
+        address account,
+        uint256 depositAmount,
+        uint256 maturity,
+        bytes memory data,
+        bytes4 selector
+    ) internal virtual {
+        if (isETH) {
+            deal(address(vault), depositAmount);
+        } else {
+            deal(address(primaryBorrowToken), address(vault), depositAmount, false);
+        }
+
+        vm.prank(address(NOTIONAL));
+        vm.expectRevert(selector);
+        vault.depositFromNotional(account, depositAmount, maturity, data);
+    }
+
     function enterVaultBypass(
         address account,
         uint256 depositAmount,
@@ -163,7 +198,6 @@ abstract contract BaseAcceptanceTest is Test {
         totalVaultShares[maturity] -= vaultShares;
         totalVaultSharesAllMaturities -= vaultShares;
     }
-
 
     function test_EnterVault(uint256 maturityIndex, uint256 depositAmount) public {
         address account = makeAddr("account");
@@ -314,8 +348,14 @@ abstract contract BaseAcceptanceTest is Test {
         );
     }
 
-    // TODO: these need to be made generic
-    // function test_EmergencyExit() public virtual {}
-    // function test_RevertIf_EnterWhenLocked() public virtual {}
-    // function test_RevertIf_ExitWhenLocked() public virtual {}
+    function test_exchangeRateReturnsIfNoVaultShares() public {
+        // Ensure that the exchange rate function always returns some
+        // value even if there are no vault shares.
+        require(totalVaultSharesAllMaturities == 0);
+        for (uint256 i; i < maturities.length; i++) {
+            int256 value = vault.getExchangeRate(maturities[i]);
+            assertGt(value, 0);
+        }
+    }
+
 }

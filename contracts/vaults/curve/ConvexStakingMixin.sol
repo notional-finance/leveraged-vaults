@@ -57,15 +57,15 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
         CURVE_POOL_TOKEN.checkApprove(address(CONVEX_BOOSTER), type(uint256).max);
     }
 
-    function _validateRewardToken(address token) internal override view {
-        if (
+    function _isInvalidRewardToken(address token) internal override view returns (bool) {
+        return (
             token == TOKEN_1 ||
             token == TOKEN_2 ||
             token == address(CURVE_POOL_TOKEN) ||
             token == address(CONVEX_REWARD_POOL) ||
             token == address(CONVEX_BOOSTER) ||
             token == Deployments.ALT_ETH_ADDRESS
-        ) { revert(); }
+        );
     }
 
     function _claimRewardTokens() internal override {

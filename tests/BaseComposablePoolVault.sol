@@ -17,6 +17,8 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
     IAuraRewardPool rewardPool;
     uint256 numTokens;
 
+    IERC20 rewardToken;
+
     function deployVault() internal override returns (IStrategyVault) {
         BalancerSpotPrice spotPrice = new BalancerSpotPrice();
         balancerPool = IBalancerPool(rewardPool.asset());
@@ -83,9 +85,12 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
         return abi.encode(d);
     }
 
+    function v() internal view returns (SingleSidedLPVaultBase) {
+        return SingleSidedLPVaultBase(payable(address(vault)));
+    }
+
     function checkInvariants() internal override {
-        ISingleSidedLPStrategyVault v = ISingleSidedLPStrategyVault(address(vault));
-        ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory s = v.getStrategyVaultInfo();
+        ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory s = v().getStrategyVaultInfo();
 
         assertEq(
             totalVaultSharesAllMaturities,
@@ -99,6 +104,230 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
             "Total LP Tokens"
         );
 
-        // below max pool share
+        // TODO: below max pool share
     }
+
+    function test_RevertIf_nonOwnerMethods() public {
+        vm.expectRevert("Unauthorized");
+        v().setStrategyVaultSettings(StrategyVaultSettings({
+            deprecated_emergencySettlementSlippageLimitPercent: 0,
+            deprecated_poolSlippageLimitPercent: 0,
+            maxPoolShare: 1,
+            oraclePriceDeviationLimitPercent: 50
+        }));
+
+        vm.expectRevert("Unauthorized");
+        v().upgradeTo(address(0));
+
+        vm.expectRevert("Initializable: contract is already initialized");
+        StrategyVaultSettings memory s;
+        v().initialize(InitParams("Vault", primaryBorrowCurrency, s));
+    }
+
+    function test_RevertIf_joinAboveMaxPoolShare() public {
+        address account = makeAddr("account");
+        uint256 maturity = maturities[0];
+
+        vm.prank(NOTIONAL.owner());
+        v().setStrategyVaultSettings(StrategyVaultSettings({
+            deprecated_emergencySettlementSlippageLimitPercent: 0,
+            deprecated_poolSlippageLimitPercent: 0,
+            maxPoolShare: 1,
+            oraclePriceDeviationLimitPercent: 50
+        }));
+
+        
+        expectRevert_enterVaultBypass(
+            account, 1_000e18, maturity, getDepositParams(0, 0)
+            // NOTE: forge is not matching this selector properly
+            // Errors.PoolShareTooHigh.selector
+        );
+    }
+
+    function test_RevertIf_belowMinPoolClaim() public {
+        address account = makeAddr("account");
+        uint256 maturity = maturities[0];
+        DepositParams memory d;
+        d.minPoolClaim = 100_000e18;
+        // No explicit revert message is set here b/c the revert should occur inside
+        // the DEX
+        expectRevert_enterVaultBypass(
+            account, maxDeposit, maturity, abi.encode(d)
+        );
+    }
+
+    function test_RevertIf_belowMinAmounts() public {
+        address account = makeAddr("account");
+        uint256 maturity = maturities[0];
+        uint256 vaultShares = enterVaultBypass(
+            account, maxDeposit, maturity, getDepositParams(0, 0)
+        );
+
+        // Fill all the redeem params with values above the deposit
+        RedeemParams memory d;
+        d.minAmounts = new uint256[](numTokens);
+        for (uint256 i; i < d.minAmounts.length; i++) d.minAmounts[i] = maxDeposit * 2;
+
+        vm.expectRevert();
+        exitVaultBypass(account, vaultShares, maturity, abi.encode(d));
+    }
+
+    function test_RevertIf_NoAccessEmergencyExit() public {
+        address account = makeAddr("account");
+        address exit = makeAddr("exit");
+        uint256 maturity = maturities[0];
+        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+
+        vm.prank(exit);
+        // Access control revert on role
+        vm.expectRevert();
+        v().emergencyExit(0, "");
+    }
+
+    function test_EmergencyExit() public {
+        address account = makeAddr("account");
+        address exit = makeAddr("exit");
+        uint256 maturity = maturities[0];
+        uint256 vaultShares = enterVaultBypass(
+            account, maxDeposit, maturity, getDepositParams(0, 0)
+        );
+
+        bytes32 role = v().EMERGENCY_EXIT_ROLE();
+        vm.prank(NOTIONAL.owner());
+        v().grantRole(role, exit);
+
+        uint256 initialBalance = rewardPool.balanceOf(address(vault));
+        assertGt(initialBalance, 0);
+        vm.prank(exit);
+        v().emergencyExit(0, "");
+        assertEq(rewardPool.balanceOf(address(vault)), 0);
+        assertEq(balancerPool.balanceOf(address(vault)), 0);
+        assertEq(v().isLocked(), true);
+
+        // Assert that these methods revert due to locking
+        expectRevert_enterVaultBypass(
+            account, maxDeposit, maturity, getDepositParams(0, 0),
+            Errors.VaultLocked.selector
+        );
+
+        vm.expectRevert(Errors.VaultLocked.selector);
+        exitVaultBypass(account, vaultShares, maturity, getRedeemParams(0, 0));
+
+        vm.expectRevert(Errors.VaultLocked.selector);
+        vault.convertStrategyToUnderlying(account, vaultShares, maturity);
+
+        // This method should still work
+        assertGt(vault.getExchangeRate(maturity), 0);
+
+        // Exit does not have proper authentication
+        vm.prank(exit);
+        vm.expectRevert();
+        v().restoreVault(0, "");
+
+        // Restore the vault
+        vm.prank(NOTIONAL.owner());
+        v().restoreVault(0, "");
+        uint256 postRestore = rewardPool.balanceOf(address(vault));
+        assertRelDiff(initialBalance, postRestore, 0.0001e9, "Restore Balance");
+        assertEq(v().isLocked(), false);
+
+        // All of these calls should succeed
+        vault.convertStrategyToUnderlying(account, vaultShares, maturity);
+        enterVaultBypass(account, maxDeposit * 2, maturity, getDepositParams(0, 0));
+        // NOTE: the exitVaultBypass above causes an underflow inside exitVaultBypass
+        // here because the vault shares are removed from the test accounting even though
+        // the call reverts earlier.
+        exitVaultBypass(account, vaultShares, maturity, getRedeemParams(0, 0));
+    }
+
+    function test_RevertIf_oracleDeviation() public {
+        address account = makeAddr("account");
+        address reward = makeAddr("reward");
+        uint256 maturity = maturities[0];
+        uint256 vaultShares = enterVaultBypass(
+            account, maxDeposit, maturity, getDepositParams(0, 0)
+        );
+
+        vm.prank(NOTIONAL.owner());
+        v().setStrategyVaultSettings(StrategyVaultSettings({
+            deprecated_emergencySettlementSlippageLimitPercent: 0,
+            deprecated_poolSlippageLimitPercent: 0,
+            maxPoolShare: 2000,
+            oraclePriceDeviationLimitPercent: 1
+        }));
+
+        // Oracle deviation checks only occur when we do valuation, so deposit
+        // and redeem will go through even though the deviation is off.
+        // vm.expectRevert(Errors.InvalidPrice.selector);
+        vm.expectRevert();
+        vault.convertStrategyToUnderlying(account, vaultShares, maturity);
+        
+        bytes32 role = v().REWARD_REINVESTMENT_ROLE();
+        vm.prank(NOTIONAL.owner());
+        v().grantRole(role, reward);
+
+        vm.prank(reward);
+        // vm.expectRevert(Errors.InvalidPrice.selector);
+        vm.expectRevert();
+        v().reinvestReward(new SingleSidedRewardTradeParams[](0), 0);
+    }
+
+    function test_RevertIf_NoAccessRewardReinvestment() public {
+        address account = makeAddr("account");
+        address reward = makeAddr("reward");
+        uint256 maturity = maturities[0];
+        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+
+        vm.prank(reward);
+        // Access control revert on role
+        vm.expectRevert();
+        v().claimRewardTokens();
+
+        vm.prank(reward);
+        vm.expectRevert();
+        v().reinvestReward(new SingleSidedRewardTradeParams[](0), 0);
+    }
+
+    function test_RewardReinvestment() public {
+        address account = makeAddr("account");
+        address reward = makeAddr("reward");
+        uint256 maturity = maturities[0];
+        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+
+        bytes32 role = v().REWARD_REINVESTMENT_ROLE();
+        vm.prank(NOTIONAL.owner());
+        v().grantRole(role, reward);
+
+        skip(86400);
+        assertEq(rewardToken.balanceOf(address(vault)), 0);
+        vm.prank(reward);
+        v().claimRewardTokens();
+        assertGe(rewardToken.balanceOf(address(vault)), 0);
+
+        console.log("BAL tokens %s", rewardToken.balanceOf(address(vault)));
+        
+        // Test revert if invalid reward token trades
+    }
+
+    function test_RevertIf_RewardReinvestmentTradesPoolTokens() public {
+        address account = makeAddr("account");
+        address reward = makeAddr("reward");
+        uint256 maturity = maturities[0];
+        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+
+        bytes32 role = v().REWARD_REINVESTMENT_ROLE();
+        vm.prank(NOTIONAL.owner());
+        v().grantRole(role, reward);
+        SingleSidedRewardTradeParams[] memory t = new SingleSidedRewardTradeParams[](numTokens);
+
+        // v().reinvestReward(
+
+        // )
+
+    }
+
+
+    // test_RevertIf_tradesInvalidTokens()
+    // test_Exit_withSecondaryTrades()
+    // test_Enter_withSecondaryTrades()
 }

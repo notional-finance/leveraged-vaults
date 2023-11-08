@@ -83,7 +83,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// @notice Called during reward reinvestment to validate that the token being sold is not one
     /// of the tokens that is required for the vault to function properly (i.e. one of the pool tokens
     /// or any of the reward booster tokens).
-    function _validateRewardToken(address token) internal view virtual;
+    function _isInvalidRewardToken(address token) internal view virtual returns (bool);
 
     /// @notice Implementation specific wrapper for joining a pool with the given amounts. Will also
     /// stake on the relevant booster protocol.
@@ -139,10 +139,13 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function getExchangeRate(uint256 /* maturity */) external view override returns (int256) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         uint256 oneLPValueInPrimary = _checkPriceAndCalculateValue();
-        if (state.totalVaultSharesGlobal == 0) {
+        // If inside an emergency exit, just report the one LP value in primary since the total
+        // pool claim will be 0
+        if (state.totalVaultSharesGlobal == 0 || isLocked()) {
             return oneLPValueInPrimary.toInt();
         } else {
-            uint256 lpTokens = (uint256(Constants.INTERNAL_TOKEN_PRECISION) * state.totalPoolClaim) / state.totalVaultSharesGlobal;
+            uint256 lpTokens = (uint256(Constants.INTERNAL_TOKEN_PRECISION) * state.totalPoolClaim)
+                / state.totalVaultSharesGlobal;
             return (oneLPValueInPrimary * lpTokens / POOL_PRECISION()).toInt();
         }
     }
@@ -414,7 +417,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         // just validate here that the sellToken is a valid reward token (i.e. none of the tokens
         // used in the regular functioning of the vault).
         rewardToken = trades[0].sellToken;
-        _validateRewardToken(rewardToken);
+        if (_isInvalidRewardToken(rewardToken)) revert Errors.InvalidRewardToken(rewardToken);
         (IERC20[] memory tokens, /* */) = TOKENS();
         (amounts, amountSold) = StrategyUtils.executeRewardTrades(
             tokens, trades, rewardToken, address(POOL_TOKEN())

@@ -19,9 +19,9 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     using TokenUtils for IERC20;
     using TradeHandler for Trade;
 
-    bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
-    bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
-    bytes32 internal constant STATIC_SLIPPAGE_TRADING_ROLE = keccak256("STATIC_SLIPPAGE_TRADING_ROLE");
+    bytes32 public constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
+    bytes32 public constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
+    bytes32 public constant STATIC_SLIPPAGE_TRADING_ROLE = keccak256("STATIC_SLIPPAGE_TRADING_ROLE");
 
     /// @notice Hardcoded on the implementation contract during deployment
     NotionalProxy public immutable NOTIONAL;
@@ -226,14 +226,6 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         return NOTIONAL.deleverageAccount{value: msg.value}(
             account, vault, liquidator, currencyIndex, depositUnderlyingInternal
         );
-    }
-
-    function getRoles() external pure returns (StrategyVaultRoles memory) {
-        return StrategyVaultRoles({
-            emergencyExit: EMERGENCY_EXIT_ROLE,
-            rewardReinvestment: REWARD_REINVESTMENT_ROLE,
-            staticSlippageTrading: STATIC_SLIPPAGE_TRADING_ROLE
-        });
     }
 
     function _canUseStaticSlippage() internal view returns (bool) {
