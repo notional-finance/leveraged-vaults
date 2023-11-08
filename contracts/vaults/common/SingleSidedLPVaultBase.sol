@@ -36,7 +36,6 @@ import {ITradingModule, DexId} from "../../../interfaces/trading/ITradingModule.
 abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, ISingleSidedLPStrategyVault {
     using TypeConvert for uint256;
     using VaultStorage for StrategyVaultState;
-    using StrategyUtils for StrategyContext;
 
     uint256 internal constant MAX_TOKENS = 5;
     uint8 internal constant NOT_FOUND = type(uint8).max;
@@ -203,7 +202,13 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         amounts[PRIMARY_INDEX()] = deposit;
 
         if (params.depositTrades.length > 0) {
-            amounts = _executeDepositTrades(amounts, params.depositTrades);
+            (IERC20[] memory tokens, /* */) = TOKENS();
+            amounts = StrategyUtils.executeDepositTrades(
+                tokens,
+                amounts,
+                params.depositTrades,
+                PRIMARY_INDEX()
+            );
         }
 
         uint256 lpTokens = _joinPoolAndStake(amounts, params.minPoolClaim);
@@ -219,7 +224,13 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         bool isSingleSided = params.redemptionTrades.length == 0;
         uint256[] memory exitBalances = _unstakeAndExitPool(poolClaim, params.minAmounts, isSingleSided);
         if (!isSingleSided) {
-            return _executeRedemptionTrades(exitBalances, params.redemptionTrades);
+            (IERC20[] memory tokens, /* */) = TOKENS();
+            return StrategyUtils.executeRedemptionTrades(
+                tokens,
+                exitBalances,
+                params.redemptionTrades,
+                PRIMARY_INDEX()
+            );
         } else {
             return exitBalances[PRIMARY_INDEX()];
         }
@@ -270,75 +281,9 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         rewardToken = trades[0].sellToken;
         _validateRewardToken(rewardToken);
         (IERC20[] memory tokens, /* */) = TOKENS();
-        amounts = new uint256[](trades.length);
-
-        for (uint256 i; i < trades.length; i++) {
-            // All trades must sell the same token.
-            require(trades[i].sellToken == rewardToken);
-            // Bypass certain invalid trades
-            if (trades[i].amount == 0) continue;
-            if (trades[i].buyToken == address(POOL_TOKEN())) continue;
-
-            // The reward trade can only purchase tokens that go into the pool
-            require(trades[i].buyToken == address(tokens[i]));
-
-            (uint256 sold, uint256 bought) = StrategyUtils._executeTradeWithStaticSlippage(
-                TRADING_MODULE, trades[i].tradeParams, rewardToken, trades[i].buyToken, trades[i].amount
-            );
-            amounts[i] = bought;
-            amountSold += sold;
-        }
-    }
-
-    /// @notice Execute trades from a number of secondary tokens back to the
-    /// primary balance for exits.
-    function _executeDepositTrades(
-        uint256[] memory amounts,
-        DepositTradeParams[] memory depositTrades
-    ) internal returns (uint256[] memory) {
-        (IERC20[] memory tokens, /* */) = TOKENS();
-        address primaryToken = address(tokens[PRIMARY_INDEX()]);
-
-        for (uint256 i; i < amounts.length; i++) {
-            if (i == PRIMARY_INDEX()) continue;
-            DepositTradeParams memory t = depositTrades[i];
-            // Do not allow ZERO_EX trading in this method since we cannot validate
-            // the arbitrary exchange data.
-            if (DexId(t.tradeParams.dexId) == DexId.ZERO_EX) revert Errors.InvalidDexId(uint256(DexId.ZERO_EX));
-
-            (uint256 amountSold, uint256 amountBought) = StrategyUtils._executeDynamicSlippageTradeExactIn(
-                TRADING_MODULE, t.tradeParams, primaryToken, address(tokens[i]), t.tradeAmount
-            );
-
-            amounts[i] = amountBought;
-            amounts[PRIMARY_INDEX()] -= amountSold;
-        }
-
-        return amounts;
-    }
-
-    function _executeRedemptionTrades(
-        uint256[] memory exitBalances,
-        TradeParams[] memory redemptionTrades
-    ) internal returns (uint256 finalPrimaryBalance) {
-        (IERC20[] memory tokens, /* */) = TOKENS();
-        address primaryToken = address(tokens[PRIMARY_INDEX()]);
-
-        for (uint256 i; i < exitBalances.length; i++) {
-            if (i == PRIMARY_INDEX()) finalPrimaryBalance += exitBalances[i];
-            TradeParams memory t = redemptionTrades[i];
-            // Do not allow ZERO_EX trading in this method since we cannot validate
-            // the arbitrary exchange data.
-            if (DexId(t.dexId) == DexId.ZERO_EX) revert Errors.InvalidDexId(uint256(DexId.ZERO_EX));
-
-            if (exitBalances[i] > 0) {
-                (/* */, uint256 amountBought) = StrategyUtils._executeDynamicSlippageTradeExactIn(
-                    TRADING_MODULE, t, address(tokens[i]), primaryToken, exitBalances[i]
-                );
-
-                finalPrimaryBalance += amountBought;
-            }
-        }
+        (amounts, amountSold) = StrategyUtils.executeRewardTrades(
+            tokens, trades, rewardToken, address(POOL_TOKEN())
+        );
     }
 
     function _mintVaultShares(uint256 lpTokens) internal returns (uint256 vaultShares) {

@@ -111,14 +111,14 @@ contract BalancerComposableAuraVault is AuraStakingMixin {
             PRIMARY_INDEX()
         );
 
-        // // Spot prices are returned in native decimals, convert them all to POOL_PRECISION
-        // // as required in the _calculateLPTokenValue method.
-        // (/* */, uint8[] memory decimals) = TOKENS();
-        // for (uint256 i; i < spotPrices.length; i++) {
-        //     spotPrices[i] = spotPrices[i] * POOL_PRECISION() / 10 ** decimals[i];
-        // }
+        // Spot prices are returned in native decimals, convert them all to POOL_PRECISION
+        // as required in the _calculateLPTokenValue method.
+        (/* */, uint8[] memory decimals) = TOKENS();
+        for (uint256 i; i < spotPrices.length; i++) {
+            spotPrices[i] = spotPrices[i] * POOL_PRECISION() / 10 ** decimals[i];
+        }
 
-        // return _calculateLPTokenValue(balances, spotPrices);
+        return _calculateLPTokenValue(balances, spotPrices);
     }
 
     function _totalPoolSupply() internal view override returns (uint256) {
