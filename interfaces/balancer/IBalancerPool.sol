@@ -9,6 +9,10 @@ interface IBalancerPool is IERC20 {
     function getSwapFeePercentage() external view returns (uint256);
 }
 
+interface IWeightedPool is IBalancerPool {
+    function getNormalizedWeights() external view returns (uint256[] memory);
+}
+
 interface IComposablePool is IBalancerPool {
     function getAmplificationParameter() external view returns (
         uint256 value,

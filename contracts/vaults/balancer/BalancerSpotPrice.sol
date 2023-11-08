@@ -3,13 +3,35 @@ pragma solidity 0.8.17;
 
 import {Deployments} from "../../global/Deployments.sol";
 import {StableMath} from "./math/StableMath.sol";
-import {IComposablePool} from "../../../interfaces/balancer/IBalancerPool.sol";
+import {IComposablePool, IWeightedPool} from "../../../interfaces/balancer/IBalancerPool.sol";
 import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
 
-contract ComposablePoolSpotPrice {
+contract BalancerSpotPrice {
     uint256 internal constant BALANCER_PRECISION = 1e18;
 
-    function getSpotPrices(
+    function getWeightedSpotPrices(
+        bytes32 poolId,
+        address poolAddress,
+        uint256 primaryIndex,
+        uint8 secondaryDecimals
+    ) external view returns (uint256[] memory balances, uint256[] memory spotPrices) {
+        address[] memory tokens;
+        (tokens, balances, /* */) = Deployments.BALANCER_VAULT.getPoolTokens(poolId);
+        require(tokens.length == 2);
+
+        uint256[] memory weights = IWeightedPool(poolAddress).getNormalizedWeights();
+        uint256 swapFee = IWeightedPool(poolAddress).getSwapFeePercentage();
+        // https://docs.balancer.fi/reference/math/weighted-math.html#typescript
+        // primaryBalance * secondaryWeight * secondaryDecimals * BALANCER_PRECISION
+        // --------------------------------------------------- 
+        //   secondaryBalance * primaryWeight * (1 - swapFee)
+        uint256 secondaryIndex = 1 - primaryIndex;
+        uint256 numerator = balances[primaryIndex] * weights[secondaryIndex] * (10 ** secondaryDecimals);
+        uint256 denominator = balances[secondaryIndex] * weights[primaryIndex] * (BALANCER_PRECISION - swapFee);
+        spotPrices[1 - primaryIndex] = numerator * BALANCER_PRECISION / denominator;
+    }
+
+    function getComposableSpotPrices(
         bytes32 poolId,
         address poolAddress,
         uint256 primaryIndex

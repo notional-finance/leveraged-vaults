@@ -69,7 +69,14 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     }
 
     function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
-        return _checkPriceAndCalculateValue().toInt();
+        StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        uint256 oneLPValueInPrimary = _checkPriceAndCalculateValue();
+        if (state.totalVaultSharesGlobal == 0) {
+            return oneLPValueInPrimary.toInt();
+        } else {
+            uint256 lpTokens = (uint256(Constants.INTERNAL_TOKEN_PRECISION) * state.totalPoolClaim) / state.totalVaultSharesGlobal;
+            return (oneLPValueInPrimary * lpTokens / POOL_PRECISION()).toInt();
+        }
     }
 
     /// @notice Allows the function to execute only when the vault is not locked

@@ -28,6 +28,13 @@ interface IBalancerVault {
         BPT_IN_FOR_EXACT_TOKENS_OUT,
         EXACT_BPT_IN_FOR_ALL_TOKENS_OUT
     }
+    enum WeightedPoolExitKind {
+        EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+        EXACT_BPT_IN_FOR_TOKENS_OUT,
+        BPT_IN_FOR_EXACT_TOKENS_OUT,
+        MANAGEMENT_FEE_TOKENS_OUT // for InvestmentPool
+    }
+
 
     enum UserBalanceOpKind { DEPOSIT_INTERNAL, WITHDRAW_INTERNAL, TRANSFER_INTERNAL, TRANSFER_EXTERNAL }
 

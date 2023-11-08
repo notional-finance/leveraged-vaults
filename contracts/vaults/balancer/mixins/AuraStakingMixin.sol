@@ -38,6 +38,19 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
         AURA_POOL_ID = AURA_REWARD_POOL.pid();
     }
 
+    function _validateRewardToken(address token) internal override view {
+        if (
+            token == TOKEN_1 ||
+            token == TOKEN_2 ||
+            token == TOKEN_3 ||
+            token == TOKEN_4 ||
+            token == TOKEN_5 ||
+            token == address(AURA_BOOSTER) ||
+            token == address(AURA_REWARD_POOL) ||
+            token == address(Deployments.WETH)
+        ) { revert(); }
+    }
+
     function _initialApproveTokens() internal override {
         (IERC20[] memory tokens, /* */) = TOKENS();
         for (uint256 i; i < tokens.length; i++) {
