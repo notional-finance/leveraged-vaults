@@ -89,6 +89,7 @@ library StrategyUtils {
         address rewardToken,
         address poolToken
     ) external returns(uint256[] memory amounts, uint256 amountSold) {
+        amounts = new uint256[](trades.length);
         for (uint256 i; i < trades.length; i++) {
             // All trades must sell the same token.
             require(trades[i].sellToken == rewardToken);

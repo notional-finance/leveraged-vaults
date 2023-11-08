@@ -8,6 +8,8 @@ import "../contracts/vaults/common/SingleSidedLPVaultBase.sol";
 import "../contracts/proxy/nProxy.sol";
 import "../interfaces/balancer/IBalancerPool.sol";
 import "../interfaces/notional/ISingleSidedLPStrategyVault.sol";
+import "../contracts/trading/adapters/BalancerV2Adapter.sol";
+import "../interfaces/trading/ITradingModule.sol";
 
 abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
     uint16 primaryBorrowCurrency;
@@ -216,6 +218,9 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
         vm.expectRevert(Errors.VaultLocked.selector);
         vault.convertStrategyToUnderlying(account, vaultShares, maturity);
 
+        vm.expectRevert(Errors.VaultLocked.selector);
+        v().reinvestReward(new SingleSidedRewardTradeParams[](0), 0);
+
         // This method should still work
         assertGt(vault.getExchangeRate(maturity), 0);
 
@@ -288,7 +293,7 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
         v().reinvestReward(new SingleSidedRewardTradeParams[](0), 0);
     }
 
-    function test_RewardReinvestment() public {
+    function test_RewardReinvestmentClaimTokens() public {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
@@ -298,15 +303,12 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
         vm.prank(NOTIONAL.owner());
         v().grantRole(role, reward);
 
-        skip(86400);
+        skip(3600);
         assertEq(rewardToken.balanceOf(address(vault)), 0);
         vm.prank(reward);
         v().claimRewardTokens();
-        assertGe(rewardToken.balanceOf(address(vault)), 0);
-
-        console.log("BAL tokens %s", rewardToken.balanceOf(address(vault)));
-        
-        // Test revert if invalid reward token trades
+        uint256 rewardBalance = rewardToken.balanceOf(address(vault));
+        assertGe(rewardBalance, 0);
     }
 
     function test_RevertIf_RewardReinvestmentTradesPoolTokens() public {
@@ -319,15 +321,14 @@ abstract contract BaseComposablePoolVault is BaseAcceptanceTest {
         vm.prank(NOTIONAL.owner());
         v().grantRole(role, reward);
         SingleSidedRewardTradeParams[] memory t = new SingleSidedRewardTradeParams[](numTokens);
+        t[0].sellToken = address(rewardPool);
 
-        // v().reinvestReward(
-
-        // )
-
+        vm.prank(reward);
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.InvalidRewardToken.selector, address(rewardPool))
+        );
+        v().reinvestReward(t, 0);
     }
 
-
-    // test_RevertIf_tradesInvalidTokens()
-    // test_Exit_withSecondaryTrades()
-    // test_Enter_withSecondaryTrades()
+    // todo: re-entrancy detection
 }

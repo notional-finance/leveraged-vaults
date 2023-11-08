@@ -205,8 +205,12 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         // If depositTrades are specified, then parts of the initial deposit are traded
         // for corresponding amounts of the other pool tokens via external exchanges. If
         // these amounts are not specified then the pool will just be joined single sided.
+        // Deposit trades are not automatically enabled on vaults since the trading module
+        // requires explicit permission for every token that can be sold by an address.
         if (params.depositTrades.length > 0) {
             (IERC20[] memory tokens, /* */) = TOKENS();
+            // This is an external library call so the memory location of amounts is
+            // different before and after the call.
             amounts = StrategyUtils.executeDepositTrades(
                 tokens,
                 amounts,
@@ -269,6 +273,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             // external exchanges. This method will execute EXACT_IN trades to ensure that
             // all of the balance in the other tokens is sold for primary.
             (IERC20[] memory tokens, /* */) = TOKENS();
+            // Redemption trades are not automatically enabled on vaults since the trading module
+            // requires explicit permission for every token that can be sold by an address.
             return StrategyUtils.executeRedemptionTrades(
                 tokens,
                 exitBalances,
@@ -409,10 +415,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         uint256 amountSold,
         uint256[] memory amounts
     ) {
-        // Ensure that we have sufficient permissions to execute reward trades. This should always
-        // be true due to the `onlyRole` modifier on `reinvestRewards`.
-        require(_canUseStaticSlippage());
-
         // The sell token on all trades must be the same (checked inside executeRewardTrades) so
         // just validate here that the sellToken is a valid reward token (i.e. none of the tokens
         // used in the regular functioning of the vault).
