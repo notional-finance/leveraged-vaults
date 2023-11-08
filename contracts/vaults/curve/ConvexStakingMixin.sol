@@ -51,13 +51,9 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
     }
 
     function _initialApproveTokens() internal override {
-        if (TOKEN_1 != Deployments.ALT_ETH_ADDRESS) {
-            IERC20(TOKEN_1).checkApprove(address(CURVE_POOL), type(uint256).max);
-        }
-        if (TOKEN_2 != Deployments.ALT_ETH_ADDRESS) {
-            IERC20(TOKEN_2).checkApprove(address(CURVE_POOL), type(uint256).max);
-        }
-
+        // If either token is Deployments.ETH_ADDRESS the check approve will short circuit
+        IERC20(TOKEN_1).checkApprove(address(CURVE_POOL), type(uint256).max);
+        IERC20(TOKEN_2).checkApprove(address(CURVE_POOL), type(uint256).max);
         CURVE_POOL_TOKEN.checkApprove(address(CONVEX_BOOSTER), type(uint256).max);
     }
 

@@ -26,11 +26,15 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
     function _joinPoolAndStake(
         uint256[] memory _amounts, uint256 minPoolClaim
     ) internal override returns (uint256 lpTokens) {
+        // Only two tokens are ever allowed in this strategy, remaps the array
+        // into a fixed length array here.
         uint256[2] memory amounts;
         amounts[0] = _amounts[0];
         amounts[1] = _amounts[1];
-        (IERC20[] memory tokens, /* */) = TOKENS();
 
+        // Although Curve uses ALT_ETH to represent native ETH, it is rewritten in the Curve2TokenPoolMixin
+        // to the Deployments.ETH_ADDRESS which we use internally.
+        (IERC20[] memory tokens, /* */) = TOKENS();
         uint256 msgValue;
         if (address(tokens[0]) == Deployments.ETH_ADDRESS) {
             msgValue = amounts[0];
@@ -79,12 +83,12 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
                 poolClaim, int8(_PRIMARY_INDEX), _minAmounts[_PRIMARY_INDEX]
             );
         } else {
-            // Redeem proportionally
+            // Redeem proportionally, min amounts are rewritten to a fixed length array
             uint256[2] memory minAmounts;
-            minAmounts[_PRIMARY_INDEX] = _minAmounts[_PRIMARY_INDEX];
-            minAmounts[SECONDARY_INDEX] = _minAmounts[SECONDARY_INDEX];
-            uint256[2] memory _exitBalances = pool.remove_liquidity(poolClaim, minAmounts);
+            minAmounts[0] = _minAmounts[0];
+            minAmounts[1] = _minAmounts[1];
 
+            uint256[2] memory _exitBalances = pool.remove_liquidity(poolClaim, minAmounts);
             exitBalances[0] = _exitBalances[0];
             exitBalances[1] = _exitBalances[1];
         }

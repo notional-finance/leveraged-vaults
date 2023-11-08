@@ -7,7 +7,7 @@ import {IWrappedfCashComplete as IWrappedfCash} from "../../interfaces/notional/
 import {WETH9} from "../../interfaces/WETH9.sol";
 
 import {BaseStrategyVault} from "./common/BaseStrategyVault.sol";
-import {IERC20} from "../utils/TokenUtils.sol";
+import {IERC20, TokenUtils} from "../utils/TokenUtils.sol";
 import {TypeConvert} from "../global/TypeConvert.sol";
 import {Token, TokenType} from "../global/Types.sol";
 import {Constants} from "../global/Constants.sol";
@@ -15,8 +15,7 @@ import {ITradingModule, DexId, TradeType, Trade} from "../../interfaces/trading/
 
 /**
  * @notice This vault borrows in one currency, trades it to a different currency
- * and lends on Notional in that currency. It will be paired with another vault
- * that lends and borrows in the opposite direction.
+ * and lends on Notional in that currency.
  */
 contract CrossCurrencyVault is BaseStrategyVault {
     using TypeConvert for uint256;
@@ -79,18 +78,20 @@ contract CrossCurrencyVault is BaseStrategyVault {
         __INIT_VAULT(name_, borrowCurrencyId_);
 
         LEND_CURRENCY_ID = lendCurrencyId_;
-        (
-            /* Token memory assetToken */,
-            Token memory underlyingToken
-        ) = NOTIONAL.getCurrency(lendCurrencyId_);
+        (/* */, Token memory underlyingToken) = NOTIONAL.getCurrency(lendCurrencyId_);
 
         LEND_ETH = underlyingToken.tokenType == TokenType.Ether;
         IERC20 tokenAddress = IERC20(underlyingToken.tokenAddress);
         LEND_UNDERLYING_TOKEN = tokenAddress;
-        LEND_DECIMALS = LEND_ETH ? 18 : tokenAddress.decimals();
-        BORROW_DECIMALS = _isUnderlyingETH() ? 18 : _underlyingToken().decimals();
+        LEND_DECIMALS = TokenUtils.getDecimals(address(tokenAddress));
+        BORROW_DECIMALS = TokenUtils.getDecimals(address(_underlyingToken()));
     }
 
+    /// @notice Returns the wrapped fCash address which is created using CREATE2. It may be the case that
+    /// the wrapped fCash contract for a given maturity has not yet been deployed which would cause the
+    /// initial deposit for a maturity to revert in this contract. However, deployment of wrapped fCash
+    /// contracts is permissionless so likely some bot will be used to ensure the wrappers are deployed
+    /// before they are used.
     function getWrappedFCashAddress(uint256 maturity) public view returns (IWrappedfCash) {
         require(maturity < Constants.PRIME_CASH_VAULT_MATURITY);
         return IWrappedfCash(WRAPPED_FCASH_FACTORY.computeAddress(LEND_CURRENCY_ID, uint40(maturity)));
@@ -110,15 +111,22 @@ contract CrossCurrencyVault is BaseStrategyVault {
     ) public override view returns (int256 underlyingValue) {
         int256 pvExternalUnderlying;
         if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {
+            // For Prime Cash the vaultShares will represent a pCash balance and we convert that
+            // to underlying value via Notional.
             pvExternalUnderlying = NOTIONAL.convertCashBalanceToExternal(
                 LEND_CURRENCY_ID,
                 vaultShares.toInt(),
                 true
             );
         } else {
+            // For fCash we use the fCash wrapper to convert the fCash balance to PV. The fCash
+            // wrapper uses an internal Notional TWAP oracle to get the present value, this is
+            // the same TWAP oracle that is used in Notional to calculate regular portfolio
+            // collateralization.
             pvExternalUnderlying = getWrappedFCashAddress(maturity).convertToAssets(vaultShares).toInt();
         }
 
+        // Returns the oracle price between the lend and borrow tokens.
         IERC20 underlyingToken = _underlyingToken();
         (int256 rate, int256 rateDecimals) = TRADING_MODULE.getOraclePrice(
             address(LEND_UNDERLYING_TOKEN), address(underlyingToken)
@@ -132,6 +140,8 @@ contract CrossCurrencyVault is BaseStrategyVault {
             (rateDecimals * lendPrecision);
     }
 
+    /// @notice Returns the current value of 1 vault share at the given maturity, used for the
+    /// user interface to collect historical values.
     function getExchangeRate(uint256 maturity) public view override returns (int256) {
         return convertStrategyToUnderlying(address(0), uint256(Constants.INTERNAL_TOKEN_PRECISION), maturity);
     }
@@ -153,31 +163,35 @@ contract CrossCurrencyVault is BaseStrategyVault {
     ) internal override returns (uint256 vaultShares) {
         if (depositUnderlyingExternal == 0) return 0;
 
+        IERC20 lendToken = LEND_UNDERLYING_TOKEN;
         DepositParams memory params = abi.decode(data, (DepositParams));
         Trade memory trade = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
             sellToken: address(_underlyingToken()),
-            buyToken: address(LEND_UNDERLYING_TOKEN),
+            buyToken: address(lendToken),
             amount: depositUnderlyingExternal,
             limit: params.minPurchaseAmount,
             deadline: block.timestamp,
             exchangeData: params.exchangeData
         });
 
+        // Executes a trade on the given Dex, the vault must have permissions set for
+        // each dex and token it wants to sell. Each vault will only have permissions to
+        // buy and sell the lend and borrow underlying tokens via specific dexes.
         (/* */, uint256 lendUnderlyingTokens) = _executeTrade(params.dexId, trade);
         bool isETH = LEND_ETH;
-        
+
         if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {
             // Lend variable
             vaultShares = _depositToPrimeCash(isETH, lendUnderlyingTokens);
         } else {
-            // Lending fixed
+            // Lending fixed, the fCash wrapper uses WETH instead of ETH.
             IWrappedfCash wfCash = getWrappedFCashAddress(maturity);
             if (isETH) {
                 WETH.deposit{value: lendUnderlyingTokens}();
                 IERC20(address(WETH)).approve(address(wfCash), lendUnderlyingTokens);
             } else {
-                LEND_UNDERLYING_TOKEN.approve(address(wfCash), lendUnderlyingTokens);
+                lendToken.approve(address(wfCash), lendUnderlyingTokens);
             }
             vaultShares = wfCash.deposit(lendUnderlyingTokens, address(this));
         }
@@ -203,27 +217,30 @@ contract CrossCurrencyVault is BaseStrategyVault {
         if (vaultShares == 0) return 0;
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
+        address lendToken = address(LEND_UNDERLYING_TOKEN);
         bool isETH = LEND_ETH;
-        uint256 balanceBefore = _lendUnderlyingBalance(isETH);
 
+        uint256 balanceBefore = TokenUtils.tokenBalance(lendToken);
         if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {
             // It should never be possible that this contract has a negative cash balance
             require(vaultShares <= type(uint88).max);
 
-            // Withdraws vault shares to underlying
+            // Withdraws vault shares to underlying, will revert if the vault shares is
+            // greater than the 
             NOTIONAL.withdraw(LEND_CURRENCY_ID, uint88(vaultShares), true);
         } else {
             _redeemfCash(isETH, maturity, vaultShares);
         }
-
-        uint256 balanceAfter = _lendUnderlyingBalance(isETH);
+        uint256 balanceAfter = TokenUtils.tokenBalance(lendToken);
         
         // Trade back to borrow currency for repayment
         Trade memory trade = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
-            sellToken: address(LEND_UNDERLYING_TOKEN),
+            sellToken: lendToken,
             buyToken: address(_underlyingToken()),
             amount: balanceAfter - balanceBefore,
+            // minPurchaseAmount sets a slippage limit on both the fCash and the trade
+            // from the lend currency back to the borrowed currency.
             limit: params.minPurchaseAmount,
             deadline: block.timestamp,
             exchangeData: params.exchangeData
@@ -232,22 +249,29 @@ contract CrossCurrencyVault is BaseStrategyVault {
         (/* */, borrowedCurrencyAmount) = _executeTrade(params.dexId, trade);
     }
 
+    /// @notice Called by Notional during settlement for an account. The account will withdraw settled fCash
+    /// to underlying from the fCash wrapper and deposit back into Notional as Prime Cash. Vault shares in
+    /// the prime cash maturity are 1-1 with prime cash units.
+    /// @notice vaultShares the amount of fCash vault shares the account holds at maturity
+    /// @notice maturity the fCash maturity that is being settled
+    /// @return primeVaultShares the amount of prime cash deposited for this account
     function _convertVaultSharesToPrimeMaturity(
         address /* account */,
         uint256 vaultShares,
         uint256 maturity
     ) internal override returns (uint256 primeVaultShares) { 
         bool isETH = LEND_ETH;
-        uint256 balanceBefore = _lendUnderlyingBalance(isETH);
+        address lendToken = address(LEND_UNDERLYING_TOKEN);
+
+        uint256 balanceBefore = TokenUtils.tokenBalance(lendToken);
         _redeemfCash(isETH, maturity, vaultShares);
-        uint256 balanceAfter = _lendUnderlyingBalance(isETH);
+        uint256 balanceAfter = TokenUtils.tokenBalance(lendToken);
+
         primeVaultShares = _depositToPrimeCash(isETH, balanceAfter - balanceBefore);
     }
 
-    function _lendUnderlyingBalance(bool isETH) private view returns (uint256) {
-        return isETH ? address(this).balance : LEND_UNDERLYING_TOKEN.balanceOf(address(this));
-    }
-
+    /// @notice Redeems fCash from the wrapper. If it is prior to maturity, the wrapper will sell the fCash
+    /// on Notional. Post maturity, the fCash wrapper will return the matured balance.
     function _redeemfCash(bool isETH, uint256 maturity, uint256 vaultShares) private {
         IWrappedfCash wfCash = getWrappedFCashAddress(maturity);
         uint256 assets = wfCash.redeem(vaultShares, address(this), address(this));
@@ -255,6 +279,7 @@ contract CrossCurrencyVault is BaseStrategyVault {
         if (isETH) WETH.withdraw(assets);
     }
 
+    /// @notice Deposits some balance of tokens onto Notional to be lent as prime cash.
     function _depositToPrimeCash(bool isETH, uint256 lendUnderlyingTokens) private returns (uint256) {
         // Lending variable
         if (!isETH) LEND_UNDERLYING_TOKEN.approve(address(NOTIONAL), lendUnderlyingTokens);
@@ -265,5 +290,9 @@ contract CrossCurrencyVault is BaseStrategyVault {
         );
     }
 
+    /// @notice No read only re-entrancy is possible for liquidations in Notional. This is because it only
+    /// uses .transfer() so there is no loss of control during ETH transfers. Also, the TWAP oracle used to
+    /// value fCash does not change within a single block. Prime Cash values also cannot be manipulated via
+    /// donation because Notional maintains its own internal accounting of the balance for each token.
     function _checkReentrancyContext() internal override {}
 }
