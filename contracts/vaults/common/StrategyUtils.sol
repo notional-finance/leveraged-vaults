@@ -9,16 +9,21 @@ import {
     SingleSidedRewardTradeParams
 } from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {TradeHandler} from "../../trading/TradeHandler.sol";
+import {Deployments} from "../../global/Deployments.sol";
 import {Constants} from "../../global/Constants.sol";
 import {Errors} from "../../global/Errors.sol";
 import {ITradingModule, Trade, TradeType, DexId} from "../../../interfaces/trading/ITradingModule.sol";
 
+/**
+ * @notice External library deployed for the purposes of handling SingleSidedLP trades. All
+ * the methods in this library are called inside a `delegateCall` context which ensures that
+ * the library has access to the calling vault's token balances
+ */
 library StrategyUtils {
     using TradeHandler for Trade;
-    ITradingModule internal constant TRADING_MODULE = ITradingModule(address(0));
 
-    /// @notice Execute trades from a number of secondary tokens back to the
-    /// primary balance for exits.
+    /// @notice Trades the amount of primary token into other secondary tokens prior
+    /// to entering a pool.
     function executeDepositTrades(
         IERC20[] memory tokens,
         uint256[] memory amounts,
@@ -34,17 +39,23 @@ library StrategyUtils {
             // the arbitrary exchange data.
             if (DexId(t.tradeParams.dexId) == DexId.ZERO_EX) revert Errors.InvalidDexId(uint256(DexId.ZERO_EX));
 
-            (uint256 amountSold, uint256 amountBought) = _executeDynamicSlippageTradeExactIn(
-                TRADING_MODULE, t.tradeParams, primaryToken, address(tokens[i]), t.tradeAmount
-            );
+            if (t.tradeAmount > 0) {
+                // Always selling the primaryToken and buying the secondary token.
+                (uint256 amountSold, uint256 amountBought) = _executeDynamicSlippageTradeExactIn(
+                    Deployments.TRADING_MODULE, t.tradeParams, primaryToken, address(tokens[i]), t.tradeAmount
+                );
 
-            amounts[i] = amountBought;
-            amounts[primaryIndex] -= amountSold;
+                amounts[i] = amountBought;
+                // Will revert on underflow if over-selling the primary borrowed
+                amounts[primaryIndex] -= amountSold;
+            }
         }
 
         return amounts;
     }
 
+    /// @notice Trades the amount of secondary tokens into the primary token after
+    /// exiting a pool.
     function executeRedemptionTrades(
         IERC20[] memory tokens,
         uint256[] memory exitBalances,
@@ -60,9 +71,10 @@ library StrategyUtils {
             // the arbitrary exchange data.
             if (DexId(t.dexId) == DexId.ZERO_EX) revert Errors.InvalidDexId(uint256(DexId.ZERO_EX));
 
+            // Always sell the entire exit balance to the primary token
             if (exitBalances[i] > 0) {
                 (/* */, uint256 amountBought) = _executeDynamicSlippageTradeExactIn(
-                    TRADING_MODULE, t, address(tokens[i]), primaryToken, exitBalances[i]
+                    Deployments.TRADING_MODULE, t, address(tokens[i]), primaryToken, exitBalances[i]
                 );
 
                 finalPrimaryBalance += amountBought;
@@ -70,6 +82,7 @@ library StrategyUtils {
         }
     }
 
+    /// @notice Executes a set of trades to sell the reward token for constituent pool tokens.
     function executeRewardTrades(
         IERC20[] memory tokens,
         SingleSidedRewardTradeParams[] calldata trades,
@@ -86,14 +99,18 @@ library StrategyUtils {
             // The reward trade can only purchase tokens that go into the pool
             require(trades[i].buyToken == address(tokens[i]));
 
+            // It may be possible that the entire balance of reward tokens is not sold by the vault,
+            // but that is ok.
             (uint256 sold, uint256 bought) = _executeTradeWithStaticSlippage(
-                TRADING_MODULE, trades[i].tradeParams, rewardToken, trades[i].buyToken, trades[i].amount
+                Deployments.TRADING_MODULE, trades[i].tradeParams, rewardToken, trades[i].buyToken, trades[i].amount
             );
             amounts[i] = bought;
             amountSold += sold;
         }
     }
 
+    /// @notice Executes a trade that uses a dynamic slippage amount relative to the current
+    /// oracle price.
     function _executeDynamicSlippageTradeExactIn(
         ITradingModule tradingModule,
         TradeParams memory params,
@@ -114,7 +131,7 @@ library StrategyUtils {
             sellToken,
             buyToken,
             amount,
-            0,
+            0, // No absolute slippage limit is set here
             block.timestamp, // deadline
             params.exchangeData
         );
@@ -134,13 +151,11 @@ library StrategyUtils {
         address buyToken,
         uint256 amount
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-        /// @dev this function can only handle exact in trades
         require(
             params.tradeType == TradeType.EXACT_IN_SINGLE ||
             params.tradeType == TradeType.EXACT_IN_BATCH
         );
 
-        // Sell residual secondary balance
         Trade memory trade = Trade(
             params.tradeType,
             sellToken,
@@ -151,7 +166,7 @@ library StrategyUtils {
             params.exchangeData
         );
 
-        // Execute trade using static slippage
+        // Execute trade using the absolute slippage limit set by `oracleSlippagePercentOrLimit`
         (amountSold, amountBought) = trade._executeTrade(params.dexId, tradingModule);
     }
 }

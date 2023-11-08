@@ -12,6 +12,7 @@ import {ICurveRouter} from "../../interfaces/curve/ICurveRouter.sol";
 import {ICurveRegistry} from "../../interfaces/curve/ICurveRegistry.sol";
 import {ICurveMetaRegistry} from "../../interfaces/curve/ICurveMetaRegistry.sol";
 import {ICurveRouterV2} from "../../interfaces/curve/ICurveRouterV2.sol";
+import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 
 /// @title Hardcoded Deployment Addresses for Arbitrum
 library Deployments {
@@ -35,6 +36,7 @@ library Deployments {
     ICurveMetaRegistry public constant CURVE_META_REGISTRY = ICurveMetaRegistry(address(0));
     address internal constant CURVE_V1_HANDLER = address(0);
     address internal constant CURVE_V2_HANDLER = address(0);
+    ITradingModule internal constant TRADING_MODULE = ITradingModule(0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8);
 }
 
 /// @title Hardcoded Deployment Addresses for Mainnet
