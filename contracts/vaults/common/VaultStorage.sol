@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {StrategyVaultSettings, StrategyVaultState} from "./VaultTypes.sol";
-import {VaultEvents} from "./VaultEvents.sol";
-import {VaultConstants} from "./VaultConstants.sol";
+import {StrategyVaultSettings, StrategyVaultState} from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
+import {Constants} from "../../global/Constants.sol";
 
 /** 
  * Common vault storage slots
  */
 library VaultStorage {
+    /// @notice Emitted when vault settings are updated
+    event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
+
     /// @notice Storage slot for vault settings
     uint256 private constant STRATEGY_VAULT_SETTINGS_SLOT = 1000001;
     /// @notice Storage slot for vault state
@@ -38,14 +40,14 @@ library VaultStorage {
     /// @param settings vault settings
     function setStrategyVaultSettings(StrategyVaultSettings memory settings) internal {
         // Check limits
-        require(settings.maxPoolShare <= VaultConstants.VAULT_PERCENT_BASIS);
-        require(settings.oraclePriceDeviationLimitPercent <= VaultConstants.VAULT_PERCENT_BASIS);
+        require(settings.maxPoolShare <= Constants.VAULT_PERCENT_BASIS);
+        require(settings.oraclePriceDeviationLimitPercent <= Constants.VAULT_PERCENT_BASIS);
 
         mapping(uint256 => StrategyVaultSettings) storage store = _settings();
         // Hardcode to the zero slot
         store[0] = settings;
 
-        emit VaultEvents.StrategyVaultSettingsUpdated(settings);
+        emit StrategyVaultSettingsUpdated(settings);
     }
 
     /// @notice returns the strategy vault state

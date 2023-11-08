@@ -7,25 +7,21 @@ import {BaseStrategyVault} from "../BaseStrategyVault.sol";
 import {Errors} from "../../global/Errors.sol";
 import {Constants} from "../../global/Constants.sol";
 import {TypeConvert} from "../../global/TypeConvert.sol";
-import {VaultEvents} from "./VaultEvents.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
+import {StrategyUtils} from "./StrategyUtils.sol";
+import {VaultStorage} from "./VaultStorage.sol";
+
+import {IERC20} from "../../../interfaces/IERC20.sol";
 import {
+    ISingleSidedLPStrategyVault,
+    StrategyVaultSettings,
+    InitParams,
     StrategyVaultState,
     SingleSidedRewardTradeParams,
     DepositParams,
     DepositTradeParams,
     RedeemParams,
     TradeParams
-} from "./VaultTypes.sol";
-import {StrategyUtils} from "./StrategyUtils.sol";
-import {VaultStorage} from "./VaultStorage.sol";
-import {VaultConstants} from "./VaultConstants.sol";
-
-import {IERC20} from "../../../interfaces/IERC20.sol";
-import {
-    ISingleSidedLPStrategyVault,
-    StrategyVaultSettings,
-    InitParams
 } from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, DexId} from "../../../interfaces/trading/ITradingModule.sol";
@@ -39,6 +35,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
     uint256 internal constant MAX_TOKENS = 5;
     uint8 internal constant NOT_FOUND = type(uint8).max;
+    /// @notice Bit mask for the 'LOCKED" flag big
+    uint32 internal constant FLAG_LOCKED = 1 << 0;
 
     /**
      * These constants are intended to be immutables set by the parent constructor,
@@ -65,7 +63,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
     function isLocked() public view returns (bool) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
-        return _hasFlag(state.flags, VaultConstants.FLAG_LOCKED);
+        return _hasFlag(state.flags, FLAG_LOCKED);
     }
 
     function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
@@ -103,18 +101,18 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function _lockVault() internal {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         // Set locked flag
-        state.flags = state.flags | VaultConstants.FLAG_LOCKED;
+        state.flags = state.flags | FLAG_LOCKED;
         VaultStorage.setStrategyVaultState(state);
-        emit VaultEvents.VaultLocked();
+        emit VaultLocked();
     }
 
     /// @notice Unlocks the vault
     function _unlockVault() internal {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         // Remove locked flag
-        state.flags = state.flags & ~VaultConstants.FLAG_LOCKED;
+        state.flags = state.flags & ~FLAG_LOCKED;
         VaultStorage.setStrategyVaultState(state);
-        emit VaultEvents.VaultUnlocked();
+        emit VaultUnlocked();
     }
 
     /// @notice Allow Notional owner to upgrade the contract
@@ -160,7 +158,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         state.totalPoolClaim = state.totalPoolClaim - claimToExit;
         state.setStrategyVaultState();
 
-        emit VaultEvents.EmergencyExit(claimToExit);
+        emit EmergencyExit(claimToExit);
         _lockVault();
     }
 
@@ -274,7 +272,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         state.totalPoolClaim += poolClaimAmount;
         state.setStrategyVaultState();
 
-        emit VaultEvents.RewardReinvested(rewardToken, amountSold, poolClaimAmount);
+        emit RewardReinvested(rewardToken, amountSold, poolClaimAmount);
     }
 
     function _executeRewardTrades(SingleSidedRewardTradeParams[] calldata trades) internal returns (
@@ -307,7 +305,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         state.totalVaultSharesGlobal += vaultShares.toUint80();
         state.setStrategyVaultState();
 
-        uint256 maxSupplyThreshold = (_totalPoolSupply() * maxPoolShare) / VaultConstants.VAULT_PERCENT_BASIS;
+        uint256 maxSupplyThreshold = (_totalPoolSupply() * maxPoolShare) / Constants.VAULT_PERCENT_BASIS;
         if (maxSupplyThreshold < state.totalPoolClaim)
             revert Errors.PoolShareTooHigh(state.totalPoolClaim, maxSupplyThreshold);
     }
@@ -356,8 +354,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             } else {
                 // Convert the token claim to primary using the oracle pair price
                 uint256 price = _getOraclePairPrice(primaryToken, address(tokens[i]));
-                uint256 lowerLimit = price * (VaultConstants.VAULT_PERCENT_BASIS - limit) / VaultConstants.VAULT_PERCENT_BASIS;
-                uint256 upperLimit = price * (VaultConstants.VAULT_PERCENT_BASIS + limit) / VaultConstants.VAULT_PERCENT_BASIS;
+                uint256 lowerLimit = price * (Constants.VAULT_PERCENT_BASIS - limit) / Constants.VAULT_PERCENT_BASIS;
+                uint256 upperLimit = price * (Constants.VAULT_PERCENT_BASIS + limit) / Constants.VAULT_PERCENT_BASIS;
                 if (spotPrices[i] < lowerLimit || upperLimit < spotPrices[i]) {
                     revert Errors.InvalidPrice(price, spotPrices[i]);
                 }

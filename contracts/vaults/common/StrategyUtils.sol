@@ -7,7 +7,7 @@ import {
     DepositTradeParams,
     RedeemParams,
     SingleSidedRewardTradeParams
-} from "./VaultTypes.sol";
+} from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {TradeHandler} from "../../trading/TradeHandler.sol";
 import {Constants} from "../../global/Constants.sol";
 import {Errors} from "../../global/Errors.sol";
