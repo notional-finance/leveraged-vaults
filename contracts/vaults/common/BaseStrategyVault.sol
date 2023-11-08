@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {Token, TokenType} from "../global/Types.sol";
-import {Deployments} from "../global/Deployments.sol";
-import {Constants} from "../global/Constants.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
-import {IERC20} from "../../interfaces/IERC20.sol";
-import {TokenUtils} from "../utils/TokenUtils.sol";
-import {TradeHandler} from "../trading/TradeHandler.sol";
-import {nProxy} from "../proxy/nProxy.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+
+import {Token, TokenType} from "../../global/Types.sol";
+import {Deployments} from "../../global/Deployments.sol";
+import {Constants} from "../../global/Constants.sol";
+import {IStrategyVault} from "../../../interfaces/notional/IStrategyVault.sol";
+import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {ITradingModule, Trade} from "../../../interfaces/trading/ITradingModule.sol";
+import {IERC20} from "../../../interfaces/IERC20.sol";
+import {TokenUtils} from "../../utils/TokenUtils.sol";
+import {TradeHandler} from "../../trading/TradeHandler.sol";
+import {nProxy} from "../../proxy/nProxy.sol";
 
 abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessControlUpgradeable {
     using TokenUtils for IERC20;

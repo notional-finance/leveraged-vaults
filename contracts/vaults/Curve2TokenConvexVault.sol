@@ -38,6 +38,7 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
             msgValue = amounts[1];
         }
 
+        // Slightly different method signatures in v1 and v2
         if (IS_CURVE_V2) {
             lpTokens = ICurve2TokenPoolV2(CURVE_POOL).add_liquidity{value: msgValue}(
                 amounts, minPoolClaim, 0 < msgValue // use_eth = true if msgValue > 0
@@ -98,7 +99,9 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
         uint256[] memory spotPrices = new uint256[](2);
         uint256 primaryPrecision = 10 ** PRIMARY_DECIMALS;
 
-        // The spot price is converted to POOL_PRECISION
+        // `get_dy` returns the price of one unit of the primary token
+        // converted to the secondary token. The spot price is converted to
+        // POOL_PRECISION.
         spotPrices[SECONDARY_INDEX] = ICurvePool(CURVE_POOL).get_dy(
             int8(_PRIMARY_INDEX), int8(SECONDARY_INDEX), primaryPrecision
         ) * POOL_PRECISION() / primaryPrecision;

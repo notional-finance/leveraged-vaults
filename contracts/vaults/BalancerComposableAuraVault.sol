@@ -12,13 +12,8 @@ import {
 import {IComposablePool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
 
-/**
- * @notice This vault borrows the primary currency and provides liquidity
- * to Balancer in exchange for BPT tokens. The BPT tokens are then staked
- * through Aura to earn reward tokens. The reward tokens are periodically
- * harvested and sold for more BPT tokens.
- */
 contract BalancerComposableAuraVault is AuraStakingMixin {
+    /// @notice Helper singleton function to calculate spot prices
     BalancerSpotPrice immutable SPOT_PRICE;
 
     constructor(
@@ -108,6 +103,7 @@ contract BalancerComposableAuraVault is AuraStakingMixin {
         return _calculateLPTokenValue(balances, spotPrices);
     }
 
+    /// @notice Composable pools have a different method to get the total supply
     function _totalPoolSupply() internal view override returns (uint256) {
         return IComposablePool(address(BALANCER_POOL_TOKEN)).getActualSupply();
     }

@@ -6,7 +6,7 @@ import {IWrappedfCashFactory} from "../../interfaces/notional/IWrappedfCashFacto
 import {IWrappedfCashComplete as IWrappedfCash} from "../../interfaces/notional/IWrappedfCash.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
 
-import {BaseStrategyVault} from "./BaseStrategyVault.sol";
+import {BaseStrategyVault} from "./common/BaseStrategyVault.sol";
 import {IERC20} from "../utils/TokenUtils.sol";
 import {TypeConvert} from "../global/TypeConvert.sol";
 import {Token, TokenType} from "../global/Types.sol";

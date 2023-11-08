@@ -12,13 +12,8 @@ import {
 import {IComposablePool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
 
-/**
- * @notice This vault borrows the primary currency and provides liquidity
- * to Balancer in exchange for BPT tokens. The BPT tokens are then staked
- * through Aura to earn reward tokens. The reward tokens are periodically
- * harvested and sold for more BPT tokens.
- */
 contract BalancerWeightedAuraVault is AuraStakingMixin {
+    /// @notice Helper singleton contract for calculating spot prices
     BalancerSpotPrice immutable SPOT_PRICE;
 
     constructor(
@@ -28,6 +23,7 @@ contract BalancerWeightedAuraVault is AuraStakingMixin {
     ) AuraStakingMixin(notional_, params) {
         // BPT_INDEX is not defined for WeightedPool
         require(BPT_INDEX == NOT_FOUND);
+        // Only two token pools are supported
         require(NUM_TOKENS() == 2);
         SPOT_PRICE = _spotPrice;
     }

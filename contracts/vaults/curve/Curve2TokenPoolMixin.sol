@@ -77,19 +77,23 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         );
 
         address primaryToken = _getNotionalUnderlyingToken(params.primaryBorrowCurrencyId);
-        // Curve uses ALT_ETH_ADDRESS
-        if (primaryToken == Deployments.ETH_ADDRESS) {
-            primaryToken = Deployments.ALT_ETH_ADDRESS;
-        }
 
-        TOKEN_1 = ICurvePool(CURVE_POOL).coins(0);
-        TOKEN_2 = ICurvePool(CURVE_POOL).coins(1);
+        // We interact with curve pools directly so we never pass the token addresses back
+        // to the curve pools. The amounts are passed back based on indexes instead. Therefore
+        // we can rewrite the token addresses from ALT Eth (0xeeee...) back to (0x0000...) which
+        // is used by the vault internally to represent ETH.
+        TOKEN_1 = _rewriteAltETH(ICurvePool(CURVE_POOL).coins(0));
+        TOKEN_2 = _rewriteAltETH(ICurvePool(CURVE_POOL).coins(1));
         _PRIMARY_INDEX = TOKEN_1 == primaryToken ? 0 : 1;
         SECONDARY_INDEX = 1 - _PRIMARY_INDEX;
         
         DECIMALS_1 = TokenUtils.getDecimals(TOKEN_1);
         DECIMALS_2 = TokenUtils.getDecimals(TOKEN_2);
         PRIMARY_DECIMALS = _PRIMARY_INDEX == 0 ? DECIMALS_1 : DECIMALS_2;
+    }
+
+    function _rewriteAltETH(address token) private pure returns (address) {
+        return token == address(Deployments.ALT_ETH_ADDRESS) ? Deployments.ETH_ADDRESS : address(token);
     }
 
     function _checkReentrancyContext() internal override {

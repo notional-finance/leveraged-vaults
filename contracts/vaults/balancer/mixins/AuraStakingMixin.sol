@@ -17,9 +17,6 @@ struct AuraVaultDeploymentParams {
     DeploymentParams baseParams;
 }
 
-/**
- * Base class for all Aura strategies
- */
 abstract contract AuraStakingMixin is BalancerPoolMixin {
     using TokenUtils for IERC20;
 
@@ -51,6 +48,7 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
         ) { revert(); }
     }
 
+    /// @notice Called once on initialization to set token approvals
     function _initialApproveTokens() internal override {
         (IERC20[] memory tokens, /* */) = TOKENS();
         for (uint256 i; i < tokens.length; i++) {

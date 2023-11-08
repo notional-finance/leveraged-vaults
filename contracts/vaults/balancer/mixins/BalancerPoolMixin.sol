@@ -19,9 +19,7 @@ struct DeploymentParams {
     ITradingModule tradingModule;
 }
 
-/**
- * Base class for all Balancer LP strategies
- */
+/** Base class for all Balancer LP strategies */
 abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
 
     uint256 internal constant BALANCER_PRECISION = 1e18;
@@ -63,6 +61,7 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
         return (tokens, decimals);
     }
 
+    /// @notice Used to get type compatibility with the Balancer join and exit methods.
     function ASSETS() private view returns (IAsset[] memory) {
         IAsset[] memory assets = new IAsset[](_NUM_TOKENS);
         if (_NUM_TOKENS > 0) assets[0] = IAsset(TOKEN_1);
@@ -129,13 +128,14 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
         return token == address(Deployments.WETH) ? Deployments.ETH_ADDRESS : address(token);
     }
 
-    /// @notice the re-entrancy context is checked during liquidation
+    /// @notice the re-entrancy context is checked during liquidation to prevent read-only
+    /// reentrancy on all balancer pools.
     function _checkReentrancyContext() internal override {
         IBalancerVault.UserBalanceOp[] memory noop = new IBalancerVault.UserBalanceOp[](0);
         Deployments.BALANCER_VAULT.manageUserBalance(noop);
     }
 
-    /// @notice Joins a balancer pool using exact tokens in
+    /// @notice Joins a balancer pool using the supplied amounts of tokens
     function _joinPoolExactTokensIn(
         uint256[] memory amounts,
         bytes memory customData
@@ -144,6 +144,7 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
         IAsset[] memory assets = ASSETS();
         require(assets.length == amounts.length);
         for (uint256 i; i < assets.length; i++) {
+            // Sets the msgValue of transferring ETH
             if (address(assets[i]) == Deployments.ETH_ADDRESS) {
                 msgValue = amounts[i];
                 break;
