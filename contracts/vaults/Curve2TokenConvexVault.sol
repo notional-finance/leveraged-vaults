@@ -102,13 +102,14 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
         // The primary index spot price is left as zero.
         uint256[] memory spotPrices = new uint256[](2);
         uint256 primaryPrecision = 10 ** PRIMARY_DECIMALS;
+        uint256 secondaryPrecision = 10 ** SECONDARY_DECIMALS;
 
         // `get_dy` returns the price of one unit of the primary token
-        // converted to the secondary token. The spot price is converted to
-        // POOL_PRECISION.
+        // converted to the secondary token. The spot price is in secondary
+        // precision and then we convert it to POOL_PRECISION.
         spotPrices[SECONDARY_INDEX] = ICurvePool(CURVE_POOL).get_dy(
             int8(_PRIMARY_INDEX), int8(SECONDARY_INDEX), primaryPrecision
-        ) * POOL_PRECISION() / primaryPrecision;
+        ) * POOL_PRECISION() / secondaryPrecision;
 
         return _calculateLPTokenValue(balances, spotPrices);
     }

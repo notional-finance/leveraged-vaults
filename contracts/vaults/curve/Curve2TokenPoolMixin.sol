@@ -37,6 +37,7 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
     uint8 internal immutable DECIMALS_1;
     uint8 internal immutable DECIMALS_2;
     uint8 internal immutable PRIMARY_DECIMALS;
+    uint8 internal immutable SECONDARY_DECIMALS;
 
     function NUM_TOKENS() internal pure override returns (uint256) { return _NUM_TOKENS; }
     function PRIMARY_INDEX() internal view override returns (uint256) { return _PRIMARY_INDEX; }
@@ -90,6 +91,7 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         DECIMALS_1 = TokenUtils.getDecimals(TOKEN_1);
         DECIMALS_2 = TokenUtils.getDecimals(TOKEN_2);
         PRIMARY_DECIMALS = _PRIMARY_INDEX == 0 ? DECIMALS_1 : DECIMALS_2;
+        SECONDARY_DECIMALS = _PRIMARY_INDEX == 0 ? DECIMALS_2 : DECIMALS_1;
     }
 
     function _rewriteAltETH(address token) private pure returns (address) {
