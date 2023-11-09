@@ -143,6 +143,9 @@ contract CrossCurrencyVault is BaseStrategyVault {
     /// @notice Returns the current value of 1 vault share at the given maturity, used for the
     /// user interface to collect historical values.
     function getExchangeRate(uint256 maturity) public view override returns (int256) {
+        // This will revert for fCash maturities if the wrapper is not deployed but for simplicity in the
+        // implementation we will accept that this is ok. This method is used for the UI and in practice the
+        // historical fCash prices are accessible via other means.
         return convertStrategyToUnderlying(address(0), uint256(Constants.INTERNAL_TOKEN_PRECISION), maturity);
     }
 

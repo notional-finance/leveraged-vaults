@@ -26,6 +26,11 @@ abstract contract BaseCrossCurrencyVault is BaseAcceptanceTest {
         nBeaconProxy proxy = new nBeaconProxy(address(beacon), callData);
         (/* */, Token memory underlyingToken) = NOTIONAL.getCurrency(primaryBorrowCurrency);
 
+        // Start with the first index
+        for (uint256 i = 1; i < maturities.length; i++) {
+            WRAPPED_FCASH_FACTORY.deployWrapper(lendCurrencyId, uint40(maturities[i]));
+        }
+
         setTokenPermissions(
             address(proxy),
             underlyingToken.tokenAddress,
@@ -106,16 +111,6 @@ abstract contract BaseCrossCurrencyVault is BaseAcceptanceTest {
                 w.balanceOf(address(vault)),
                 "fCash Balance"
             );
-        }
-    }
-
-    function hook_beforeEnterVault(
-        address /* account */,
-        uint256 maturity,
-        uint256 /* depositAmount */
-    ) internal override {
-        if (maturity != Constants.PRIME_CASH_VAULT_MATURITY) {
-            WRAPPED_FCASH_FACTORY.deployWrapper(lendCurrencyId, uint40(maturity));
         }
     }
 

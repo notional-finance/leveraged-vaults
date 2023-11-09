@@ -59,16 +59,16 @@ abstract contract BaseAcceptanceTest is Test {
 
     function setUp() public virtual {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
-        vault = deployVault();
 
-        vm.prank(NOTIONAL.owner());
         config = getVaultConfig();
-        NOTIONAL.updateVault(address(vault), config, getMaxPrimaryBorrow());
-
         MarketParameters[] memory m = NOTIONAL.getActiveMarkets(config.borrowCurrencyId);
         maturities = new uint256[](m.length + 1);
         maturities[0] = Constants.PRIME_CASH_VAULT_MATURITY;
         for (uint256 i; i < m.length; i++) maturities[i + 1] = m[i].maturity;
+
+        vault = deployVault();
+        vm.prank(NOTIONAL.owner());
+        NOTIONAL.updateVault(address(vault), config, getMaxPrimaryBorrow());
 
         (/* */, Token memory underlyingToken) = NOTIONAL.getCurrency(config.borrowCurrencyId);
         primaryBorrowToken = IERC20(underlyingToken.tokenAddress);
