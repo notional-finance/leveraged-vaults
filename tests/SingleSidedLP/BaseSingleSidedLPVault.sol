@@ -101,7 +101,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
 
         
         expectRevert_enterVaultBypass(
-            account, 1_000e18, maturity, getDepositParams(0, 0)
+            account, 100_000e18, maturity, getDepositParams(0, 0)
             // NOTE: forge is not matching this selector properly
             // Errors.PoolShareTooHigh.selector
         );

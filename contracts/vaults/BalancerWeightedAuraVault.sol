@@ -80,7 +80,7 @@ contract BalancerWeightedAuraVault is AuraStakingMixin {
             BALANCER_POOL_ID,
             address(BALANCER_POOL_TOKEN),
             PRIMARY_INDEX(),
-            decimals[1 - PRIMARY_INDEX()]
+            decimals[PRIMARY_INDEX()]
         );
 
         // Spot prices are returned in native decimals, convert them all to POOL_PRECISION

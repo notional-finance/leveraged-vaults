@@ -36,6 +36,9 @@ abstract contract BaseAcceptanceTest is Test {
     uint16 constant RETH = 7;
     uint16 constant USDT = 8;
     uint16 constant CBETH = 9;
+    uint16 constant GMX = 10;
+    uint16 constant ARB = 11;
+    uint16 constant RDNT = 12;
 
     string RPC_URL = vm.envString("RPC_URL");
     uint256 FORK_BLOCK = 147058900;

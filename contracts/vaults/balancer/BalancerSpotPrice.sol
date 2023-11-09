@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import "forge-std/console.sol";
 import {Deployments} from "../../global/Deployments.sol";
 import {StableMath} from "./math/StableMath.sol";
 import {IComposablePool, IWeightedPool} from "../../../interfaces/balancer/IBalancerPool.sol";
@@ -19,23 +20,28 @@ contract BalancerSpotPrice {
         bytes32 poolId,
         address poolAddress,
         uint256 primaryIndex,
-        uint8 secondaryDecimals
+        uint8 primaryDecimals
     ) external view returns (uint256[] memory balances, uint256[] memory spotPrices) {
-        address[] memory tokens;
-        (tokens, balances, /* */) = Deployments.BALANCER_VAULT.getPoolTokens(poolId);
+        (/* */, balances, /* */) = Deployments.BALANCER_VAULT.getPoolTokens(poolId);
         // Only two token pools are supported
-        require(tokens.length == 2);
+        require(balances.length == 2);
+        spotPrices = new uint256[](2);
 
         uint256[] memory weights = IWeightedPool(poolAddress).getNormalizedWeights();
-        uint256 swapFee = IWeightedPool(poolAddress).getSwapFeePercentage();
+
+        // Spot price calculation is specified at the link below. Do not account for swap fees
+        // because we're using this price to compare to the oracle price and adding swap fees
+        // would unnecessarily increase the price deviation.
         // https://docs.balancer.fi/reference/math/weighted-math.html#typescript
-        // primaryBalance * secondaryWeight * secondaryDecimals * BALANCER_PRECISION
+        // secondaryBalance * primaryWeight * primaryDecimals 
         // --------------------------------------------------- 
-        //   secondaryBalance * primaryWeight * (1 - swapFee)
+        //          primaryBalance * secondaryWeight
         uint256 secondaryIndex = 1 - primaryIndex;
-        uint256 numerator = balances[primaryIndex] * weights[secondaryIndex] * (10 ** secondaryDecimals);
-        uint256 denominator = balances[secondaryIndex] * weights[primaryIndex] * (BALANCER_PRECISION - swapFee);
-        spotPrices[1 - primaryIndex] = numerator * BALANCER_PRECISION / denominator;
+
+        // There is a chance of a uint256 overflow if the balances[secondaryIndex] > 10**36
+        uint256 numerator = balances[secondaryIndex] * weights[primaryIndex] * (10 ** primaryDecimals);
+        uint256 denominator = balances[primaryIndex] * weights[secondaryIndex];
+        spotPrices[secondaryIndex] = numerator / denominator;
     }
 
     /// @notice Returns the composable pool spot price and balances. Pool token spot
