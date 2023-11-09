@@ -21,6 +21,9 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
         spotPrice = new BalancerSpotPrice();
         poolToken = IERC20(IAuraRewardPool(address(rewardPool)).asset());
         balancerPoolId = IBalancerPool(address(poolToken)).getPoolId();
+        (address[] memory tokens, ,) = IBalancerVault(Deployments.BALANCER_VAULT)
+            .getPoolTokens(balancerPoolId);
+        numTokens = tokens.length;
 
         IStrategyVault impl = new BalancerComposableAuraVault(
             NOTIONAL, AuraVaultDeploymentParams({

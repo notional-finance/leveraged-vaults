@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "../BaseComposablePool.sol";
 
-abstract contract BaseBalancerComposable_wstETHcbETHrETH is BaseComposablePool {
+abstract contract wstETH_cbETH_rETH is BaseComposablePool {
     function setUp() public override virtual {
         rewardPool = IERC20(0x8cA64Bd82AbFE138E195ce5Cb7268CA285D42245);
         settings = StrategyVaultSettings({
@@ -13,8 +13,6 @@ abstract contract BaseBalancerComposable_wstETHcbETHrETH is BaseComposablePool {
             oraclePriceDeviationLimitPercent: 100
         });
 
-        // NOTE: includes BPT token
-        numTokens = 4;
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 0.001e18;
@@ -25,7 +23,7 @@ abstract contract BaseBalancerComposable_wstETHcbETHrETH is BaseComposablePool {
     }
 }
 
-contract Test_wstETH_wstETHcbETHrETH is BaseBalancerComposable_wstETHcbETHrETH {
+contract Test_wstETH is wstETH_cbETH_rETH {
     function setUp() public override { primaryBorrowCurrency = WSTETH; super.setUp(); }
 
     // Only run one sell token reinvestment test since it requires a bunch of trade setup
@@ -84,11 +82,11 @@ contract Test_wstETH_wstETHcbETHrETH is BaseBalancerComposable_wstETHcbETHrETH {
 
 }
 
-contract Test_cbETH_wstETHcbETHrETH is BaseBalancerComposable_wstETHcbETHrETH {
+contract Test_cbETH is wstETH_cbETH_rETH {
     function setUp() public override { primaryBorrowCurrency = CBETH; super.setUp(); }
 }
 
-contract Test_rETH_wstETHcbETHrETH is BaseBalancerComposable_wstETHcbETHrETH {
+contract Test_rETH is wstETH_cbETH_rETH {
     function setUp() public override {
         primaryBorrowCurrency = RETH; 
         super.setUp();
