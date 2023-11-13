@@ -36,3 +36,7 @@ This vault uses [Wrapped fCash](https://github.com/notional-finance/wrapped-fcas
 A singleton `TradingModule` contract is deployed on each chain to facilitate trading on various DEXes. While the TradingModule has its own configuration and storage (it is deployed behind an UUPS Upgradeable proxy), vaults execute trades via `delegatecall` to `executeTradeWithDynamicSlippage` or `executeTrade`. The relevant code for this is in the `TradeHandler` library.
 
 In order to execute trades, an address must be whitelisted via `setTokenPermissions` on the `TradingModule`. This ensures that vaults may not arbitrarily buy and sell tokens on various vaults.
+
+# Tests
+
+Tests use [Foundry](https://book.getfoundry.sh/). You can run via `forge test`
