@@ -65,7 +65,11 @@ library StrategyUtils {
         address primaryToken = address(tokens[primaryIndex]);
 
         for (uint256 i; i < exitBalances.length; i++) {
-            if (i == primaryIndex) finalPrimaryBalance += exitBalances[i];
+            if (i == primaryIndex) {
+                finalPrimaryBalance += exitBalances[i];
+                continue;
+            }
+
             TradeParams memory t = redemptionTrades[i];
             // Do not allow ZERO_EX trading in this method since we cannot validate
             // the arbitrary exchange data.

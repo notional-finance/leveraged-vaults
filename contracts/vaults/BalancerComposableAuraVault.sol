@@ -40,7 +40,8 @@ contract BalancerComposableAuraVault is AuraStakingMixin {
         uint256 j;
         for (uint256 i; i < amounts.length; i++) {
             if (i == BPT_INDEX) continue;
-            amountsWithoutBpt[j++] = amounts[i];
+            amountsWithoutBpt[j] = amounts[i];
+            j++;
         }
 
         bytes memory customData = abi.encode(

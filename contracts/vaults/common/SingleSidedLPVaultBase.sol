@@ -144,9 +144,9 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         if (state.totalVaultSharesGlobal == 0 || isLocked()) {
             return oneLPValueInPrimary.toInt();
         } else {
-            uint256 lpTokens = (uint256(Constants.INTERNAL_TOKEN_PRECISION) * state.totalPoolClaim)
+            uint256 lpTokensPerVaultShare = (uint256(Constants.INTERNAL_TOKEN_PRECISION) * state.totalPoolClaim)
                 / state.totalVaultSharesGlobal;
-            return (oneLPValueInPrimary * lpTokens / POOL_PRECISION()).toInt();
+            return (oneLPValueInPrimary * lpTokensPerVaultShare / POOL_PRECISION()).toInt();
         }
     }
 
