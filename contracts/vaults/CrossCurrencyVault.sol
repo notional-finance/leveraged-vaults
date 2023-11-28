@@ -18,6 +18,7 @@ import {ITradingModule, DexId, TradeType, Trade} from "../../interfaces/trading/
  * and lends on Notional in that currency.
  */
 contract CrossCurrencyVault is BaseStrategyVault {
+    using TokenUtils for IERC20;
     using TypeConvert for uint256;
 
     struct DepositParams {
@@ -194,7 +195,7 @@ contract CrossCurrencyVault is BaseStrategyVault {
                 WETH.deposit{value: lendUnderlyingTokens}();
                 IERC20(address(WETH)).approve(address(wfCash), lendUnderlyingTokens);
             } else {
-                lendToken.approve(address(wfCash), lendUnderlyingTokens);
+                lendToken.checkApprove(address(wfCash), lendUnderlyingTokens);
             }
             vaultShares = wfCash.deposit(lendUnderlyingTokens, address(this));
         }
