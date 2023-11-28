@@ -26,6 +26,60 @@ abstract contract wstETH_cbETH_rETH is BaseComposablePool {
 contract Test_wstETH is wstETH_cbETH_rETH {
     function setUp() public override { primaryBorrowCurrency = WSTETH; super.setUp(); }
 
+    function test_RevertIf_ReinvestRewardNoVaultShares() public {
+        address account = makeAddr("account");
+        address reward = makeAddr("reward");
+        uint256 maturity = maturities[0];
+        uint256 vaultShares = enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+
+        bytes32 role = v().REWARD_REINVESTMENT_ROLE();
+        vm.prank(NOTIONAL.owner());
+        v().grantRole(role, reward);
+
+        skip(3600);
+        assertEq(rewardToken.balanceOf(address(vault)), 0);
+        vm.prank(reward);
+        v().claimRewardTokens();
+        uint256 rewardBalance = rewardToken.balanceOf(address(vault));
+        assertGe(rewardBalance, 0);
+
+        exitVaultBypass(account, vaultShares, maturity, getRedeemParams(0, 0));
+
+        uint256 totalVaultShares = v().getStrategyVaultInfo().totalVaultShares;
+        assertEq(totalVaultShares, 0);
+
+        uint256 primaryIndex = v().getStrategyVaultInfo().singleSidedTokenIndex;
+        SingleSidedRewardTradeParams[] memory t = new SingleSidedRewardTradeParams[](numTokens);
+        for (uint256 i; i < t.length; i++) {
+            t[i].sellToken = address(rewardToken);
+            if (i == primaryIndex) {
+                t[i].buyToken = address(primaryBorrowToken);
+                t[i].amount = rewardBalance;
+                t[i].tradeParams.dexId = uint16(DexId.BALANCER_V2);
+                t[i].tradeParams.tradeType = TradeType.EXACT_IN_SINGLE;
+                t[i].tradeParams.oracleSlippagePercentOrLimit = 0;
+                // This is some crazy pool with wstETH and BAL in it
+                t[i].tradeParams.exchangeData = abi.encode(
+                    BalancerV2Adapter.SingleSwapData(
+                        0x49b2de7d214070893c038299a57bac5acb8b8a340001000000000000000004be
+                    )
+                );
+            }
+        }
+
+        vm.prank(NOTIONAL.owner());
+        TRADING_MODULE.setTokenPermissions(
+            address(vault),
+            address(rewardToken),
+            ITradingModule.TokenPermissions({ allowSell: true, dexFlags: 16, tradeTypeFlags: 15})
+        );
+        
+        // Cannot reinvest if vault shares is zero
+        vm.prank(reward);
+        vm.expectRevert();
+        v().reinvestReward(t, 0);
+    }
+
     // Only run one sell token reinvestment test since it requires a bunch of trade setup
     function test_RewardReinvestmentSellTokens() public {
         address account = makeAddr("account");
