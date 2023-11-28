@@ -42,6 +42,7 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
             token == TOKEN_3 ||
             token == TOKEN_4 ||
             token == TOKEN_5 ||
+            token == address(BALANCER_POOL_TOKEN) ||
             token == address(AURA_BOOSTER) ||
             token == address(AURA_REWARD_POOL) ||
             token == address(Deployments.WETH)
