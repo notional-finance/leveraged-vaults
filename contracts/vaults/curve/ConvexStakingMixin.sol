@@ -64,7 +64,8 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
             token == address(CURVE_POOL_TOKEN) ||
             token == address(CONVEX_REWARD_POOL) ||
             token == address(CONVEX_BOOSTER) ||
-            token == Deployments.ALT_ETH_ADDRESS
+            token == address(Deployments.ETH_ADDRESS) ||
+            token == address(Deployments.WETH)
         );
     }
 
