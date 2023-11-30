@@ -6,7 +6,7 @@ import "../../contracts/vaults/Curve2TokenConvexVault.sol";
 import "../../contracts/vaults/curve/ConvexStakingMixin.sol";
 
 abstract contract BaseCurve2Token is BaseSingleSidedLPVault {
-    bool isSelfLPToken;
+    address lpToken;
 
     function setUp() public override virtual {
         // CRV on Arbitrum
@@ -24,7 +24,7 @@ abstract contract BaseCurve2Token is BaseSingleSidedLPVault {
                     primaryBorrowCurrencyId: primaryBorrowCurrency,
                     pool: address(poolToken),
                     tradingModule: TRADING_MODULE,
-                    isSelfLPToken: isSelfLPToken
+                    poolToken: address(lpToken)
                 })
             })
         );

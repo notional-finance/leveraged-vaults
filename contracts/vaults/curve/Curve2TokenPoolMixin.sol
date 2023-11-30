@@ -19,7 +19,7 @@ struct DeploymentParams {
     uint16 primaryBorrowCurrencyId;
     address pool;
     ITradingModule tradingModule;
-    bool isSelfLPToken;
+    address poolToken;
 }
 
 abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
@@ -71,7 +71,9 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
             isCurveV2 = (handlers[0] == Deployments.CURVE_V2_HANDLER);
         }
         IS_CURVE_V2 = isCurveV2;
-        CURVE_POOL_TOKEN = params.isSelfLPToken ? IERC20(CURVE_POOL) : (
+        // There are some cases where the pool token address is not directly exposed on the Curve pool
+        // itself. In those cases, the pool token address will be manually passed in via the constructor.
+        CURVE_POOL_TOKEN = params.poolToken != address(0) ? IERC20(params.poolToken) : (
             IS_CURVE_V2 ? 
                 IERC20(ICurvePoolV2(address(CURVE_POOL)).token()) :
                 IERC20(ICurvePoolV1(address(CURVE_POOL)).lp_token())
