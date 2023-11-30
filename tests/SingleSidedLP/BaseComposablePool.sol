@@ -28,6 +28,7 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
         IStrategyVault impl = new BalancerComposableAuraVault(
             NOTIONAL, AuraVaultDeploymentParams({
                 rewardPool: IAuraRewardPool(address(rewardPool)),
+                whitelistedReward: whitelistedReward,
                 baseParams: DeploymentParams({
                     primaryBorrowCurrencyId: primaryBorrowCurrency,
                     balancerPoolId: balancerPoolId,

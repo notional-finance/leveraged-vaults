@@ -20,6 +20,7 @@ abstract contract BaseCurve2Token is BaseSingleSidedLPVault {
         IStrategyVault impl = new Curve2TokenConvexVault(
             NOTIONAL, ConvexVaultDeploymentParams({
                 rewardPool: address(rewardPool),
+                whitelistedReward: whitelistedReward,
                 baseParams: DeploymentParams({
                     primaryBorrowCurrencyId: primaryBorrowCurrency,
                     pool: address(poolToken),

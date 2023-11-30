@@ -13,6 +13,7 @@ import {TokenUtils} from "../../../utils/TokenUtils.sol";
 struct AuraVaultDeploymentParams {
     /// @notice Aura reward pool address
     IAuraRewardPool rewardPool;
+    address whitelistedReward;
     /// @notice Base deployment parameters
     DeploymentParams baseParams;
 }
@@ -26,6 +27,7 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
     IAuraRewardPool internal immutable AURA_REWARD_POOL;
     /// @notice Aura pool ID used for staking
     uint256 internal immutable AURA_POOL_ID;
+    address WHITELISTED_REWARD;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
         BalancerPoolMixin(notional_, params.baseParams) {
@@ -33,9 +35,15 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
 
         AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
         AURA_POOL_ID = AURA_REWARD_POOL.pid();
+        // Allows one of the pool tokens to be whitelisted as a reward token to be re-entered
+        // back into the pool to increase LP shares.
+        WHITELISTED_REWARD = params.whitelistedReward;
     }
 
     function _isInvalidRewardToken(address token) internal override view returns (bool) {
+        // ETH is also at address(0) but that is never given out as a reward token
+        if (WHITELISTED_REWARD != address(0) && token == WHITELISTED_REWARD) return false;
+
         return (
             token == TOKEN_1 ||
             token == TOKEN_2 ||
