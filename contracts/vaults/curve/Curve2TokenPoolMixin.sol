@@ -10,7 +10,8 @@ import {
     ICurvePool,
     ICurvePoolV1,
     ICurvePoolV2,
-    ICurve2TokenPool
+    ICurve2TokenPoolV1,
+    ICurve2TokenPoolV2
 } from "../../../interfaces/curve/ICurvePool.sol";
 import {SingleSidedLPVaultBase} from "../common/SingleSidedLPVaultBase.sol";
 import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
@@ -102,6 +103,12 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         // We need to set the LP token amount to 1 for Curve V2 pools to bypass
         // the underflow check
         uint256[2] memory minAmounts;
-        ICurve2TokenPool(address(CURVE_POOL)).remove_liquidity(IS_CURVE_V2 ? 1 : 0, minAmounts);
+        if (IS_CURVE_V2) {
+            // Curve V2 does a `-1` on the liquidity amount so set the amount removed to 1 to
+            // avoid an underflow.
+            ICurve2TokenPoolV2(CURVE_POOL).remove_liquidity(1, minAmounts, true, address(this));
+        } else {
+            ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity(0, minAmounts);
+        }
     }
 }

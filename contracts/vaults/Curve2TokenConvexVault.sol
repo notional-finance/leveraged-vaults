@@ -3,14 +3,13 @@ pragma solidity 0.8.17;
 
 import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
-import {IERC20} from "../utils/TokenUtils.sol";
+import {IERC20, TokenUtils} from "../utils/TokenUtils.sol";
 import {ConvexStakingMixin, ConvexVaultDeploymentParams} from "./curve/ConvexStakingMixin.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IConvexBooster, IConvexBoosterArbitrum} from "../../interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../interfaces/convex/IConvexRewardPool.sol";
 import {
     ICurvePool,
-    ICurve2TokenPool,
     ICurve2TokenPoolV1,
     ICurve2TokenPoolV2
 } from "../../interfaces/curve/ICurvePool.sol";
@@ -75,22 +74,41 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
         }
         require(success);
 
-        ICurve2TokenPool pool = ICurve2TokenPool(CURVE_POOL);
         exitBalances = new uint256[](2);
         if (isSingleSided) {
             // Redeem single-sided
-            exitBalances[_PRIMARY_INDEX] = pool.remove_liquidity_one_coin(
-                poolClaim, int8(_PRIMARY_INDEX), _minAmounts[_PRIMARY_INDEX]
-            );
+            if (IS_CURVE_V2) {
+                exitBalances[_PRIMARY_INDEX] = ICurve2TokenPoolV2(CURVE_POOL).remove_liquidity_one_coin(
+                    // Last two parameters are useEth = true and receiver = this contract
+                    poolClaim, _PRIMARY_INDEX, _minAmounts[_PRIMARY_INDEX], true, address(this)
+                );
+            } else {
+                exitBalances[_PRIMARY_INDEX] = ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity_one_coin(
+                    poolClaim, int8(_PRIMARY_INDEX), _minAmounts[_PRIMARY_INDEX]
+                );
+            }
         } else {
             // Redeem proportionally, min amounts are rewritten to a fixed length array
             uint256[2] memory minAmounts;
             minAmounts[0] = _minAmounts[0];
             minAmounts[1] = _minAmounts[1];
 
-            uint256[2] memory _exitBalances = pool.remove_liquidity(poolClaim, minAmounts);
-            exitBalances[0] = _exitBalances[0];
-            exitBalances[1] = _exitBalances[1];
+            if (IS_CURVE_V2) {
+                exitBalances[0] = TokenUtils.tokenBalance(TOKEN_1);
+                exitBalances[1] = TokenUtils.tokenBalance(TOKEN_2);
+                // Remove liquidity on CurveV2 does not return the exit amounts so we have to measure
+                // them before and after.
+                ICurve2TokenPoolV2(CURVE_POOL).remove_liquidity(
+                    // Last two parameters are useEth = true and receiver = this contract
+                    poolClaim, minAmounts, true, address(this)
+                );
+                exitBalances[0] = TokenUtils.tokenBalance(TOKEN_1) - exitBalances[0];
+                exitBalances[1] = TokenUtils.tokenBalance(TOKEN_2) - exitBalances[1];
+            } else {
+                uint256[2] memory _exitBalances = ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity(poolClaim, minAmounts);
+                exitBalances[0] = _exitBalances[0];
+                exitBalances[1] = _exitBalances[1];
+            }
         }
     }
 
