@@ -9,6 +9,7 @@ import {
     AuraVaultDeploymentParams,
     DeploymentParams
 } from "./balancer/mixins/AuraStakingMixin.sol";
+import {IERC20} from "../utils/TokenUtils.sol";
 import {IComposablePool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
 
@@ -24,6 +25,15 @@ contract BalancerComposableAuraVault is AuraStakingMixin {
         // BPT_INDEX must be defined for a composable pool
         require(BPT_INDEX != NOT_FOUND);
         SPOT_PRICE = _spotPrice;
+        (IERC20[] memory tokens, /* */) = TOKENS();
+        for (uint256 i; i < NUM_TOKENS(); i++) {
+            if (i == BPT_INDEX) continue;
+            // This version of the composable vault does not allow for BPT tokens
+            // to be held as one of the assets in the pool. More work needs to be
+            // done to support emergency withdraw and trading to enter and exit
+            // pools that hold BPT tokens.
+            require(_isBPT(address(tokens[i])) == false);
+        }
     }
 
     /// @notice strategy identifier

@@ -26,6 +26,11 @@ contract BalancerWeightedAuraVault is AuraStakingMixin {
         // Only two token pools are supported
         require(NUM_TOKENS() == 2);
         SPOT_PRICE = _spotPrice;
+
+        // This version of the weighted vault does not support holding BPT as one
+        // of the assets in the pool.
+        require(_isBPT(TOKEN_1) == false);
+        require(_isBPT(TOKEN_2) == false);
     }
 
     /// @notice strategy identifier
