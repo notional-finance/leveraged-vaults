@@ -19,13 +19,13 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     using TokenUtils for IERC20;
     using TradeHandler for Trade;
 
-    bytes32 public constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
-    bytes32 public constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
-    bytes32 public constant STATIC_SLIPPAGE_TRADING_ROLE = keccak256("STATIC_SLIPPAGE_TRADING_ROLE");
+    bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
+    bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
+    bytes32 internal constant STATIC_SLIPPAGE_TRADING_ROLE = keccak256("STATIC_SLIPPAGE_TRADING_ROLE");
 
     /// @notice Hardcoded on the implementation contract during deployment
-    NotionalProxy public immutable NOTIONAL;
-    ITradingModule public immutable TRADING_MODULE;
+    NotionalProxy internal immutable NOTIONAL;
+    ITradingModule internal immutable TRADING_MODULE;
     uint8 constant internal INTERNAL_TOKEN_DECIMALS = 8;
 
     // Borrowing Currency ID the vault is configured with

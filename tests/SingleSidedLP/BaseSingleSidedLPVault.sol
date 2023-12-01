@@ -8,6 +8,8 @@ import "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 
 abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
+    bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
+    bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
 
     uint16 primaryBorrowCurrency;
     StrategyVaultSettings settings;
@@ -156,9 +158,8 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
-        bytes32 role = v().EMERGENCY_EXIT_ROLE();
         vm.prank(NOTIONAL.owner());
-        v().grantRole(role, exit);
+        v().grantRole(EMERGENCY_EXIT_ROLE, exit);
 
         uint256 initialBalance = rewardPool.balanceOf(address(vault));
         assertGt(initialBalance, 0);
@@ -221,9 +222,8 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
-        bytes32 role = v().EMERGENCY_EXIT_ROLE();
         vm.prank(NOTIONAL.owner());
-        v().grantRole(role, exit);
+        v().grantRole(EMERGENCY_EXIT_ROLE, exit);
 
         uint256 initialBalance = rewardPool.balanceOf(address(vault));
         assertGt(initialBalance, 0);
@@ -297,9 +297,8 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.expectRevert();
         vault.convertStrategyToUnderlying(account, vaultShares, maturity);
         
-        bytes32 role = v().REWARD_REINVESTMENT_ROLE();
         vm.prank(NOTIONAL.owner());
-        v().grantRole(role, reward);
+        v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
 
         vm.prank(reward);
         // vm.expectRevert(Errors.InvalidPrice.selector);
@@ -329,9 +328,8 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         uint256 maturity = maturities[0];
         enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
 
-        bytes32 role = v().REWARD_REINVESTMENT_ROLE();
         vm.prank(NOTIONAL.owner());
-        v().grantRole(role, reward);
+        v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
 
         skip(3600);
         assertEq(rewardToken.balanceOf(address(vault)), 0);
@@ -347,9 +345,8 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         uint256 maturity = maturities[0];
         enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
 
-        bytes32 role = v().REWARD_REINVESTMENT_ROLE();
         vm.prank(NOTIONAL.owner());
-        v().grantRole(role, reward);
+        v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
         SingleSidedRewardTradeParams[] memory t = new SingleSidedRewardTradeParams[](numTokens);
         t[0].sellToken = address(rewardPool);
 
