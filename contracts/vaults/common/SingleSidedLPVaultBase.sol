@@ -53,7 +53,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
     /// @notice Addresses of tokens held and decimal places of each token. ETH will always be
     /// recorded in this array as Deployments.ETH_Address
-    function TOKENS() internal view virtual returns (IERC20[] memory, uint8[] memory decimals);
+    function TOKENS() public view virtual returns (IERC20[] memory, uint8[] memory decimals);
 
     /// @notice Address of the LP token
     function POOL_TOKEN() internal view virtual returns (IERC20);
@@ -430,7 +430,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
      * EMERGENCY EXIT                                                       *
      * In case of an emergency, will allow a whitelisted guardian to exit   *
      * funds on the vault and locks the vault from further usage. The owner *
-     * can restore funds to the LP pool and reinstante vault usage. If the  *
+     * can restore funds to the LP pool and reinstate vault usage. If the   *
      * vault cannot be fully restored after an exit, the vault will need to *
      * be upgraded and unwound manually to ensure that debts are repaid and *
      * users can withdraw their funds.                                      *
@@ -486,33 +486,26 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         // By setting min amounts to zero, we will accept whatever tokens come from the pool
         // in a proportional exit. Front running will not have an effect since no trading will
         // occur during a proportional exit.
-        _unstakeAndExitPool(claimToExit, new uint256[](NUM_TOKENS()), true);
+        uint256[] memory exitBalances = _unstakeAndExitPool(claimToExit, new uint256[](NUM_TOKENS()), false);
 
         state.totalPoolClaim = state.totalPoolClaim - claimToExit;
         state.setStrategyVaultState();
 
-        emit EmergencyExit(claimToExit);
+        emit EmergencyExit(claimToExit, exitBalances);
         _lockVault();
     }
 
     /// @notice Restores withdrawn tokens from emergencyExit back into the vault proportionally.
     /// Unlocks the vault after restoration so that normal functionality is restored.
     /// @param minPoolClaim slippage limit to prevent front running
+    /// @param data the owner will pass in an array of amounts for the pool to re-enter the vault.
+    /// This prevents any front running or manipulation of the vault balances.
     function restoreVault(
-        uint256 minPoolClaim, bytes calldata /* data */
+        uint256 minPoolClaim, bytes calldata data
     ) external override whenLocked onlyNotionalOwner {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
 
-        (IERC20[] memory tokens, /* */) = TOKENS();
-        uint256[] memory amounts = new uint256[](tokens.length);
-
-        // All balances held by the vault are assumed to be used to re-enter
-        // the pool. Since the vault has been locked no other users should have
-        // been able to enter the pool.
-        for (uint256 i; i < tokens.length; i++) {
-            if (address(tokens[i]) == address(POOL_TOKEN())) continue;
-            amounts[i] = TokenUtils.tokenBalance(address(tokens[i]));
-        }
+        uint256[] memory amounts = abi.decode(data, (uint256[]));
 
         // No trades are specified so this joins proportionally using the
         // amounts specified.
