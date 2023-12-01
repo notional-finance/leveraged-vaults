@@ -88,6 +88,9 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.expectRevert("Initializable: contract is already initialized");
         StrategyVaultSettings memory s;
         v().initialize(InitParams("Vault", primaryBorrowCurrency, s));
+
+        vm.expectRevert(Errors.VaultNotLocked.selector);
+        v().tradeTokensBeforeRestore(new SingleSidedRewardTradeParams[](0));
     }
 
     function test_RevertIf_joinAboveMaxPoolShare() public {
@@ -150,18 +153,22 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         v().emergencyExit(0, "");
     }
 
-    function test_EmergencyExit_LocksVault() public {
+    function setup_EmergencyExit() internal returns (
+        uint256[] memory exitBalances,
+        address exit,
+        uint256 initialBalance
+    ) {
         address account = makeAddr("account");
-        address exit = makeAddr("exit");
+        exit = makeAddr("exit");
         uint256 maturity = maturities[0];
-        uint256 vaultShares = enterVaultBypass(
+        enterVaultBypass(
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
         vm.prank(NOTIONAL.owner());
         v().grantRole(EMERGENCY_EXIT_ROLE, exit);
 
-        uint256 initialBalance = rewardPool.balanceOf(address(vault));
+        initialBalance = rewardPool.balanceOf(address(vault));
         assertGt(initialBalance, 0);
         (IERC20[] memory tokens, /* */) = v().TOKENS();
         for (uint256 i; i < tokens.length; i++) {
@@ -175,7 +182,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.prank(exit);
         v().emergencyExit(0, "");
 
-        uint256[] memory exitBalances = new uint256[](tokens.length);
+        exitBalances = new uint256[](tokens.length);
         for (uint256 i; i < tokens.length; i++) {
             if (address(tokens[i]) == address(0)) {
                 exitBalances[i] = address(vault).balance;
@@ -185,6 +192,12 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
                 assertGt(exitBalances[i], 0);
             }
         }
+    }
+
+    function test_EmergencyExit_LocksVault() public {
+        address account = makeAddr("account");
+        uint256 maturity = maturities[0];
+        (uint256[] memory exitBalances, address exit, /* */) = setup_EmergencyExit();
 
         assertEq(rewardPool.balanceOf(address(vault)), 0);
         assertEq(poolToken.balanceOf(address(vault)), 0);
@@ -197,10 +210,12 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         );
 
         vm.expectRevert(Errors.VaultLocked.selector);
-        exitVaultBypass(account, vaultShares, maturity, getRedeemParams(0, 0));
+        // 0.01e8 is an intentionally small number here to avoid underflows in
+        // the test code, we expect a revert no matter what
+        exitVaultBypass(account, 0.01e8, maturity, getRedeemParams(0, 0));
 
         vm.expectRevert(Errors.VaultLocked.selector);
-        vault.convertStrategyToUnderlying(account, vaultShares, maturity);
+        vault.convertStrategyToUnderlying(account, 0.01e8, maturity);
 
         vm.expectRevert(Errors.VaultLocked.selector);
         v().reinvestReward(new SingleSidedRewardTradeParams[](0), 0);
@@ -212,48 +227,23 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.prank(exit);
         vm.expectRevert();
         v().restoreVault(0, abi.encode(exitBalances));
+
+        // Test trade authorization
+        vm.prank(exit);
+        vm.expectRevert("Unauthorized");
+        v().tradeTokensBeforeRestore(new SingleSidedRewardTradeParams[](0));
     }
 
     function test_EmergencyExit() public {
         address account = makeAddr("account");
-        address exit = makeAddr("exit");
         uint256 maturity = maturities[0];
-        uint256 vaultShares = enterVaultBypass(
-            account, maxDeposit, maturity, getDepositParams(0, 0)
-        );
-
-        vm.prank(NOTIONAL.owner());
-        v().grantRole(EMERGENCY_EXIT_ROLE, exit);
-
-        uint256 initialBalance = rewardPool.balanceOf(address(vault));
-        assertGt(initialBalance, 0);
-        (IERC20[] memory tokens, /* */) = v().TOKENS();
-        for (uint256 i; i < tokens.length; i++) {
-            if (address(tokens[i]) == address(0)) {
-                assertEq(address(vault).balance, 0);
-            } else if (tokens[i] != poolToken) {
-                assertEq(tokens[i].balanceOf(address(vault)), 0);
-            }
-        }
-
-        vm.prank(exit);
-        v().emergencyExit(0, "");
-
-        uint256[] memory exitBalances = new uint256[](tokens.length);
-        for (uint256 i; i < tokens.length; i++) {
-            if (address(tokens[i]) == address(0)) {
-                exitBalances[i] = address(vault).balance;
-                assertGt(exitBalances[i], 0);
-            } else if (tokens[i] != poolToken) {
-                exitBalances[i] = tokens[i].balanceOf(address(vault));
-                assertGt(exitBalances[i], 0);
-            }
-        }
+        (uint256[] memory exitBalances, /* */, uint256 initialBalance) = setup_EmergencyExit();
 
         // Restore the vault
         vm.prank(NOTIONAL.owner());
         v().restoreVault(0, abi.encode(exitBalances));
 
+        (IERC20[] memory tokens, /* */) = v().TOKENS();
         // All token balances should be cleared.
         for (uint256 i; i < tokens.length; i++) {
             if (address(tokens[i]) == address(0)) {
@@ -267,8 +257,8 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         assertEq(v().isLocked(), false);
 
         // All of these calls should succeed
+        uint256 vaultShares = enterVaultBypass(account, maxDeposit * 2, maturity, getDepositParams(0, 0));
         vault.convertStrategyToUnderlying(account, vaultShares, maturity);
-        enterVaultBypass(account, maxDeposit * 2, maturity, getDepositParams(0, 0));
         // NOTE: the exitVaultBypass above causes an underflow inside exitVaultBypass
         // here because the vault shares are removed from the test accounting even though
         // the call reverts earlier.

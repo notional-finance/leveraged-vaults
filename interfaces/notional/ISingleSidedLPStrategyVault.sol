@@ -113,4 +113,6 @@ interface ISingleSidedLPStrategyVault {
         SingleSidedRewardTradeParams[] calldata trades,
         uint256 minPoolClaim
     ) external returns (address rewardToken, uint256 amountSold, uint256 poolClaimAmount);
+
+    function tradeTokensBeforeRestore(SingleSidedRewardTradeParams[] calldata trades) external;
 }
