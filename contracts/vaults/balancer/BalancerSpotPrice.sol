@@ -77,43 +77,35 @@ contract BalancerSpotPrice {
                 j++;
             }
         }
-        uint256 invariant = StableMath._calculateInvariant(ampParam, scaledBalances);
 
+        uint256 invariant = StableMath._calculateInvariant(ampParam, scaledBalances);
+        // Exclude the bptIndex for the primary token (tokenIndexIn)
+        uint256 tokenIndexIn = primaryIndex < bptIndex ? primaryIndex : primaryIndex - 1;
         for (uint256 i; i < tokens.length; i++) {
             // The primary index spot price is left as zero and skip the bpt index
             if (i == primaryIndex || i == bptIndex) continue;
 
-            spotPrices[i] = _calculateStableMathSpotPrice(
-                ampParam, invariant, scalingFactors, scaledBalances, primaryIndex,
-                // Change the token out to exclude the bpt token
-                i < bptIndex ? i : i - 1
+            // tokensOut have scaling factors applied
+            uint256 tokensOut = StableMath._calcOutGivenIn(
+                ampParam, scaledBalances,
+                tokenIndexIn,
+                // Change the token in and token out to exclude the bpt token when doing calcOutGivenIn
+                i < bptIndex ? i : i - 1,
+                TOKEN_AMOUNT_IN, invariant
             );
+
+            // Remove scaling factors from spot price. Scaling factors play two different roles in
+            // composable stable pools. For wrapped tokens like wstETH, the scaling factors
+            // "undo" the rebasing on wstETH back to an ETH denomination. Scaling factors may also
+            // scale balances to 18 decimal precision for the stable math spot price calculation.
+            // The scalingFactors must be applied here to account for both potential use cases
+            // for scalingFactors. The resulting precision is:
+            //   spotPrice in BALANCER_PRECISION * 10 ^ (secondaryDecimals - primaryDecimals)
+            // The BalancerComposableAuraVault will convert this scaled spot price back to
+            // the BALANCER_PRECISION by applying another decimal scale factor.
+            spotPrices[i] = (tokensOut * BALANCER_PRECISION * scalingFactors[primaryIndex]) / 
+                (TOKEN_AMOUNT_IN * scalingFactors[i]);
+            console.log("spot price", i, spotPrices[i]);
         }
-    }
-
-    function _calculateStableMathSpotPrice(
-        uint256 ampParam,
-        uint256 invariant,
-        uint256[] memory scalingFactors,
-        uint256[] memory scaledBalances,
-        uint256 primaryIndex,
-        uint256 tokenIndexOut
-    ) internal pure returns (uint256 spotPrice) {
-        // tokensOut have scaling factors applied
-        uint256 tokensOut = StableMath._calcOutGivenIn(
-            ampParam, scaledBalances, primaryIndex, tokenIndexOut, TOKEN_AMOUNT_IN, invariant
-        );
-
-        // Remove scaling factors from spot price. Scaling factors play two different roles in
-        // composable stable pools. For wrapped tokens like wstETH / ETH, the scaling factors
-        // "undo" the rebasing on wstETH back to an ETH denomination. Scaling factors may also
-        // scale balances to 18 decimal precision for the stable math spot price calculation.
-        // The scalingFactors must be applied here to account for both potential use cases
-        // for scalingFactors. The resulting precision is:
-        //   spotPrice in BALANCER_PRECISION * 10 ^ (secondaryDecimals - primaryDecimals)
-        // The BalancerComposableAuraVault will convert this scaled spot price back to
-        // the BALANCER_PRECISION by apply another decimal scale factor.
-        spotPrice = (tokensOut * BALANCER_PRECISION * scalingFactors[primaryIndex]) / (TOKEN_AMOUNT_IN * scalingFactors[tokenIndexOut]);
-        // spotPrice = tokensOut * scalingFactors[primaryIndex] / scalingFactors[tokenIndexOut];
     }
 }
