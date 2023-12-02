@@ -16,9 +16,9 @@ abstract contract RDNT_WETH is BaseWeightedPool {
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 0.001e18;
-        maxDeposit = 1e18;
-        maxRelEntryValuation = 50 * BASIS_POINT;
-        maxRelExitValuation = 50 * BASIS_POINT;
+        maxDeposit = 50e18;
+        maxRelEntryValuation = 75 * BASIS_POINT;
+        maxRelExitValuation = 75 * BASIS_POINT;
         super.setUp();
 
         // Lists RDNT Oracle

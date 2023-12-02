@@ -84,8 +84,9 @@ abstract contract BaseAcceptanceTest is Test {
     }
 
     function assertRelDiff(uint256 a, uint256 b, uint256 rel, string memory m) internal {
-        uint256 d = a > b ? a - b : b - a;
-        uint256 r = d * 1e9 / precision;
+        // Smaller number on top
+        (uint256 top, uint256 bot) = a < b ? (a, b) : (b, a);
+        uint256 r = (1e9 - top * 1e9 / bot);
         assertLe(r, rel, m);
     }
 

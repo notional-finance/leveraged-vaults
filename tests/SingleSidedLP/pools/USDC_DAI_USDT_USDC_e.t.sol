@@ -17,8 +17,8 @@ abstract contract USDC_DAI_USDT_USDC_e is BaseComposablePool {
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 0.001e18;
         maxDeposit = 1e18;
-        maxRelEntryValuation = 100 * BASIS_POINT;
-        maxRelExitValuation = 100 * BASIS_POINT;
+        maxRelEntryValuation = 10 * BASIS_POINT;
+        maxRelExitValuation = 10 * BASIS_POINT;
         super.setUp();
     }
 }
@@ -29,7 +29,7 @@ contract Test_USDC is USDC_DAI_USDT_USDC_e {
         super.setUp();
 
         minDeposit = 0.01e6;
-        maxDeposit = 100e6;
+        maxDeposit = 100_000e6;
     }
 }
 
@@ -39,6 +39,16 @@ contract Test_DAI is USDC_DAI_USDT_USDC_e {
         super.setUp();
 
         minDeposit = 0.01e18;
-        maxDeposit = 100e18;
+        maxDeposit = 100_000e18;
+    }
+}
+
+contract Test_USDT is USDC_DAI_USDT_USDC_e {
+    function setUp() public override { 
+        primaryBorrowCurrency = USDT;
+        super.setUp();
+
+        minDeposit = 0.01e6;
+        maxDeposit = 100_000e6;
     }
 }
