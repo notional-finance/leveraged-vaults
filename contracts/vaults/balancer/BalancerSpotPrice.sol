@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import "forge-std/console.sol";
 import {Deployments} from "../../global/Deployments.sol";
 import {StableMath} from "./math/StableMath.sol";
 import {IComposablePool, IWeightedPool} from "../../../interfaces/balancer/IBalancerPool.sol";
@@ -105,7 +104,6 @@ contract BalancerSpotPrice {
             // the BALANCER_PRECISION by applying another decimal scale factor.
             spotPrices[i] = (tokensOut * BALANCER_PRECISION * scalingFactors[primaryIndex]) / 
                 (TOKEN_AMOUNT_IN * scalingFactors[i]);
-            console.log("spot price", i, spotPrices[i]);
         }
     }
 }

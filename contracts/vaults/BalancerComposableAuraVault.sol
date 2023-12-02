@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import "forge-std/console.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {Deployments} from "../global/Deployments.sol";
 import {BalancerSpotPrice} from "./balancer/BalancerSpotPrice.sol";
