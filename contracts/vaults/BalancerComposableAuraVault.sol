@@ -92,7 +92,8 @@ contract BalancerComposableAuraVault is AuraStakingMixin {
         (uint256[] memory balances, uint256[] memory spotPrices) = SPOT_PRICE.getComposableSpotPrices(
             BALANCER_POOL_ID,
             address(BALANCER_POOL_TOKEN),
-            PRIMARY_INDEX()
+            PRIMARY_INDEX(),
+            BPT_INDEX
         );
 
         // Spot prices need to be scaled by secondaryDecimals - primaryDecimals, see the comment inside

@@ -13,6 +13,7 @@ import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
  */
 contract BalancerSpotPrice {
     uint256 internal constant BALANCER_PRECISION = 1e18;
+    uint256 internal constant TOKEN_AMOUNT_IN = 1e18;
 
     /// @notice Returns the weighted pool spot price and balances. Only the spot price on the
     /// secondary token is returned.
@@ -49,7 +50,8 @@ contract BalancerSpotPrice {
     function getComposableSpotPrices(
         bytes32 poolId,
         address poolAddress,
-        uint256 primaryIndex
+        uint256 primaryIndex,
+        uint256 bptIndex
     ) external view returns (uint256[] memory balances, uint256[] memory spotPrices) {
         address[] memory tokens;
         (tokens, balances, /* */) = Deployments.BALANCER_VAULT.getPoolTokens(poolId);
@@ -62,36 +64,45 @@ contract BalancerSpotPrice {
         ) = IComposablePool(poolAddress).getAmplificationParameter();
         require(precision == StableMath._AMP_PRECISION);
 
-        // The primary index spot price is left as zero.
         spotPrices = new uint256[](tokens.length);
-        uint256 scaledPrimary = balances[primaryIndex] * scalingFactors[primaryIndex] / BALANCER_PRECISION;
+
+        // Scale all balances before calculating the invariant, exclude the BPT from the scaled
+        // balances
+        uint256[] memory scaledBalances = new uint256[](balances.length - 1);
+        {
+            uint256 j;
+            for (uint256 i; i < tokens.length; i++) {
+                if (i == bptIndex) continue;
+                scaledBalances[j] = balances[i] * scalingFactors[i] / BALANCER_PRECISION;
+                j++;
+            }
+        }
+        uint256 invariant = StableMath._calculateInvariant(ampParam, scaledBalances);
+
         for (uint256 i; i < tokens.length; i++) {
-            if (i == primaryIndex) continue;
-            if (tokens[i] == poolAddress) continue;
+            // The primary index spot price is left as zero and skip the bpt index
+            if (i == primaryIndex || i == bptIndex) continue;
 
             spotPrices[i] = _calculateStableMathSpotPrice(
-                ampParam, scalingFactors, balances, scaledPrimary, primaryIndex, i
+                ampParam, invariant, scalingFactors, scaledBalances, primaryIndex,
+                // Change the token out to exclude the bpt token
+                i < bptIndex ? i : i - 1
             );
         }
     }
 
     function _calculateStableMathSpotPrice(
         uint256 ampParam,
+        uint256 invariant,
         uint256[] memory scalingFactors,
-        uint256[] memory balances,
-        uint256 scaledPrimary,
+        uint256[] memory scaledBalances,
         uint256 primaryIndex,
-        uint256 index2
+        uint256 tokenIndexOut
     ) internal pure returns (uint256 spotPrice) {
-        // Apply scale factors
-        uint256 secondary = balances[index2] * scalingFactors[index2] / BALANCER_PRECISION;
-
-        uint256 invariant = StableMath._calculateInvariant(
-            ampParam, StableMath._balances(scaledPrimary, secondary), true // round up
+        // tokensOut have scaling factors applied
+        uint256 tokensOut = StableMath._calcOutGivenIn(
+            ampParam, scaledBalances, primaryIndex, tokenIndexOut, TOKEN_AMOUNT_IN, invariant
         );
-
-        // This spot price is always calculated at BALANCER_PRECISION
-        spotPrice = StableMath._calcSpotPrice(ampParam, invariant, scaledPrimary, secondary);
 
         // Remove scaling factors from spot price. Scaling factors play two different roles in
         // composable stable pools. For wrapped tokens like wstETH / ETH, the scaling factors
@@ -102,6 +113,7 @@ contract BalancerSpotPrice {
         //   spotPrice in BALANCER_PRECISION * 10 ^ (secondaryDecimals - primaryDecimals)
         // The BalancerComposableAuraVault will convert this scaled spot price back to
         // the BALANCER_PRECISION by apply another decimal scale factor.
-        spotPrice = spotPrice * scalingFactors[primaryIndex] / scalingFactors[index2];
+        spotPrice = (tokensOut * BALANCER_PRECISION * scalingFactors[primaryIndex]) / (TOKEN_AMOUNT_IN * scalingFactors[tokenIndexOut]);
+        // spotPrice = tokensOut * scalingFactors[primaryIndex] / scalingFactors[tokenIndexOut];
     }
 }

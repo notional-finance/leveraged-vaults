@@ -23,12 +23,20 @@ library StableMath {
     //
     // This means e.g. we can safely multiply a balance by the amplification parameter without worrying about overflow.
 
+    // About swap fees on joins and exits:
+    // Any join or exit that is not perfectly balanced (e.g. all single token joins or exits) is mathematically
+    // equivalent to a perfectly balanced join or  exit followed by a series of swaps. Since these swaps would charge
+    // swap fees, it follows that (some) joins and exits should as well.
+    // On these operations, we split the token amounts in 'taxable' and 'non-taxable' portions, where the 'taxable' part
+    // is the one to which swap fees are applied.
+
     // Computes the invariant given the current balances, using the Newton-Raphson approximation.
     // The amplification parameter equals: A n^(n-1)
+    // See: https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pool-templates/base/SwapTemplateBase.vy#L206
+    // solhint-disable-previous-line max-line-length
     function _calculateInvariant(
         uint256 amplificationParameter,
-        uint256[] memory balances,
-        bool roundUp
+        uint256[] memory balances
     ) internal pure returns (uint256) {
         /**********************************************************************************************
         // invariant                                                                                 //
@@ -37,11 +45,11 @@ library StableMath {
         // S = sum of balances                                             n^n P                     //
         // P = product of balances                                                                   //
         // n = number of tokens                                                                      //
-        *********x************************************************************************************/
+        **********************************************************************************************/
 
+        // Always round down, to match Vyper's arithmetic (which always truncates).
         unchecked {
-            // We support rounding up or down.
-            uint256 sum = 0;
+            uint256 sum = 0; // S in the Curve version
             uint256 numTokens = balances.length;
             for (uint256 i = 0; i < numTokens; i++) {
                 sum = sum.add(balances[i]);
@@ -50,25 +58,32 @@ library StableMath {
                 return 0;
             }
 
-            uint256 prevInvariant = 0;
-            uint256 invariant = sum;
-            uint256 ampTimesTotal = amplificationParameter * numTokens;
+            uint256 prevInvariant; // Dprev in the Curve version
+            uint256 invariant = sum; // D in the Curve version
+            uint256 ampTimesTotal = amplificationParameter * numTokens; // Ann in the Curve version
 
             for (uint256 i = 0; i < 255; i++) {
-                uint256 P_D = balances[0] * numTokens;
-                for (uint256 j = 1; j < numTokens; j++) {
-                    P_D = Math.div(Math.mul(Math.mul(P_D, balances[j]), numTokens), invariant, roundUp);
+                uint256 D_P = invariant;
+
+                for (uint256 j = 0; j < numTokens; j++) {
+                    // (D_P * invariant) / (balances[j] * numTokens)
+                    D_P = Math.divDown(Math.mul(D_P, invariant), Math.mul(balances[j], numTokens));
                 }
+
                 prevInvariant = invariant;
-                invariant = Math.div(
-                    Math.mul(Math.mul(numTokens, invariant), invariant).add(
-                        Math.div(Math.mul(Math.mul(ampTimesTotal, sum), P_D), _AMP_PRECISION, roundUp)
+
+                invariant = Math.divDown(
+                    Math.mul(
+                        // (ampTimesTotal * sum) / AMP_PRECISION + D_P * numTokens
+                        (Math.divDown(Math.mul(ampTimesTotal, sum), _AMP_PRECISION).add(Math.mul(D_P, numTokens))),
+                        invariant
                     ),
-                    Math.mul(numTokens + 1, invariant).add(
-                        // No need to use checked arithmetic for the amp precision, the amp is guaranteed to be at least 1
-                        Math.div(Math.mul(ampTimesTotal - _AMP_PRECISION, P_D), _AMP_PRECISION, !roundUp)
-                    ),
-                    roundUp
+                    // ((ampTimesTotal - _AMP_PRECISION) * invariant) / _AMP_PRECISION + (numTokens + 1) * D_P
+                    (
+                        Math.divDown(Math.mul((ampTimesTotal - _AMP_PRECISION), invariant), _AMP_PRECISION).add(
+                            Math.mul((numTokens + 1), D_P)
+                        )
+                    )
                 );
 
                 if (invariant > prevInvariant) {
@@ -82,53 +97,6 @@ library StableMath {
         }
 
         revert CalculationDidNotConverge();
-    }
-
-    /**
-     * @dev Calculates the spot price of token Y in token X.
-     */
-    function _calcSpotPrice(
-        uint256 amplificationParameter,
-        uint256 invariant, 
-        uint256 balanceX,
-        uint256 balanceY
-    ) internal pure returns (uint256) {
-        /**************************************************************************************************************
-        //                                                                                                           //
-        //                             2.a.x.y + a.y^2 + b.y                                                         //
-        // spot price Y/X = - dx/dy = -----------------------                                                        //
-        //                             2.a.x.y + a.x^2 + b.x                                                         //
-        //                                                                                                           //
-        // n = 2                                                                                                     //
-        // a = amp param * n                                                                                         //
-        // b = D + a.(S - D)                                                                                         //
-        // D = invariant                                                                                             //
-        // S = sum of balances but x,y = 0 since x  and y are the only tokens                                        //
-        **************************************************************************************************************/
-
-        unchecked {
-            uint256 a = (amplificationParameter * 2) / _AMP_PRECISION;
-            uint256 b = Math.mul(invariant, a).sub(invariant);
-
-            uint256 axy2 = Math.mul(a * 2, balanceX).mulDown(balanceY); // n = 2
-
-            // dx = a.x.y.2 + a.y^2 - b.y
-            uint256 derivativeX = axy2.add(Math.mul(a, balanceY).mulDown(balanceY)).sub(b.mulDown(balanceY));
-
-            // dy = a.x.y.2 + a.x^2 - b.x
-            uint256 derivativeY = axy2.add(Math.mul(a, balanceX).mulDown(balanceX)).sub(b.mulDown(balanceX));
-
-            // The rounding direction is irrelevant as we're about to introduce a much larger error when converting to log
-            // space. We use `divUp` as it prevents the result from being zero, which would make the logarithm revert. A
-            // result of zero is therefore only possible with zero balances, which are prevented via other means.
-            return derivativeX.divUp(derivativeY);
-        }
-    }
-
-    function _balances(uint256 balanceX, uint256 balanceY) internal pure returns (uint256[] memory balances) {
-        balances = new uint256[](2);
-        balances[0] = balanceX;
-        balances[1] = balanceY;
     }
 
     // This function calculates the balance of a given token (tokenIndex)
@@ -152,7 +120,7 @@ library StableMath {
             sum = sum - balances[tokenIndex];
 
             uint256 inv2 = Math.mul(invariant, invariant);
-            // We remove the balance fromm c by multiplying it
+            // We remove the balance from c by multiplying it
             uint256 c = Math.mul(
                 Math.mul(Math.divUp(inv2, Math.mul(ampTimesTotal, P_D)), _AMP_PRECISION),
                 balances[tokenIndex]
@@ -186,51 +154,6 @@ library StableMath {
         revert CalculationDidNotConverge();
     }
 
-    function _calcTokenOutGivenExactBptIn(
-        uint256 amp,
-        uint256[] memory balances,
-        uint256 tokenIndex,
-        uint256 bptAmountIn,
-        uint256 bptTotalSupply,
-        uint256 swapFeePercentage,
-        uint256 currentInvariant
-    ) internal pure returns (uint256) {
-        // Token out, so we round down overall.
-
-        unchecked {
-            uint256 newInvariant = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
-
-            // Calculate amount out without fee
-            uint256 newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(
-                amp,
-                balances,
-                newInvariant,
-                tokenIndex
-            );
-            uint256 amountOutWithoutFee = balances[tokenIndex].sub(newBalanceTokenIndex);
-
-            // First calculate the sum of all token balances, which will be used to calculate
-            // the current weight of each token
-            uint256 sumBalances = 0;
-            for (uint256 i = 0; i < balances.length; i++) {
-                sumBalances = sumBalances.add(balances[i]);
-            }
-
-            // We can now compute how much excess balance is being withdrawn as a result of the virtual swaps, which result
-            // in swap fees.
-            uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
-            uint256 taxablePercentage = currentWeight.complement();
-
-            // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it
-            // to 'token out'. This results in slightly larger price impact. Fees are rounded up.
-            uint256 taxableAmount = amountOutWithoutFee.mulUp(taxablePercentage);
-            uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
-
-            // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
-            return nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage));
-        }
-    }
-
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the current balances.
     // The amplification parameter equals: A n^(n-1)
     function _calcOutGivenIn(
@@ -247,7 +170,7 @@ library StableMath {
         // by = balance token out                                                                                    //
         // y = by - ay (finalBalanceOut)                                                                             //
         // D = invariant                                               D                     D^(n+1)                 //
-        // A = amplification coefficient               y^2 + ( S - ----------  - D) * y -  ------------- = 0         //
+        // A = amplification coefficient               y^2 + ( S + ----------  - D) * y -  ------------- = 0         //
         // n = number of tokens                                    (A * n^n)               A * n^2n * P              //
         // S = sum of final balances but y                                                                           //
         // P = product of final balances but y                                                                       //
