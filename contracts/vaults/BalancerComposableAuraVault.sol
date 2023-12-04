@@ -91,14 +91,23 @@ contract BalancerComposableAuraVault is AuraStakingMixin {
         (uint256[] memory balances, uint256[] memory spotPrices) = SPOT_PRICE.getComposableSpotPrices(
             BALANCER_POOL_ID,
             address(BALANCER_POOL_TOKEN),
-            PRIMARY_INDEX()
+            PRIMARY_INDEX(),
+            BPT_INDEX
         );
 
-        // Spot prices are returned in native decimals, convert them all to POOL_PRECISION
-        // as required in the _calculateLPTokenValue method.
+        // Spot prices need to be scaled by secondaryDecimals - primaryDecimals, see the comment inside
+        // BalancerSpotPrice._calculateStableMathSpotPrice. The final precision of the spot prices will
+        // be POOL_PRECISION().
         (/* */, uint8[] memory decimals) = TOKENS();
+        uint8 primaryDecimals = decimals[PRIMARY_INDEX()];
         for (uint256 i; i < spotPrices.length; i++) {
-            spotPrices[i] = spotPrices[i] * POOL_PRECISION() / 10 ** decimals[i];
+            uint8 secondaryDecimals = decimals[i];
+            // If primaryDecimals == secondaryDecimals no scaling is necessary.
+            if (primaryDecimals < secondaryDecimals) {
+                spotPrices[i] = spotPrices[i] / 10 ** (secondaryDecimals - primaryDecimals);
+            } else if (secondaryDecimals < primaryDecimals) {
+                spotPrices[i] = spotPrices[i] * 10 ** (primaryDecimals - secondaryDecimals);
+            }
         }
 
         return _calculateLPTokenValue(balances, spotPrices);
