@@ -5,6 +5,7 @@ import {IERC20} from "../../../../interfaces/IERC20.sol";
 import {Deployments} from "../../../global/Deployments.sol";
 import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
 import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
+import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
 import {SingleSidedLPVaultBase} from "../../common/SingleSidedLPVaultBase.sol";
 import {TokenUtils} from "../../../utils/TokenUtils.sol";
 import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
@@ -126,6 +127,16 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
 
     function _rewriteWETH(address token) private pure returns (address) {
         return token == address(Deployments.WETH) ? Deployments.ETH_ADDRESS : address(token);
+    }
+
+    // Checks if a token in the pool is a BPT. Used in cases where a BPT is one of the
+    // tokens within the pool (not the self BPT in the case of the Composable Stable Pool).
+    function _isBPT(address token) internal view returns (bool) {
+        try IBalancerPool(token).getPoolId() returns (bytes32 /* poolId */) {
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     /// @notice the re-entrancy context is checked during liquidation to prevent read-only

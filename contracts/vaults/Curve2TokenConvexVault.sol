@@ -15,6 +15,10 @@ import {
 } from "../../interfaces/curve/ICurvePool.sol";
 
 contract Curve2TokenConvexVault is ConvexStakingMixin {
+    // This contract does not properly support Curve pools where one of the tokens is
+    // held as an LP token. However, unlike Balancer pools there is no reliable way to
+    // determine if the token held in the Curve pool is an LP token or not, therefore
+    // we do not have an explicit check here.
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
         ConvexStakingMixin(notional_, params) {}
 
