@@ -404,6 +404,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
 
         // Increase LP token amount without minting additional vault shares
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        // Do not re-invest if there are no vault shares
+        require(state.totalVaultSharesGlobal > 0);
         state.totalPoolClaim += poolClaimAmount;
         state.setStrategyVaultState();
 
