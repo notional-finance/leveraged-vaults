@@ -481,7 +481,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         uint256 claimToExit, bytes calldata /* data */
     ) external override onlyRole(EMERGENCY_EXIT_ROLE) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
-        if (claimToExit == 0) claimToExit = state.totalPoolClaim;
+        if (claimToExit == 0 || claimToExit > state.totalPoolClaim) claimToExit = state.totalPoolClaim;
 
         // By setting min amounts to zero, we will accept whatever tokens come from the pool
         // in a proportional exit. Front running will not have an effect since no trading will
