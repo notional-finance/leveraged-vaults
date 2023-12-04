@@ -398,7 +398,12 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         // tokens like in the ComposableStablePool.
         require(trades.length == NUM_TOKENS());
         uint256[] memory amounts;
-        (rewardToken, amountSold, amounts) = _executeRewardTrades(trades);
+        // The sell token on all trades must be the same (checked inside executeRewardTrades) so
+        // just validate here that the sellToken is a valid reward token (i.e. none of the tokens
+        // used in the regular functioning of the vault).
+        rewardToken = trades[0].sellToken;
+        if (_isInvalidRewardToken(rewardToken)) revert Errors.InvalidRewardToken(rewardToken);
+        (amountSold, amounts) = _executeRewardTrades(trades, rewardToken);
 
         poolClaimAmount = _joinPoolAndStake(amounts, minPoolClaim);
 
@@ -412,16 +417,10 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         emit RewardReinvested(rewardToken, amountSold, poolClaimAmount);
     }
 
-    function _executeRewardTrades(SingleSidedRewardTradeParams[] calldata trades) internal returns (
-        address rewardToken,
-        uint256 amountSold,
-        uint256[] memory amounts
-    ) {
-        // The sell token on all trades must be the same (checked inside executeRewardTrades) so
-        // just validate here that the sellToken is a valid reward token (i.e. none of the tokens
-        // used in the regular functioning of the vault).
-        rewardToken = trades[0].sellToken;
-        if (_isInvalidRewardToken(rewardToken)) revert Errors.InvalidRewardToken(rewardToken);
+    function _executeRewardTrades(
+        SingleSidedRewardTradeParams[] calldata trades,
+        address rewardToken
+    ) internal returns (uint256 amountSold, uint256[] memory amounts) {
         (IERC20[] memory tokens, /* */) = TOKENS();
         (amounts, amountSold) = StrategyUtils.executeRewardTrades(
             tokens, trades, rewardToken, address(POOL_TOKEN())
@@ -517,6 +516,19 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         state.setStrategyVaultState();
 
         _unlockVault();
+    }
+
+    /// @notice This is a trusted method that can only be executed while the vault is locked. The owner
+    /// may trade tokens prior to restoring the vault if the tokens withdrawn are imbalanced. In this
+    /// method, one of the tokens held is sold for other tokens that go into the pool. If multiple tokens
+    /// need to be sold then this method will be called multiple times prior to restoreVault.
+    function tradeTokensBeforeRestore(
+        SingleSidedRewardTradeParams[] calldata trades
+    ) external override whenLocked onlyNotionalOwner {
+        // The sell token on all trades must be the same (checked inside executeRewardTrades). In this
+        // method we do not validate the sell token so we can sell any of the tokens held on the vault
+        // in exchange for any other token that goes into the pool.
+        _executeRewardTrades(trades, trades[0].sellToken);
     }
 
     // Storage gap for future potential upgrades

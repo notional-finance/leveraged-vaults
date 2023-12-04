@@ -87,9 +87,8 @@ contract Test_wstETH is wstETH_cbETH_rETH {
         uint256 maturity = maturities[0];
         enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
 
-        bytes32 role = v().REWARD_REINVESTMENT_ROLE();
         vm.prank(NOTIONAL.owner());
-        v().grantRole(role, reward);
+        v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
 
         skip(3600);
         assertEq(rewardToken.balanceOf(address(vault)), 0);
