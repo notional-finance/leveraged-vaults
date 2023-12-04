@@ -28,6 +28,7 @@ abstract contract BaseWeightedPool is BaseSingleSidedLPVault {
         IStrategyVault impl = new BalancerWeightedAuraVault(
             NOTIONAL, AuraVaultDeploymentParams({
                 rewardPool: IAuraRewardPool(address(rewardPool)),
+                whitelistedReward: whitelistedReward,
                 baseParams: DeploymentParams({
                     primaryBorrowCurrencyId: primaryBorrowCurrency,
                     balancerPoolId: balancerPoolId,

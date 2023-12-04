@@ -94,6 +94,7 @@ library StrategyUtils {
         address poolToken
     ) external returns(uint256[] memory amounts, uint256 amountSold) {
         amounts = new uint256[](trades.length);
+        uint256 initialRewardBalance = IERC20(rewardToken).balanceOf(address(this));
         for (uint256 i; i < trades.length; i++) {
             // All trades must sell the same token.
             require(trades[i].sellToken == rewardToken);
@@ -104,14 +105,30 @@ library StrategyUtils {
             // The reward trade can only purchase tokens that go into the pool
             require(trades[i].buyToken == address(tokens[i]));
 
-            // It may be possible that the entire balance of reward tokens is not sold by the vault,
-            // but that is ok.
-            (uint256 sold, uint256 bought) = _executeTradeWithStaticSlippage(
-                Deployments.TRADING_MODULE, trades[i].tradeParams, rewardToken, trades[i].buyToken, trades[i].amount
-            );
+            uint256 sold;
+            uint256 bought;
+            if (rewardToken == trades[i].buyToken) {
+                // In some rare cases the reward token is actually one of the the tokens
+                // in the pool and we do not want to execute a trade against it. In these
+                // cases we skip the trade and just mark the amount as "sold" with
+                // an equal amount "bought".
+                sold = trades[i].amount;
+                bought = sold;
+            } else {
+                // It may be possible that the entire balance of reward tokens is not sold by the vault,
+                // but that is ok.
+                (sold, bought) = _executeTradeWithStaticSlippage(
+                    Deployments.TRADING_MODULE, trades[i].tradeParams, rewardToken, trades[i].buyToken, trades[i].amount
+                );
+            }
+
             amounts[i] = bought;
             amountSold += sold;
         }
+
+        // Ensures that in the case when the reward token is one of the tokens in the pool we do not
+        // over sell the actual reward token balance.
+        require(amountSold <= initialRewardBalance, "Insufficient Reward Tokens");
     }
 
     /// @notice Executes a trade that uses a dynamic slippage amount relative to the current
