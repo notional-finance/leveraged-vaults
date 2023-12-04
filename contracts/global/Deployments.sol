@@ -13,6 +13,7 @@ import {ICurveRegistry} from "../../interfaces/curve/ICurveRegistry.sol";
 import {ICurveMetaRegistry} from "../../interfaces/curve/ICurveMetaRegistry.sol";
 import {ICurveRouterV2} from "../../interfaces/curve/ICurveRouterV2.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
+import {AggregatorV2V3Interface} from "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 /// @title Hardcoded Deployment Addresses for Arbitrum
 library Deployments {
@@ -37,6 +38,9 @@ library Deployments {
     address internal constant CURVE_V1_HANDLER = address(0);
     address internal constant CURVE_V2_HANDLER = address(0);
     ITradingModule internal constant TRADING_MODULE = ITradingModule(0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8);
+
+    // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
+    AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(0xFdB631F5EE196F0ed6FAa767959853A9F217697D);
 }
 
 /// @title Hardcoded Deployment Addresses for Mainnet

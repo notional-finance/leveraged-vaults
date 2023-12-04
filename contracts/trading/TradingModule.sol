@@ -25,6 +25,9 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     // Used to get the proxy address inside delegate call contexts
     ITradingModule internal immutable PROXY;
 
+    // Grace period after a sequencer downtime has occurred
+    uint256 internal constant SEQUENCER_UPTIME_GRACE_PERIOD = 1 hours;
+
     error SellTokenEqualsBuyToken();
     error UnknownDEX();
     error InsufficientPermissions();
@@ -227,6 +230,21 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         revert UnknownDEX();
     }
 
+    function _checkSequencer() private view {
+        // See: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
+        if (address(Deployments.SEQUENCER_UPTIME_ORACLE) != address(0)) {
+            (
+                /*uint80 roundID*/,
+                int256 answer,
+                uint256 startedAt,
+                /*uint256 updatedAt*/,
+                /*uint80 answeredInRound*/
+            ) = Deployments.SEQUENCER_UPTIME_ORACLE.latestRoundData();
+            require(answer == 0, "Sequencer Down");
+            require(SEQUENCER_UPTIME_GRACE_PERIOD < block.timestamp - startedAt, "Sequencer Grace Period");
+        }
+    }
+
     /// @notice Returns the Chainlink oracle price between the baseToken and the quoteToken, the
     /// Chainlink oracles. The quote currency between the oracles must match or the conversion
     /// in this method does not work. Most Chainlink oracles are baseToken/USD pairs.
@@ -240,6 +258,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         override
         returns (int256 answer, int256 decimals)
     {
+        _checkSequencer();
         PriceOracle memory baseOracle = priceOracles[baseToken];
         PriceOracle memory quoteOracle = priceOracles[quoteToken];
 
