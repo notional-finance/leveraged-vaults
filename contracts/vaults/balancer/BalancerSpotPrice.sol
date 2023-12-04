@@ -19,8 +19,7 @@ contract BalancerSpotPrice {
     function getWeightedSpotPrices(
         bytes32 poolId,
         address poolAddress,
-        uint256 primaryIndex,
-        uint8 primaryDecimals
+        uint256 primaryIndex
     ) external view returns (uint256[] memory balances, uint256[] memory spotPrices) {
         (/* */, balances, /* */) = Deployments.BALANCER_VAULT.getPoolTokens(poolId);
         // Only two token pools are supported
@@ -28,6 +27,7 @@ contract BalancerSpotPrice {
         spotPrices = new uint256[](2);
 
         uint256[] memory weights = IWeightedPool(poolAddress).getNormalizedWeights();
+        uint256[] memory scalingFactors = IWeightedPool(poolAddress).getScalingFactors();
 
         // Spot price calculation is specified at the link below. Do not account for swap fees
         // because we're using this price to compare to the oracle price and adding swap fees
@@ -39,9 +39,11 @@ contract BalancerSpotPrice {
         uint256 secondaryIndex = 1 - primaryIndex;
 
         // There is a chance of a uint256 overflow if the balances[secondaryIndex] > 10**36
-        uint256 numerator = balances[secondaryIndex] * weights[primaryIndex] * (10 ** primaryDecimals);
-        uint256 denominator = balances[primaryIndex] * weights[secondaryIndex];
-        spotPrices[secondaryIndex] = numerator / denominator;
+        uint256 numerator = balances[secondaryIndex] * weights[primaryIndex] * scalingFactors[secondaryIndex];
+        uint256 denominator = balances[primaryIndex] * weights[secondaryIndex] * scalingFactors[primaryIndex];
+
+        // Due to the scaling factors above, this spot price is returned in Balancer POOL_PRECISION decimals
+        spotPrices[secondaryIndex] = numerator * BALANCER_PRECISION / denominator;
     }
 
     /// @notice Returns the composable pool spot price and balances. Pool token spot
