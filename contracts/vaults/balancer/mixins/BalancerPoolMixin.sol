@@ -132,6 +132,9 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
     // Checks if a token in the pool is a BPT. Used in cases where a BPT is one of the
     // tokens within the pool (not the self BPT in the case of the Composable Stable Pool).
     function _isBPT(address token) internal view returns (bool) {
+        // Need to check for zero address since this breaks the try / catch
+        if (token == address(0)) return false;
+
         try IBalancerPool(token).getPoolId() returns (bytes32 /* poolId */) {
             return true;
         } catch {
