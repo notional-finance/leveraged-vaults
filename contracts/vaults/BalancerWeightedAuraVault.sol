@@ -83,4 +83,19 @@ contract BalancerWeightedAuraVault is AuraStakingMixin {
 
         return _calculateLPTokenValue(balances, spotPrices);
     }
+
+    /// @notice Weighted pools may have pre-minted BPT. If that is the case then
+    /// we need to call getActualSupply() instead. Legacy pools do not have the
+    /// getActualSupply method. See:
+    /// https://docs.balancer.fi/concepts/advanced/valuing-bpt/valuing-bpt.html#getting-bpt-supply
+    function _totalPoolSupply() internal view override returns (uint256) {
+        // As of this writing the documentation linked above appears inaccurate and the
+        // pre-minted total supply returned by a pool is not a fixed constant. Therefore,
+        // we use a try / catch here instead.
+        try IComposablePool(address(BALANCER_POOL_TOKEN)).getActualSupply() returns (uint256 totalSupply) {
+            return totalSupply;
+        } catch {
+            return super._totalPoolSupply();
+        }
+    }
 }
