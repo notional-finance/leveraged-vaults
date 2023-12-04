@@ -88,7 +88,7 @@ interface ISingleSidedLPStrategyVault {
     /// @notice Emitted when vault settings are updated
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
     /// @notice Emitted after an emergency exit
-    event EmergencyExit(uint256 poolClaimToSettle);
+    event EmergencyExit(uint256 poolClaimExit, uint256[] exitBalances);
     /// @notice Emitted when the vault is locked
     event VaultLocked();
     /// @notice Emitted when the vault is unlocked

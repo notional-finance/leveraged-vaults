@@ -44,7 +44,7 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
     function PRIMARY_INDEX() internal view override returns (uint256) { return _PRIMARY_INDEX; }
     function POOL_TOKEN() internal view override returns (IERC20) { return CURVE_POOL_TOKEN; }
     function POOL_PRECISION() internal pure override returns (uint256) { return CURVE_PRECISION; }
-    function TOKENS() internal view override returns (IERC20[] memory, uint8[] memory) {
+    function TOKENS() public view override returns (IERC20[] memory, uint8[] memory) {
         IERC20[] memory tokens = new IERC20[](_NUM_TOKENS);
         uint8[] memory decimals = new uint8[](_NUM_TOKENS);
 

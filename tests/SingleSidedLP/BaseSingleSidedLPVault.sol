@@ -148,7 +148,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         v().emergencyExit(0, "");
     }
 
-    function test_EmergencyExit() public {
+    function test_EmergencyExit_LocksVault() public {
         address account = makeAddr("account");
         address exit = makeAddr("exit");
         uint256 maturity = maturities[0];
@@ -162,8 +162,29 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
 
         uint256 initialBalance = rewardPool.balanceOf(address(vault));
         assertGt(initialBalance, 0);
+        (IERC20[] memory tokens, /* */) = v().TOKENS();
+        for (uint256 i; i < tokens.length; i++) {
+            if (address(tokens[i]) == address(0)) {
+                assertEq(address(vault).balance, 0);
+            } else if (tokens[i] != poolToken) {
+                assertEq(tokens[i].balanceOf(address(vault)), 0);
+            }
+        }
+
         vm.prank(exit);
         v().emergencyExit(0, "");
+
+        uint256[] memory exitBalances = new uint256[](tokens.length);
+        for (uint256 i; i < tokens.length; i++) {
+            if (address(tokens[i]) == address(0)) {
+                exitBalances[i] = address(vault).balance;
+                assertGt(exitBalances[i], 0);
+            } else if (tokens[i] != poolToken) {
+                exitBalances[i] = tokens[i].balanceOf(address(vault));
+                assertGt(exitBalances[i], 0);
+            }
+        }
+
         assertEq(rewardPool.balanceOf(address(vault)), 0);
         assertEq(poolToken.balanceOf(address(vault)), 0);
         assertEq(v().isLocked(), true);
@@ -189,11 +210,58 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         // Exit does not have proper authentication
         vm.prank(exit);
         vm.expectRevert();
-        v().restoreVault(0, "");
+        v().restoreVault(0, abi.encode(exitBalances));
+    }
+
+    function test_EmergencyExit() public {
+        address account = makeAddr("account");
+        address exit = makeAddr("exit");
+        uint256 maturity = maturities[0];
+        uint256 vaultShares = enterVaultBypass(
+            account, maxDeposit, maturity, getDepositParams(0, 0)
+        );
+
+        bytes32 role = v().EMERGENCY_EXIT_ROLE();
+        vm.prank(NOTIONAL.owner());
+        v().grantRole(role, exit);
+
+        uint256 initialBalance = rewardPool.balanceOf(address(vault));
+        assertGt(initialBalance, 0);
+        (IERC20[] memory tokens, /* */) = v().TOKENS();
+        for (uint256 i; i < tokens.length; i++) {
+            if (address(tokens[i]) == address(0)) {
+                assertEq(address(vault).balance, 0);
+            } else if (tokens[i] != poolToken) {
+                assertEq(tokens[i].balanceOf(address(vault)), 0);
+            }
+        }
+
+        vm.prank(exit);
+        v().emergencyExit(0, "");
+
+        uint256[] memory exitBalances = new uint256[](tokens.length);
+        for (uint256 i; i < tokens.length; i++) {
+            if (address(tokens[i]) == address(0)) {
+                exitBalances[i] = address(vault).balance;
+                assertGt(exitBalances[i], 0);
+            } else if (tokens[i] != poolToken) {
+                exitBalances[i] = tokens[i].balanceOf(address(vault));
+                assertGt(exitBalances[i], 0);
+            }
+        }
 
         // Restore the vault
         vm.prank(NOTIONAL.owner());
-        v().restoreVault(0, "");
+        v().restoreVault(0, abi.encode(exitBalances));
+
+        // All token balances should be cleared.
+        for (uint256 i; i < tokens.length; i++) {
+            if (address(tokens[i]) == address(0)) {
+                assertEq(address(vault).balance, 0, "eth balance");
+            } else if (tokens[i] != poolToken) {
+                assertEq(tokens[i].balanceOf(address(vault)), 0, "token balance");
+            }
+        }
         uint256 postRestore = rewardPool.balanceOf(address(vault));
         assertRelDiff(initialBalance, postRestore, 0.0001e9, "Restore Balance");
         assertEq(v().isLocked(), false);
