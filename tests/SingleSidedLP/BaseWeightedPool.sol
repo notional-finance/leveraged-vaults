@@ -35,7 +35,7 @@ abstract contract BaseWeightedPool is BaseSingleSidedLPVault {
         ));
     }
 
-    function deployVault() internal override returns (IStrategyVault) {
+    function deployTestVault() internal override returns (IStrategyVault) {
         spotPrice = new BalancerSpotPrice();
 
         address impl = deployVaultImplementation();

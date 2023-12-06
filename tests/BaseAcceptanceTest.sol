@@ -60,13 +60,13 @@ abstract contract BaseAcceptanceTest is Test {
     function setUp() public virtual {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
 
-        config = getVaultConfig();
+        config = getTestVaultConfig();
         MarketParameters[] memory m = NOTIONAL.getActiveMarkets(config.borrowCurrencyId);
         maturities = new uint256[](m.length + 1);
         maturities[0] = Constants.PRIME_CASH_VAULT_MATURITY;
         for (uint256 i; i < m.length; i++) maturities[i + 1] = m[i].maturity;
 
-        vault = deployVault();
+        vault = deployTestVault();
         vm.prank(NOTIONAL.owner());
         NOTIONAL.updateVault(address(vault), config, getMaxPrimaryBorrow());
 
@@ -100,8 +100,8 @@ abstract contract BaseAcceptanceTest is Test {
     }
 
     function getVaultName() internal pure virtual returns (string memory);
-    function deployVault() internal virtual returns (IStrategyVault);
-    function getVaultConfig() internal view virtual returns (VaultConfigParams memory);
+    function deployTestVault() internal virtual returns (IStrategyVault);
+    function getTestVaultConfig() internal view virtual returns (VaultConfigParams memory);
     function getPrimaryVaultToken(uint256 /* maturity */) internal virtual returns (address) {
         return address(0);
     }

@@ -16,7 +16,7 @@ abstract contract BaseCrossCurrencyVault is BaseAcceptanceTest {
     uint16 primaryDexId;
     bytes exchangeData;
 
-    function deployVault() internal override returns (IStrategyVault) {
+    function deployTestVault() internal override returns (IStrategyVault) {
         IStrategyVault impl = new CrossCurrencyVault(NOTIONAL, TRADING_MODULE, WRAPPED_FCASH_FACTORY, WETH);
         bytes memory callData = abi.encodeWithSelector(
             CrossCurrencyVault.initialize.selector, "Vault", primaryBorrowCurrency, lendCurrencyId
@@ -54,7 +54,7 @@ abstract contract BaseCrossCurrencyVault is BaseAcceptanceTest {
         return IStrategyVault(address(proxy));
     }
 
-    function getVaultConfig() internal view override returns (VaultConfigParams memory p) {
+    function getTestVaultConfig() internal view override returns (VaultConfigParams memory p) {
         p.flags = ENABLED | ALLOW_REENTRANCY | ENABLE_FCASH_DISCOUNT | VAULT_MUST_SETTLE;
         p.borrowCurrencyId = primaryBorrowCurrency;
         p.minAccountBorrowSize = 0.01e8;

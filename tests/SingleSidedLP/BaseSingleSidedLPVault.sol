@@ -30,7 +30,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         );
     }
 
-    function getVaultConfig() internal view override returns (VaultConfigParams memory p) {
+    function getTestVaultConfig() internal view override returns (VaultConfigParams memory p) {
         p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;
         p.borrowCurrencyId = primaryBorrowCurrency;
         p.minAccountBorrowSize = 0.01e8;
