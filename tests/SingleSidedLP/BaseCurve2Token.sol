@@ -2,10 +2,11 @@
 pragma solidity 0.8.17;
 
 import "./BaseSingleSidedLPVault.sol";
+import "../../scripts/deploy/DeployProxyVault.sol";
 import "../../contracts/vaults/Curve2TokenConvexVault.sol";
 import "../../contracts/vaults/curve/ConvexStakingMixin.sol";
 
-abstract contract BaseCurve2Token is BaseSingleSidedLPVault {
+abstract contract BaseCurve2Token is DeployProxyVault, BaseSingleSidedLPVault {
     address lpToken;
 
     function setUp() public override virtual {
@@ -14,9 +15,7 @@ abstract contract BaseCurve2Token is BaseSingleSidedLPVault {
         super.setUp();
     }
 
-    function deployVault() internal override returns (IStrategyVault) {
-        numTokens = 2;
-
+    function deployVaultImplementation() internal override returns (address) {
         IStrategyVault impl = new Curve2TokenConvexVault(
             NOTIONAL, ConvexVaultDeploymentParams({
                 rewardPool: address(rewardPool),
@@ -24,22 +23,32 @@ abstract contract BaseCurve2Token is BaseSingleSidedLPVault {
                 baseParams: DeploymentParams({
                     primaryBorrowCurrencyId: primaryBorrowCurrency,
                     pool: address(poolToken),
-                    tradingModule: TRADING_MODULE,
+                    tradingModule: Deployments.TRADING_MODULE,
                     poolToken: address(lpToken)
                 })
             })
         );
 
-        bytes memory initData = abi.encodeWithSelector(
+        return address(impl);
+    }
+
+    function getInitializeData() internal view override returns (bytes memory initData) {
+        return abi.encodeWithSelector(
             ISingleSidedLPStrategyVault.initialize.selector, InitParams({
-                name: "Vault",
+                name: vaultName,
                 borrowCurrencyId: primaryBorrowCurrency,
                 settings: settings
             })
         );
+    }
+
+    function deployVault() internal override returns (IStrategyVault) {
+        numTokens = 2;
+        address impl = deployVaultImplementation();
+        bytes memory initData = getInitializeData();
 
         vm.prank(NOTIONAL.owner());
-        nProxy proxy = new nProxy(address(impl), initData);
+        nProxy proxy = new nProxy(impl, initData);
 
         // NOTE: no token permissions set, single sided join by default
         return IStrategyVault(address(proxy));

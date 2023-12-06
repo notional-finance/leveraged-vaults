@@ -56,9 +56,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     /// @notice Set the NOTIONAL address on deployment
     constructor(NotionalProxy notional_, ITradingModule tradingModule_) initializer {
         // Make sure we are using the correct Deployments lib
-        uint256 chainId = 42161;
-        //assembly { chainId := chainid() }
-        require(Deployments.CHAIN_ID == chainId);
+        require(Deployments.CHAIN_ID == block.chainid);
 
         NOTIONAL = notional_;
         TRADING_MODULE = tradingModule_;

@@ -4,6 +4,10 @@ src = "contracts"
 test = "tests"
 out = "out"
 libs = ["lib"]
+remappings = [
+    "@interfaces/=interfaces/",
+    "@contracts/=contracts/",
+]
 
 fs_permissions = [{ access = "read-write", path = "./scripts/deploy"}]
 
