@@ -43,8 +43,7 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
         address impl = deployVaultImplementation();
         bytes memory initData = getInitializeData();
 
-        (address[] memory tokens, ,) = IBalancerVault(Deployments.BALANCER_VAULT)
-            .getPoolTokens(balancerPoolId);
+        (IERC20[] memory tokens, /* */) = SingleSidedLPVaultBase(payable(address(impl))).TOKENS();
         numTokens = tokens.length;
 
         vm.prank(NOTIONAL.owner());

@@ -4,6 +4,23 @@ pragma solidity 0.8.17;
 import "../BaseWeightedPool.sol";
 
 abstract contract RDNT_WETH is BaseWeightedPool {
+    function getRequiredOracles() internal override view virtual returns (
+        address[] memory token, address[] memory oracle
+    ) {
+        token = new address[](2);
+        oracle = new address[](2);
+
+        // RDNT
+        token[0] = 0x3082CC23568eA640225c2467653dB90e9250AaA0;
+        // Chainlink RDNT/USD
+        oracle[0] = 0x20d0Fcab0ECFD078B036b6CAf1FaC69A6453b352;
+
+        // ETH
+        token[1] = 0x0000000000000000000000000000000000000000;
+        // Chainlink ETH/USD
+        oracle[1] = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
+
+    }
 
     function initVariables() override internal {
         rewardPool = IERC20(0xa17492d89cB2D0bE1dDbd0008F8585EDc5B0ACf3);

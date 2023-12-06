@@ -4,6 +4,28 @@ pragma solidity 0.8.17;
 import "../BaseComposablePool.sol";
 
 abstract contract wstETH_cbETH_rETH is BaseComposablePool {
+    function getRequiredOracles() internal override view virtual returns (
+        address[] memory token, address[] memory oracle
+    ) {
+        token = new address[](3);
+        oracle = new address[](3);
+
+        // wstETH
+        token[0] = 0x5979D7b546E38E414F7E9822514be443A4800529;
+        // Notional Chainlink wstETH/USD
+        oracle[0] = 0x0000000000000000000000000000000000000002;
+
+        // cbETH
+        token[1] = 0x1DEBd73E752bEaF79865Fd6446b0c970EaE7732f;
+        // Notional Chainlink cbETH/USD
+        oracle[1] = 0x0000000000000000000000000000000000000002;
+
+        // rETH
+        token[2] = 0xF3272CAfe65b190e76caAF483db13424a3e23dD2;
+        // Notional Chainlink rETH/USD
+        oracle[2] = 0x0000000000000000000000000000000000000002;
+    }
+
     function initVariables() override internal {
         rewardPool = IERC20(0x8cA64Bd82AbFE138E195ce5Cb7268CA285D42245);
         settings = StrategyVaultSettings({
