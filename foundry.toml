@@ -1,7 +1,16 @@
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 [profile.default]
 src = "contracts"
 test = "tests"
 out = "out"
 libs = ["lib"]
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+fs_permissions = [{ access = "read-write", path = "./scripts/deploy"}]
+
+[rpc_endpoints]
+arbitrum = "https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}"
+mainnet = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}"
+
+[etherscan]
+mainnet = { key = "${ETHERSCAN_TOKEN}" }
+arbitrum = { key = "${ARBISCAN_TOKEN}" }
