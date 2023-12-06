@@ -23,7 +23,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
 
     // By default, these two are left unimplemented
     function getDeploymentConfig() internal view virtual returns (
-        VaultConfigParams memory, uint80 maxPrimaryBorrow
+        VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {}
     function getTradingPermissions() internal view virtual returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
@@ -72,6 +72,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                     TradingModule.setTokenPermissions.selector,
                     proxy, tkPerms[i], permissions[i]
                 );
+                callIndex++;
             }
 
             for (uint256 i; i < tkOracles.length; i++) {
@@ -82,7 +83,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                         TradingModule.setPriceOracle.selector,
                         tkOracles[i], AggregatorV2V3Interface(oracles[i])
                     );
-                    totalCalls++;
+                    callIndex++;
                 }
             }
 

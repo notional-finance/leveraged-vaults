@@ -8,6 +8,20 @@ import "../../contracts/vaults/curve/ConvexStakingMixin.sol";
 abstract contract BaseCurve2Token is DeployProxyVault, BaseSingleSidedLPVault {
     address lpToken;
 
+    function getTradingPermissions() internal pure override returns (
+        address[] memory token, ITradingModule.TokenPermissions[] memory permissions
+    ) {
+        token = new address[](1);
+        permissions = new ITradingModule.TokenPermissions[](1);
+
+        token[0] = 0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978; // CRV
+
+        permissions[0] = ITradingModule.TokenPermissions(
+            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
+        );
+    }
+
     function setUp() public override virtual {
         // CRV on Arbitrum
         rewardToken = IERC20(0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978);

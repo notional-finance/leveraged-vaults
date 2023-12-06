@@ -58,6 +58,23 @@ contract Test_USDC is USDC_DAI_USDT_USDC_e {
         return 'SingleSidedLP:Aura:[USDC]/DAI/USDT/USDC.e';
     }
 
+    function getDeploymentConfig() internal view override returns (
+        VaultConfigParams memory params, uint80 maxPrimaryBorrow
+    ) {
+        params = getTestVaultConfig();
+        params.feeRate5BPS = 10;
+        params.liquidationRate = 102;
+        params.reserveFeeShare = 80;
+        params.maxBorrowMarketIndex = 2;
+        params.minCollateralRatioBPS = 5000;
+        params.maxRequiredAccountCollateralRatioBPS = 10_000;
+        params.maxDeleverageCollateralRatioBPS = 8_000;
+
+        // NOTE: these are always in 8 decimals
+        params.minAccountBorrowSize = 1e8;
+        maxPrimaryBorrow = 5_000e8;
+    }
+
     function setUp() public override { 
         primaryBorrowCurrency = USDC;
         super.setUp();

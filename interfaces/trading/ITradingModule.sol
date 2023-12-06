@@ -4,21 +4,21 @@ pragma solidity >=0.7.6;
 import "../chainlink/AggregatorV2V3Interface.sol";
 
 enum DexId {
-    _UNUSED,
-    UNISWAP_V2,
-    UNISWAP_V3,
-    ZERO_EX,
-    BALANCER_V2,
-    CURVE,
-    NOTIONAL_VAULT,
-    CURVE_V2
+    _UNUSED,        // flag = 1
+    UNISWAP_V2,     // flag = 2
+    UNISWAP_V3,     // flag = 4
+    ZERO_EX,        // flag = 8
+    BALANCER_V2,    // flag = 16
+    CURVE,          // flag = 32
+    NOTIONAL_VAULT, // flag = 64
+    CURVE_V2        // flag = 128
 }
 
 enum TradeType {
-    EXACT_IN_SINGLE,
-    EXACT_OUT_SINGLE,
-    EXACT_IN_BATCH,
-    EXACT_OUT_BATCH
+    EXACT_IN_SINGLE,  // flag = 1
+    EXACT_OUT_SINGLE, // flag = 2
+    EXACT_IN_BATCH,   // flag = 4
+    EXACT_OUT_BATCH   // flag = 8
 }
 
 struct Trade {
