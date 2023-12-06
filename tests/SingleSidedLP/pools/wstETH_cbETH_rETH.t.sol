@@ -12,8 +12,8 @@ abstract contract wstETH_cbETH_rETH is BaseComposablePool {
 
         // wstETH
         token[0] = 0x5979D7b546E38E414F7E9822514be443A4800529;
-        // Notional Chainlink wstETH/USD
-        oracle[0] = 0x0000000000000000000000000000000000000002;
+        // Notional Chainlink wstETH/USD (via stETH/wstETH exchange rate)
+        oracle[0] = 0x29aFB1043eD699A89ca0F0942ED6F6f65E794A3d;
 
         // cbETH
         token[1] = 0x1DEBd73E752bEaF79865Fd6446b0c970EaE7732f;
