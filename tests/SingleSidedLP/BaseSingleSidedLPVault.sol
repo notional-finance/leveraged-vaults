@@ -2,12 +2,13 @@
 pragma solidity 0.8.17;
 
 import "../BaseAcceptanceTest.sol";
+import "../../scripts/deploy/DeployProxyVault.sol";
 import "../../contracts/vaults/common/SingleSidedLPVaultBase.sol";
 import "../../contracts/proxy/nProxy.sol";
 import "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 
-abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
+abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest {
     bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
     bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
 
@@ -18,7 +19,16 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     IERC20 poolToken;
     IERC20 rewardToken;
     address whitelistedReward;
-    string vaultName;
+
+    function getInitializeData() internal view override returns (bytes memory initData) {
+        return abi.encodeWithSelector(
+            ISingleSidedLPStrategyVault.initialize.selector, InitParams({
+                name: getVaultName(),
+                borrowCurrencyId: primaryBorrowCurrency,
+                settings: settings
+            })
+        );
+    }
 
     function getVaultConfig() internal view override returns (VaultConfigParams memory p) {
         p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;

@@ -99,6 +99,7 @@ abstract contract BaseAcceptanceTest is Test {
         TRADING_MODULE.setTokenPermissions(vault_, token, permissions);
     }
 
+    function getVaultName() internal pure virtual returns (string memory);
     function deployVault() internal virtual returns (IStrategyVault);
     function getVaultConfig() internal view virtual returns (VaultConfigParams memory);
     function getPrimaryVaultToken(uint256 /* maturity */) internal virtual returns (address) {

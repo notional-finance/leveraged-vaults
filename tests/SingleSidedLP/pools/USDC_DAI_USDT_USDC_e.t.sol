@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "../BaseComposablePool.sol";
 
 abstract contract USDC_DAI_USDT_USDC_e is BaseComposablePool {
-    function setUp() public override virtual {
+    function initVariables() override internal {
         rewardPool = IERC20(0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E);
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
@@ -12,6 +12,10 @@ abstract contract USDC_DAI_USDT_USDC_e is BaseComposablePool {
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 100
         });
+    }
+
+    function setUp() public override virtual {
+        initVariables();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -24,6 +28,10 @@ abstract contract USDC_DAI_USDT_USDC_e is BaseComposablePool {
 }
 
 contract Test_USDC is USDC_DAI_USDT_USDC_e {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:[USDC]/DAI/USDT/USDC.e';
+    }
+
     function setUp() public override { 
         primaryBorrowCurrency = USDC;
         super.setUp();
@@ -34,6 +42,10 @@ contract Test_USDC is USDC_DAI_USDT_USDC_e {
 }
 
 contract Test_DAI is USDC_DAI_USDT_USDC_e {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:USDC/[DAI]/USDT/USDC.e';
+    }
+
     function setUp() public override { 
         primaryBorrowCurrency = DAI;
         super.setUp();
@@ -44,6 +56,10 @@ contract Test_DAI is USDC_DAI_USDT_USDC_e {
 }
 
 contract Test_USDT is USDC_DAI_USDT_USDC_e {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:USDC/DAI/[USDT]/USDC.e';
+    }
+
     function setUp() public override { 
         primaryBorrowCurrency = USDT;
         super.setUp();

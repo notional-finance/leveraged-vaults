@@ -16,7 +16,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
     function initVariables() internal virtual;
     function deployVaultImplementation() internal virtual returns (address impl);
     function getInitializeData() internal view virtual returns (bytes memory initData);
-    function getDeploymentConfig() internal view virtual returns (VaultConfigParams memory, uint80 maxPrimaryBorrow);
+    function getDeploymentConfig() internal view virtual returns (VaultConfigParams memory, uint80 maxPrimaryBorrow) {}
 
     function deployProxy(address impl) internal returns (address) {
         vm.startBroadcast();

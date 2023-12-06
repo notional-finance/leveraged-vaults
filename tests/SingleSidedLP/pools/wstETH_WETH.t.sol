@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "../BaseComposablePool.sol";
 
 abstract contract wstETH_WETH is BaseComposablePool {
-    function setUp() public override virtual {
+    function initVariables() override internal {
         rewardPool = IERC20(0xa7BdaD177D474f946f3cDEB4bcea9d24Cf017471);
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
@@ -12,6 +12,10 @@ abstract contract wstETH_WETH is BaseComposablePool {
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 100
         });
+    }
+
+    function setUp() public override virtual {
+        initVariables();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -24,6 +28,10 @@ abstract contract wstETH_WETH is BaseComposablePool {
 }
 
 contract Test_wstETH is wstETH_WETH {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:[wstETH]/WETH';
+    }
+
     function setUp() public override { primaryBorrowCurrency = WSTETH; super.setUp(); }
 
     function test_TradeBeforeRestore() public {
@@ -68,5 +76,9 @@ contract Test_wstETH is wstETH_WETH {
 }
 
 contract Test_WETH is wstETH_WETH {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:wstETH/[WETH]';
+    }
+
     function setUp() public override { primaryBorrowCurrency = ETH; super.setUp(); }
 }

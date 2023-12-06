@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "../BaseComposablePool.sol";
 
 abstract contract wstETH_cbETH_rETH is BaseComposablePool {
-    function setUp() public override virtual {
+    function initVariables() override internal {
         rewardPool = IERC20(0x8cA64Bd82AbFE138E195ce5Cb7268CA285D42245);
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
@@ -12,6 +12,10 @@ abstract contract wstETH_cbETH_rETH is BaseComposablePool {
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 100
         });
+    }
+
+    function setUp() public override virtual {
+        initVariables();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -24,6 +28,10 @@ abstract contract wstETH_cbETH_rETH is BaseComposablePool {
 }
 
 contract Test_wstETH is wstETH_cbETH_rETH {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:[wstETH]/cbETH/rETH';
+    }
+
     function setUp() public override { primaryBorrowCurrency = WSTETH; super.setUp(); }
 
     function test_RevertIf_ReinvestRewardNoVaultShares() public {
@@ -136,10 +144,18 @@ contract Test_wstETH is wstETH_cbETH_rETH {
 }
 
 contract Test_cbETH is wstETH_cbETH_rETH {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:wstETH/[cbETH]/rETH';
+    }
+
     function setUp() public override { primaryBorrowCurrency = CBETH; super.setUp(); }
 }
 
 contract Test_rETH is wstETH_cbETH_rETH {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:wstETH/cbETH/[rETH]';
+    }
+
     function setUp() public override {
         primaryBorrowCurrency = RETH; 
         super.setUp();

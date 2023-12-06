@@ -5,7 +5,6 @@ import "../BaseCurve2Token.sol";
 
 abstract contract FRAX_USDC_e is BaseCurve2Token {
     function initVariables() override internal {
-        vaultName = 'SingleSidedLP:Convex:[FRAX]/USDC.e';
         rewardPool = IERC20(0x93729702Bf9E1687Ae2124e191B8fFbcC0C8A0B0);
         poolToken = IERC20(0xC9B8a3FDECB9D5b218d02555a8Baf332E5B740d5);
         lpToken = 0xC9B8a3FDECB9D5b218d02555a8Baf332E5B740d5;
@@ -13,7 +12,7 @@ abstract contract FRAX_USDC_e is BaseCurve2Token {
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 200
+            oraclePriceDeviationLimitPercent: 100
         });
     }
 
@@ -31,9 +30,8 @@ abstract contract FRAX_USDC_e is BaseCurve2Token {
 }
 
 contract Test_FRAX is FRAX_USDC_e {
-    function getDeploymentConfig()
-        internal view override returns (VaultConfigParams memory, uint80 maxPrimaryBorrow) {
-
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Convex:[FRAX]/USDC.e';
     }
 
     function setUp() public override { primaryBorrowCurrency = FRAX; super.setUp(); }

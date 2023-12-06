@@ -17,34 +17,35 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
         super.setUp();
     }
 
-    function deployVault() internal override returns (IStrategyVault) {
-        spotPrice = new BalancerSpotPrice();
+    function deployVaultImplementation() internal override returns (address impl) {
         poolToken = IERC20(IAuraRewardPool(address(rewardPool)).asset());
         balancerPoolId = IBalancerPool(address(poolToken)).getPoolId();
-        (address[] memory tokens, ,) = IBalancerVault(Deployments.BALANCER_VAULT)
-            .getPoolTokens(balancerPoolId);
-        numTokens = tokens.length;
+        console.log(address(rewardPool));
+        console.log(address(poolToken));
 
-        IStrategyVault impl = new BalancerComposableAuraVault(
+        impl = address(new BalancerComposableAuraVault(
             NOTIONAL, AuraVaultDeploymentParams({
                 rewardPool: IAuraRewardPool(address(rewardPool)),
                 whitelistedReward: whitelistedReward,
                 baseParams: DeploymentParams({
                     primaryBorrowCurrencyId: primaryBorrowCurrency,
                     balancerPoolId: balancerPoolId,
-                    tradingModule: TRADING_MODULE
+                    tradingModule: Deployments.TRADING_MODULE
                 })
             }),
             spotPrice
-        );
+        ));
+    }
 
-        bytes memory initData = abi.encodeWithSelector(
-            ISingleSidedLPStrategyVault.initialize.selector, InitParams({
-                name: "Vault",
-                borrowCurrencyId: primaryBorrowCurrency,
-                settings: settings
-            })
-        );
+    function deployVault() internal override returns (IStrategyVault) {
+        spotPrice = new BalancerSpotPrice();
+
+        address impl = deployVaultImplementation();
+        bytes memory initData = getInitializeData();
+
+        (address[] memory tokens, ,) = IBalancerVault(Deployments.BALANCER_VAULT)
+            .getPoolTokens(balancerPoolId);
+        numTokens = tokens.length;
 
         vm.prank(NOTIONAL.owner());
         nProxy proxy = new nProxy(address(impl), initData);

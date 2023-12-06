@@ -4,7 +4,8 @@ pragma solidity 0.8.17;
 import "../BaseWeightedPool.sol";
 
 abstract contract RDNT_WETH is BaseWeightedPool {
-    function setUp() public override virtual {
+
+    function initVariables() override internal {
         rewardPool = IERC20(0xa17492d89cB2D0bE1dDbd0008F8585EDc5B0ACf3);
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
@@ -12,6 +13,10 @@ abstract contract RDNT_WETH is BaseWeightedPool {
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 200
         });
+    }
+
+    function setUp() public override virtual {
+        initVariables();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -31,5 +36,9 @@ abstract contract RDNT_WETH is BaseWeightedPool {
 }
 
 contract Test_RDNT is RDNT_WETH {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:[RDNT]/WETH';
+    }
+
     function setUp() public override { primaryBorrowCurrency = RDNT; super.setUp(); }
 }

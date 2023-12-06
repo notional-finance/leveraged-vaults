@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 
 import "./BaseSingleSidedLPVault.sol";
-import "../../scripts/deploy/DeployProxyVault.sol";
 import "../../contracts/vaults/Curve2TokenConvexVault.sol";
 import "../../contracts/vaults/curve/ConvexStakingMixin.sol";
 
@@ -30,16 +29,6 @@ abstract contract BaseCurve2Token is DeployProxyVault, BaseSingleSidedLPVault {
         );
 
         return address(impl);
-    }
-
-    function getInitializeData() internal view override returns (bytes memory initData) {
-        return abi.encodeWithSelector(
-            ISingleSidedLPStrategyVault.initialize.selector, InitParams({
-                name: vaultName,
-                borrowCurrencyId: primaryBorrowCurrency,
-                settings: settings
-            })
-        );
     }
 
     function deployVault() internal override returns (IStrategyVault) {
