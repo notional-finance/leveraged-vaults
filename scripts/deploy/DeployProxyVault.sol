@@ -31,8 +31,8 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
 
     function run() public {
         require(block.chainid == Deployments.CHAIN_ID, "Invalid Chain");
-        bool upgradeVault = vm.envBool("UPGRADE_VAULT");
-        bool updateConfig = vm.envBool("UPDATE_CONFIG");
+        bool upgradeVault = vm.envOr("UPGRADE_VAULT", false);
+        bool updateConfig = vm.envOr("UPDATE_CONFIG", false);
 
         if (EXISTING_DEPLOYMENT == address(0)) {
             // Create a new deployment if value is not set
@@ -52,7 +52,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                 }
             }
 
-            vm.startBroadcast();
+            vm.startBroadcast(makeAddr("addr"));
             address impl = deployVaultImplementation();
             address proxy = address(new nProxy(impl, ""));
             vm.stopBroadcast();
@@ -88,7 +88,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
 
             // Outputs the initialization code that needs to be run by the owner
             generateBatch(
-                string(abi.encodePacked("./scripts/deploy/", vm.toString(proxy),"/initVault.json")),
+                string(abi.encodePacked("./scripts/deploy/", vm.toString(proxy),".initVault.json")),
                 init
             );
         }
@@ -104,7 +104,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
 
             // Outputs the upgrade code that needs to be run by the owner
             generateBatch(
-                string(abi.encodePacked("./scripts/deploy/", vm.toString(EXISTING_DEPLOYMENT),"/upgradeVault.json")),
+                string(abi.encodePacked("./scripts/deploy/", vm.toString(EXISTING_DEPLOYMENT),".upgradeVault.json")),
                 upgrade
             );
         }
@@ -120,7 +120,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
 
             // Outputs the upgrade code that needs to be run by the owner
             generateBatch(
-                string(abi.encodePacked("./scripts/deploy/", vm.toString(EXISTING_DEPLOYMENT),"/updateConfig.json")),
+                string(abi.encodePacked("./scripts/deploy/", vm.toString(EXISTING_DEPLOYMENT),".updateConfig.json")),
                 update
             );
         }

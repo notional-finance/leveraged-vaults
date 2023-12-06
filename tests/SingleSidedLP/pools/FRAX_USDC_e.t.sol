@@ -51,5 +51,9 @@ contract Test_FRAX is FRAX_USDC_e {
         return 'SingleSidedLP:Convex:[FRAX]/USDC.e';
     }
 
-    function setUp() public override { primaryBorrowCurrency = FRAX; super.setUp(); }
+    function setUp() public override { 
+        EXISTING_DEPLOYMENT = 0xdb08f663e5D765949054785F2eD1b2aa1e9C22Cf;
+        primaryBorrowCurrency = FRAX;
+        super.setUp();
+    }
 }

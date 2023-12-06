@@ -58,6 +58,9 @@ abstract contract BaseAcceptanceTest is Test {
     uint256 maxRelExitValuation;
 
     function setUp() public virtual {
+        string memory profile = vm.envOr(string("FOUNDRY_PROFILE"), string("default"));
+        if (keccak256(abi.encodePacked(profile)) != keccak256("default")) return;
+
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
 
         config = getTestVaultConfig();
