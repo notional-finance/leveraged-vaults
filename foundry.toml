@@ -2,6 +2,7 @@
 [profile.default]
 src = "contracts"
 test = "tests"
+script = "scripts"
 out = "out"
 libs = ["lib"]
 remappings = [

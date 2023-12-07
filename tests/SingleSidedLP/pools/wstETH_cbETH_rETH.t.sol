@@ -18,12 +18,12 @@ abstract contract wstETH_cbETH_rETH is BaseComposablePool {
         // cbETH
         token[1] = 0x1DEBd73E752bEaF79865Fd6446b0c970EaE7732f;
         // Notional Chainlink cbETH/USD
-        oracle[1] = 0x0000000000000000000000000000000000000002;
+        oracle[1] = 0x4763672dEa3bF087929d5537B6BAfeB8e6938F46;
 
         // rETH
-        token[2] = 0xF3272CAfe65b190e76caAF483db13424a3e23dD2;
+        token[2] = 0xEC70Dcb4A1EFa46b8F2D97C310C9c4790ba5ffA8;
         // Notional Chainlink rETH/USD
-        oracle[2] = 0x0000000000000000000000000000000000000002;
+        oracle[2] = 0x01713633a1b85a4a3d2f9430C68Bd4392c4a90eA;
     }
 
     function initVariables() override internal {
