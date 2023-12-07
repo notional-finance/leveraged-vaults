@@ -110,6 +110,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                 string(abi.encodePacked("./scripts/deploy/", vm.toString(proxy),".initVault.json")),
                 init
             );
+            EXISTING_DEPLOYMENT = proxy;
         }
         
         if (upgradeVault) {
