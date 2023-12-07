@@ -41,7 +41,7 @@ abstract contract BaseAcceptanceTest is Test {
     uint16 constant RDNT = 12;
 
     string RPC_URL = vm.envString("RPC_URL");
-    uint256 FORK_BLOCK = 157762109;
+    uint256 FORK_BLOCK = 157777087;
     IStrategyVault vault;
     VaultConfigParams config;
     uint256[] maturities;

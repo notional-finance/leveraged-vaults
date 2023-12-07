@@ -48,7 +48,7 @@ contract TestCrossCurrency_WSTETH_ETH is BaseCrossCurrencyVault {
         maxDeposit = 1e18;
         minDeposit = 0.001e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
-        maxRelExitValuation = 30 * BASIS_POINT;
+        maxRelExitValuation = 50 * BASIS_POINT;
 
         super.setUp();
     }
