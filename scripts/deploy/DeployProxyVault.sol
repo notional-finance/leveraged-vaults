@@ -53,7 +53,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                 }
             }
 
-            vm.startBroadcast(makeAddr("addr"));
+            vm.startBroadcast();
             address impl = deployVaultImplementation();
             address proxy = address(new nProxy(impl, ""));
             vm.stopBroadcast();

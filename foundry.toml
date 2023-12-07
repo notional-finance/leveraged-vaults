@@ -10,6 +10,11 @@ remappings = [
     "@contracts/=contracts/",
 ]
 
+# TODO: we need to create different variables for the different networks
+libraries = [
+  "@contracts/vaults/common/StrategyUtils.sol:StrategyUtils:0x863C4B7C2c78CA1C6C8Ba644d1f34476F37922e4"
+]
+
 fs_permissions = [{ access = "read-write", path = "./scripts/deploy"}]
 
 [rpc_endpoints]

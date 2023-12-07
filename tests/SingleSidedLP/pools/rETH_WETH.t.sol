@@ -66,5 +66,9 @@ contract Test_rETH is rETH_WETH {
         maxPrimaryBorrow = 1e8;
     }
 
-    function setUp() public override { primaryBorrowCurrency = RETH; super.setUp(); }
+    function setUp() public override { 
+        EXISTING_DEPLOYMENT = 0x3Df035433cFACE65b6D68b77CC916085d020C8B8;
+        primaryBorrowCurrency = RETH;
+        super.setUp();
+    }
 }
