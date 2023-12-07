@@ -76,6 +76,7 @@ contract Test_USDC is USDC_DAI_USDT_USDC_e {
     }
 
     function setUp() public override { 
+        EXISTING_DEPLOYMENT = 0x8Ae7A8789A81A43566d0ee70264252c0DB826940;
         primaryBorrowCurrency = USDC;
         super.setUp();
 
