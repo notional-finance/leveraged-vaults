@@ -10,6 +10,7 @@ import "@contracts/trading/TradingModule.sol";
 import "@contracts/proxy/nProxy.sol";
 import "@interfaces/notional/IVaultController.sol";
 import "@interfaces/trading/ITradingModule.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 abstract contract DeployProxyVault is Script, GnosisHelper {
     address EXISTING_DEPLOYMENT;
@@ -40,7 +41,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
             (address[] memory tkOracles, address[] memory oracles) = getRequiredOracles();
             (address[] memory tkPerms, ITradingModule.TokenPermissions[] memory permissions) = getTradingPermissions();
 
-            uint256 totalCalls = tkPerms.length + 1;
+            uint256 totalCalls = tkPerms.length + 3;
 
             // Check for the required oracles, these are all token/USD oracles
             for (uint256 i; i < tkOracles.length; i++) {
@@ -63,6 +64,23 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                 // Set the implementation
                 init[callIndex].to = proxy;
                 init[callIndex].callData = getInitializeData();
+                callIndex++;
+
+                // Grant roles for emergency exit and reward reinvestment
+                init[callIndex].to = proxy;
+                init[callIndex].callData = abi.encodeWithSelector(
+                    AccessControlUpgradeable.grantRole.selector,
+                    keccak256("REWARD_REINVESTMENT_ROLE"),
+                    Deployments.TREASURY_MANAGER
+                );
+                callIndex++;
+
+                init[callIndex].to = proxy;
+                init[callIndex].callData = abi.encodeWithSelector(
+                    AccessControlUpgradeable.grantRole.selector,
+                    keccak256("EMERGENCY_EXIT_ROLE"),
+                    Deployments.EMERGENCY_EXIT_MANAGER
+                );
                 callIndex++;
             }
 
