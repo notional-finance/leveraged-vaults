@@ -109,10 +109,8 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     }
 
     function _getNotionalUnderlyingToken(uint16 currencyId) internal view returns (address) {
-        (Token memory assetToken, Token memory underlyingToken) = NOTIONAL.getCurrency(currencyId);
-
-        return assetToken.tokenType == TokenType.NonMintable ?
-            assetToken.tokenAddress : underlyingToken.tokenAddress;
+        (/* */, Token memory underlyingToken) = NOTIONAL.getCurrency(currencyId);
+        return underlyingToken.tokenAddress;
     }
 
     /// @notice Can be used to delegate call to the TradingModule's implementation in order to execute
