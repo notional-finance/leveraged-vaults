@@ -14,6 +14,10 @@ contract BalancerSpotPrice {
     uint256 internal constant BALANCER_PRECISION = 1e18;
     uint256 internal constant TOKEN_AMOUNT_IN = 1e18;
 
+    constructor() {
+        require(Deployments.CHAIN_ID == block.chainid);
+    }
+
     /// @notice Returns the weighted pool spot price and balances. Only the spot price on the
     /// secondary token is returned.
     function getWeightedSpotPrices(

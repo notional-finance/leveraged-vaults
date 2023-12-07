@@ -30,6 +30,20 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         );
     }
 
+    function deployTestVault() internal override returns (IStrategyVault) {
+        address impl = deployVaultImplementation();
+        bytes memory initData = getInitializeData();
+
+        (IERC20[] memory tokens, /* */) = SingleSidedLPVaultBase(payable(address(impl))).TOKENS();
+        numTokens = tokens.length;
+
+        vm.prank(NOTIONAL.owner());
+        nProxy proxy = new nProxy(address(impl), initData);
+
+        // NOTE: no token permissions set, single sided join by default
+        return IStrategyVault(address(proxy));
+    }
+
     function getTestVaultConfig() internal view override returns (VaultConfigParams memory p) {
         p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;
         p.borrowCurrencyId = primaryBorrowCurrency;

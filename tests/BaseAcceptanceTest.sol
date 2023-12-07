@@ -41,7 +41,7 @@ abstract contract BaseAcceptanceTest is Test {
     uint16 constant RDNT = 12;
 
     string RPC_URL = vm.envString("RPC_URL");
-    uint256 FORK_BLOCK = 147058900;
+    uint256 FORK_BLOCK = 157762109;
     IStrategyVault vault;
     VaultConfigParams config;
     uint256[] maturities;
@@ -58,6 +58,7 @@ abstract contract BaseAcceptanceTest is Test {
     uint256 maxRelExitValuation;
 
     function setUp() public virtual {
+        // Skip test setup when deploying
         string memory profile = vm.envOr(string("FOUNDRY_PROFILE"), string("default"));
         if (keccak256(abi.encodePacked(profile)) != keccak256("default")) return;
 

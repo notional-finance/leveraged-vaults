@@ -44,17 +44,5 @@ abstract contract BaseCurve2Token is DeployProxyVault, BaseSingleSidedLPVault {
 
         return address(impl);
     }
-
-    function deployTestVault() internal override returns (IStrategyVault) {
-        numTokens = 2;
-        address impl = deployVaultImplementation();
-        bytes memory initData = getInitializeData();
-
-        vm.prank(NOTIONAL.owner());
-        nProxy proxy = new nProxy(impl, initData);
-
-        // NOTE: no token permissions set, single sided join by default
-        return IStrategyVault(address(proxy));
-    }
 }
 

@@ -9,7 +9,6 @@ import "../../contracts/trading/adapters/BalancerV2Adapter.sol";
 
 abstract contract BaseComposablePool is BaseSingleSidedLPVault {
     bytes32 balancerPoolId;
-    BalancerSpotPrice spotPrice;
 
     function getTradingPermissions() internal pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
@@ -44,8 +43,6 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
     function deployVaultImplementation() internal override returns (address impl) {
         poolToken = IERC20(IAuraRewardPool(address(rewardPool)).asset());
         balancerPoolId = IBalancerPool(address(poolToken)).getPoolId();
-        console.log(address(rewardPool));
-        console.log(address(poolToken));
 
         impl = address(new BalancerComposableAuraVault(
             NOTIONAL, AuraVaultDeploymentParams({
@@ -57,23 +54,10 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
                     tradingModule: Deployments.TRADING_MODULE
                 })
             }),
-            spotPrice
+            // NOTE: this is hardcoded so if you want to run tests against it
+            // you need to change the deployment
+            BalancerSpotPrice(Deployments.BALANCER_SPOT_PRICE)
         ));
     }
 
-    function deployTestVault() internal override returns (IStrategyVault) {
-        spotPrice = new BalancerSpotPrice();
-
-        address impl = deployVaultImplementation();
-        bytes memory initData = getInitializeData();
-
-        (IERC20[] memory tokens, /* */) = SingleSidedLPVaultBase(payable(address(impl))).TOKENS();
-        numTokens = tokens.length;
-
-        vm.prank(NOTIONAL.owner());
-        nProxy proxy = new nProxy(address(impl), initData);
-
-        // NOTE: no token permissions set, single sided join by default
-        return IStrategyVault(address(proxy));
-    }
 }
