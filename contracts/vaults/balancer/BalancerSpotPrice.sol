@@ -52,37 +52,30 @@ contract BalancerSpotPrice {
         bytes32 poolId,
         address poolAddress,
         uint256 primaryIndex,
-        uint256 bptIndex
+        uint256 bptIndex,
+        uint8[] calldata decimals
     ) external view returns (uint256[] memory balances, uint256[] memory spotPrices) {
-        address[] memory tokens;
-        (tokens, balances, /* */) = Deployments.BALANCER_VAULT.getPoolTokens(poolId);
+        (/* */, balances, /* */) = Deployments.BALANCER_VAULT.getPoolTokens(poolId);
         uint256[] memory scalingFactors = IComposablePool(poolAddress).getScalingFactors();
+        spotPrices = new uint256[](balances.length);
 
-        (
-            uint256 ampParam,
-            /* bool isUpdating */,
-            uint256 precision
-        ) = IComposablePool(poolAddress).getAmplificationParameter();
-        require(precision == StableMath._AMP_PRECISION);
-
-        spotPrices = new uint256[](tokens.length);
-
-        // Scale all balances before calculating the invariant, exclude the BPT from the scaled
-        // balances
-        uint256[] memory scaledBalances = new uint256[](balances.length - 1);
+        uint256 ampParam;
         {
-            uint256 j;
-            for (uint256 i; i < tokens.length; i++) {
-                if (i == bptIndex) continue;
-                scaledBalances[j] = balances[i] * scalingFactors[i] / BALANCER_PRECISION;
-                j++;
-            }
+            uint256 precision;
+            (ampParam, /* */, precision) = IComposablePool(poolAddress).getAmplificationParameter();
+            require(precision == StableMath._AMP_PRECISION);
         }
 
-        uint256 invariant = StableMath._calculateInvariant(ampParam, scaledBalances);
+        (uint256[] memory scaledBalances, uint256 invariant) = _getScaledBalancesAndInvariant(
+            balances,
+            scalingFactors,
+            bptIndex,
+            ampParam
+        );
+
         // Exclude the bptIndex for the primary token (tokenIndexIn)
         uint256 tokenIndexIn = primaryIndex < bptIndex ? primaryIndex : primaryIndex - 1;
-        for (uint256 i; i < tokens.length; i++) {
+        for (uint256 i; i < balances.length; i++) {
             // The primary index spot price is left as zero and skip the bpt index
             if (i == primaryIndex || i == bptIndex) continue;
 
@@ -107,5 +100,37 @@ contract BalancerSpotPrice {
             spotPrices[i] = (tokensOut * BALANCER_PRECISION * scalingFactors[primaryIndex]) / 
                 (TOKEN_AMOUNT_IN * scalingFactors[i]);
         }
+
+        // Spot prices need to be scaled by secondaryDecimals - primaryDecimals, see the comment inside
+        // The final precision of the spot prices will be POOL_PRECISION().
+        uint8 primaryDecimals = decimals[primaryIndex];
+        for (uint256 i; i < spotPrices.length; i++) {
+            uint8 secondaryDecimals = decimals[i];
+            // If primaryDecimals == secondaryDecimals no scaling is necessary.
+            if (primaryDecimals < secondaryDecimals) {
+                spotPrices[i] = spotPrices[i] / 10 ** (secondaryDecimals - primaryDecimals);
+            } else if (secondaryDecimals < primaryDecimals) {
+                spotPrices[i] = spotPrices[i] * 10 ** (primaryDecimals - secondaryDecimals);
+            }
+        }
+    }
+
+    function _getScaledBalancesAndInvariant(
+        uint256[] memory balances,
+        uint256[] memory scalingFactors,
+        uint256 bptIndex,
+        uint256 ampParam
+    ) private pure returns (uint256[] memory scaledBalances, uint256 invariant) {
+        // Scale all balances before calculating the invariant, exclude the BPT from the scaled
+        // balances
+        scaledBalances = new uint256[](balances.length - 1);
+        uint256 j;
+        for (uint256 i; i < balances.length; i++) {
+            if (i == bptIndex) continue;
+            scaledBalances[j] = balances[i] * scalingFactors[i] / BALANCER_PRECISION;
+            j++;
+        }
+
+        invariant = StableMath._calculateInvariant(ampParam, scaledBalances);
     }
 }
