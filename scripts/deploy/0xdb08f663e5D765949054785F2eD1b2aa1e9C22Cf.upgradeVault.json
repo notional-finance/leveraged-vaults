@@ -1,5 +1,5 @@
 {
-  "chainId": 42161,
+  "chainId": "42161",
   "createdAt": 1701984328000,
   "meta": {
     "name": "Transactions Batch",
@@ -14,7 +14,7 @@
       },
       "data": "0x3659cfe6000000000000000000000000a8d35f56587e0eff95ff9e2ec1eb2124fef31d8b",
       "to": "0xdb08f663e5D765949054785F2eD1b2aa1e9C22Cf",
-      "value": 0
+      "value": "0"
     }
   ],
   "version": 1.0
