@@ -122,6 +122,8 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     /// @dev Expected to be called via delegatecall on the implementation directly. This means that
     /// the contract's calling context does not have access to storage (accessible via the proxy
     /// address).
+    /// @dev This method has a `payable` modifier to allow for the calling context to have a `msg.value`
+    /// set, but should never refer to `msg.value` itself for any of its internal methods.
     /// @param dexId the dex to execute the trade on
     /// @param trade trade object
     /// @param dynamicSlippageLimit the slippage limit in 1e8 precision
@@ -165,6 +167,8 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     /// @notice Should be called via delegate call to execute a trade on behalf of the caller.
+    /// @dev This method has a `payable` modifier to allow for the calling context to have a `msg.value`
+    /// set, but should never refer to `msg.value` itself for any of its internal methods.
     /// @param dexId enum representing the id of the dex
     /// @param trade trade object
     /// @return amountSold amount of tokens sold
