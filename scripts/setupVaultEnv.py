@@ -15,20 +15,6 @@ def main():
     rETH_ETH = BalancerComposableAuraVault.at("0x3Df035433cFACE65b6D68b77CC916085d020C8B8")
     USDC_4POOL = BalancerComposableAuraVault.at("0x8Ae7A8789A81A43566d0ee70264252c0DB826940")
 
-    StrategyUtils.at("0x863C4B7C2c78CA1C6C8Ba644d1f34476F37922e4")
-    fraxUSDCImpl = Curve2TokenConvexVault.deploy(
-        "0x1344a36a1b56144c3bc62e7757377d288fde0369",
-        [
-        "0x93729702Bf9E1687Ae2124e191B8fFbcC0C8A0B0",
-        "0x0000000000000000000000000000000000000000",
-        [
-            6,
-            "0xC9B8a3FDECB9D5b218d02555a8Baf332E5B740d5",
-            "0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8",
-            "0xC9B8a3FDECB9D5b218d02555a8Baf332E5B740d5"
-        ]]
-    , {"from": notional.owner()})
-
     owner = notional.owner()
     # Upgrade trading module
     tradingModule.upgradeTo("0xe2aC28D510BE49BF46EEB1Ce0aad219099226263", {"from": owner})
@@ -36,7 +22,7 @@ def main():
     treasuryManager.upgradeTo("0xf7446F1a408Ac6bD4A22521CcB71ae1C5e5255fA", {"from": owner})
     # Upgrade Convex Vault
     setSettings = FRAX_USDC_e.setStrategyVaultSettings.encode_input((0, 2000, 100, 0))
-    FRAX_USDC_e.upgradeToAndCall(fraxUSDCImpl.address, setSettings, {"from": owner})
+    FRAX_USDC_e.upgradeToAndCall("0xA99b6375490f6861390CFeb3d18C3F177d325CF9", setSettings, {"from": owner})
 
 
     # List all vaults
