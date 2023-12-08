@@ -8,3 +8,4 @@ cache/
 venv
 artifacts
 out/
+node_modules/

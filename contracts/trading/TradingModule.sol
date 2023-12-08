@@ -131,7 +131,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint16 dexId,
         Trade memory trade,
         uint32 dynamicSlippageLimit
-    ) external override returns (uint256 amountSold, uint256 amountBought) {
+    ) external payable override returns (uint256 amountSold, uint256 amountBought) {
         if (!PROXY.canExecuteTrade(address(this), dexId, trade)) revert InsufficientPermissions();
         if (trade.amount == 0) return (0, 0);
 
@@ -170,7 +170,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     /// @return amountSold amount of tokens sold
     /// @return amountBought amount of tokens purchased
     function executeTrade(uint16 dexId, Trade calldata trade)
-        external
+        external payable
         override
         returns (uint256 amountSold, uint256 amountBought)
     {
