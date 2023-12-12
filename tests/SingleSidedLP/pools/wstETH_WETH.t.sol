@@ -15,7 +15,7 @@ abstract contract wstETH_WETH is BaseComposablePool {
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
+        minDeposit = 1000e8;
         maxDeposit = 1e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
