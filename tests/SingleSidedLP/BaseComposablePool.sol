@@ -61,7 +61,7 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
         ));
     }
 
-    function test_RevertIf_reentrancy() public {
+    function test_RevertIf_ReadOnlyReentrancyAttack() public {
         uint256 maturity = maturities[0];
         uint16 decimals = isETH ? 18 : primaryBorrowToken.decimals();
 
