@@ -2,12 +2,13 @@
 pragma solidity 0.8.17;
 
 import "../BaseAcceptanceTest.sol";
+import "../../scripts/deploy/DeployProxyVault.sol";
 import "../../contracts/vaults/common/SingleSidedLPVaultBase.sol";
 import "../../contracts/proxy/nProxy.sol";
 import "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 
-abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
+abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest {
     bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
     bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
 
@@ -19,7 +20,31 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     IERC20 rewardToken;
     address whitelistedReward;
 
-    function getVaultConfig() internal view override returns (VaultConfigParams memory p) {
+    function getInitializeData() internal view override returns (bytes memory initData) {
+        return abi.encodeWithSelector(
+            ISingleSidedLPStrategyVault.initialize.selector, InitParams({
+                name: getVaultName(),
+                borrowCurrencyId: primaryBorrowCurrency,
+                settings: settings
+            })
+        );
+    }
+
+    function deployTestVault() internal override returns (IStrategyVault) {
+        address impl = deployVaultImplementation();
+        bytes memory initData = getInitializeData();
+
+        (IERC20[] memory tokens, /* */) = SingleSidedLPVaultBase(payable(address(impl))).TOKENS();
+        numTokens = tokens.length;
+
+        vm.prank(NOTIONAL.owner());
+        nProxy proxy = new nProxy(address(impl), initData);
+
+        // NOTE: no token permissions set, single sided join by default
+        return IStrategyVault(address(proxy));
+    }
+
+    function getTestVaultConfig() internal view override returns (VaultConfigParams memory p) {
         p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;
         p.borrowCurrencyId = primaryBorrowCurrency;
         p.minAccountBorrowSize = 0.01e8;

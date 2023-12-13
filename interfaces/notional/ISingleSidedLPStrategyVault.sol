@@ -83,8 +83,6 @@ struct StrategyVaultSettings {
 }
 
 interface ISingleSidedLPStrategyVault {
-    /// @notice Emitted when reward tokens are reinvested
-    event RewardReinvested(address token, uint256 amountSold, uint256 poolClaimAmount);
     /// @notice Emitted when vault settings are updated
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
     /// @notice Emitted after an emergency exit
@@ -99,6 +97,8 @@ interface ISingleSidedLPStrategyVault {
         uint8 singleSidedTokenIndex;
         uint256 totalLPTokens;
         uint256 totalVaultShares;
+        uint256 maxPoolShare;
+        uint256 oraclePriceDeviationLimitPercent;
     }
 
     function initialize(InitParams calldata params) external;

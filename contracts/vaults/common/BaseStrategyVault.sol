@@ -56,9 +56,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     /// @notice Set the NOTIONAL address on deployment
     constructor(NotionalProxy notional_, ITradingModule tradingModule_) initializer {
         // Make sure we are using the correct Deployments lib
-        uint256 chainId = 42161;
-        //assembly { chainId := chainid() }
-        require(Deployments.CHAIN_ID == chainId);
+        require(Deployments.CHAIN_ID == block.chainid);
 
         NOTIONAL = notional_;
         TRADING_MODULE = tradingModule_;
@@ -109,10 +107,8 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
     }
 
     function _getNotionalUnderlyingToken(uint16 currencyId) internal view returns (address) {
-        (Token memory assetToken, Token memory underlyingToken) = NOTIONAL.getCurrency(currencyId);
-
-        return assetToken.tokenType == TokenType.NonMintable ?
-            assetToken.tokenAddress : underlyingToken.tokenAddress;
+        (/* */, Token memory underlyingToken) = NOTIONAL.getCurrency(currencyId);
+        return underlyingToken.tokenAddress;
     }
 
     /// @notice Can be used to delegate call to the TradingModule's implementation in order to execute

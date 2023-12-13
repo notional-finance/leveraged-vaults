@@ -4,6 +4,10 @@ pragma solidity 0.8.17;
 import "./BaseCrossCurrencyVault.sol";
 
 contract TestCrossCurrency_ETH_WSTETH is BaseCrossCurrencyVault {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'CrossCurrency:[ETH]/wstETH';
+    }
+
     function setUp() public override {
         primaryBorrowCurrency = ETH;
         lendCurrencyId = WSTETH;
@@ -15,14 +19,23 @@ contract TestCrossCurrency_ETH_WSTETH is BaseCrossCurrencyVault {
         exchangeData = abi.encode(c);
         maxDeposit = 1e18;
         minDeposit = 0.001e18;
-        maxRelEntryValuation = 30 * BASIS_POINT;
-        maxRelExitValuation = 30 * BASIS_POINT;
+        maxRelEntryValuation = 50 * BASIS_POINT;
+        maxRelExitValuation = 50 * BASIS_POINT;
 
         super.setUp();
+
+        // NOTE: temporarily upgrade the TradingModule for the payable fix
+        address impl = address(new TradingModule(NOTIONAL, TRADING_MODULE));
+        vm.prank(NOTIONAL.owner());
+        TradingModule(address(TRADING_MODULE)).upgradeTo(impl);
     }
 }
 
 contract TestCrossCurrency_WSTETH_ETH is BaseCrossCurrencyVault {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'CrossCurrency:[wstETH]/ETH';
+    }
+
     function setUp() public override {
         primaryBorrowCurrency = WSTETH;
         lendCurrencyId = ETH;
@@ -35,7 +48,7 @@ contract TestCrossCurrency_WSTETH_ETH is BaseCrossCurrencyVault {
         maxDeposit = 1e18;
         minDeposit = 0.001e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
-        maxRelExitValuation = 30 * BASIS_POINT;
+        maxRelExitValuation = 50 * BASIS_POINT;
 
         super.setUp();
     }

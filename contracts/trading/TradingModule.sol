@@ -45,9 +45,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
 
     constructor(NotionalProxy notional_, ITradingModule proxy_) initializer { 
         // Make sure we are using the correct Deployments lib
-        uint256 chainId = 42161;
-        //assembly { chainId := chainid() }
-        require(Deployments.CHAIN_ID == chainId);
+        require(Deployments.CHAIN_ID == block.chainid);
 
         NOTIONAL = notional_;
         PROXY = proxy_;
@@ -122,6 +120,8 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     /// @dev Expected to be called via delegatecall on the implementation directly. This means that
     /// the contract's calling context does not have access to storage (accessible via the proxy
     /// address).
+    /// @dev This method has a `payable` modifier to allow for the calling context to have a `msg.value`
+    /// set, but should never refer to `msg.value` itself for any of its internal methods.
     /// @param dexId the dex to execute the trade on
     /// @param trade trade object
     /// @param dynamicSlippageLimit the slippage limit in 1e8 precision
@@ -131,7 +131,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint16 dexId,
         Trade memory trade,
         uint32 dynamicSlippageLimit
-    ) external override returns (uint256 amountSold, uint256 amountBought) {
+    ) external payable override returns (uint256 amountSold, uint256 amountBought) {
         if (!PROXY.canExecuteTrade(address(this), dexId, trade)) revert InsufficientPermissions();
         if (trade.amount == 0) return (0, 0);
 
@@ -165,12 +165,14 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     /// @notice Should be called via delegate call to execute a trade on behalf of the caller.
+    /// @dev This method has a `payable` modifier to allow for the calling context to have a `msg.value`
+    /// set, but should never refer to `msg.value` itself for any of its internal methods.
     /// @param dexId enum representing the id of the dex
     /// @param trade trade object
     /// @return amountSold amount of tokens sold
     /// @return amountBought amount of tokens purchased
     function executeTrade(uint16 dexId, Trade calldata trade)
-        external
+        external payable
         override
         returns (uint256 amountSold, uint256 amountBought)
     {

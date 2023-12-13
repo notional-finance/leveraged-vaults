@@ -9,7 +9,6 @@ import "../../contracts/trading/adapters/BalancerV2Adapter.sol";
 
 abstract contract BaseWeightedPool is BaseSingleSidedLPVault {
     bytes32 balancerPoolId;
-    BalancerSpotPrice spotPrice;
 
     function setUp() public override virtual {
         // BAL on Arbitrum
@@ -17,40 +16,24 @@ abstract contract BaseWeightedPool is BaseSingleSidedLPVault {
         super.setUp();
     }
 
-    function deployVault() internal override returns (IStrategyVault) {
-        spotPrice = new BalancerSpotPrice();
+    function deployVaultImplementation() internal override returns (address impl) {
         poolToken = IERC20(IAuraRewardPool(address(rewardPool)).asset());
         balancerPoolId = IBalancerPool(address(poolToken)).getPoolId();
-        (address[] memory tokens, ,) = IBalancerVault(Deployments.BALANCER_VAULT)
-            .getPoolTokens(balancerPoolId);
-        numTokens = tokens.length;
 
-        IStrategyVault impl = new BalancerWeightedAuraVault(
+        impl = address(new BalancerWeightedAuraVault(
             NOTIONAL, AuraVaultDeploymentParams({
                 rewardPool: IAuraRewardPool(address(rewardPool)),
                 whitelistedReward: whitelistedReward,
                 baseParams: DeploymentParams({
                     primaryBorrowCurrencyId: primaryBorrowCurrency,
                     balancerPoolId: balancerPoolId,
-                    tradingModule: TRADING_MODULE
+                    tradingModule: Deployments.TRADING_MODULE
                 })
             }),
-            spotPrice
-        );
-
-        bytes memory initData = abi.encodeWithSelector(
-            ISingleSidedLPStrategyVault.initialize.selector, InitParams({
-                name: "Vault",
-                borrowCurrencyId: primaryBorrowCurrency,
-                settings: settings
-            })
-        );
-
-        vm.prank(NOTIONAL.owner());
-        nProxy proxy = new nProxy(address(impl), initData);
-
-        // NOTE: no token permissions set, single sided join by default
-        return IStrategyVault(address(proxy));
+            // NOTE: this is hardcoded so if you want to run tests against it
+            // you need to change the deployment
+            BalancerSpotPrice(Deployments.BALANCER_SPOT_PRICE)
+        ));
     }
 }
 
