@@ -66,9 +66,9 @@ contract Test_USDC is USDC_DAI_USDT_USDC_e {
         params.liquidationRate = 102;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 5000;
+        params.minCollateralRatioBPS = 500;
         params.maxRequiredAccountCollateralRatioBPS = 10_000;
-        params.maxDeleverageCollateralRatioBPS = 8_000;
+        params.maxDeleverageCollateralRatioBPS = 800;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 1e8;

@@ -57,9 +57,9 @@ contract Test_rETH is rETH_WETH {
         params.liquidationRate = 102;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 5000;
+        params.minCollateralRatioBPS = 500;
         params.maxRequiredAccountCollateralRatioBPS = 10_000;
-        params.maxDeleverageCollateralRatioBPS = 8_000;
+        params.maxDeleverageCollateralRatioBPS = 800;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 0.1e8;
