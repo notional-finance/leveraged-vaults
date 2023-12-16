@@ -2,6 +2,7 @@
 pragma solidity >=0.7.6;
 
 import {ITradingModule, Trade, TradeType} from "../trading/ITradingModule.sol";
+import {IStrategyVault} from "./IStrategyVault.sol";
 import {IERC20} from "../IERC20.sol";
 
 /// @notice Parameters for trades
@@ -82,7 +83,7 @@ struct StrategyVaultSettings {
     uint16 deprecated_poolSlippageLimitPercent;
 }
 
-interface ISingleSidedLPStrategyVault {
+interface ISingleSidedLPStrategyVault is IStrategyVault {
     /// @notice Emitted when vault settings are updated
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
     /// @notice Emitted after an emergency exit
@@ -102,6 +103,7 @@ interface ISingleSidedLPStrategyVault {
     }
 
     function initialize(InitParams calldata params) external;
+    function TOKENS() external view returns (IERC20[] memory, uint8[] memory decimals);
 
     function getStrategyVaultInfo() external view returns (SingleSidedLPStrategyVaultInfo memory);
     function emergencyExit(uint256 claimToExit, bytes calldata data) external;
