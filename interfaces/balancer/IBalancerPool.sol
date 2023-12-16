@@ -11,6 +11,7 @@ interface IBalancerPool is IERC20 {
 
 interface IWeightedPool is IBalancerPool {
     function getNormalizedWeights() external view returns (uint256[] memory);
+    function getActualSupply() external view returns (uint256);
 }
 
 interface IComposablePool is IBalancerPool {

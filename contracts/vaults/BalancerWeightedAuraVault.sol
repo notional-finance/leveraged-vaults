@@ -9,7 +9,7 @@ import {
     AuraVaultDeploymentParams,
     DeploymentParams
 } from "./balancer/mixins/AuraStakingMixin.sol";
-import {IComposablePool} from "../../interfaces/balancer/IBalancerPool.sol";
+import {IWeightedPool} from "../../interfaces/balancer/IBalancerPool.sol";
 import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
 
 contract BalancerWeightedAuraVault is AuraStakingMixin {
@@ -97,7 +97,7 @@ contract BalancerWeightedAuraVault is AuraStakingMixin {
         // As of this writing the documentation linked above appears inaccurate and the
         // pre-minted total supply returned by a pool is not a fixed constant. Therefore,
         // we use a try / catch here instead.
-        try IComposablePool(address(BALANCER_POOL_TOKEN)).getActualSupply() returns (uint256 totalSupply) {
+        try IWeightedPool(address(BALANCER_POOL_TOKEN)).getActualSupply() returns (uint256 totalSupply) {
             return totalSupply;
         } catch {
             return super._totalPoolSupply();
