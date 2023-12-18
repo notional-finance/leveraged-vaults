@@ -8,6 +8,12 @@ import {Deployments} from "../global/Deployments.sol";
 library TokenUtils {
     error ERC20Error();
 
+    function getDecimals(address token) internal view returns (uint8 decimals) {
+        decimals = (token == Deployments.ETH_ADDRESS || token == Deployments.ALT_ETH_ADDRESS) ?
+            18 : IERC20(token).decimals();
+        require(decimals <= 18);
+    }
+
     function tokenBalance(address token) internal view returns (uint256) {
         return
             token == Deployments.ETH_ADDRESS
@@ -19,10 +25,10 @@ library TokenUtils {
         if (address(token) == address(0)) return;
 
         IEIP20NonStandard(address(token)).approve(spender, 0);
-        _checkReturnCode();            
+        _checkReturnCode();
         if (amount > 0) {
             IEIP20NonStandard(address(token)).approve(spender, amount);
-            _checkReturnCode();            
+            _checkReturnCode();
         }
     }
 

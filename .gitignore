@@ -4,7 +4,8 @@ __pycache__
 .hypothesis/
 build/
 reports/
-node_modules/
 cache/
 venv
 artifacts
+out/
+node_modules/

@@ -4,20 +4,21 @@ pragma solidity >=0.7.6;
 import "../chainlink/AggregatorV2V3Interface.sol";
 
 enum DexId {
-    _UNUSED,
-    UNISWAP_V2,
-    UNISWAP_V3,
-    ZERO_EX,
-    BALANCER_V2,
-    CURVE,
-    NOTIONAL_VAULT
+    _UNUSED,        // flag = 1
+    UNISWAP_V2,     // flag = 2
+    UNISWAP_V3,     // flag = 4
+    ZERO_EX,        // flag = 8
+    BALANCER_V2,    // flag = 16
+    CURVE,          // flag = 32
+    NOTIONAL_VAULT, // flag = 64
+    CURVE_V2        // flag = 128
 }
 
 enum TradeType {
-    EXACT_IN_SINGLE,
-    EXACT_OUT_SINGLE,
-    EXACT_IN_BATCH,
-    EXACT_OUT_BATCH
+    EXACT_IN_SINGLE,  // flag = 1
+    EXACT_OUT_SINGLE, // flag = 2
+    EXACT_IN_BATCH,   // flag = 4
+    EXACT_OUT_BATCH   // flag = 8
 }
 
 struct Trade {
@@ -32,6 +33,8 @@ struct Trade {
 }
 
 error InvalidTrade();
+error DynamicTradeFailed();
+error TradeFailed();
 
 interface ITradingModule {
     struct TokenPermissions {
@@ -52,6 +55,8 @@ interface ITradingModule {
     event PriceOracleUpdated(address token, address oracle);
     event MaxOracleFreshnessUpdated(uint32 currentValue, uint32 newValue);
     event TokenPermissionsUpdated(address sender, address token, TokenPermissions permissions);
+
+    function priceOracles(address token) external view returns (AggregatorV2V3Interface oracle, uint8 rateDecimals);
 
     function getExecutionData(uint16 dexId, address from, Trade calldata trade)
         external view returns (
@@ -75,15 +80,16 @@ interface ITradingModule {
     function executeTrade(
         uint16 dexId,
         Trade calldata trade
-    ) external returns (uint256 amountSold, uint256 amountBought);
+    ) external payable returns (uint256 amountSold, uint256 amountBought);
 
     function executeTradeWithDynamicSlippage(
         uint16 dexId,
         Trade memory trade,
         uint32 dynamicSlippageLimit
-    ) external returns (uint256 amountSold, uint256 amountBought);
+    ) external payable returns (uint256 amountSold, uint256 amountBought);
 
     function getLimitAmount(
+        address from,
         TradeType tradeType,
         address sellToken,
         address buyToken,

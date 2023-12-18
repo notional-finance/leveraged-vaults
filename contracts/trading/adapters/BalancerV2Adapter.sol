@@ -45,6 +45,9 @@ library BalancerV2Adapter {
         internal pure returns (bytes memory) {
         BatchSwapData memory data = abi.decode(trade.exchangeData, (BatchSwapData));
 
+        require(address(data.assets[data.swaps[0].assetInIndex]) == trade.sellToken);
+        require(address(data.assets[data.swaps[data.swaps.length - 1].assetOutIndex]) == trade.buyToken);
+
         return abi.encodeWithSelector(
             IBalancerVault.batchSwap.selector,
             kind, // swapKind
@@ -61,8 +64,8 @@ library BalancerV2Adapter {
         );
     }
 
-    function getExecutionData(address from, Trade calldata trade)
-        internal view returns (
+    function getExecutionData(address from, Trade memory trade)
+        internal pure returns (
             address spender,
             address target,
             uint256 msgValue,

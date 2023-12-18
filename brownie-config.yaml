@@ -1,5 +1,6 @@
 compiler:
   solc:
+    version: 0.8.17
     optimizer:
       enabled: true
       runs: 200
@@ -13,7 +14,10 @@ networks:
   default: mainnet-fork
   mainnet-fork:
     cmd_settings:
-      fork_block: 17518720
+      fork_block: 17196399
+  arbitrum-fork:
+    cmd_settings:
+      fork_block: 142354748
   
 reports:
   exclude_paths:

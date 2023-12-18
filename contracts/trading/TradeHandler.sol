@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {ITradingModule, Trade} from "../../interfaces/trading/ITradingModule.sol";
+import {
+    ITradingModule,
+    Trade,
+    TradeFailed,
+    DynamicTradeFailed
+} from "../../interfaces/trading/ITradingModule.sol";
 import {nProxy} from "../proxy/nProxy.sol";
 
 /// @notice TradeHandler is an internal library to be compiled into StrategyVaults to interact
@@ -22,7 +27,7 @@ library TradeHandler {
                 dexId, trade, dynamicSlippageLimit
             )
         );
-        require(success);
+        if (!success) revert DynamicTradeFailed();
         (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
 
@@ -35,7 +40,7 @@ library TradeHandler {
     ) internal returns (uint256 amountSold, uint256 amountBought) {
         (bool success, bytes memory result) = nProxy(payable(address(tradingModule))).getImplementation()
             .delegatecall(abi.encodeWithSelector(ITradingModule.executeTrade.selector, dexId, trade));
-        require(success);
+        if (!success) revert TradeFailed();
         (amountSold, amountBought) = abi.decode(result, (uint256, uint256));
     }
 }

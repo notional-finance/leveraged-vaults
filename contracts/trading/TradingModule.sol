@@ -7,16 +7,15 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
-import {CurveAdapter} from "./adapters/CurveAdapter.sol";
-import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
 import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
+import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
 import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
+import {CurveV2Adapter} from "./adapters/CurveV2Adapter.sol";
 import {TradingUtils} from "./TradingUtils.sol";
 
 import {IERC20} from "../utils/TokenUtils.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
-import "../../interfaces/trading/IVaultExchange.sol";
+import {ITradingModule, Trade, TradeType, DexId} from "../../interfaces/trading/ITradingModule.sol";
 import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 /// @notice TradingModule is meant to be an upgradeable contract deployed to help Strategy Vaults
@@ -26,9 +25,13 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     // Used to get the proxy address inside delegate call contexts
     ITradingModule internal immutable PROXY;
 
+    // Grace period after a sequencer downtime has occurred
+    uint256 internal constant SEQUENCER_UPTIME_GRACE_PERIOD = 1 hours;
+
     error SellTokenEqualsBuyToken();
     error UnknownDEX();
     error InsufficientPermissions();
+    error Unauthorized();
 
     struct PriceOracle {
         AggregatorV2V3Interface oracle;
@@ -41,12 +44,15 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     mapping(address => mapping(address => TokenPermissions)) public tokenWhitelist;
 
     constructor(NotionalProxy notional_, ITradingModule proxy_) initializer { 
+        // Make sure we are using the correct Deployments lib
+        require(Deployments.CHAIN_ID == block.chainid);
+
         NOTIONAL = notional_;
         PROXY = proxy_;
     }
 
     modifier onlyNotionalOwner() {
-        require(msg.sender == NOTIONAL.owner());
+        if (msg.sender != NOTIONAL.owner()) revert Unauthorized();
         _;
     }
 
@@ -72,12 +78,14 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     function setTokenPermissions(
-        address sender, 
-        address token, 
+        address sender,
+        address token,
         TokenPermissions calldata permissions
     ) external override onlyNotionalOwner {
         /// @dev update these if we are adding new DEXes or types
-        for (uint32 i = uint32(DexId.NOTIONAL_VAULT) + 1; i < 32; i++) {
+        // Validates that the permissions being set do not exceed the max values set
+        // by the token.
+        for (uint32 i = uint32(DexId.CURVE_V2) + 1; i < 32; i++) {
             require(!_hasPermission(permissions.dexFlags, uint32(1 << i)));
         }
         for (uint32 i = uint32(TradeType.EXACT_OUT_BATCH) + 1; i < 32; i++) {
@@ -101,24 +109,19 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint16 dexId,
         address from,
         Trade calldata trade
-    )
-        external
-        view
-        override
-        returns (
-            address spender,
-            address target,
-            uint256 msgValue,
-            bytes memory executionCallData
-        )
-    {
-        return _getExecutionData(dexId, from, trade);
-    }
+    ) external pure override returns (
+        address spender,
+        address target,
+        uint256 msgValue,
+        bytes memory executionCallData
+    ) { return _getExecutionData(dexId, from, trade); }
 
     /// @notice Executes a trade with a dynamic slippage limit based on chainlink oracles.
     /// @dev Expected to be called via delegatecall on the implementation directly. This means that
     /// the contract's calling context does not have access to storage (accessible via the proxy
     /// address).
+    /// @dev This method has a `payable` modifier to allow for the calling context to have a `msg.value`
+    /// set, but should never refer to `msg.value` itself for any of its internal methods.
     /// @param dexId the dex to execute the trade on
     /// @param trade trade object
     /// @param dynamicSlippageLimit the slippage limit in 1e8 precision
@@ -128,13 +131,14 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         uint16 dexId,
         Trade memory trade,
         uint32 dynamicSlippageLimit
-    ) external override returns (uint256 amountSold, uint256 amountBought) {
+    ) external payable override returns (uint256 amountSold, uint256 amountBought) {
         if (!PROXY.canExecuteTrade(address(this), dexId, trade)) revert InsufficientPermissions();
         if (trade.amount == 0) return (0, 0);
 
         // This method calls back into the implementation via the proxy so that it has proper
         // access to storage.
         trade.limit = PROXY.getLimitAmount(
+            address(this),
             trade.tradeType,
             trade.sellToken,
             trade.buyToken,
@@ -147,7 +151,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             address target,
             uint256 msgValue,
             bytes memory executionData
-        ) = PROXY.getExecutionData(dexId, address(this), trade);
+        ) = _getExecutionData(dexId, address(this), trade);
 
         return
             TradingUtils._executeInternal(
@@ -161,12 +165,14 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     /// @notice Should be called via delegate call to execute a trade on behalf of the caller.
+    /// @dev This method has a `payable` modifier to allow for the calling context to have a `msg.value`
+    /// set, but should never refer to `msg.value` itself for any of its internal methods.
     /// @param dexId enum representing the id of the dex
     /// @param trade trade object
     /// @return amountSold amount of tokens sold
     /// @return amountBought amount of tokens purchased
     function executeTrade(uint16 dexId, Trade calldata trade)
-        external
+        external payable
         override
         returns (uint256 amountSold, uint256 amountBought)
     {
@@ -194,10 +200,10 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     function _getExecutionData(
         uint16 dexId,
         address from,
-        Trade calldata trade
+        Trade memory trade
     )
         internal
-        view
+        pure
         returns (
             address spender,
             address target,
@@ -207,19 +213,38 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     {
         if (trade.buyToken == trade.sellToken) revert SellTokenEqualsBuyToken();
 
-        if (DexId(dexId) == DexId.UNISWAP_V2) {
-            return UniV2Adapter.getExecutionData(from, trade);
-        } else if (DexId(dexId) == DexId.UNISWAP_V3) {
+        if (DexId(dexId) == DexId.UNISWAP_V3) {
             return UniV3Adapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.BALANCER_V2) {
             return BalancerV2Adapter.getExecutionData(from, trade);
-        } else if (DexId(dexId) == DexId.CURVE) {
-            return CurveAdapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.ZERO_EX) {
             return ZeroExAdapter.getExecutionData(from, trade);
+        } else if (DexId(dexId) == DexId.CURVE_V2) {
+            return CurveV2Adapter.getExecutionData(from, trade);
+        }
+
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+            if (DexId(dexId) == DexId.UNISWAP_V2) {
+                return UniV2Adapter.getExecutionData(from, trade);
+            }
         }
 
         revert UnknownDEX();
+    }
+
+    function _checkSequencer() private view {
+        // See: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
+        if (address(Deployments.SEQUENCER_UPTIME_ORACLE) != address(0)) {
+            (
+                /*uint80 roundID*/,
+                int256 answer,
+                uint256 startedAt,
+                /*uint256 updatedAt*/,
+                /*uint80 answeredInRound*/
+            ) = Deployments.SEQUENCER_UPTIME_ORACLE.latestRoundData();
+            require(answer == 0, "Sequencer Down");
+            require(SEQUENCER_UPTIME_GRACE_PERIOD < block.timestamp - startedAt, "Sequencer Grace Period");
+        }
     }
 
     /// @notice Returns the Chainlink oracle price between the baseToken and the quoteToken, the
@@ -235,6 +260,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         override
         returns (int256 answer, int256 decimals)
     {
+        _checkSequencer();
         PriceOracle memory baseOracle = priceOracles[baseToken];
         PriceOracle memory quoteOracle = priceOracles[quoteToken];
 
@@ -272,6 +298,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
     }
 
     function getLimitAmount(
+        address from,
         TradeType tradeType,
         address sellToken,
         address buyToken,
@@ -285,6 +312,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         require(oracleDecimals > 0); /// @dev Chainlink decimals error
 
         limitAmount = TradingUtils._getLimitAmount({
+            from: from,
             tradeType: tradeType,
             sellToken: sellToken,
             buyToken: buyToken,

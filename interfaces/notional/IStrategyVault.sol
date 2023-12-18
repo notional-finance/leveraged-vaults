@@ -4,10 +4,9 @@ pragma solidity >=0.7.6;
 interface IStrategyVault {
 
     struct StrategyVaultRoles {
-        bytes32 normalSettlement;
-        bytes32 emergencySettlement;
-        bytes32 postMaturitySettlement;
+        bytes32 emergencyExit;
         bytes32 rewardReinvestment;
+        bytes32 staticSlippageTrading;
     }
 
     function decimals() external view returns (uint8);
@@ -38,18 +37,19 @@ interface IStrategyVault {
         uint256 maturity
     ) external view returns (int256 underlyingValue);
 
-    function repaySecondaryBorrowCallback(
-        address token,
-        uint256 underlyingRequired,
-        bytes calldata data
-    ) external returns (bytes memory returnData);
+    function getExchangeRate(uint256 maturity) external view returns (int256);
 
     function deleverageAccount(
         address account,
         address vault,
         address liquidator,
-        uint256 depositAmountExternal,
-        bool transferSharesToLiquidator,
-        bytes calldata redeemData
-    ) external returns (uint256 profitFromLiquidation);
+        uint16 currencyIndex,
+        int256 depositUnderlyingInternal
+    ) external payable returns (uint256 vaultSharesFromLiquidation, int256 depositAmountPrimeCash);
+
+    function convertVaultSharesToPrimeMaturity(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity
+    ) external returns (uint256 primeVaultShares);
 }

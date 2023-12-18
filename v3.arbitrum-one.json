@@ -1,0 +1,64 @@
+{
+    "actions": {
+        "GovernanceAction": "0x10aae34011c256A9E63ab5ac50154C2539c0f51d",
+        "Views": "0xb15167FfF26202Aa3d20Ecfd7f46a34Fa4126e49",
+        "InitializeMarketsAction": "0x422A2e95009f11e9E144FE7fd1a7c7A9C759Bb6A",
+        "nTokenAction": "0x662F1be7f07C90031F7B5264f71Bd1AC0E975526",
+        "BatchAction": "0x0092A5552162f911ccF7f456e85f473cE259707F",
+        "AccountAction": "0xc2763a6465F5C86769A1Af826dB270A6367b03B7",
+        "ERC1155Action": "0xdE14D5F07456c86F070C108A04Ae2fafdbD2A939",
+        "LiquidateCurrencyAction": "0xdfb618098fC858F43fe0E5Fb906AdFE96786832f",
+        "LiquidatefCashAction": "0x1c510763432C0e65d86f313612d4e1E2D26E4332",
+        "TreasuryAction": "0x1cd33f81420Bfce8A3622dc56BBD617b7Fa3c93A",
+        "CalculationViews": "0x280deCD520da16e5571A6f2Fb803A57e0c16f423",
+        "VaultAccountAction": "0xAbd096049E0CDCecFE26a3b1Bc7bb38438F1B488",
+        "VaultAction": "0x63757F772B8aab66F4dE09617e8F257249EFcb93",
+        "VaultLiquidationAction": "0x5f11E94E0A69ac8490f45eB27a6478dCDDB0227E",
+        "VaultAccountHealth": "0xFFd7531ED937F703B269815950cB75bdAAA341c9"
+    },
+    "chainId": 42161,
+    "deployer": "0x8B64fA5Fd129df9c755eB82dB1e16D6D0Bdf5Bc3",
+    "guardian": "",
+    "libs": {
+        "FreeCollateralExternal": "0x72Ec9dE3eFD22552b6dc17142EAd505A48940D4E",
+        "MigrateIncentives": "0x6085B0a8f4c7ffA2E8CA578037792D6535d1E29B",
+        "SettleAssetsExternal": "0xa40aedAac28F9574124D7c8EFf59732cC77f1DD4",
+        "TradingAction": "0xCa2848903d7B5896796FE2687e76cCEC16B89b90",
+        "nTokenMintAction": "0x086b4ecD75c494dD36641195E89c25373E06d7cB",
+        "nTokenRedeemAction": "0x95DF7E34403beCd532f2BE160cacda56F0BD6bA3"
+    },
+    "networkName": "arbitrum-one",
+    "note": "0x019bE259BC299F3F653688c7655C87F998Bc7bC1",
+    "notional": "0x1344A36A1B56144C3Bc62E7757377D288fDE0369",
+    "routers": {
+        "PauseRouter": "0x6b986A60216ACA687457782aDFA0B002aD392Ce7",
+        "Router": "0xB12b08045c2FB403Fcae579641D0a011AAd8ED70"
+    },
+    "startBlock": 86540849,
+    "balancer": {
+        "vault": "0xBA12222222228d8Ba445958a75a0704d566BF2C8"
+    },
+    "trading": {
+        "proxy": "0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8"
+    },
+    "tokens": {
+        "DAI": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
+        "USDC": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+        "WBTC": "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f",
+        "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+        "wstETH": "0x5979D7b546E38E414F7E9822514be443A4800529",
+        "FRAX": "0x17FC002b466eEc40DaE837Fc4bE5c67993ddBd6F",
+        "BAL": "0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8",
+        "AURA": "0x1509706a6c66CA549ff0cB464de88231DDBe213B",
+        "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
+    },
+    "whales": {
+        "ETH": "0xc948eb5205bde3e18cac4969d6ad3a56ba7b2347",
+        "DAI_EOA": "0x5ec6abff9bb4c673f63d077a962a29945f744857",
+        "USDC": "0xa843392198862f98d17e3aa1421b08f2c2020cff",
+        "WBTC": "0x3b7424d5cc87dc2b670f4c99540f7380de3d5880",
+        "wstETH": "0x9fb1750da6266a05601855bb62767ebc742707b1",
+        "FRAX": "0x000d22872643daedd721eb514943db55ef37e62f",
+        "BAL": "0x8a8feacc614fa4b59cc2501f680c28e98e57bd14"
+    }
+}

@@ -1,0 +1,210 @@
+
+contract CrossChainVault is BaseStrategyVault, ICrossCurrencyVault {
+
+    IWrappedfCashFactory immutable WRAPPED_FCASH_FACTORY;
+    WETH9 immutable WETH;
+
+    address public manager;
+    uint8 public BORROW_DECIMALS;
+
+    constructor(
+        NotionalProxy notional_,
+        ITradingModule tradingModule_,
+        IWrappedfCashFactory factory,
+        WETH9 weth
+    ) BaseStrategyVault(notional_, tradingModule_) {
+        WRAPPED_FCASH_FACTORY = factory;
+        WETH = weth;
+    }
+
+    function strategy() external override view returns (bytes4) {
+        return bytes4(keccak256("CrossChainVault"));
+    }
+
+    function initialize(
+        string memory name_,
+        uint16 borrowCurrencyId_,
+        address manager_
+    ) external initializer { 
+        __INIT_VAULT(name_, borrowCurrencyId_);
+        BORROW_DECIMALS = _isUnderlyingETH() ? 18 : _underlyingToken().decimals();
+        manager = manager_;
+    }
+
+    function transferManager(address manager) external {
+        require(msg.sender == NOTIONAL.owner());
+        MANAGER = manager;
+    }
+
+    function getWrappedFCashAddress(uint256 maturity) public view returns (IWrappedfCash) {
+        require(maturity < PRIME_CASH_VAULT_MATURITY);
+        // NOTE: this requires that the wrapped fCash factory returns the same
+        // wfCash address on all blockchains.
+        return IWrappedfCash(
+            WRAPPED_FCASH_FACTORY.computeAddress(_borrowCurrencyId, uint40(maturity))
+        );
+    }
+
+    function convertStrategyToUnderlying(
+        address /* account */,
+        uint256 vaultShares,
+        uint256 maturity
+    ) public override view returns (int256 underlyingValue) {
+        int256 borrowPrecision = int256(10**BORROW_DECIMALS);
+        return vaultShares * borrowPrecision / INTERNAL_TOKEN_DECIMALS;
+    }
+
+    function getExchangeRate(uint256 maturity) public view override returns (int256) {
+        return convertStrategyToUnderlying(address(0), uint256(Constants.INTERNAL_TOKEN_PRECISION), maturity);
+    }
+
+    function _depositFromNotional(
+        address account,
+        uint256 depositUnderlyingExternal,
+        uint256 maturity,
+        bytes calldata data
+    ) internal override returns (uint256 vaultShares) {
+        DepositParams memory params = abi.decode(data, (DepositParams));
+        require(maturity != PRIME_CASH_VAULT_MATURITY);
+        require(uint256(account) == maturity);
+        // prior to entering this function
+
+        // Off-Chain, call socket /build-tx and pass in destination calldata
+        // and will receive a txTarget and txData. txAmount is bundled into
+        // the txData which makes it difficult to modify if we don't know
+        // what we're getting exactly...
+
+        // underlyingToken.approve(params.bridgeAddress, depositUnderlyingExternal);
+        // params.bridgeAddress.call(params.txData);
+
+        return params.minfCashRequired;
+    }
+
+    function _redeemFromNotional(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        bytes calldata data
+    ) internal override returns (uint256 borrowedCurrencyAmount) {
+        require(uint256(account) == maturity);
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+
+        // Funds are recovered in two scenarios:
+        //  - if the lending fails on the other chain, the receiving
+        //    contract on the other chain needs to send the funds back
+        //  - after maturity, the receiving contract on the other chain
+        //    needs to send the funds back
+        return data.recoveredFunds;
+    }
+
+    function convertVaultSharesToPrimeMaturity(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity
+    ) external override returns (uint256 primeVaultShares) { 
+        require(maturity != PRIME_CASH_VAULT_MATURITY);
+        // We should never mint prime vault shares for this vault. Upon
+        // settlement the following must occur:
+        //  - receiving contract on the other chain sends funds back
+        //    to this contract in the form of underlying tokens
+        //  - settle vault is called on this contract, which then calls
+        //    exit vault with 1 vault share to redeem.
+        //  - exit vault then calls _redeemFromNotional which will transfer
+        //    back the recovered funds to repay the debt
+        return 1;
+    }
+
+    function enterVault(
+        uint256 maturity,
+        uint256 depositAmount,
+        uint256 borrowAmount,
+        uint32 maxBorrowRate,
+        bytes calldata depositParams
+    ) external onlyManager {
+        require(maturity != PRIME_CASH_VAULT_MATURITY);
+        // TODO: check that minfCashRequired > borrowAmount
+
+        NOTIONAL.enterVault(
+            address(uint160(maturity)),
+            address(this),
+            depositAmount,
+            maturity,
+            borrowAmount,
+            maxBorrowRate,
+            depositParams
+        );
+    }
+
+    function exitVaultPostMaturity(
+        uint256 maturity,
+        uint256 recoveredFunds
+    ) external onlyManager {
+        require(maturity < block.timestamp);
+
+        NOTIONAL.exitVault(
+            address(uint160(maturity)),
+            address(this),
+            NOTIONAL.owner(),
+            1,
+            type(uint256).max,
+            0,
+            abi.encode(RedeemParams, (recoveredFunds));
+        )
+    }
+
+    function exitVaultRecoverFunds(
+        uint256 maturity,
+        uint256 vaultSharesToBurn,
+        uint256 fCashToRepay,
+        uint256 recoveredFunds
+    ) external onlyManager {
+        require(maturity < block.timestamp);
+
+        NOTIONAL.exitVault(
+            address(uint160(maturity)),
+            address(this),
+            NOTIONAL.owner(),
+            vaultSharesToBurn,
+            fCashToRepay,
+            0,
+            abi.encode(RedeemParams, (recoveredFunds));
+        )
+    }
+
+    // ONLY_VAULT_SETTLE
+    // ONLY_VAULT_DELEVERAGE
+}
+
+contract CrossChainVaultReceiver {
+    function receiveAndLend(
+        uint16 currencyId,
+        uint256 maturity
+        uint256 depositAmount
+        uint256 minShares,
+        bytes calldata returnFundsTx
+    ) onlySocket { 
+        // transfer from socket
+        // previewDeposit
+        if (shares < minShares) {
+            // execute return funds tx
+        }
+
+        try {
+            // execute deposit on wrapped fCash
+        } catch {
+            // execute return funds tx
+        }
+
+        // assign shares to chain id...
+    }
+
+    function redeemPostMaturity(
+        uint16 currencyId,
+        uint256 maturity
+        uint256 chainId
+    ) onlyManager {
+        require(wfCash.hasMatured());
+        uint256 assets = wfCash.redeem(wfCash.balanceOf(address(this)), address(this), address(this));
+        // execute return funds tx
+    }
+}

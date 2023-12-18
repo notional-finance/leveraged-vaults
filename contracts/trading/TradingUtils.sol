@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import {Deployments} from "../global/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
-import "../../interfaces/trading/IVaultExchange.sol";
 import "../../interfaces/trading/ITradingModule.sol";
 import {nProxy} from "../proxy/nProxy.sol";
 
@@ -107,7 +106,7 @@ library TradingUtils {
             revert PostValidationExactIn(trade.limit, amountReceived);
         }
 
-        if (_isExactOut(trade) && amountReceived != trade.amount) {
+        if (_isExactOut(trade) && amountReceived < trade.amount) {
             revert PostValidationExactOut(trade.amount, amountReceived);
         }
     }
@@ -175,6 +174,7 @@ library TradingUtils {
     }
 
     function _getLimitAmount(
+        address from,
         TradeType tradeType,
         address sellToken,
         address buyToken,
@@ -197,9 +197,11 @@ library TradingUtils {
             );
 
         if (tradeType == TradeType.EXACT_OUT_SINGLE || tradeType == TradeType.EXACT_OUT_BATCH) {
-            // type(uint256).max means no slippage limit
-            if (slippageLimit == type(uint256).max) {
-                return type(uint256).max;
+            // type(uint32).max means no slippage limit
+            if (slippageLimit == type(uint32).max) {
+                return sellToken == Deployments.ETH_ADDRESS
+                    ? address(from).balance
+                    : IERC20(sellToken).balanceOf(from);
             }
             // For exact out trades, we need to invert the oracle price (1 / oraclePrice)
             // We increase the precision before we divide because oraclePrice is in
@@ -217,8 +219,8 @@ library TradingUtils {
             // convert it to sellToken precision
             limitAmount = (limitAmount * sellTokenDecimals) / buyTokenDecimals;
         } else {
-            // type(uint256).max means no slippage limit
-            if (slippageLimit == type(uint256).max) {
+            // type(uint32).max means no slippage limit
+            if (slippageLimit == type(uint32).max) {
                 return 0;
             }
             // For exact in trades, limitAmount is the min amount of buyToken the contract

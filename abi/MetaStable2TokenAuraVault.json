@@ -10,7 +10,7 @@
                 "components": [
                     {
                         "internalType": "contract IAuraRewardPool",
-                        "name": "auraRewardPool",
+                        "name": "rewardPool",
                         "type": "address"
                     },
                     {
@@ -34,11 +34,6 @@
                                 "internalType": "contract ITradingModule",
                                 "name": "tradingModule",
                                 "type": "address"
-                            },
-                            {
-                                "internalType": "uint32",
-                                "name": "settlementPeriodInSeconds",
-                                "type": "uint32"
                             }
                         ],
                         "internalType": "struct DeploymentParams",
@@ -63,27 +58,6 @@
     {
         "inputs": [],
         "name": "ERC20Error",
-        "type": "error"
-    },
-    {
-        "inputs": [],
-        "name": "HasNotMatured",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint32",
-                "name": "lastSettlementTimestamp",
-                "type": "uint32"
-            },
-            {
-                "internalType": "uint32",
-                "name": "coolDownInMinutes",
-                "type": "uint32"
-            }
-        ],
-        "name": "InSettlementCoolDown",
         "type": "error"
     },
     {
@@ -130,29 +104,34 @@
         "type": "error"
     },
     {
-        "inputs": [],
-        "name": "NotInSettlementWindow",
-        "type": "error"
-    },
-    {
-        "inputs": [],
-        "name": "PostMaturitySettlement",
-        "type": "error"
-    },
-    {
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "slippage",
+                "name": "totalPoolClaim",
                 "type": "uint256"
             },
             {
-                "internalType": "uint32",
-                "name": "limit",
-                "type": "uint32"
+                "internalType": "uint256",
+                "name": "poolClaimThreshold",
+                "type": "uint256"
             }
         ],
-        "name": "SlippageTooHigh",
+        "name": "PoolShareTooHigh",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "StakeFailed",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "VaultLocked",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "VaultNotLocked",
         "type": "error"
     },
     {
@@ -332,6 +311,11 @@
         "name": "claimRewardTokens",
         "outputs": [
             {
+                "internalType": "contract IERC20[]",
+                "name": "rewardTokens",
+                "type": "address[]"
+            },
+            {
                 "internalType": "uint256[]",
                 "name": "claimedBalances",
                 "type": "uint256[]"
@@ -344,11 +328,11 @@
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "bptClaim",
+                "name": "poolClaim",
                 "type": "uint256"
             }
         ],
-        "name": "convertBPTClaimToStrategyTokens",
+        "name": "convertPoolClaimToStrategyTokens",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -368,7 +352,7 @@
             },
             {
                 "internalType": "uint256",
-                "name": "strategyTokenAmount",
+                "name": "vaultShares",
                 "type": "uint256"
             },
             {
@@ -396,11 +380,11 @@
                 "type": "uint256"
             }
         ],
-        "name": "convertStrategyTokensToBPTClaim",
+        "name": "convertStrategyTokensToPoolClaim",
         "outputs": [
             {
                 "internalType": "uint256",
-                "name": "bptClaim",
+                "name": "poolClaim",
                 "type": "uint256"
             }
         ],
@@ -418,6 +402,50 @@
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "vault",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "liquidator",
+                "type": "address"
+            },
+            {
+                "internalType": "uint16",
+                "name": "currencyIndex",
+                "type": "uint16"
+            },
+            {
+                "internalType": "int256",
+                "name": "depositUnderlyingInternal",
+                "type": "int256"
+            }
+        ],
+        "name": "deleverageAccount",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "vaultSharesFromLiquidation",
+                "type": "uint256"
+            },
+            {
+                "internalType": "int256",
+                "name": "depositAmountPrimeCash",
+                "type": "int256"
+            }
+        ],
+        "stateMutability": "payable",
         "type": "function"
     },
     {
@@ -447,7 +475,7 @@
         "outputs": [
             {
                 "internalType": "uint256",
-                "name": "strategyTokensMinted",
+                "name": "vaultSharesMinted",
                 "type": "uint256"
             }
         ],
@@ -462,12 +490,31 @@
                 "type": "uint256"
             }
         ],
-        "name": "getEmergencySettlementBPTAmount",
+        "name": "getEmergencySettlementPoolClaimAmount",
         "outputs": [
             {
                 "internalType": "uint256",
-                "name": "bptToSettle",
+                "name": "poolClaimToSettle",
                 "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "getExchangeRate",
+        "outputs": [
+            {
+                "internalType": "int256",
+                "name": "",
+                "type": "int256"
             }
         ],
         "stateMutability": "view",
@@ -517,6 +564,11 @@
                         "internalType": "bytes32",
                         "name": "rewardReinvestment",
                         "type": "bytes32"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "staticSlippageTrading",
+                        "type": "bytes32"
                     }
                 ],
                 "internalType": "struct IStrategyVault.StrategyVaultRoles",
@@ -555,44 +607,56 @@
                     {
                         "components": [
                             {
-                                "internalType": "address",
-                                "name": "primaryToken",
-                                "type": "address"
-                            },
-                            {
-                                "internalType": "address",
-                                "name": "secondaryToken",
-                                "type": "address"
-                            },
-                            {
-                                "internalType": "uint8",
-                                "name": "primaryIndex",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "uint8",
-                                "name": "secondaryIndex",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "uint8",
-                                "name": "primaryDecimals",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "uint8",
-                                "name": "secondaryDecimals",
-                                "type": "uint8"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "primaryBalance",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "secondaryBalance",
-                                "type": "uint256"
+                                "components": [
+                                    {
+                                        "internalType": "address",
+                                        "name": "primaryToken",
+                                        "type": "address"
+                                    },
+                                    {
+                                        "internalType": "address",
+                                        "name": "secondaryToken",
+                                        "type": "address"
+                                    },
+                                    {
+                                        "internalType": "uint8",
+                                        "name": "primaryIndex",
+                                        "type": "uint8"
+                                    },
+                                    {
+                                        "internalType": "uint8",
+                                        "name": "secondaryIndex",
+                                        "type": "uint8"
+                                    },
+                                    {
+                                        "internalType": "uint8",
+                                        "name": "primaryDecimals",
+                                        "type": "uint8"
+                                    },
+                                    {
+                                        "internalType": "uint8",
+                                        "name": "secondaryDecimals",
+                                        "type": "uint8"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "primaryBalance",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "secondaryBalance",
+                                        "type": "uint256"
+                                    },
+                                    {
+                                        "internalType": "contract IERC20",
+                                        "name": "poolToken",
+                                        "type": "address"
+                                    }
+                                ],
+                                "internalType": "struct TwoTokenPoolContext",
+                                "name": "basePool",
+                                "type": "tuple"
                             },
                             {
                                 "internalType": "uint256",
@@ -605,24 +669,12 @@
                                 "type": "uint256"
                             },
                             {
-                                "components": [
-                                    {
-                                        "internalType": "contract IERC20",
-                                        "name": "pool",
-                                        "type": "address"
-                                    },
-                                    {
-                                        "internalType": "bytes32",
-                                        "name": "poolId",
-                                        "type": "bytes32"
-                                    }
-                                ],
-                                "internalType": "struct PoolContext",
-                                "name": "basePool",
-                                "type": "tuple"
+                                "internalType": "bytes32",
+                                "name": "poolId",
+                                "type": "bytes32"
                             }
                         ],
-                        "internalType": "struct TwoTokenPoolContext",
+                        "internalType": "struct Balancer2TokenPoolContext",
                         "name": "poolContext",
                         "type": "tuple"
                     },
@@ -646,18 +698,18 @@
                                 "type": "address"
                             },
                             {
-                                "internalType": "contract IAuraBooster",
-                                "name": "auraBooster",
+                                "internalType": "address",
+                                "name": "booster",
                                 "type": "address"
                             },
                             {
                                 "internalType": "contract IAuraRewardPool",
-                                "name": "auraRewardPool",
+                                "name": "rewardPool",
                                 "type": "address"
                             },
                             {
                                 "internalType": "uint256",
-                                "name": "auraPoolId",
+                                "name": "poolId",
                                 "type": "uint256"
                             },
                             {
@@ -672,11 +724,6 @@
                     },
                     {
                         "components": [
-                            {
-                                "internalType": "uint32",
-                                "name": "settlementPeriodInSeconds",
-                                "type": "uint32"
-                            },
                             {
                                 "internalType": "contract ITradingModule",
                                 "name": "tradingModule",
@@ -705,18 +752,8 @@
                                         "type": "uint32"
                                     },
                                     {
-                                        "internalType": "uint32",
-                                        "name": "maxRewardTradeSlippageLimitPercent",
-                                        "type": "uint32"
-                                    },
-                                    {
                                         "internalType": "uint16",
-                                        "name": "maxBalancerPoolShare",
-                                        "type": "uint16"
-                                    },
-                                    {
-                                        "internalType": "uint16",
-                                        "name": "settlementCoolDownInMinutes",
+                                        "name": "maxPoolShare",
                                         "type": "uint16"
                                     },
                                     {
@@ -726,7 +763,7 @@
                                     },
                                     {
                                         "internalType": "uint16",
-                                        "name": "balancerPoolSlippageLimitPercent",
+                                        "name": "poolSlippageLimitPercent",
                                         "type": "uint16"
                                     }
                                 ],
@@ -738,23 +775,38 @@
                                 "components": [
                                     {
                                         "internalType": "uint256",
-                                        "name": "totalBPTHeld",
+                                        "name": "totalPoolClaim",
                                         "type": "uint256"
                                     },
                                     {
                                         "internalType": "uint80",
-                                        "name": "totalStrategyTokenGlobal",
+                                        "name": "totalVaultSharesGlobal",
                                         "type": "uint80"
                                     },
                                     {
                                         "internalType": "uint32",
                                         "name": "lastSettlementTimestamp",
                                         "type": "uint32"
+                                    },
+                                    {
+                                        "internalType": "uint32",
+                                        "name": "flags",
+                                        "type": "uint32"
                                     }
                                 ],
                                 "internalType": "struct StrategyVaultState",
                                 "name": "vaultState",
                                 "type": "tuple"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "poolClaimPrecision",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "bool",
+                                "name": "canUseStaticSlippage",
+                                "type": "bool"
                             }
                         ],
                         "internalType": "struct StrategyContext",
@@ -763,6 +815,41 @@
                     }
                 ],
                 "internalType": "struct MetaStable2TokenAuraStrategyContext",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getStrategyVaultInfo",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "pool",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint8",
+                        "name": "singleSidedTokenIndex",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "totalLPTokens",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "totalVaultShares",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo",
                 "name": "",
                 "type": "tuple"
             }
@@ -849,18 +936,8 @@
                                 "type": "uint32"
                             },
                             {
-                                "internalType": "uint32",
-                                "name": "maxRewardTradeSlippageLimitPercent",
-                                "type": "uint32"
-                            },
-                            {
                                 "internalType": "uint16",
-                                "name": "maxBalancerPoolShare",
-                                "type": "uint16"
-                            },
-                            {
-                                "internalType": "uint16",
-                                "name": "settlementCoolDownInMinutes",
+                                "name": "maxPoolShare",
                                 "type": "uint16"
                             },
                             {
@@ -870,7 +947,7 @@
                             },
                             {
                                 "internalType": "uint16",
-                                "name": "balancerPoolSlippageLimitPercent",
+                                "name": "poolSlippageLimitPercent",
                                 "type": "uint16"
                             }
                         ],
@@ -929,7 +1006,7 @@
             },
             {
                 "internalType": "uint256",
-                "name": "strategyTokens",
+                "name": "vaultShares",
                 "type": "uint256"
             },
             {
@@ -970,7 +1047,7 @@
                     },
                     {
                         "internalType": "uint256",
-                        "name": "minBPT",
+                        "name": "minPoolClaim",
                         "type": "uint256"
                     }
                 ],
@@ -980,7 +1057,28 @@
             }
         ],
         "name": "reinvestReward",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "rewardToken",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "primaryAmount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "secondaryAmount",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "poolClaimAmount",
+                "type": "uint256"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
@@ -1034,6 +1132,19 @@
     {
         "inputs": [
             {
+                "internalType": "uint256",
+                "name": "minBPT",
+                "type": "uint256"
+            }
+        ],
+        "name": "restoreVault",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "bytes32",
                 "name": "role",
                 "type": "bytes32"
@@ -1074,18 +1185,8 @@
                         "type": "uint32"
                     },
                     {
-                        "internalType": "uint32",
-                        "name": "maxRewardTradeSlippageLimitPercent",
-                        "type": "uint32"
-                    },
-                    {
                         "internalType": "uint16",
-                        "name": "maxBalancerPoolShare",
-                        "type": "uint16"
-                    },
-                    {
-                        "internalType": "uint16",
-                        "name": "settlementCoolDownInMinutes",
+                        "name": "maxPoolShare",
                         "type": "uint16"
                     },
                     {
@@ -1095,7 +1196,7 @@
                     },
                     {
                         "internalType": "uint16",
-                        "name": "balancerPoolSlippageLimitPercent",
+                        "name": "poolSlippageLimitPercent",
                         "type": "uint16"
                     }
                 ],
@@ -1123,52 +1224,6 @@
             }
         ],
         "name": "settleVaultEmergency",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "maturity",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "strategyTokensToRedeem",
-                "type": "uint256"
-            },
-            {
-                "internalType": "bytes",
-                "name": "data",
-                "type": "bytes"
-            }
-        ],
-        "name": "settleVaultNormal",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "maturity",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "strategyTokensToRedeem",
-                "type": "uint256"
-            },
-            {
-                "internalType": "bytes",
-                "name": "data",
-                "type": "bytes"
-            }
-        ],
-        "name": "settleVaultPostMaturity",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"

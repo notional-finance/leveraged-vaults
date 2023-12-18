@@ -113,4 +113,14 @@ library Constants {
     // Equal to 100% of all deposit amounts for nToken liquidity across fCash markets.
     int256 internal constant DEPOSIT_PERCENT_BASIS = 1e8;
     uint256 internal constant SLIPPAGE_LIMIT_PRECISION = 1e8;
+
+    /// @notice Precision for all percentages used by the vault
+    /// 1e4 = 100% (i.e. maxPoolShare)
+    uint16 internal constant VAULT_PERCENT_BASIS = 1e4;
+
+    // Placeholder constant to mark the variable rate prime cash maturity
+    uint40 internal constant PRIME_CASH_VAULT_MATURITY = type(uint40).max;
+
+    uint256 internal constant CHAIN_ID_MAINNET = 1;
+    uint256 internal constant CHAIN_ID_ARBITRUM = 42161;
 }
