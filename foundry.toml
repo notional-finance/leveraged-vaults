@@ -1,7 +1,26 @@
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 [profile.default]
 src = "contracts"
 test = "tests"
+script = "scripts"
 out = "out"
 libs = ["lib"]
+remappings = [
+    "@interfaces/=interfaces/",
+    "@contracts/=contracts/",
+]
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+# TODO: we need to create different variables for the different networks
+libraries = [
+  "@contracts/vaults/common/StrategyUtils.sol:StrategyUtils:0x863C4B7C2c78CA1C6C8Ba644d1f34476F37922e4"
+]
+
+fs_permissions = [{ access = "read-write", path = "./scripts/deploy"}]
+
+[rpc_endpoints]
+arbitrum = "https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}"
+mainnet = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}"
+
+[etherscan]
+mainnet = { key = "${ETHERSCAN_TOKEN}" }
+arbitrum = { key = "${ARBISCAN_TOKEN}" }

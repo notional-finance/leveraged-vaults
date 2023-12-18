@@ -4,7 +4,24 @@ pragma solidity 0.8.17;
 import "../BaseComposablePool.sol";
 
 abstract contract wstETH_WETH is BaseComposablePool {
-    function setUp() public override virtual {
+    function getRequiredOracles() internal override view virtual returns (
+        address[] memory token, address[] memory oracle
+    ) {
+        token = new address[](2);
+        oracle = new address[](2);
+
+        // wstETH
+        token[0] = 0x5979D7b546E38E414F7E9822514be443A4800529;
+        // Notional Chainlink wstETH/USD
+        oracle[0] = 0x0000000000000000000000000000000000000002;
+
+        // WETH
+        token[1] = 0x0000000000000000000000000000000000000000;
+        // Chainlink WETH/USD
+        oracle[1] = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
+    }
+
+    function initVariables() override internal {
         rewardPool = IERC20(0xa7BdaD177D474f946f3cDEB4bcea9d24Cf017471);
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
@@ -12,10 +29,14 @@ abstract contract wstETH_WETH is BaseComposablePool {
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 100
         });
+    }
+
+    function setUp() public override virtual {
+        initVariables();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
+        minDeposit = 1000e8;
         maxDeposit = 1e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
@@ -24,6 +45,10 @@ abstract contract wstETH_WETH is BaseComposablePool {
 }
 
 contract Test_wstETH is wstETH_WETH {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:[wstETH]/WETH';
+    }
+
     function setUp() public override { primaryBorrowCurrency = WSTETH; super.setUp(); }
 
     function test_TradeBeforeRestore() public {
@@ -68,5 +93,9 @@ contract Test_wstETH is wstETH_WETH {
 }
 
 contract Test_WETH is wstETH_WETH {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:wstETH/[WETH]';
+    }
+
     function setUp() public override { primaryBorrowCurrency = ETH; super.setUp(); }
 }

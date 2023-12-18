@@ -120,11 +120,15 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// @notice Returns basic information about the vault for use in the user interface.
     function getStrategyVaultInfo() external view override returns (SingleSidedLPStrategyVaultInfo memory) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
+        StrategyVaultSettings memory settings = VaultStorage.getStrategyVaultSettings();
+
         return SingleSidedLPStrategyVaultInfo({
             pool: address(POOL_TOKEN()),
             singleSidedTokenIndex: uint8(PRIMARY_INDEX()),
             totalLPTokens: state.totalPoolClaim,
-            totalVaultShares: state.totalVaultSharesGlobal
+            totalVaultShares: state.totalVaultSharesGlobal,
+            maxPoolShare: settings.maxPoolShare,
+            oraclePriceDeviationLimitPercent: settings.oraclePriceDeviationLimitPercent
         });
     }
 
@@ -413,8 +417,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         require(state.totalVaultSharesGlobal > 0);
         state.totalPoolClaim += poolClaimAmount;
         state.setStrategyVaultState();
-
-        emit RewardReinvested(rewardToken, amountSold, poolClaimAmount);
     }
 
     function _executeRewardTrades(
