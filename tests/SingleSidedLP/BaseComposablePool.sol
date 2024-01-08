@@ -29,7 +29,7 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
-        permissions[1] = ITradingModule.TokenPermissions(
+        permissions[2] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
