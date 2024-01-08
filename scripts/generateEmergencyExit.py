@@ -38,7 +38,8 @@ pools = {
         },
         "Balancer": {
             "rETH_ETH": "0x3Df035433cFACE65b6D68b77CC916085d020C8B8",
-            "USDC_4POOL": "0x8Ae7A8789A81A43566d0ee70264252c0DB826940"
+            "USDC_4POOL": "0x8Ae7A8789A81A43566d0ee70264252c0DB826940",
+            "wstETH_ETH": "0x0E8C1A069f40D0E8Fa861239D3e62003cBF3dCB2"
         }
     }
 }

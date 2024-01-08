@@ -114,5 +114,9 @@ contract Test_WETH is wstETH_WETH {
         maxPrimaryBorrow = 1e8;
     }
 
-    function setUp() public override { primaryBorrowCurrency = ETH; super.setUp(); }
+    function setUp() public override { 
+        EXISTING_DEPLOYMENT = 0x0E8C1A069f40D0E8Fa861239D3e62003cBF3dCB2;
+        primaryBorrowCurrency = ETH;
+        super.setUp();
+    }
 }
