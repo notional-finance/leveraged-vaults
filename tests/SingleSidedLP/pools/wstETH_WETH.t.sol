@@ -13,7 +13,7 @@ abstract contract wstETH_WETH is BaseComposablePool {
         // wstETH
         token[0] = 0x5979D7b546E38E414F7E9822514be443A4800529;
         // Notional Chainlink wstETH/USD
-        oracle[0] = 0x0000000000000000000000000000000000000002;
+        oracle[0] = 0x29aFB1043eD699A89ca0F0942ED6F6f65E794A3d;
 
         // WETH
         token[1] = 0x0000000000000000000000000000000000000000;
@@ -26,7 +26,7 @@ abstract contract wstETH_WETH is BaseComposablePool {
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
+            maxPoolShare: 3000,
             oraclePriceDeviationLimitPercent: 100
         });
     }
@@ -95,6 +95,23 @@ contract Test_wstETH is wstETH_WETH {
 contract Test_WETH is wstETH_WETH {
     function getVaultName() internal pure override returns (string memory) {
         return 'SingleSidedLP:Aura:wstETH/[WETH]';
+    }
+
+    function getDeploymentConfig() internal view override returns (
+        VaultConfigParams memory params, uint80 maxPrimaryBorrow
+    ) {
+        params = getTestVaultConfig();
+        params.feeRate5BPS = 10;
+        params.liquidationRate = 102;
+        params.reserveFeeShare = 80;
+        params.maxBorrowMarketIndex = 2;
+        params.minCollateralRatioBPS = 500;
+        params.maxRequiredAccountCollateralRatioBPS = 10_000;
+        params.maxDeleverageCollateralRatioBPS = 800;
+
+        // NOTE: these are always in 8 decimals
+        params.minAccountBorrowSize = 0.1e8;
+        maxPrimaryBorrow = 1e8;
     }
 
     function setUp() public override { primaryBorrowCurrency = ETH; super.setUp(); }
