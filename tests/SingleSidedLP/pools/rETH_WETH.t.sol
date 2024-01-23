@@ -13,7 +13,7 @@ abstract contract rETH_WETH is BaseComposablePool {
         // rETH
         token[0] = 0xEC70Dcb4A1EFa46b8F2D97C310C9c4790ba5ffA8;
         // Notional Chainlink rETH/USD
-        oracle[0] = 0x01713633a1b85a4a3d2f9430C68Bd4392c4a90eA;
+        oracle[0] = 0x40cf45dBD4813be545CF3E103eF7ef531eac7283;
 
         // WETH
         token[1] = 0x0000000000000000000000000000000000000000;

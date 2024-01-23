@@ -23,7 +23,7 @@ abstract contract wstETH_cbETH_rETH is BaseComposablePool {
         // rETH
         token[2] = 0xEC70Dcb4A1EFa46b8F2D97C310C9c4790ba5ffA8;
         // Notional Chainlink rETH/USD
-        oracle[2] = 0x01713633a1b85a4a3d2f9430C68Bd4392c4a90eA;
+        oracle[2] = 0x40cf45dBD4813be545CF3E103eF7ef531eac7283;
     }
 
     function initVariables() override internal {
@@ -31,8 +31,8 @@ abstract contract wstETH_cbETH_rETH is BaseComposablePool {
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            maxPoolShare: 0.2e4,
+            oraclePriceDeviationLimitPercent: 0.01e4
         });
     }
 
@@ -54,7 +54,28 @@ contract Test_wstETH is wstETH_cbETH_rETH {
         return 'SingleSidedLP:Aura:[wstETH]/cbETH/rETH';
     }
 
-    function setUp() public override { primaryBorrowCurrency = WSTETH; super.setUp(); }
+    function getDeploymentConfig() internal view override returns (
+        VaultConfigParams memory params, uint80 maxPrimaryBorrow
+    ) {
+        params = getTestVaultConfig();
+        params.feeRate5BPS = 10;
+        params.liquidationRate = 102;
+        params.reserveFeeShare = 80;
+        params.maxBorrowMarketIndex = 2;
+        params.minCollateralRatioBPS = 500;
+        params.maxRequiredAccountCollateralRatioBPS = 10_000;
+        params.maxDeleverageCollateralRatioBPS = 800;
+
+        // NOTE: these are always in 8 decimals
+        params.minAccountBorrowSize = 0.1e8;
+        maxPrimaryBorrow = 2e8;
+    }
+
+    function setUp() public override { 
+        EXISTING_DEPLOYMENT=0x37dD23Ab1885982F789A2D6400B583B8aE09223d;
+        primaryBorrowCurrency = WSTETH;
+        super.setUp();
+    }
 
     function test_RevertIf_ReinvestRewardNoVaultShares() public {
         address account = makeAddr("account");
