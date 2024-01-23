@@ -54,6 +54,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
             }
 
             vm.startBroadcast();
+            // TODO: these two calls do not work in simulation
             address impl = deployVaultImplementation();
             address proxy = address(new nProxy(impl, ""));
             vm.stopBroadcast();

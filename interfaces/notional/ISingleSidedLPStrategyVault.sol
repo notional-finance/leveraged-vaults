@@ -83,7 +83,7 @@ struct StrategyVaultSettings {
     uint16 deprecated_poolSlippageLimitPercent;
 }
 
-interface ISingleSidedLPStrategyVault is IStrategyVault {
+interface ISingleSidedLPStrategyVault {
     /// @notice Emitted when vault settings are updated
     event StrategyVaultSettingsUpdated(StrategyVaultSettings settings);
     /// @notice Emitted after an emergency exit

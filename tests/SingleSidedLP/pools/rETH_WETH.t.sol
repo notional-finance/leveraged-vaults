@@ -62,8 +62,8 @@ contract Test_rETH is rETH_WETH {
         params.maxDeleverageCollateralRatioBPS = 1500;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.1e8;
-        maxPrimaryBorrow = 1e8;
+        params.minAccountBorrowSize = 2e8;
+        maxPrimaryBorrow = 100e8;
     }
 
     function setUp() public override { 
