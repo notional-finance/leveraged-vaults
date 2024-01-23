@@ -78,3 +78,7 @@ forge script tests/SingleSidedLP/pools/$POOL_NAME.t.sol:Test_$TOKEN \
 # FILE=scripts/deploy/0x37dD23Ab1885982F789A2D6400B583B8aE09223d.initVault.json
 # jq 'walk(if type == "number" then tostring else . end)' $FILE > temp.json && mv temp.json $FILE
 
+# Generate Emergency Exit
+# source venv/bin/activate
+# Need to add the proxy address into the script
+# brownie run scripts/generateEmergencyExit.py --network arbitrum-one
