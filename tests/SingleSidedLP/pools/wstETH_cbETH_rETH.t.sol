@@ -62,9 +62,9 @@ contract Test_wstETH is wstETH_cbETH_rETH {
         params.liquidationRate = 102;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 500;
+        params.minCollateralRatioBPS = 1_000;
         params.maxRequiredAccountCollateralRatioBPS = 10_000;
-        params.maxDeleverageCollateralRatioBPS = 800;
+        params.maxDeleverageCollateralRatioBPS = 1_700;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 0.1e8;
