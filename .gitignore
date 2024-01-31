@@ -9,3 +9,4 @@ venv
 artifacts
 out/
 node_modules/
+hardhat.config.js
