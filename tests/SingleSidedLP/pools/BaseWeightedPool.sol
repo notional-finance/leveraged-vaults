@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "./BaseSingleSidedLPVault.sol";
-import "../../contracts/vaults/BalancerWeightedAuraVault.sol";
-import "../../contracts/vaults/balancer/mixins/AuraStakingMixin.sol";
-import "../../interfaces/balancer/IBalancerPool.sol";
-import "../../contracts/trading/adapters/BalancerV2Adapter.sol";
+import "../BaseSingleSidedLPVault.sol";
+import "../../../contracts/vaults/BalancerWeightedAuraVault.sol";
+import "../../../contracts/vaults/balancer/mixins/AuraStakingMixin.sol";
+import "../../../interfaces/balancer/IBalancerPool.sol";
+import "../../../contracts/trading/adapters/BalancerV2Adapter.sol";
 
 abstract contract BaseWeightedPool is BaseSingleSidedLPVault {
     bytes32 balancerPoolId;
