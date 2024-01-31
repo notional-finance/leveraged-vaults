@@ -47,6 +47,14 @@ interface IStrategyVault {
         int256 depositUnderlyingInternal
     ) external payable returns (uint256 vaultSharesFromLiquidation, int256 depositAmountPrimeCash);
 
+    function liquidateVaultCashBalance(
+        address account,
+        address vault,
+        address liquidator,
+        uint256 currencyIndex,
+        int256 fCashDeposit
+    ) external returns (int256 cashToLiquidator);
+
     function convertVaultSharesToPrimeMaturity(
         address account,
         uint256 vaultShares,

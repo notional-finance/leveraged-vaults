@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
+import "./SingleSidedLP/pools/BaseComposablePool.sol";
 import "../contracts/utils/AaveFlashLiquidator.sol";
 import "../contracts/global/Deployments.sol";
 import "../interfaces/notional/NotionalProxy.sol";
@@ -41,17 +42,14 @@ contract TestFlashLiquidator is Test {
             redemptionTrades: new TradeParams[](0)
         });
 
-        FlashLiquidatorBase.DeleverageVaultAccountParams memory actionData = FlashLiquidatorBase.DeleverageVaultAccountParams(
-            true, abi.encode(redeem)
-        );
-
         params = FlashLiquidatorBase.LiquidationParams({
             liquidationType: FlashLiquidatorBase.LiquidationType.DELEVERAGE_VAULT_ACCOUNT,
             currencyId: currencyId,
             currencyIndex: 0,
             account: account,
             vault: vault,
-            actionData: abi.encode(actionData)
+            useVaultDeleverage: true,
+            actionData: abi.encode(redeem)
         });
 
         asset = getAsset(currencyId);
@@ -158,6 +156,50 @@ contract TestFlashLiquidator is Test {
         assertGt(va.tempCashBalance, 0, "Cash Balance");
     }
 
-    // test deleverage fixed, buy cash
-    // test deleverage fixed, no buy cash
+    function test_deleverageFixedBorrow_cashPurchase() public {
+        // https://arbiscan.io/tx/0x0febc1d04e2cdecc7bb1b553957594576f2b7a44a02cf7ab9137c2954f8a6415
+        vm.createSelectFork(RPC_URL, 160447900);
+        address vault = 0x8Ae7A8789A81A43566d0ee70264252c0DB826940;
+        address account = 0xf5c4e22e63F1eb3451cBE41Bd906229DCf9dba15;
+        uint16 currencyId = 3; // USDC
+        AaveFlashLiquidator liquidator = deployLiquidator();
+        (/* */, int256 maxUnderlying) = liquidator.getOptimalDeleveragingParams(
+            account, vault
+        );
+        assertGt(maxUnderlying, 0, "Zero Deposit");
+
+        // New impl:
+        address impl = address(new BalancerComposableAuraVault(
+            NOTIONAL, AuraVaultDeploymentParams({
+                rewardPool: IAuraRewardPool(0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E),
+                whitelistedReward: address(0),
+                baseParams: DeploymentParams({
+                    primaryBorrowCurrencyId: currencyId,
+                    balancerPoolId: 0x423a1323c871abc9d89eb06855bf5347048fc4a5000000000000000000000496,
+                    tradingModule: Deployments.TRADING_MODULE
+                })
+            }),
+            // NOTE: this is hardcoded so if you want to run tests against it
+            // you need to change the deployment
+            BalancerSpotPrice(Deployments.BALANCER_SPOT_PRICE)
+        ));
+        vm.prank(NOTIONAL.owner());
+        UUPSUpgradeable(vault).upgradeTo(impl);
+
+        (
+            FlashLiquidatorBase.LiquidationParams memory params,
+            address asset
+        ) = getParams(5, currencyId, account, vault);
+        params.liquidationType = FlashLiquidatorBase.LiquidationType.DELEVERAGE_VAULT_ACCOUNT_AND_LIQUIDATE_CASH;
+
+        liquidator.flashLiquidate(asset, uint256(maxUnderlying) / 100 + 1e6, params);
+        VaultAccount memory va = NOTIONAL.getVaultAccount(account, vault);
+
+        // Assert liquidation was a success
+        (/* */, maxUnderlying) = liquidator.getOptimalDeleveragingParams(
+            account, vault
+        );
+        assertEq(maxUnderlying, 0, "Zero Deposit");
+        assertEq(va.tempCashBalance, 0, "Cash Balance");
+    }
 }

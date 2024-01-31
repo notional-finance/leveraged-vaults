@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
+import "forge-std/console.sol";
 import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
 import {WETH9} from "../../interfaces/WETH9.sol";
@@ -12,7 +13,8 @@ import {
     BatchLend,
     BalanceActionWithTrades,
     TradeActionType,
-    DepositActionType
+    DepositActionType,
+    PortfolioAsset
 } from "../global/Types.sol";
 import {BoringOwnable} from "./BoringOwnable.sol";
 import {Deployments} from "../global/Deployments.sol";
@@ -28,7 +30,8 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
     enum LiquidationType {
         UNKNOWN,
         DELEVERAGE_VAULT_ACCOUNT,
-        LIQUIDATE_CASH_BALANCE
+        LIQUIDATE_CASH_BALANCE,
+        DELEVERAGE_VAULT_ACCOUNT_AND_LIQUIDATE_CASH
     }
 
     struct LiquidationParams {
@@ -37,16 +40,8 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         uint16 currencyIndex;
         address account;
         address vault;
-        bytes actionData;
-    }
-
-    struct DeleverageVaultAccountParams {
         bool useVaultDeleverage;
-        bytes redeemData;
-    }
-
-    struct LiquidateCashBalanceParams {
-        uint32 minLendRate;
+        bytes actionData;
     }
 
     error ErrInvalidCurrencyIndex(uint16 index);
@@ -79,7 +74,7 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
     function getOptimalDeleveragingParams(
         address account, address vault
     ) external returns (uint16 currencyIndex, int256 maxUnderlying) {
-        (VaultAccount memory vaultAccount, int256 accruedFeeInUnderlying) = _settleAccountIfNeeded(account, vault);
+        (/* */, int256 accruedFeeInUnderlying) = _settleAccountIfNeeded(account, vault);
         return _getOptimalDeleveragingParams(account, vault, accruedFeeInUnderlying);
     }
 
@@ -144,15 +139,14 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         );
         require(maxUnderlying > 0);
 
-        DeleverageVaultAccountParams memory actionParams = abi.decode(params.actionData, (DeleverageVaultAccountParams));
         uint256 vaultSharesFromLiquidation;
-        if (actionParams.useVaultDeleverage) {
+        if (params.useVaultDeleverage) {
             (
                 vaultSharesFromLiquidation, /* */ 
             ) = IStrategyVault(params.vault).deleverageAccount{value: address(this).balance}(
-                params.account, 
-                params.vault, 
-                address(this), 
+                params.account,
+                params.vault,
+                address(this),
                 currencyIndex,
                 maxUnderlying
             );
@@ -160,9 +154,9 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
             (
                 vaultSharesFromLiquidation, /* */ 
             ) = NOTIONAL.deleverageAccount{value: address(this).balance}(
-                params.account, 
-                params.vault, 
-                address(this), 
+                params.account,
+                params.vault,
+                address(this),
                 currencyIndex,
                 maxUnderlying
             );
@@ -170,24 +164,25 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
 
         if (0 < vaultSharesFromLiquidation) {
             NOTIONAL.exitVault(
-                address(this), 
-                params.vault, 
-                address(this), 
+                address(this),
+                params.vault,
+                address(this),
                 vaultSharesFromLiquidation,
-                0, 
-                0, 
-                actionParams.redeemData
+                0,
+                0,
+                params.actionData
             );
         }
     }
 
-    function _liquidateCashBalance(VaultAccount memory vaultAccount, LiquidationParams memory params) private {
-        LiquidateCashBalanceParams memory actionParams = abi.decode(params.actionData, (LiquidateCashBalanceParams));
-
+    function _liquidateCashBalance(
+        VaultAccount memory vaultAccount,
+        LiquidationParams memory params,
+        address asset
+    ) private {
         require(vaultAccount.maturity != Constants.PRIME_CASH_VAULT_MATURITY);
 
         int256 cashBalance;
-
         if (params.currencyIndex == 0) {
             cashBalance = vaultAccount.tempCashBalance;
         } else if (params.currencyIndex < MAX_CURRENCIES) {
@@ -201,38 +196,39 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         (int256 fCashDeposit, /* */)  = NOTIONAL.getfCashRequiredToLiquidateCash(
             params.currencyId, vaultAccount.maturity, cashBalance
         );
+        // Increase this a bit for rounding
+        fCashDeposit = fCashDeposit + 10;
 
-        uint256 fCashAmount = _lend(
-            params.currencyId, vaultAccount.maturity, uint256(fCashDeposit), actionParams.minLendRate
-        );
+        _lend(params.currencyId, vaultAccount.maturity, uint256(fCashDeposit), 0, asset);
 
-        require(fCashAmount <= uint256(type(int256).max));
-
-        NOTIONAL.liquidateVaultCashBalance(
-            params.account, 
-            params.vault, 
-            address(this), 
-            params.currencyIndex, 
-            int256(fCashAmount)
-        );
-
-        // Sell residual fCash
-        int256 fCashResidual = NOTIONAL.getfCashNotional(address(this), params.currencyId, vaultAccount.maturity);
-
-        if (0 < fCashResidual) {
-            require(fCashResidual <= int256(type(int88).max));
-            _sellfCash(params.currencyId, vaultAccount.maturity, uint88(uint256(fCashResidual)));
+        if (params.useVaultDeleverage) {
+            IStrategyVault(params.vault).liquidateVaultCashBalance(
+                params.account,
+                params.vault,
+                address(this),
+                params.currencyIndex,
+                fCashDeposit
+            );
         } else {
-            _withdraw(params);
+            NOTIONAL.liquidateVaultCashBalance(
+                params.account,
+                params.vault,
+                address(this),
+                params.currencyIndex,
+                fCashDeposit
+            );
         }
+
+        // Withdraw all cash held
+        NOTIONAL.withdraw(params.currencyId, type(uint88).max, true);
     }
 
     function handleLiquidation(uint256 fee, bool repay, bytes memory data) internal {
         require(msg.sender == address(FLASH_LENDER));
 
         (
-            address asset, 
-            uint256 amount, 
+            address asset,
+            uint256 amount,
             bool withdraw,
             LiquidationParams memory params
         ) = abi.decode(data, (address, uint256, bool, LiquidationParams));
@@ -244,12 +240,21 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
 
         if (asset == address(Deployments.WETH)) _unwrapETH(amount);
 
-        if (params.liquidationType == LiquidationType.DELEVERAGE_VAULT_ACCOUNT) {
+        if (
+            params.liquidationType == LiquidationType.DELEVERAGE_VAULT_ACCOUNT ||
+            params.liquidationType == LiquidationType.DELEVERAGE_VAULT_ACCOUNT_AND_LIQUIDATE_CASH
+        ) {
             _deleverageVaultAccount(params, accruedFeeInUnderlying);
-        } else if(params.liquidationType == LiquidationType.LIQUIDATE_CASH_BALANCE) {
-            _liquidateCashBalance(vaultAccount, params);
-        } else {
-            revert();
+        }
+
+        if (
+            vaultAccount.maturity != Constants.PRIME_CASH_VAULT_MATURITY &&
+            (params.liquidationType == LiquidationType.LIQUIDATE_CASH_BALANCE ||
+             params.liquidationType == LiquidationType.DELEVERAGE_VAULT_ACCOUNT_AND_LIQUIDATE_CASH)
+        ) {
+            // Need to re-fetch to get the temp cash balance after liquidation
+            vaultAccount = NOTIONAL.getVaultAccount(params.account, params.vault);
+            _liquidateCashBalance(vaultAccount, params, asset);
         }
 
         if (asset == address(Deployments.WETH)) {
@@ -265,67 +270,38 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         }
     }
 
-    function _withdraw(LiquidationParams memory params) private {
-        (int256 cashBalance, /* */, /* */) = NOTIONAL.getAccountBalance(params.currencyId, address(this));
-
-        require(0 <= cashBalance && cashBalance <= int256(uint256(type(uint88).max)));
-
-        NOTIONAL.withdraw(params.currencyId, uint88(uint256(cashBalance)), true);
-    }
-
-    function _lend(uint16 currencyId, uint256 maturity, uint256 amount, uint32 minLendRate) private returns (uint256) {
-        (uint256 fCashAmount, /* */, bytes32 encodedTrade) = NOTIONAL.getfCashLendFromDeposit(
-            currencyId,
-            amount,
-            maturity,
-            minLendRate,
-            block.timestamp,
-            true // useUnderlying is true
-        );
-
+    function _lend(
+        uint16 currencyId,
+        uint256 maturity,
+        uint256 fCashAmount,
+        uint32 minLendRate,
+        address asset
+    ) private {
         BalanceActionWithTrades[] memory action = new BalanceActionWithTrades[](1);
         action[0].actionType = DepositActionType.DepositUnderlying;
-        action[0].depositActionAmount = amount;
-        action[0].currencyId = currencyId;
-        action[0].withdrawEntireCashBalance = false;
-        action[0].redeemToUnderlying = false;
-
-        bytes32[] memory trades = new bytes32[](1);
-        
-        trades[0] = encodedTrade;
-        action[0].trades = trades;
-
-        uint256 msgValue;
-        if (currencyId == Constants.ETH_CURRENCY_ID) {
-            msgValue = amount;
-        }
-
-        NOTIONAL.batchBalanceAndTradeAction{value: msgValue}(address(this), action);
-
-        return fCashAmount;
-    }
-
-    function _sellfCash(uint16 currencyId, uint256 maturity, uint88 amount) internal {
-        BalanceActionWithTrades[] memory action = new BalanceActionWithTrades[](1);
-        action[0].actionType = DepositActionType.None;
-        action[0].depositActionAmount = 0;
+        // For simplicity just deposit everything at this point.
+        action[0].depositActionAmount = currencyId == Constants.ETH_CURRENCY_ID ? 
+            address(this).balance : 
+            IERC20(asset).balanceOf(address(this));
         action[0].currencyId = currencyId;
         action[0].withdrawEntireCashBalance = true;
         action[0].redeemToUnderlying = true;
+        uint256 marketIndex = NOTIONAL.getMarketIndex(currencyId, maturity) + 1;
 
-        bytes32[] memory trades = new bytes32[](1);
-
-        uint256 marketIndex = NOTIONAL.getMarketIndex(currencyId, maturity);
-        
-        trades[0] = bytes32(
-            (uint256(TradeActionType.Borrow) << 248) |
-            (marketIndex << 240) |
-            (uint256(amount) << 152)
+        action[0].trades = new bytes32[](1);
+        action[0].trades[0] = bytes32(
+            (uint256(uint8(TradeActionType.Lend)) << 248) |
+            (uint256(marketIndex) << 240) |
+            (uint256(fCashAmount) << 152) |
+            (uint256(minLendRate) << 120)
         );
+        
+        uint256 msgValue;
+        if (currencyId == Constants.ETH_CURRENCY_ID) {
+            msgValue = action[0].depositActionAmount;
+        }
 
-        action[0].trades = trades;
-
-        NOTIONAL.batchBalanceAndTradeAction(address(this), action);
+        NOTIONAL.batchBalanceAndTradeAction{value: msgValue}(address(this), action);
     }
 
     function _withdrawToOwner(address token, uint256 amount) private {

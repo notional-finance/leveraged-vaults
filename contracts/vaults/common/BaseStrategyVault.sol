@@ -224,6 +224,19 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         );
     }
 
+    function liquidateVaultCashBalance(
+        address account,
+        address vault,
+        address liquidator,
+        uint256 currencyIndex,
+        int256 fCashDeposit
+    ) external returns (int256 cashToLiquidator) {
+        require(msg.sender == liquidator);
+        return NOTIONAL.liquidateVaultCashBalance(
+            account, vault, liquidator, currencyIndex, fCashDeposit
+        );
+    }
+
     function _canUseStaticSlippage() internal view returns (bool) {
         return hasRole(STATIC_SLIPPAGE_TRADING_ROLE, msg.sender);
     }
