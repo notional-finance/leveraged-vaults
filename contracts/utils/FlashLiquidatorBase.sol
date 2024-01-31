@@ -78,23 +78,21 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
     /// NOTE: use .call from liquidation bot
     function getOptimalDeleveragingParams(
         address account, address vault
-    ) external returns (uint16 currencyIndex, int256 maxUnderying) {
-        _settleAccountIfNeeded(account, vault);
-        return _getOptimalDeleveragingParams(account, vault);
+    ) external returns (uint16 currencyIndex, int256 maxUnderlying) {
+        (VaultAccount memory vaultAccount, int256 accruedFeeInUnderlying) = _settleAccountIfNeeded(account, vault);
+        return _getOptimalDeleveragingParams(account, vault, accruedFeeInUnderlying);
     }
 
-    function _settleAccountIfNeeded(address account, address vault) private returns (VaultAccount memory) {
-        VaultAccount memory vaultAccount = NOTIONAL.getVaultAccount(account, vault);
+    function _settleAccountIfNeeded(
+        address account, address vault
+    ) private returns (VaultAccount memory vaultAccount, int256 accruedFeeInUnderlying) {
+        (vaultAccount, accruedFeeInUnderlying) = NOTIONAL.getVaultAccountWithFeeAccrual(account, vault);
 
-        if (vaultAccount.maturity < block.timestamp) {
-            NOTIONAL.settleVaultAccount(account, vault);
-        }
-
-        return vaultAccount;
+        if (vaultAccount.maturity < block.timestamp) NOTIONAL.settleVaultAccount(account, vault);
     }
 
     function _getOptimalDeleveragingParams(
-        address account, address vault
+        address account, address vault, int256 accruedFeeInUnderlying
     ) private view returns (uint16 currencyIndex, int256 maxUnderlying) {
         (
             /* VaultAccountHealthFactors memory h */,
@@ -106,6 +104,10 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
             (vaultSharesToLiquidator[1] < vaultSharesToLiquidator[2] ? 2 : 1) :
             (vaultSharesToLiquidator[0] < vaultSharesToLiquidator[2] ? 2 : 0); 
         maxUnderlying = maxLiquidatorDepositUnderlying[currencyIndex];
+
+        // If there is an accrued fee, add it to the max underlying to ensure that dust
+        // amounts do not cause liquidations to fail.
+        if (maxUnderlying > 0) maxUnderlying = maxUnderlying + accruedFeeInUnderlying;
     }
 
     function estimateProfit(
@@ -133,8 +135,13 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         LiquidationParams calldata params
     ) internal virtual;
 
-    function _deleverageVaultAccount(LiquidationParams memory params) private {
-        (uint16 currencyIndex, int256 maxUnderlying) = _getOptimalDeleveragingParams(params.account, params.vault);
+    function _deleverageVaultAccount(
+        LiquidationParams memory params,
+        int256 accruedFeeInUnderlying
+    ) private {
+        (uint16 currencyIndex, int256 maxUnderlying) = _getOptimalDeleveragingParams(
+            params.account, params.vault, accruedFeeInUnderlying
+        );
         require(maxUnderlying > 0);
 
         DeleverageVaultAccountParams memory actionParams = abi.decode(params.actionData, (DeleverageVaultAccountParams));
@@ -230,14 +237,15 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
             LiquidationParams memory params
         ) = abi.decode(data, (address, uint256, bool, LiquidationParams));
 
-        VaultAccount memory vaultAccount = _settleAccountIfNeeded(params.account, params.vault);
+        (
+            VaultAccount memory vaultAccount,
+            int256 accruedFeeInUnderlying
+        ) = _settleAccountIfNeeded(params.account, params.vault);
 
-        if (asset == address(Deployments.WETH)) {
-            _unwrapETH(amount);
-        }
+        if (asset == address(Deployments.WETH)) _unwrapETH(amount);
 
         if (params.liquidationType == LiquidationType.DELEVERAGE_VAULT_ACCOUNT) {
-            _deleverageVaultAccount(params);
+            _deleverageVaultAccount(params, accruedFeeInUnderlying);
         } else if(params.liquidationType == LiquidationType.LIQUIDATE_CASH_BALANCE) {
             _liquidateCashBalance(vaultAccount, params);
         } else {
