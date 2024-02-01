@@ -51,7 +51,25 @@ contract Test_USDT is USDC_e_USDT {
         return 'SingleSidedLP:Convex:USDC.e/[USDT]';
     }
 
+    function getDeploymentConfig() internal view override returns (
+        VaultConfigParams memory params, uint80 maxPrimaryBorrow
+    ) {
+        params = getTestVaultConfig();
+        params.feeRate5BPS = 10;
+        params.liquidationRate = 102;
+        params.reserveFeeShare = 80;
+        params.maxBorrowMarketIndex = 2;
+        params.minCollateralRatioBPS = 500;
+        params.maxRequiredAccountCollateralRatioBPS = 10_000;
+        params.maxDeleverageCollateralRatioBPS = 800;
+
+        // NOTE: these are always in 8 decimals
+        params.minAccountBorrowSize = 1e8;
+        maxPrimaryBorrow = 5_000e8;
+    }
+
     function setUp() public override { 
+        EXISTING_DEPLOYMENT=0x431dbfE3050eA39abBfF3E0d86109FB5BafA28fD;
         primaryBorrowCurrency = USDT;
         super.setUp();
     }
