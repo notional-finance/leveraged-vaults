@@ -54,10 +54,15 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         NOTIONAL = notional_;
         FLASH_LENDER = flashLender_;
         owner = msg.sender;
+        uint16 maxCurrencyId = notional_.getMaxCurrencyId();
+        uint16[] memory currencies = new uint16[](maxCurrencyId);
+        for (uint16 i = 1; i <= maxCurrencyId; i++) currencies[i - 1] = i;
+        enableCurrencies(currencies);
+
         emit OwnershipTransferred(address(0), owner);
     }
 
-    function enableCurrencies(uint16[] calldata currencies) external onlyOwner {
+    function enableCurrencies(uint16[] memory currencies) public onlyOwner {
         for (uint256 i; i < currencies.length; i++) {
             (/* Token memory assetToken */, Token memory underlyingToken) = NOTIONAL.getCurrency(currencies[i]);
             if (underlyingToken.tokenAddress == Constants.ETH_ADDRESS) {

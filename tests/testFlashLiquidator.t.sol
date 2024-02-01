@@ -16,10 +16,8 @@ contract TestFlashLiquidator is Test {
     NotionalProxy constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
 
     function deployLiquidator() internal returns (AaveFlashLiquidator liquidator) {
+        // All currencies should be automatically enabled in constructor
         liquidator = new AaveFlashLiquidator(NOTIONAL, AAVE);
-        uint16[] memory ids = new uint16[](9);
-        for (uint16 i = 1; i <= 9; i++) ids[i-1] = i;
-        liquidator.enableCurrencies(ids);
         return liquidator;
     }
 
