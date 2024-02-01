@@ -3,6 +3,7 @@ import os
 from brownie import interface
 from brownie.network.contract import Contract
 
+pools = json.load(open("vaults.json", "r"))
 
 def gnosisBatch(network, txns):
     return {
@@ -31,19 +32,6 @@ def transactionTemplate(vault):
         "value": "0"
     }
 
-pools = {
-    "42161": {
-        "Curve": {
-            "FRAX_USDC_e": "0xdb08f663e5D765949054785F2eD1b2aa1e9C22Cf",
-        },
-        "Balancer": {
-            "rETH_ETH": "0x3Df035433cFACE65b6D68b77CC916085d020C8B8",
-            "USDC_4POOL": "0x8Ae7A8789A81A43566d0ee70264252c0DB826940",
-            "ETH_wstETH": "0x0E8C1A069f40D0E8Fa861239D3e62003cBF3dCB2",
-            "wstETH_cbETH_rETH": "0x37dD23Ab1885982F789A2D6400B583B8aE09223d"
-        }
-    }
-}
 
 def main():
     for (network, protocol) in pools.items():
