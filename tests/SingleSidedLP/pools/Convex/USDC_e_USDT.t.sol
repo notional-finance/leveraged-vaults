@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "../BaseCurve2Token.sol";
 
-abstract contract FRAX_USDC_e is BaseCurve2Token {
+abstract contract USDC_e_USDT is BaseCurve2Token {
     function getRequiredOracles() internal override view virtual returns (
         address[] memory token, address[] memory oracle
     ) {
@@ -46,7 +46,7 @@ abstract contract FRAX_USDC_e is BaseCurve2Token {
     }
 }
 
-contract Test_FRAX is FRAX_USDC_e {
+contract Test_USDT is USDC_e_USDT {
     function getVaultName() internal pure override returns (string memory) {
         return 'SingleSidedLP:Convex:USDC.e/[USDT]';
     }

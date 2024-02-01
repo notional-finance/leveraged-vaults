@@ -34,6 +34,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
         require(block.chainid == Deployments.CHAIN_ID, "Invalid Chain");
         bool upgradeVault = vm.envOr("UPGRADE_VAULT", false);
         bool updateConfig = vm.envOr("UPDATE_CONFIG", false);
+        address proxy = vm.envOr("PROXY", address(0));
 
         if (EXISTING_DEPLOYMENT == address(0)) {
             // Create a new deployment if value is not set
@@ -53,11 +54,14 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                 }
             }
 
-            vm.startBroadcast();
-            // TODO: these two calls do not work in simulation
-            address impl = deployVaultImplementation();
-            address proxy = address(new nProxy(impl, ""));
-            vm.stopBroadcast();
+            // Broadcast the implementation if proxy is not set
+            if (proxy == address(0)) {
+                vm.startBroadcast();
+                address impl = deployVaultImplementation();
+                console.log("Implementation Address", impl);
+                vm.stopBroadcast();
+                return;
+            }
 
             MethodCall[] memory init = new MethodCall[](totalCalls);
             uint256 callIndex = 0;
