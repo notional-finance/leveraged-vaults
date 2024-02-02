@@ -200,8 +200,6 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         (int256 fCashDeposit, /* */)  = NOTIONAL.getfCashRequiredToLiquidateCash(
             params.currencyId, vaultAccount.maturity, cashBalance
         );
-        // Increase this a bit for rounding
-        fCashDeposit = fCashDeposit + 10;
 
         _lend(params.currencyId, vaultAccount.maturity, uint256(fCashDeposit), 0, asset);
 

@@ -9,6 +9,6 @@ def write_abi(name):
 
 
 def main():
-    abis = ["TradingModule", "ISingleSidedLPStrategyVault"]
+    abis = ["TradingModule", "ISingleSidedLPStrategyVault", "AaveFlashLiquidator"]
     for abi in abis:
         write_abi(abi)
