@@ -61,9 +61,9 @@ contract Test_USDT is USDC_e_USDT {
         params.liquidationRate = 102;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 500;
+        params.minCollateralRatioBPS = 1_300;
         params.maxRequiredAccountCollateralRatioBPS = 10_000;
-        params.maxDeleverageCollateralRatioBPS = 800;
+        params.maxDeleverageCollateralRatioBPS = 1_900;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 1e8;
