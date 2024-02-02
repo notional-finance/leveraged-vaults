@@ -29,7 +29,7 @@ abstract contract BaseCurve2Token is DeployProxyVault, BaseSingleSidedLPVault {
 
     function setUp() public override virtual {
         // CRV on Arbitrum
-        rewardToken = IERC20(0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978);
+        rewardTokens.push(IERC20(0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978));
         super.setUp();
     }
 

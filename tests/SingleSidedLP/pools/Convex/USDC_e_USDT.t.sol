@@ -35,6 +35,8 @@ abstract contract USDC_e_USDT is BaseCurve2Token {
 
     function setUp() public override virtual {
         initVariables();
+        // Add ARB for this vault.
+        rewardTokens.push(IERC20(0x912CE59144191C1204E64559FE8253a0e49E6548));
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits

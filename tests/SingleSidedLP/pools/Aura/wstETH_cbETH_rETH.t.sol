@@ -82,6 +82,8 @@ contract Test_wstETH is wstETH_cbETH_rETH {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
+        IERC20 rewardToken = rewardTokens[0];
+
         enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
 
         vm.prank(NOTIONAL.owner());
@@ -143,6 +145,7 @@ contract Test_cbETH is wstETH_cbETH_rETH {
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
         uint256 vaultShares = enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+        IERC20 rewardToken = rewardTokens[0];
 
         bytes32 role = REWARD_REINVESTMENT_ROLE;
         vm.prank(NOTIONAL.owner());

@@ -17,7 +17,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
     uint256 numTokens;
     IERC20 rewardPool;
     IERC20 poolToken;
-    IERC20 rewardToken;
+    IERC20[] rewardTokens;
     address whitelistedReward;
 
     function getInitializeData() internal view override returns (bytes memory initData) {
@@ -357,11 +357,18 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
 
         skip(3600);
-        uint256 initialBalance = rewardToken.balanceOf(address(vault));
+        uint256[] memory initialBalance = new uint256[](rewardTokens.length);
+        for (uint256 i; i < rewardTokens.length; i++) {
+            initialBalance[i] = rewardTokens[i].balanceOf(address(vault));
+        }
+
         vm.prank(reward);
         v().claimRewardTokens();
-        uint256 rewardBalance = rewardToken.balanceOf(address(vault));
-        assertGe(rewardBalance - initialBalance, 0);
+
+        for (uint256 i; i < rewardTokens.length; i++) {
+            uint256 rewardBalance = rewardTokens[i].balanceOf(address(vault));
+            assertGe(rewardBalance - initialBalance[i], 0);
+        }
     }
 
     function test_RevertIf_RewardReinvestmentTradesPoolTokens() public {
