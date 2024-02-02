@@ -32,13 +32,23 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
 
     function deployTestVault() internal override returns (IStrategyVault) {
         address impl = deployVaultImplementation();
-        bytes memory initData = getInitializeData();
+        nProxy proxy;
 
-        (IERC20[] memory tokens, /* */) = SingleSidedLPVaultBase(payable(address(impl))).TOKENS();
+        if (EXISTING_DEPLOYMENT != address(0)) {
+            proxy = nProxy(payable(EXISTING_DEPLOYMENT));
+            vm.prank(NOTIONAL.owner());
+            UUPSUpgradeable(EXISTING_DEPLOYMENT).upgradeTo(impl);
+        } else {
+            bytes memory initData = getInitializeData();
+
+            vm.prank(NOTIONAL.owner());
+            proxy = new nProxy(address(impl), initData);
+        }
+
+        SingleSidedLPVaultBase p = SingleSidedLPVaultBase(payable(address(proxy)));
+        (IERC20[] memory tokens, /* */) = p.TOKENS();
         numTokens = tokens.length;
-
-        vm.prank(NOTIONAL.owner());
-        nProxy proxy = new nProxy(address(impl), initData);
+        totalVaultSharesAllMaturities = p.getStrategyVaultInfo().totalVaultShares;
 
         // NOTE: no token permissions set, single sided join by default
         return IStrategyVault(address(proxy));
@@ -132,7 +142,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
 
         
         expectRevert_enterVaultBypass(
-            account, 100_000e18, maturity, getDepositParams(0, 0)
+            account, 100_000 * precision, maturity, getDepositParams(0, 0)
             // NOTE: forge is not matching this selector properly
             // Errors.PoolShareTooHigh.selector
         );
@@ -347,11 +357,11 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
 
         skip(3600);
-        assertEq(rewardToken.balanceOf(address(vault)), 0);
+        uint256 initialBalance = rewardToken.balanceOf(address(vault));
         vm.prank(reward);
         v().claimRewardTokens();
         uint256 rewardBalance = rewardToken.balanceOf(address(vault));
-        assertGe(rewardBalance, 0);
+        assertGe(rewardBalance - initialBalance, 0);
     }
 
     function test_RevertIf_RewardReinvestmentTradesPoolTokens() public {
@@ -371,6 +381,4 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         );
         v().reinvestReward(t, 0);
     }
-
-    // todo: re-entrancy detection and deleverage...
 }

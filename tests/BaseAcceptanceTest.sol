@@ -41,7 +41,7 @@ abstract contract BaseAcceptanceTest is Test {
     uint16 constant RDNT = 12;
 
     string RPC_URL = vm.envString("RPC_URL");
-    uint256 FORK_BLOCK = 157779000;
+    uint256 FORK_BLOCK = 176730531;
     IStrategyVault vault;
     VaultConfigParams config;
     uint256[] maturities;
@@ -56,6 +56,9 @@ abstract contract BaseAcceptanceTest is Test {
     uint256 minDeposit;
     uint256 maxRelEntryValuation;
     uint256 maxRelExitValuation;
+
+    // Used for transferring tokens when `deal` does not work, like for USDC.
+    address WHALE;
 
     function setUp() public virtual {
         // Skip test setup when deploying
@@ -123,6 +126,18 @@ abstract contract BaseAcceptanceTest is Test {
     function getRedeemParams(uint256 vaultShares, uint256 maturity) internal view virtual returns (bytes memory);
     function checkInvariants() internal virtual;
 
+    function dealTokens(uint256 depositAmount) internal {
+        if (isETH) {
+            deal(address(NOTIONAL), depositAmount);
+        } else if (WHALE != address(0)) {
+            // USDC does not work with `deal` so transfer from a whale account instead.
+            vm.prank(WHALE);
+            primaryBorrowToken.transfer(address(vault), depositAmount);
+        } else {
+            deal(address(primaryBorrowToken), address(vault), depositAmount, true);
+        }
+    }
+
     function expectRevert_enterVaultBypass(
         address account,
         uint256 depositAmount,
@@ -130,15 +145,15 @@ abstract contract BaseAcceptanceTest is Test {
         bytes memory data,
         bytes memory revertMsg
     ) internal virtual {
-        if (isETH) {
-            deal(address(vault), depositAmount);
-        } else {
-            deal(address(primaryBorrowToken), address(vault), depositAmount, false);
-        }
+        dealTokens(depositAmount);
 
         vm.prank(address(NOTIONAL));
         vm.expectRevert(revertMsg);
-        vault.depositFromNotional(account, depositAmount, maturity, data);
+        if (isETH) {
+            vault.depositFromNotional{value: depositAmount}(account, depositAmount, maturity, data);
+        } else {
+            vault.depositFromNotional(account, depositAmount, maturity, data);
+        }
     }
 
     function expectRevert_enterVaultBypass(
@@ -147,15 +162,15 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 maturity,
         bytes memory data
     ) internal virtual {
-        if (isETH) {
-            deal(address(vault), depositAmount);
-        } else {
-            deal(address(primaryBorrowToken), address(vault), depositAmount, false);
-        }
+        dealTokens(depositAmount);
 
         vm.prank(address(NOTIONAL));
         vm.expectRevert();
-        vault.depositFromNotional(account, depositAmount, maturity, data);
+        if (isETH) {
+            vault.depositFromNotional{value: depositAmount}(account, depositAmount, maturity, data);
+        } else {
+            vault.depositFromNotional(account, depositAmount, maturity, data);
+        }
     }
 
     function expectRevert_enterVaultBypass(
@@ -165,15 +180,15 @@ abstract contract BaseAcceptanceTest is Test {
         bytes memory data,
         bytes4 selector
     ) internal virtual {
-        if (isETH) {
-            deal(address(vault), depositAmount);
-        } else {
-            deal(address(primaryBorrowToken), address(vault), depositAmount, false);
-        }
+        dealTokens(depositAmount);
 
         vm.prank(address(NOTIONAL));
         vm.expectRevert(selector);
-        vault.depositFromNotional(account, depositAmount, maturity, data);
+        if (isETH) {
+            vault.depositFromNotional{value: depositAmount}(account, depositAmount, maturity, data);
+        } else {
+            vault.depositFromNotional(account, depositAmount, maturity, data);
+        }
     }
 
     function enterVaultBypass(
@@ -182,11 +197,7 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 maturity,
         bytes memory data
     ) internal virtual returns (uint256 vaultShares) {
-        if (isETH) {
-            deal(address(NOTIONAL), depositAmount);
-        } else {
-            deal(address(primaryBorrowToken), address(vault), depositAmount, false);
-        }
+        dealTokens(depositAmount);
 
         vm.prank(address(NOTIONAL));
         if (isETH) {
@@ -365,10 +376,12 @@ abstract contract BaseAcceptanceTest is Test {
     function test_exchangeRateReturnsIfNoVaultShares() public {
         // Ensure that the exchange rate function always returns some
         // value even if there are no vault shares.
-        require(totalVaultSharesAllMaturities == 0);
-        for (uint256 i; i < maturities.length; i++) {
-            int256 value = vault.getExchangeRate(maturities[i]);
-            assertGt(value, 0);
+        // NOTE: this is a NO-OP if the vault already has vault shares
+        if (totalVaultSharesAllMaturities == 0) {
+            for (uint256 i; i < maturities.length; i++) {
+                int256 value = vault.getExchangeRate(maturities[i]);
+                assertGt(value, 0);
+            }
         }
     }
 

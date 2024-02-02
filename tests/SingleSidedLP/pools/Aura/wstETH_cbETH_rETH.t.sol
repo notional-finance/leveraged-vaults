@@ -77,6 +77,67 @@ contract Test_wstETH is wstETH_cbETH_rETH {
         super.setUp();
     }
 
+    // Only run one sell token reinvestment test since it requires a bunch of trade setup
+    function test_RewardReinvestmentSellTokens() public {
+        address account = makeAddr("account");
+        address reward = makeAddr("reward");
+        uint256 maturity = maturities[0];
+        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+
+        vm.prank(NOTIONAL.owner());
+        v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
+
+        skip(3600);
+        vm.prank(reward);
+        v().claimRewardTokens();
+        uint256 rewardBalance = rewardToken.balanceOf(address(vault));
+        assertGe(rewardBalance, 0);
+
+        uint256 primaryIndex = v().getStrategyVaultInfo().singleSidedTokenIndex;
+        SingleSidedRewardTradeParams[] memory t = new SingleSidedRewardTradeParams[](numTokens);
+        for (uint256 i; i < t.length; i++) {
+            t[i].sellToken = address(rewardToken);
+            if (i == primaryIndex) {
+                t[i].buyToken = address(primaryBorrowToken);
+                t[i].amount = rewardBalance;
+                t[i].tradeParams.dexId = uint16(DexId.BALANCER_V2);
+                t[i].tradeParams.tradeType = TradeType.EXACT_IN_SINGLE;
+                t[i].tradeParams.oracleSlippagePercentOrLimit = 0;
+                // This is some crazy pool with wstETH and BAL in it
+                t[i].tradeParams.exchangeData = abi.encode(
+                    BalancerV2Adapter.SingleSwapData(
+                        0x49b2de7d214070893c038299a57bac5acb8b8a340001000000000000000004be
+                    )
+                );
+            }
+        }
+
+        vm.prank(NOTIONAL.owner());
+        TRADING_MODULE.setTokenPermissions(
+            address(vault),
+            address(rewardToken),
+            ITradingModule.TokenPermissions({ allowSell: true, dexFlags: 16, tradeTypeFlags: 15})
+        );
+        
+        int256 exRateBefore = v().getExchangeRate(maturity);
+        vm.prank(reward);
+        (address r, uint256 amountSold, uint256 poolClaim) = v().reinvestReward(t, 0);
+        int256 exRateAfter = v().getExchangeRate(maturity);
+        assertEq(r, address(rewardToken));
+        assertGt(poolClaim, 0);
+        assertEq(amountSold, rewardBalance);
+        assertGt(exRateAfter, exRateBefore);
+    }
+
+}
+
+contract Test_cbETH is wstETH_cbETH_rETH {
+    function getVaultName() internal pure override returns (string memory) {
+        return 'SingleSidedLP:Aura:wstETH/[cbETH]/rETH';
+    }
+
+    function setUp() public override { primaryBorrowCurrency = CBETH; super.setUp(); }
+
     function test_RevertIf_ReinvestRewardNoVaultShares() public {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
@@ -130,68 +191,6 @@ contract Test_wstETH is wstETH_cbETH_rETH {
         vm.expectRevert();
         v().reinvestReward(t, 0);
     }
-
-    // Only run one sell token reinvestment test since it requires a bunch of trade setup
-    function test_RewardReinvestmentSellTokens() public {
-        address account = makeAddr("account");
-        address reward = makeAddr("reward");
-        uint256 maturity = maturities[0];
-        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
-
-        vm.prank(NOTIONAL.owner());
-        v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
-
-        skip(3600);
-        assertEq(rewardToken.balanceOf(address(vault)), 0);
-        vm.prank(reward);
-        v().claimRewardTokens();
-        uint256 rewardBalance = rewardToken.balanceOf(address(vault));
-        assertGe(rewardBalance, 0);
-
-        uint256 primaryIndex = v().getStrategyVaultInfo().singleSidedTokenIndex;
-        SingleSidedRewardTradeParams[] memory t = new SingleSidedRewardTradeParams[](numTokens);
-        for (uint256 i; i < t.length; i++) {
-            t[i].sellToken = address(rewardToken);
-            if (i == primaryIndex) {
-                t[i].buyToken = address(primaryBorrowToken);
-                t[i].amount = rewardBalance;
-                t[i].tradeParams.dexId = uint16(DexId.BALANCER_V2);
-                t[i].tradeParams.tradeType = TradeType.EXACT_IN_SINGLE;
-                t[i].tradeParams.oracleSlippagePercentOrLimit = 0;
-                // This is some crazy pool with wstETH and BAL in it
-                t[i].tradeParams.exchangeData = abi.encode(
-                    BalancerV2Adapter.SingleSwapData(
-                        0x49b2de7d214070893c038299a57bac5acb8b8a340001000000000000000004be
-                    )
-                );
-            }
-        }
-
-        vm.prank(NOTIONAL.owner());
-        TRADING_MODULE.setTokenPermissions(
-            address(vault),
-            address(rewardToken),
-            ITradingModule.TokenPermissions({ allowSell: true, dexFlags: 16, tradeTypeFlags: 15})
-        );
-        
-        int256 exRateBefore = v().getExchangeRate(maturity);
-        vm.prank(reward);
-        (address r, uint256 amountSold, uint256 poolClaim) = v().reinvestReward(t, 0);
-        int256 exRateAfter = v().getExchangeRate(maturity);
-        assertEq(r, address(rewardToken));
-        assertGt(poolClaim, 0);
-        assertEq(amountSold, rewardBalance);
-        assertGt(exRateAfter, exRateBefore);
-    }
-
-}
-
-contract Test_cbETH is wstETH_cbETH_rETH {
-    function getVaultName() internal pure override returns (string memory) {
-        return 'SingleSidedLP:Aura:wstETH/[cbETH]/rETH';
-    }
-
-    function setUp() public override { primaryBorrowCurrency = CBETH; super.setUp(); }
 }
 
 contract Test_rETH is wstETH_cbETH_rETH {

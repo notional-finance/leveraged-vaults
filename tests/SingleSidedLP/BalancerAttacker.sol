@@ -19,6 +19,7 @@ contract BalancerAttacker is Test {
     bytes depositParams;
     bool isETH;
     uint16 decimals;
+    address WHALE;
 
     bool public called;
 
@@ -29,9 +30,11 @@ contract BalancerAttacker is Test {
         uint256 _maturity,
         address _primaryBorrowToken,
         bytes memory _redeemParams,
-        bytes memory _depositParams
+        bytes memory _depositParams,
+        address _WHALE
     ) {
         NOTIONAL = _notional;
+        WHALE = _WHALE;
         vault = _vault;
         depositAmountExternal = _depositAmountExternal;
         maturity = _maturity;
@@ -75,7 +78,13 @@ contract BalancerAttacker is Test {
             deal(account, depositAmountExternal);
             value = depositAmountExternal;
         } else {
-            deal(address(primaryBorrowToken), account, depositAmountExternal, false);
+            if (WHALE != address(0)) {
+                // USDC does not work with `deal` so transfer from a whale account instead.
+                vm.prank(WHALE);
+                IERC20(primaryBorrowToken).transfer(address(account), depositAmountExternal);
+            } else {
+                deal(address(primaryBorrowToken), address(account), depositAmountExternal, true);
+            }
             IERC20(primaryBorrowToken).approve(address(NOTIONAL), depositAmountExternal);
         }
 

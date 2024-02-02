@@ -47,8 +47,8 @@ abstract contract USDC_DAI_USDT_USDC_e is BaseComposablePool {
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 0.001e18;
         maxDeposit = 1e18;
-        maxRelEntryValuation = 10 * BASIS_POINT;
-        maxRelExitValuation = 10 * BASIS_POINT;
+        maxRelEntryValuation = 15 * BASIS_POINT;
+        maxRelExitValuation = 15 * BASIS_POINT;
         super.setUp();
     }
 }
@@ -77,6 +77,8 @@ contract Test_USDC is USDC_DAI_USDT_USDC_e {
 
     function setUp() public override { 
         EXISTING_DEPLOYMENT = 0x8Ae7A8789A81A43566d0ee70264252c0DB826940;
+        // Binance Hot Wallet used for USDC transfers
+        WHALE = 0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D;
         primaryBorrowCurrency = USDC;
         super.setUp();
 

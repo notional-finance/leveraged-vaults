@@ -72,7 +72,8 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
             maturity,
             address(primaryBorrowToken),
             getRedeemParams(1, maturity),
-            getDepositParams(0, 0)
+            getDepositParams(0, 0),
+            WHALE
         );
         balancerAttacker.prepareForAttack();
 
@@ -114,7 +115,13 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
             deal(account, deposit);
             value = deposit;
         } else {
-            deal(address(primaryBorrowToken), account, deposit);
+            if (WHALE != address(0)) {
+                // USDC does not work with `deal` so transfer from a whale account instead.
+                vm.prank(WHALE);
+                primaryBorrowToken.transfer(address(account), deposit);
+            } else {
+                deal(address(primaryBorrowToken), address(account), deposit, true);
+            }
             vm.prank(account);
             primaryBorrowToken.approve(address(Deployments.BALANCER_VAULT), deposit);
         }

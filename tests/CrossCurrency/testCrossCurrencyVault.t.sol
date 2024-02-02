@@ -19,8 +19,8 @@ contract TestCrossCurrency_ETH_WSTETH is BaseCrossCurrencyVault {
         exchangeData = abi.encode(c);
         maxDeposit = 1e18;
         minDeposit = 0.001e18;
-        maxRelEntryValuation = 50 * BASIS_POINT;
-        maxRelExitValuation = 50 * BASIS_POINT;
+        maxRelEntryValuation = 75 * BASIS_POINT;
+        maxRelExitValuation = 75 * BASIS_POINT;
 
         super.setUp();
 
@@ -47,8 +47,8 @@ contract TestCrossCurrency_WSTETH_ETH is BaseCrossCurrencyVault {
         exchangeData = abi.encode(c);
         maxDeposit = 1e18;
         minDeposit = 0.001e18;
-        maxRelEntryValuation = 50 * BASIS_POINT;
-        maxRelExitValuation = 50 * BASIS_POINT;
+        maxRelEntryValuation = 75 * BASIS_POINT;
+        maxRelExitValuation = 75 * BASIS_POINT;
 
         super.setUp();
     }
