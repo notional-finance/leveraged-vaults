@@ -3,14 +3,14 @@ set -e
 
 source .env
 export FOUNDRY_PROFILE=deployment
-export UPGRADE_VAULT=false
-export UPDATE_CONFIG=true
 
 CHAIN=42161
 
 # Check if exactly two arguments are provided
-if [ $# -ne 3 ]; then
+if [ $# -lt 3 ]; then
     echo "Usage: $0 PROTOCOL POOL_NAME TOKEN"
+    echo "  --upgrade only deploys a new implementation"
+    echo "  --update  creates config update json"
     exit 1
 fi
 
@@ -18,6 +18,24 @@ fi
 PROTOCOL=$1
 POOL_NAME=$2
 TOKEN=$3
+
+UPGRADE_VAULT=false
+UPDATE_CONFIG=false
+# Loop through all command-line arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --upgrade)
+      UPGRADE_VAULT=true
+      ;;
+    --update)
+      UPDATE_CONFIG=true
+      ;;
+  esac
+  shift
+done
+
+export UPGRADE_VAULT=$UPGRADE_VAULT
+export UPDATE_CONFIG=$UPDATE_CONFIG
 
 # Function to prompt for confirmation
 confirm() {
@@ -85,6 +103,16 @@ cast send --account ARBITRUM-ONE_DEPLOYER --chain 42161  --gas-limit 120935302 -
 forge verify-contract $IMPLEMENTATION_ADDRESS \
     contracts/vaults/$CONTRACT.sol:$CONTRACT -c 42161 \
     --show-standard-json-input > json-input.std.json
+
+if [ "$UPGRADE_VAULT" = true ]; then
+  echo "Vault Implementation Deployed to $IMPLEMENTATION_ADDRESS"
+  PROXY=$(jq --arg network "$CHAIN" \
+          --arg protocol "$PROTOCOL" \
+          --arg pair "[$TOKEN]:$POOL_NAME" \
+          -r '.[$network][$protocol][$pair]' "vaults.json")
+  process_json_file "scripts/deploy/$PROXY.upgradeVault.json"
+  exit 0
+fi
 
 # Create the proxy contract
 echo "Deploying Proxy contract for $IMPLEMENTATION_ADDRESS"
