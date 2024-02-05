@@ -388,4 +388,11 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         );
         v().reinvestReward(t, 0);
     }
+
+    function test_cannotReinitialize() public {
+        vm.prank(NOTIONAL.owner());
+        vm.expectRevert("Initializable: contract is already initialized");
+        address(vault).call(getInitializeData());
+    }
+
 }
