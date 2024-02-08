@@ -1,39 +1,18 @@
 {
   "notional": "0x1344a36a1b56144c3bc62e7757377d288fde0369",
-  "actions": {
-    "AccountAction": "0xddA3988fD40c83da8B630f963e3Bc7c8fa4d35Fc",
-    "BatchAction": "0x59074a5E588de093fc5f04A7173D86b2B48e9d39",
-    "CalculationViews": "0xbE4AbA25915BAd390edf83B7e1ca44b6145F261e",
-    "ERC1155Action": "0xBf12d7e41a25f449293AB8cd1364Fe74A175bFa5",
-    "GovernanceAction": "0x38A4DfC0ff6588fD0c2142d14D4963A97356A245",
-    "InitializeMarketsAction": "0xe3E38607A1E2d6881A32F1D78C5C232f14bdef22",
-    "LiquidateCurrencyAction": "0xa3707CD595F6AB810a84d04C92D8adE5f7593Db5",
-    "LiquidatefCashAction": "0xfB56271c976A8b446B6D33D1Ec76C84F6AA53F1B",
-    "TreasuryAction": "0x5fd75e91Cc34DF9831Aa75903027FC34FeB9b931",
-    "Views": "0xBf91ec7A64FCF0844e54d3198E50AD8fb4D68E93",
-    "nTokenAction": "0xeA82Cfc621D5FA00E30c10531380846BB5aAfE79"
-  },
   "staking": {
     "sNOTE": "0x38DE42F4BA8a35056b33A746A6b45bE9B1c3B9d2"
   },
   "trading": {
-    "proxy": "0x594734c7e06C3D483466ADBCe401C6Bd269746C8"
-  },
-  "balancer": {
-    "vault": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
-    "veToken": "0xC128a9954e6c874eA3d62ce62B468bA073093F25",
-    "feeDistributor": "0x26743984e3357eFC59f2fd6C1aFDC310335a61c9",
-    "minter": "0x239e55F427D44C3cc793f49bFB507ebe76638a2b",
-    "gaugeController": "0xC128468b7Ce63eA702C1f104D55A2566b13D3ABD",
-    "delegateRegistry": "0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446",
-    "BALETHPool": {
-      "address": "0x5c6Ee304399DBdB9C8Ef030aB642B10820DB8F56"
+    "proxy": "0x594734c7e06C3D483466ADBCe401C6Bd269746C8",
+    "oracles": ["wstETH", "stETH", "BAL", "WBTC", "USDT", "USDC", "DAI", "WETH", "ETH"],
+    "permissions": {
+      "0xF049B944eC83aBb50020774D48a8cf40790996e6": [
+        "LDO", "AURA", "BAL", "WETH", "ETH", "stETH", "wstETH"
+      ],
+      "0x53144559c0d4a3304e2dd9dafbd685247429216d": ["COMP"]
     }
   },
-  "libs": {
-    "SettleAssetsExternal": "0x01713633a1b85a4a3d2f9430C68Bd4392c4a90eA"
-  },
-  "deployer": "0x8B64fA5Fd129df9c755eB82dB1e16D6D0Bdf5Bc3",
   "tokens": {
     "NOTE": "0xCFEAead4947f0705A14ec42aC3D44129E1Ef3eD5",
     "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",

@@ -15,6 +15,7 @@ import {ICurveRouterV2} from "../../interfaces/curve/ICurveRouterV2.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import {AggregatorV2V3Interface} from "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 
+/*
 /// @title Hardcoded Deployment Addresses for Arbitrum
 library Deployments {
     uint256 internal constant CHAIN_ID = Constants.CHAIN_ID_ARBITRUM;
@@ -45,9 +46,10 @@ library Deployments {
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(0xFdB631F5EE196F0ed6FAa767959853A9F217697D);
 }
+*/
 
 /// @title Hardcoded Deployment Addresses for Mainnet
-/*library Deployments {
+library Deployments {
     uint256 internal constant CHAIN_ID = Constants.CHAIN_ID_MAINNET;
     NotionalProxy internal constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
     IWstETH internal constant WRAPPED_STETH = IWstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
@@ -67,4 +69,14 @@ library Deployments {
     ICurveMetaRegistry public constant CURVE_META_REGISTRY = ICurveMetaRegistry(0xF98B45FA17DE75FB1aD0e7aFD971b0ca00e379fC);
     address internal constant CURVE_V1_HANDLER = 0x46a8a9CF4Fc8e99EC3A14558ACABC1D93A27de68;
     address internal constant CURVE_V2_HANDLER = 0xC4F389020002396143B863F6325aA6ae481D19CE;
-} */
+
+    ITradingModule internal constant TRADING_MODULE = ITradingModule(0x594734c7e06C3D483466ADBCe401C6Bd269746C8);
+    address internal constant TREASURY_MANAGER = 0x53144559C0d4a3304e2DD9dAfBD685247429216d;
+    // Notional Inc
+    address internal constant EMERGENCY_EXIT_MANAGER = 0x02479BFC7Dce53A02e26fE7baea45a0852CB0909;
+    // TODO: not deployed
+    address internal constant BALANCER_SPOT_PRICE = address(0);
+
+    // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
+    AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(address(0));
+}
