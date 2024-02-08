@@ -24,7 +24,7 @@ def get_router_args(router):
 
 def get_addresses():
     networkName = network.show_active()
-    if networkName == "mainnet-fork" or networkName == "mainnet-current":
+    if networkName == "mainnet-fork" or networkName == "mainnet-current" or networkName == "mainnet":
         networkName = "mainnet"
         output_file = "v2.{}.json".format(networkName)
     if networkName == "arbitrum-fork" or networkName == "arbitrum-current":
