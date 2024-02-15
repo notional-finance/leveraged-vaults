@@ -66,8 +66,8 @@ contract Test_USDT is USDC_e_USDT {
         params.maxDeleverageCollateralRatioBPS = 1_900;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 1e8;
-        maxPrimaryBorrow = 5_000e8;
+        params.minAccountBorrowSize = 5_000e8;
+        maxPrimaryBorrow = 300_000e8;
     }
 
     function setUp() public override { 
