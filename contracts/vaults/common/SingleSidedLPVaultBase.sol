@@ -197,8 +197,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// the deposit amount has been transferred to this vault. Will join the LP pool with
     /// the funds given and then return the total vault shares minted.
     function _depositFromNotional(
-        address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
-    ) internal override virtual whenNotLocked returns (uint256 vaultSharesMinted) {
+        address account, uint256 deposit, uint256 maturity, bytes calldata data
+    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
         // Short circuit any zero deposit amounts
         if (deposit == 0) return 0;
 
@@ -224,13 +224,18 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         }
 
         uint256 lpTokens = _joinPoolAndStake(amounts, params.minPoolClaim);
-        return _mintVaultShares(lpTokens);
+        (uint256 vaultShares, uint256 totalVaultSharesBefore) = _mintVaultShares(lpTokens);
+
+        _postMintHook(account, maturity, vaultShares, totalVaultSharesBefore, deposit);
     }
 
     /// @notice Given a number of LP tokens minted, issues vault shares back to the holder. Vault
     /// shares are claim on the LP tokens held by the vault. As rewards are reinvested, one vault
     /// share is a claim on an increasing amount of LP tokens.
-    function _mintVaultShares(uint256 lpTokens) internal returns (uint256 vaultShares) {
+    function _mintVaultShares(uint256 lpTokens) internal returns (
+        uint256 vaultShares,
+        uint256 totalVaultSharesBefore
+    ) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         if (state.totalPoolClaim == 0) {
             // Vault Shares are in 8 decimal precision
@@ -239,6 +244,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             vaultShares = (lpTokens * state.totalVaultSharesGlobal) / state.totalPoolClaim;
         }
 
+        totalVaultSharesBefore = state.totalVaultSharesGlobal;
         // Updates internal storage here
         state.totalPoolClaim += lpTokens;
         state.totalVaultSharesGlobal += vaultShares.toUint80();
@@ -259,14 +265,14 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// @return finalPrimaryBalance which is the amount of funds that the vault will transfer back
     /// to Notional and the account to repay debts and withdraw profits.
     function _redeemFromNotional(
-        address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
-    ) internal override virtual whenNotLocked returns (uint256 finalPrimaryBalance) {
+        address account, uint256 vaultShares, uint256 maturity, bytes calldata data
+    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
         // Short circuit any zero redemption amounts, this can occur during rolling positions
         // or withdraw cash balances post liquidation.
         if (vaultShares == 0) return 0;
 
         // Updates internal account to deduct the vault shares.
-        uint256 poolClaim = _redeemVaultShares(vaultShares);
+        (uint256 poolClaim, uint256 totalVaultSharesBefore) = _redeemVaultShares(vaultShares);
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         bool isSingleSided = params.redemptionTrades.length == 0;
@@ -279,7 +285,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             (IERC20[] memory tokens, /* */) = TOKENS();
             // Redemption trades are not automatically enabled on vaults since the trading module
             // requires explicit permission for every token that can be sold by an address.
-            return StrategyUtils.executeRedemptionTrades(
+            finalPrimaryBalance = StrategyUtils.executeRedemptionTrades(
                 tokens,
                 exitBalances,
                 params.redemptionTrades,
@@ -289,15 +295,23 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             // No explicit check is done here to ensure that the other balances are zero, assumed
             // that the `_unstakeAndExitPool` method on the implementation is correct and will only
             // ever withdraw to a single balance.
-            return exitBalances[PRIMARY_INDEX()];
+            finalPrimaryBalance = exitBalances[PRIMARY_INDEX()];
         }
+        
+        _postRedeemHook(account, maturity, vaultShares, totalVaultSharesBefore, finalPrimaryBalance);
     }
 
     /// @notice Updates internal account for vault share redemption.
-    function _redeemVaultShares(uint256 vaultShares) internal returns (uint256 poolClaim) {
+    function _redeemVaultShares(uint256 vaultShares) internal returns (
+        uint256 poolClaim,
+        uint256 totalVaultSharesBefore
+    ) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         // Will revert on divide by zero, which is the correct behavior
         poolClaim = (vaultShares * state.totalPoolClaim) / state.totalVaultSharesGlobal;
+
+        // Set this before reducing the global shares
+        totalVaultSharesBefore = state.totalVaultSharesGlobal;
 
         state.totalPoolClaim -= poolClaim;
         // Will revert on underflow if vault shares is greater than total shares global
@@ -532,6 +546,22 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         // in exchange for any other token that goes into the pool.
         _executeRewardTrades(trades, trades[0].sellToken);
     }
+
+    function _postMintHook(
+        address account,
+        uint256 maturity,
+        uint256 vaultSharesMinted,
+        uint256 totalVaultSharesBefore,
+        uint256 depositAmount
+    ) internal virtual { }
+
+    function _postRedeemHook(
+        address account,
+        uint256 maturity,
+        uint256 vaultSharesRedeemed,
+        uint256 totalVaultSharesBefore,
+        uint256 finalPrimaryBalance
+    ) internal virtual { }
 
     // Storage gap for future potential upgrades
     uint256[100] private __gap;
