@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.17;
+
+import {
+    BaseComposablePool,
+    StrategyVaultSettings,
+    VaultConfigParams,
+    IERC20
+} from "../BaseComposablePool.sol";
+import { BaseCurve2Token } from "../BaseCurve2Token.sol";
+import { BaseWeightedPool } from "../BaseWeightedPool.sol";
+
+contract {{ contractName }} is {{ vaultType }} {
+    function getVaultName() internal pure override returns (string memory) {
+        return '{{ vaultName}}';
+    }
+
+    function getDeploymentConfig() internal view override returns (
+        VaultConfigParams memory params, uint80 maxPrimaryBorrow
+    ) {
+        params = getTestVaultConfig();
+        params.feeRate5BPS = {{ config.feeRate5BPS }};
+        params.liquidationRate = {{ config.liquidationRate }};
+        params.reserveFeeShare = {{ config.reserveFeeShare }};
+        params.maxBorrowMarketIndex = {{ config.maxBorrowMarketIndex }};
+        params.minCollateralRatioBPS = {{ config.minCollateralRatioBPS }};
+        params.maxRequiredAccountCollateralRatioBPS = {{ config.maxRequiredAccountCollateralRatioBPS }};
+        params.maxDeleverageCollateralRatioBPS = {{ config.maxDeleverageCollateralRatioBPS }};
+
+        // NOTE: these are always in 8 decimals
+        params.minAccountBorrowSize = {{ config.minAccountBorrowSize }};
+        maxPrimaryBorrow = {{ config.maxPrimaryBorrow }};
+    }
+
+    function getRequiredOracles() internal override view virtual returns (
+        address[] memory token, address[] memory oracle
+    ) {
+        token = new address[]({{ oracles | length }});
+        oracle = new address[]({{ oracles | length }});
+
+        {% for oracle in oracles -%}
+        // {{ oracle.symbol }}
+        token[{{ loop.index }}] = {{ oracle.tokenAddress }};
+        oracle[{{ loop.index }}] = {{ oracle.oracleAddress }};
+        {% endfor %}
+    }
+
+    function initVariables() override internal {
+        rewardPool = IERC20({{ rewardPool }});
+        {% if vaultType == "BaseCurve2Token" %}
+        poolToken = IERC20({{ poolToken }});
+        lpToken = {{ lpToken }};
+        {% endif %}
+        settings = StrategyVaultSettings({
+            deprecated_emergencySettlementSlippageLimitPercent: 0,
+            deprecated_poolSlippageLimitPercent: 0,
+            maxPoolShare: {{ settings.maxPoolShare }},
+            oraclePriceDeviationLimitPercent: {{ settings.oraclePriceDeviationLimitPercent }}
+        });
+    }
+
+    function setUp() public override virtual {
+        {% if existingDeployment is defined -%}
+        EXISTING_DEPLOYMENT = {{ existingDeployment }};
+        {% endif -%}
+        primaryBorrowCurrency = {{ primaryBorrowCurrency | upper }};
+        initVariables();
+
+        // NOTE: need to enforce some minimum deposit here b/c of rounding issues
+        // on the DEX side, even though we short circuit 0 deposits
+        minDeposit = {{ setUp.minDeposit }};
+        maxDeposit = {{ setUp.maxDeposit }};
+        maxRelEntryValuation = {{ setUp.maxRelEntryValuation }} * BASIS_POINT;
+        maxRelExitValuation = {{ setUp.maxRelExitValuation }} * BASIS_POINT;
+        super.setUp();
+    }
+}

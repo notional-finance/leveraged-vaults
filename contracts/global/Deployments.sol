@@ -15,7 +15,6 @@ import {ICurveRouterV2} from "../../interfaces/curve/ICurveRouterV2.sol";
 import {ITradingModule} from "../../interfaces/trading/ITradingModule.sol";
 import {AggregatorV2V3Interface} from "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
 
-/*
 /// @title Hardcoded Deployment Addresses for Arbitrum
 library Deployments {
     uint256 internal constant CHAIN_ID = Constants.CHAIN_ID_ARBITRUM;
@@ -45,8 +44,8 @@ library Deployments {
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(0xFdB631F5EE196F0ed6FAa767959853A9F217697D);
 }
-*/
 
+/*
 /// @title Hardcoded Deployment Addresses for Mainnet
 library Deployments {
     uint256 internal constant CHAIN_ID = Constants.CHAIN_ID_MAINNET;
@@ -77,3 +76,4 @@ library Deployments {
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(address(0));
 }
+*/

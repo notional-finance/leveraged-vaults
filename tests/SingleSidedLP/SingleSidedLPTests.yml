@@ -1,0 +1,42 @@
+defaults:
+  setUp:
+    minDeposit: 0.001e18
+    maxDeposit: 50e18
+    maxRelEntryValuation: 75
+    maxRelExitValuation: 75
+  settings:
+    maxPoolShare: 2000
+    oraclePriceDeviationLimitPercent: 100
+  config:
+    feeRate5BPS: 10
+    liquidationRate: 102
+    reserveFeeShare: 80
+    maxBorrowMarketIndex: 2
+    minCollateralRatioBPS: 800
+    maxRequiredAccountCollateralRatioBPS: 10_000
+    maxDeleverageCollateralRatioBPS: 1500
+
+arbitrum:
+  - vaultName: SingleSidedLP:Aura:[RDNT]/WETH
+    contractName: Test_Aura_RDNT_WETH # Calculate
+    vaultType: BaseWeightedPool
+    primaryBorrowCurrency: RDNT
+    rewardPool: "0xa17492d89cB2D0bE1dDbd0008F8585EDc5B0ACf3"
+    rewards: [AURA, BAL]
+    oracles: [RDNT, ETH]
+    settings:
+      oraclePriceDeviationLimitPercent: 200
+    config:
+      minAccountBorrowSize: 0
+      maxPrimaryBorrow: 100e8
+  - vaultName: SingleSidedLP:Aura:[rETH]/WETH
+    contractName: Test_Aura_rETH_WETH # Calculate
+    vaultType: BaseComposablePool
+    primaryBorrowCurrency: rETH
+    existingDeployment: "0x3Df035433cFACE65b6D68b77CC916085d020C8B8"
+    rewardPool: "0x129A44AC6ff0f965C907579F96F2eD682E52c84A"
+    rewards: [AURA, BAL]
+    oracles: [rETH, ETH] # convert to array [ symbol, tokenAddress, oracleAddress ]
+    config:
+      minAccountBorrowSize: 2e8
+      maxPrimaryBorrow: 100e8
