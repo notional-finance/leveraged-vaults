@@ -20,7 +20,6 @@ import {AggregatorV2V3Interface} from "../../interfaces/chainlink/AggregatorV2V3
 library Deployments {
     uint256 internal constant CHAIN_ID = Constants.CHAIN_ID_ARBITRUM;
     NotionalProxy internal constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
-    IWstETH internal constant WRAPPED_STETH = IWstETH(0x5979D7b546E38E414F7E9822514be443A4800529);
     address internal constant ETH_ADDRESS = address(0);
     WETH9 internal constant WETH =
         WETH9(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
@@ -51,8 +50,7 @@ library Deployments {
 /// @title Hardcoded Deployment Addresses for Mainnet
 library Deployments {
     uint256 internal constant CHAIN_ID = Constants.CHAIN_ID_MAINNET;
-    NotionalProxy internal constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
-    IWstETH internal constant WRAPPED_STETH = IWstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+    NotionalProxy internal constant NOTIONAL = NotionalProxy(0x6e7058c91F85E0F6db4fc9da2CA41241f5e4263f);
     address internal constant ETH_ADDRESS = address(0);
     WETH9 internal constant WETH = WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IBalancerVault internal constant BALANCER_VAULT =
