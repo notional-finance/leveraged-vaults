@@ -159,4 +159,134 @@ arbitrum:
     config:
       minCollateralRatioBPS: 1300
       maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 19000
+      maxDeleverageCollateralRatioBPS: 1900
+mainnet:
+  - vaultName: SingleSidedLP:Convex:[USDT]/crvUSD
+    vaultType: BaseCurve2Token
+    primaryBorrowCurrency: USDT
+    rewardPool: "0xD1DdB0a0815fD28932fBb194C84003683AF8a824"
+    poolToken: "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4"
+    lpToken: "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4"
+    rewards: [CRV, CVX]
+    oracles: [USDT, crvUSD]
+    settings:
+      maxPoolShare: 2000
+      oracleDeviationLimit: 0.15e4
+    setUp:
+      minDeposit: 1e6
+      maxDeposit: 100_000e6
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      minCollateralRatioBPS: 500
+      maxDeleverageCollateralRatioBPS: 2600
+  - vaultName: SingleSidedLP:Convex:[USDC]/crvUSD
+    vaultType: BaseCurve2Token
+    primaryBorrowCurrency: USDC
+    rewardPool: "0x44D8FaB7CD8b7877D5F79974c2F501aF6E65AbBA"
+    poolToken: "0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E"
+    lpToken: "0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E"
+    rewards: [CRV, CVX]
+    oracles: [USDC, crvUSD]
+    settings:
+      maxPoolShare: 2000
+      oracleDeviationLimit: 0.15e4
+    setUp:
+      minDeposit: 1e6
+      maxDeposit: 100_000e6
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      minCollateralRatioBPS: 500
+      maxDeleverageCollateralRatioBPS: 2600
+  - vaultName: SingleSidedLP:Convex:pyUSD/[USDC]
+    vaultType: BaseCurve2Token
+    primaryBorrowCurrency: USDC
+    rewardPool: "0xc583e81bB36A1F620A804D8AF642B63b0ceEb5c0"
+    poolToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"
+    lpToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"
+    rewards: [CRV, CVX, pyUSD]
+    oracles: [USDC, pyUSD]
+    settings:
+      maxPoolShare: 2000
+      oracleDeviationLimit: 0.15e4
+    setUp:
+      minDeposit: 1e6
+      maxDeposit: 100_000e6
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      minCollateralRatioBPS: 500
+      maxDeleverageCollateralRatioBPS: 2600
+  - vaultName: SingleSidedLP:Aura:osETH/[WETH]
+    vaultType: BaseComposablePool
+    primaryBorrowCurrency: ETH
+    rewardPool: "0x5f032f15b4e910252edaddb899f7201e89c8cd6b"
+    rewards: [AURA, BAL, SWISE]
+    oracles: [osETH, ETH]
+    settings:
+      maxPoolShare: 2000
+      oracleDeviationLimit: 0.15e4
+    setUp:
+      minDeposit: 1000e8
+      maxDeposit: 1e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      minCollateralRatioBPS: 1000
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 1700
+  - vaultName: SingleSidedLP:Aura:osETH/[WETH]
+    vaultType: BaseComposablePool
+    primaryBorrowCurrency: ETH
+    rewardPool: "0x5f032f15b4e910252edaddb899f7201e89c8cd6b"
+    rewards: [AURA, BAL, SWISE]
+    oracles: [osETH, ETH]
+    settings:
+      maxPoolShare: 2000
+      oracleDeviationLimit: 0.15e4
+    setUp:
+      minDeposit: 1000e8
+      maxDeposit: 1e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      minCollateralRatioBPS: 1000
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 1700
+  - vaultName: SingleSidedLP:Aura:[rETH]/weETH
+    vaultType: BaseComposablePool
+    primaryBorrowCurrency: rETH
+    rewardPool: "0x07a319a023859bbd49cc9c38ee891c3ea9283cc5"
+    rewards: [AURA, BAL]
+    oracles: [rETH, weETH]
+    settings:
+      maxPoolShare: 2000
+      oracleDeviationLimit: 0.15e4
+    setUp:
+      minDeposit: 1000e8
+      maxDeposit: 1e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      minCollateralRatioBPS: 1000
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 1700
+  - vaultName: SingleSidedLP:Aura:GHO/USDT/[USDC]
+    vaultType: BaseComposablePool
+    primaryBorrowCurrency: USDC
+    rewardPool: "0xbdd6984c3179b099e9d383ee2f44f3a57764bf7d"
+    rewards: [AURA, BAL]
+    oracles: [GHO, USDT, USDC]
+    settings:
+      maxPoolShare: 2000
+      oracleDeviationLimit: 0.15e4
+    setUp:
+      minDeposit: 1000e8
+      maxDeposit: 1e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      minCollateralRatioBPS: 1000
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 1700
