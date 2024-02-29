@@ -11,6 +11,7 @@ import {IERC20} from "../contracts/utils/TokenUtils.sol";
 import "../contracts/global/Constants.sol";
 
 abstract contract BaseAcceptanceTest is Test {
+    // TODO: read these from Deployments.sol
     WETH9 constant WETH = WETH9(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     NotionalProxy constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
     ITradingModule constant TRADING_MODULE = ITradingModule(0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8);
@@ -41,7 +42,7 @@ abstract contract BaseAcceptanceTest is Test {
     uint16 constant RDNT = 12;
 
     string RPC_URL = vm.envString("RPC_URL");
-    uint256 FORK_BLOCK = 176730531;
+    uint256 FORK_BLOCK = vm.envUint("FORK_BLOCK");
     IStrategyVault vault;
     VaultConfigParams config;
     uint256[] maturities;

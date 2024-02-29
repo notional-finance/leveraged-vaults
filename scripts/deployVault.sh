@@ -83,6 +83,9 @@ case "$PROTOCOL" in
         ;;
 esac
 
+# TODO: rewrite test name using pool and protocol
+
+
 forge script tests/SingleSidedLP/pools/$PROTOCOL/$POOL_NAME.t.sol:Test_$TOKEN \
     -f $RPC_URL --sender 0x8F5ea3CDe898B208280c0e93F3aDaaf1F5c35a7e \
     --gas-limit 1125899906842624 --chain $CHAIN --account ARBITRUM-ONE_DEPLOYER
