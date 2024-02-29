@@ -66,6 +66,7 @@ networks = ['arbitrum', 'mainnet']
 
 def get_contract_name(test):
     return 'Test_' + test['vaultName'] \
+        .replace(".", "_") \
         .replace(":", "_") \
         .replace('/', '_') \
         .replace('[', 'x') \
@@ -94,7 +95,7 @@ def generate_files(network, yaml_file, template_file):
     defaults = tests['defaults']
 
     # Remove all files in the directory
-    shutil.rmtree(output_dir)
+    shutil.rmtree(output_dir, ignore_errors=True)
     os.makedirs(output_dir)
 
     for test in tests[network]:
@@ -105,7 +106,7 @@ def generate_files(network, yaml_file, template_file):
         test['oracles'] = get_oracles(network, test['oracles'])
 
         output = render_template(template, test)
-        output_file = f"{output_dir}/{network}/{test['contractName']}.t.sol"  # Define the output file name
+        output_file = f"{output_dir}/{test['contractName']}.t.sol"  # Define the output file name
         with open(output_file, 'w') as f:
             f.write(output)
 
@@ -113,4 +114,4 @@ if __name__ == "__main__":
     yaml_file = "tests/SingleSidedLP/SingleSidedLPTests.yml"
     template_file = "tests/SingleSidedLP/SingleSidedLP.t.sol.j2"
     generate_files('arbitrum', yaml_file, template_file)
-    generate_files('mainnet', yaml_file, template_file)
+    # generate_files('mainnet', yaml_file, template_file)

@@ -6,13 +6,13 @@ import {
     StrategyVaultSettings,
     VaultConfigParams,
     IERC20
-} from "../BaseComposablePool.sol";
-import { BaseCurve2Token } from "../BaseCurve2Token.sol";
-import { BaseWeightedPool } from "../BaseWeightedPool.sol";
+} from "../../SingleSidedLP/pools/BaseComposablePool.sol";
+import { BaseCurve2Token } from "../../SingleSidedLP/pools/BaseCurve2Token.sol";
+import { BaseWeightedPool } from "../../SingleSidedLP/pools/BaseWeightedPool.sol";
 
-contract Test_SingleSidedLP_Aura_xRDNT_WETH is BaseWeightedPool {
+contract Test_SingleSidedLP_Convex_xFRAX_USDC_e is BaseCurve2Token {
     function getVaultName() internal pure override returns (string memory) {
-        return 'SingleSidedLP:Aura:[RDNT]/WETH';
+        return 'SingleSidedLP:Convex:[FRAX]/USDC.e';
     }
 
     function getDeploymentConfig() internal view override returns (
@@ -23,9 +23,9 @@ contract Test_SingleSidedLP_Aura_xRDNT_WETH is BaseWeightedPool {
         params.liquidationRate = 102;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 1000;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1500;
+        params.maxDeleverageCollateralRatioBPS = 1700;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 0;
@@ -38,36 +38,40 @@ contract Test_SingleSidedLP_Aura_xRDNT_WETH is BaseWeightedPool {
         token = new address[](2);
         oracle = new address[](2);
 
-        // RDNT
-        token[1] = 0x3082CC23568eA640225c2467653dB90e9250AaA0;
-        oracle[1] = 0x3082CC23568eA640225c2467653dB90e9250AaA0;
-        // ETH
-        token[2] = 0x0000000000000000000000000000000000000000;
-        oracle[2] = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
+        // FRAX
+        token[1] = 0x17FC002b466eEc40DaE837Fc4bE5c67993ddBd6F;
+        oracle[1] = 0x0809E3d38d1B4214958faf06D8b1B1a2b73f2ab8;
+        // USDC_e
+        token[2] = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
+        oracle[2] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
         
     }
 
     function initVariables() override internal {
-        rewardPool = IERC20(0xa17492d89cB2D0bE1dDbd0008F8585EDc5B0ACf3);
+        rewardPool = IERC20(0x93729702Bf9E1687Ae2124e191B8fFbcC0C8A0B0);
+        
+        poolToken = IERC20(0xC9B8a3FDECB9D5b218d02555a8Baf332E5B740d5);
+        lpToken = 0xC9B8a3FDECB9D5b218d02555a8Baf332E5B740d5;
         
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 200
+            oraclePriceDeviationLimitPercent: 100
         });
     }
 
     function setUp() public override virtual {
-        primaryBorrowCurrency = RDNT;
+        EXISTING_DEPLOYMENT = 0xdb08f663e5D765949054785F2eD1b2aa1e9C22Cf;
+        primaryBorrowCurrency = FRAX;
         initVariables();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
-        maxDeposit = 50e18;
-        maxRelEntryValuation = 75 * BASIS_POINT;
-        maxRelExitValuation = 75 * BASIS_POINT;
+        minDeposit = 0.001e8;
+        maxDeposit = 1e18;
+        maxRelEntryValuation = 50 * BASIS_POINT;
+        maxRelExitValuation = 50 * BASIS_POINT;
         super.setUp();
     }
 }

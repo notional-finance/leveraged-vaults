@@ -6,13 +6,13 @@ import {
     StrategyVaultSettings,
     VaultConfigParams,
     IERC20
-} from "../BaseComposablePool.sol";
-import { BaseCurve2Token } from "../BaseCurve2Token.sol";
-import { BaseWeightedPool } from "../BaseWeightedPool.sol";
+} from "../../SingleSidedLP/pools/BaseComposablePool.sol";
+import { BaseCurve2Token } from "../../SingleSidedLP/pools/BaseCurve2Token.sol";
+import { BaseWeightedPool } from "../../SingleSidedLP/pools/BaseWeightedPool.sol";
 
-contract Test_SingleSidedLP_Aura_xrETH_WETH is BaseComposablePool {
+contract Test_SingleSidedLP_Aura_xRDNT_WETH is BaseWeightedPool {
     function getVaultName() internal pure override returns (string memory) {
-        return 'SingleSidedLP:Aura:[rETH]/WETH';
+        return 'SingleSidedLP:Aura:[RDNT]/WETH';
     }
 
     function getDeploymentConfig() internal view override returns (
@@ -28,7 +28,7 @@ contract Test_SingleSidedLP_Aura_xrETH_WETH is BaseComposablePool {
         params.maxDeleverageCollateralRatioBPS = 1500;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 2e8;
+        params.minAccountBorrowSize = 0;
         maxPrimaryBorrow = 100e8;
     }
 
@@ -38,9 +38,9 @@ contract Test_SingleSidedLP_Aura_xrETH_WETH is BaseComposablePool {
         token = new address[](2);
         oracle = new address[](2);
 
-        // rETH
-        token[1] = 0xEC70Dcb4A1EFa46b8F2D97C310C9c4790ba5ffA8;
-        oracle[1] = 0x40cf45dBD4813be545CF3E103eF7ef531eac7283;
+        // RDNT
+        token[1] = 0x3082CC23568eA640225c2467653dB90e9250AaA0;
+        oracle[1] = 0x3082CC23568eA640225c2467653dB90e9250AaA0;
         // ETH
         token[2] = 0x0000000000000000000000000000000000000000;
         oracle[2] = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
@@ -48,19 +48,18 @@ contract Test_SingleSidedLP_Aura_xrETH_WETH is BaseComposablePool {
     }
 
     function initVariables() override internal {
-        rewardPool = IERC20(0x129A44AC6ff0f965C907579F96F2eD682E52c84A);
+        rewardPool = IERC20(0xa17492d89cB2D0bE1dDbd0008F8585EDc5B0ACf3);
         
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            oraclePriceDeviationLimitPercent: 200
         });
     }
 
     function setUp() public override virtual {
-        EXISTING_DEPLOYMENT = 0x3Df035433cFACE65b6D68b77CC916085d020C8B8;
-        primaryBorrowCurrency = RETH;
+        primaryBorrowCurrency = RDNT;
         initVariables();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues

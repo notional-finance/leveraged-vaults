@@ -15,6 +15,8 @@ defaults:
     minCollateralRatioBPS: 800
     maxRequiredAccountCollateralRatioBPS: 10_000
     maxDeleverageCollateralRatioBPS: 1500
+    minAccountBorrowSize: 0
+    maxPrimaryBorrow: 100e8
 
 arbitrum:
   - vaultName: SingleSidedLP:Aura:[RDNT]/WETH
@@ -41,10 +43,11 @@ arbitrum:
   - vaultName: SingleSidedLP:Aura:[USDC]/DAI/USDT/USDC.e
     vaultType: BaseComposablePool
     primaryBorrowCurrency: USDC
+    whale: "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
     existingDeployment: "0x8Ae7A8789A81A43566d0ee70264252c0DB826940"
     rewardPool: "0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E"
     rewards: [AURA, BAL, ARB]
-    oracles: [USDC, DAI, USDT, USDC.e]
+    oracles: [USDC, DAI, USDT, USDC_e]
     setUp:
       minDeposit: 0.01e6
       maxDeposit: 100_000e6
@@ -61,7 +64,7 @@ arbitrum:
     primaryBorrowCurrency: USDT
     rewardPool: "0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E"
     rewards: [AURA, BAL, ARB]
-    oracles: [USDC, DAI, USDT, USDC.e]
+    oracles: [USDC, DAI, USDT, USDC_e]
     setUp:
       minDeposit: 0.01e6
       maxDeposit: 100_000e6
@@ -76,7 +79,7 @@ arbitrum:
     primaryBorrowCurrency: DAI
     rewardPool: "0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E"
     rewards: [AURA, BAL, ARB]
-    oracles: [USDC, DAI, USDT, USDC.e]
+    oracles: [USDC, DAI, USDT, USDC_e]
     setUp:
       maxRelEntryValuation: 15
       maxRelExitValuation: 15
@@ -117,7 +120,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Convex:[FRAX]/USDC.e
-    vaultType: BaseComposablePool
+    vaultType: BaseCurve2Token
     primaryBorrowCurrency: FRAX
     existingDeployment: "0xdb08f663e5D765949054785F2eD1b2aa1e9C22Cf"
     rewardPool: "0x93729702Bf9E1687Ae2124e191B8fFbcC0C8A0B0"
@@ -137,7 +140,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Convex:USDC.e/[USDT]
-    vaultType: BaseComposablePool
+    vaultType: BaseCurve2Token
     primaryBorrowCurrency: USDT
     existingDeployment: "0x431dbfE3050eA39abBfF3E0d86109FB5BafA28fD"
     rewardPool: "0x971E732B5c91A59AEa8aa5B0c763E6d648362CF8"

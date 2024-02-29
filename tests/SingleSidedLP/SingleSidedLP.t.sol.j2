@@ -6,9 +6,9 @@ import {
     StrategyVaultSettings,
     VaultConfigParams,
     IERC20
-} from "../BaseComposablePool.sol";
-import { BaseCurve2Token } from "../BaseCurve2Token.sol";
-import { BaseWeightedPool } from "../BaseWeightedPool.sol";
+} from "../../SingleSidedLP/pools/BaseComposablePool.sol";
+import { BaseCurve2Token } from "../../SingleSidedLP/pools/BaseCurve2Token.sol";
+import { BaseWeightedPool } from "../../SingleSidedLP/pools/BaseWeightedPool.sol";
 
 contract {{ contractName }} is {{ vaultType }} {
     function getVaultName() internal pure override returns (string memory) {
@@ -62,6 +62,9 @@ contract {{ contractName }} is {{ vaultType }} {
     function setUp() public override virtual {
         {% if existingDeployment is defined -%}
         EXISTING_DEPLOYMENT = {{ existingDeployment }};
+        {% endif -%}
+        {% if whale is defined -%}
+        WHALE = {{ whale }};
         {% endif -%}
         primaryBorrowCurrency = {{ primaryBorrowCurrency | upper }};
         initVariables();
