@@ -28,7 +28,7 @@ contract Test_SingleSidedLP_Aura_xRDNT_WETH is BaseWeightedPool {
         params.maxDeleverageCollateralRatioBPS = 1500;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0;
+        params.minAccountBorrowSize = 1e8;
         maxPrimaryBorrow = 100e8;
     }
 

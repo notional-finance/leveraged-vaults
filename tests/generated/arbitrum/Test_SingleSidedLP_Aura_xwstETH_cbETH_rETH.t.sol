@@ -28,7 +28,7 @@ contract Test_SingleSidedLP_Aura_xwstETH_cbETH_rETH is BaseComposablePool {
         params.maxDeleverageCollateralRatioBPS = 1700;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0;
+        params.minAccountBorrowSize = 0.001e8;
         maxPrimaryBorrow = 100e8;
     }
 

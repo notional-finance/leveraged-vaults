@@ -28,7 +28,7 @@ contract Test_SingleSidedLP_Convex_xFRAX_USDC_e is BaseCurve2Token {
         params.maxDeleverageCollateralRatioBPS = 1700;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0;
+        params.minAccountBorrowSize = 1e8;
         maxPrimaryBorrow = 100e8;
     }
 
@@ -68,8 +68,8 @@ contract Test_SingleSidedLP_Convex_xFRAX_USDC_e is BaseCurve2Token {
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e8;
-        maxDeposit = 1e18;
+        minDeposit = 0.1e18;
+        maxDeposit = 100_000e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
         super.setUp();
