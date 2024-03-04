@@ -5,20 +5,24 @@ from jinja2 import Template
 
 token = {
     "mainnet": {
-        "WETH": "",
+        "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         "ETH": "0x0000000000000000000000000000000000000000",
-        "DAI": "",
-        "USDC": "",
-        "USDC_e": "",
-        "WBTC": "",
-        "wstETH": "",
-        "FRAX": "",
-        "rETH": "",
-        "USDT": "",
-        "cbETH": "",
-        "BAL": "",
-        "AURA": "",
-        "CRV": ""
+        "DAI": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+        "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "WBTC": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+        "wstETH": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
+        "FRAX": "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+        "rETH": "0xae78736Cd615f374D3085123A210448E74Fc6393",
+        "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "cbETH": "0xBe9895146f7AF43049ca1c1AE358B0541Ea49704",
+        "BAL": "0xba100000625a3754423978a60c9317c58a424e3D",
+        "AURA": "0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF",
+        "CRV": "0xD533a949740bb3306d119CC777fa900bA034cd52",
+        "crvUSD": "0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E",
+        "pyUSD": "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8",
+        "osETH": "0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38",
+        "weETH": "0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee",
+        "GHO": "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f",
     },
     "arbitrum": {
         "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -41,10 +45,33 @@ token = {
     }
 }
 
-# TODO: can we just read this from the trading module?
+"""
+To read the most recent oracles from the blockchain:
+Load in brownie:
+m = TradingModule.at(...)
+tokens = { "ETH": 0x000.. }
+{ name: m.priceOracles(address)['oracle'] for (name, address) in tokens.items() }
+"""
 oracle = {
     "mainnet": {
-
+        'BAL': "0xdF2917806E30300537aEB49A7663062F4d1F2b5F",
+        'DAI': "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
+        'ETH': "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+        'USDC': "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
+        'USDT': "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D",
+        'WBTC': "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
+        'WETH': "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+        'wstETH': "0x8770d8dEb4Bc923bf929cd260280B5F1dd69564D",
+        'FRAX': "0x0000000000000000000000000000000000000000",
+        'CRV': "0x0000000000000000000000000000000000000000",
+        'AURA': "0x0000000000000000000000000000000000000000",
+        'cbETH': "0x0000000000000000000000000000000000000000",
+        'rETH': "0xA7D273951861CF07Df8B0A1C3c934FD41bA9E8Eb",
+        'crvUSD': "0xEEf0C605546958c1f899b6fB336C20671f9cD49F",
+        'pyUSD': "0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1",
+        'osETH': "0x3d3d7d124B0B80674730e0D31004790559209DEb",
+        'weETH': "0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136",
+        'GHO': "0x3f12643D3f6f874d39C2a4c9f2Cd6f2DbAC877FC",
     },
     "arbitrum": {
         "WETH": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
@@ -114,4 +141,4 @@ if __name__ == "__main__":
     yaml_file = "tests/SingleSidedLP/SingleSidedLPTests.yml"
     template_file = "tests/SingleSidedLP/SingleSidedLP.t.sol.j2"
     generate_files('arbitrum', yaml_file, template_file)
-    # generate_files('mainnet', yaml_file, template_file)
+    generate_files('mainnet', yaml_file, template_file)
