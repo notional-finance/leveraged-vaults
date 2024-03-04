@@ -39,11 +39,11 @@ contract Test_SingleSidedLP_Aura_xRDNT_WETH is BaseWeightedPool {
         oracle = new address[](2);
 
         // RDNT
-        token[1] = 0x3082CC23568eA640225c2467653dB90e9250AaA0;
-        oracle[1] = 0x3082CC23568eA640225c2467653dB90e9250AaA0;
+        token[0] = 0x3082CC23568eA640225c2467653dB90e9250AaA0;
+        oracle[0] = 0x20d0Fcab0ECFD078B036b6CAf1FaC69A6453b352;
         // ETH
-        token[2] = 0x0000000000000000000000000000000000000000;
-        oracle[2] = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
+        token[1] = 0x0000000000000000000000000000000000000000;
+        oracle[1] = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
         
     }
 

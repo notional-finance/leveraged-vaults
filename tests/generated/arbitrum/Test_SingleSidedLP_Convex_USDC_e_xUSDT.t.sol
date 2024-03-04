@@ -25,7 +25,7 @@ contract Test_SingleSidedLP_Convex_USDC_e_xUSDT is BaseCurve2Token {
         params.maxBorrowMarketIndex = 2;
         params.minCollateralRatioBPS = 1300;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 19000;
+        params.maxDeleverageCollateralRatioBPS = 1900;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 0.001e8;
@@ -39,11 +39,11 @@ contract Test_SingleSidedLP_Convex_USDC_e_xUSDT is BaseCurve2Token {
         oracle = new address[](2);
 
         // USDT
-        token[1] = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
-        oracle[1] = 0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7;
+        token[0] = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
+        oracle[0] = 0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7;
         // USDC_e
-        token[2] = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
-        oracle[2] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
+        token[1] = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
+        oracle[1] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
         
     }
 

@@ -46,9 +46,22 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         }
 
         SingleSidedLPVaultBase p = SingleSidedLPVaultBase(payable(address(proxy)));
-        (IERC20[] memory tokens, /* */) = p.TOKENS();
-        numTokens = tokens.length;
         totalVaultSharesAllMaturities = p.getStrategyVaultInfo().totalVaultShares;
+        {
+            (IERC20[] memory tokens, /* */) = p.TOKENS();
+            numTokens = tokens.length;
+        }
+
+        (address[] memory t, address[] memory oracles) = getRequiredOracles();
+        for (uint256 i; i < t.length; i++) {
+            (AggregatorV2V3Interface oracle, /* */) = TRADING_MODULE.priceOracles(t[i]);
+            if (address(oracle) == address(0)) {
+                vm.prank(NOTIONAL.owner());
+                TRADING_MODULE.setPriceOracle(t[i], AggregatorV2V3Interface(oracles[i]));
+            } else {
+                require(address(oracle) == oracles[i], "Oracle Mismatch");
+            }
+        }
 
         // NOTE: no token permissions set, single sided join by default
         return IStrategyVault(address(proxy));

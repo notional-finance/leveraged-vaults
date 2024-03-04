@@ -39,11 +39,11 @@ contract Test_SingleSidedLP_Convex_xFRAX_USDC_e is BaseCurve2Token {
         oracle = new address[](2);
 
         // FRAX
-        token[1] = 0x17FC002b466eEc40DaE837Fc4bE5c67993ddBd6F;
-        oracle[1] = 0x0809E3d38d1B4214958faf06D8b1B1a2b73f2ab8;
+        token[0] = 0x17FC002b466eEc40DaE837Fc4bE5c67993ddBd6F;
+        oracle[0] = 0x0809E3d38d1B4214958faf06D8b1B1a2b73f2ab8;
         // USDC_e
-        token[2] = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
-        oracle[2] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
+        token[1] = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
+        oracle[1] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
         
     }
 

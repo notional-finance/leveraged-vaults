@@ -39,14 +39,14 @@ contract Test_SingleSidedLP_Aura_xwstETH_cbETH_rETH is BaseComposablePool {
         oracle = new address[](3);
 
         // wstETH
-        token[1] = 0x5979D7b546E38E414F7E9822514be443A4800529;
-        oracle[1] = 0x29aFB1043eD699A89ca0F0942ED6F6f65E794A3d;
+        token[0] = 0x5979D7b546E38E414F7E9822514be443A4800529;
+        oracle[0] = 0x29aFB1043eD699A89ca0F0942ED6F6f65E794A3d;
         // cbETH
-        token[2] = 0x1DEBd73E752bEaF79865Fd6446b0c970EaE7732f;
-        oracle[2] = 0x4763672dEa3bF087929d5537B6BAfeB8e6938F46;
+        token[1] = 0x1DEBd73E752bEaF79865Fd6446b0c970EaE7732f;
+        oracle[1] = 0x4763672dEa3bF087929d5537B6BAfeB8e6938F46;
         // rETH
-        token[3] = 0xEC70Dcb4A1EFa46b8F2D97C310C9c4790ba5ffA8;
-        oracle[3] = 0x40cf45dBD4813be545CF3E103eF7ef531eac7283;
+        token[2] = 0xEC70Dcb4A1EFa46b8F2D97C310C9c4790ba5ffA8;
+        oracle[2] = 0x40cf45dBD4813be545CF3E103eF7ef531eac7283;
         
     }
 

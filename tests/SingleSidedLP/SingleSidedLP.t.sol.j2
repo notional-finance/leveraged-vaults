@@ -40,8 +40,8 @@ contract {{ contractName }} is {{ vaultType }} {
 
         {% for oracle in oracles -%}
         // {{ oracle.symbol }}
-        token[{{ loop.index }}] = {{ oracle.tokenAddress }};
-        oracle[{{ loop.index }}] = {{ oracle.oracleAddress }};
+        token[{{ loop.index - 1 }}] = {{ oracle.tokenAddress }};
+        oracle[{{ loop.index - 1 }}] = {{ oracle.oracleAddress }};
         {% endfor %}
     }
 

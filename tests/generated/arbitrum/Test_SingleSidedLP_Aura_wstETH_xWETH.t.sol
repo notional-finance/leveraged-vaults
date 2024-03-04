@@ -39,11 +39,11 @@ contract Test_SingleSidedLP_Aura_wstETH_xWETH is BaseComposablePool {
         oracle = new address[](2);
 
         // wstETH
-        token[1] = 0x5979D7b546E38E414F7E9822514be443A4800529;
-        oracle[1] = 0x29aFB1043eD699A89ca0F0942ED6F6f65E794A3d;
+        token[0] = 0x5979D7b546E38E414F7E9822514be443A4800529;
+        oracle[0] = 0x29aFB1043eD699A89ca0F0942ED6F6f65E794A3d;
         // ETH
-        token[2] = 0x0000000000000000000000000000000000000000;
-        oracle[2] = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
+        token[1] = 0x0000000000000000000000000000000000000000;
+        oracle[1] = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
         
     }
 

@@ -7,7 +7,7 @@ python tests/SingleSidedLP/generate_tests.py
 # forge test --mp "tests/generated/mainnet/**"
 
 export RPC_URL=$ARBITRUM_RPC_URL
-export FORK_BLOCK=$ARBITRUM_FORK_BLOCK
+export FORK_BLOCK=176730531
 forge test --mp "tests/generated/arbitrum/**"
 
 forge test --mp "tests/testFlashLiquidator.t.sol"
