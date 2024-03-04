@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.17;
+
+import "../CrossCurrency/BaseCrossCurrencyVault.sol";
+
+contract {{ contractName }} is BaseCrossCurrencyVault {
+    function getVaultName() internal pure override returns (string memory) {
+        return '{{ vaultName }}';
+    }
+    
+    function getRequiredOracles() internal override view virtual returns (
+        address[] memory token, address[] memory oracle
+    ) {
+        token = new address[](2);
+        oracle = new address[](2);
+
+        // {{ primaryBorrowCurrency }}
+        token[0] = {{ borrowToken }};
+        oracle[0] = {{ borrowOracle }};
+        
+        // {{ lendCurrency }}
+        token[1] = {{ lendToken }};
+        oracle[1] = {{ lendOracle }};
+    }
+
+    function setUp() public override {
+        primaryBorrowCurrency = {{ primaryBorrowCurrency }};
+        lendCurrencyId = {{ lendCurrency }};
+        
+        {% if dex == "CurveV2" -%}
+        primaryDexId = uint16(DexId.CURVE_V2);
+        CurveV2Adapter.CurveV2SingleData memory c;
+        c.pool = {{ dex.pool }};
+        exchangeData = abi.encode(c);
+        {% endif -%}
+        
+        // NOTE: need to enforce some minimum deposit here b/c of rounding issues
+        // on the DEX side, even though we short circuit 0 deposits
+        minDeposit = {{ setUp.minDeposit }};
+        maxDeposit = {{ setUp.maxDeposit }};
+        maxRelEntryValuation = {{ setUp.maxRelEntryValuation }} * BASIS_POINT;
+        maxRelExitValuation = {{ setUp.maxRelExitValuation }} * BASIS_POINT;
+
+        super.setUp();
+    }
+}
