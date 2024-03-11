@@ -61,16 +61,16 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         CURVE_POOL = params.pool;
 
         bool isCurveV2 = false;
-        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
-            address[10] memory handlers = 
-                Deployments.CURVE_META_REGISTRY.get_registry_handlers_from_pool(address(CURVE_POOL));
+        // if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+        //     address[10] memory handlers = 
+        //         Deployments.CURVE_META_REGISTRY.get_registry_handlers_from_pool(address(CURVE_POOL));
 
-            require(
-                handlers[0] == Deployments.CURVE_V1_HANDLER ||
-                handlers[0] == Deployments.CURVE_V2_HANDLER
-            ); // @dev unknown Curve version
-            isCurveV2 = (handlers[0] == Deployments.CURVE_V2_HANDLER);
-        }
+        //     require(
+        //         handlers[0] == Deployments.CURVE_V1_HANDLER ||
+        //         handlers[0] == Deployments.CURVE_V2_HANDLER
+        //     ); // @dev unknown Curve version
+        //     isCurveV2 = (handlers[0] == Deployments.CURVE_V2_HANDLER);
+        // }
         IS_CURVE_V2 = isCurveV2;
         // There are some cases where the pool token address is not directly exposed on the Curve pool
         // itself. In those cases, the pool token address will be manually passed in via the constructor.

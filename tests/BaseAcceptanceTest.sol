@@ -12,9 +12,10 @@ import "../contracts/global/Constants.sol";
 
 abstract contract BaseAcceptanceTest is Test {
     // TODO: read these from Deployments.sol
-    WETH9 constant WETH = WETH9(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
-    NotionalProxy constant NOTIONAL = NotionalProxy(0x1344A36A1B56144C3Bc62E7757377D288fDE0369);
-    ITradingModule constant TRADING_MODULE = ITradingModule(0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8);
+
+    WETH9 constant WETH = WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    NotionalProxy constant NOTIONAL = NotionalProxy(0x6e7058c91F85E0F6db4fc9da2CA41241f5e4263f);
+    ITradingModule constant TRADING_MODULE = ITradingModule(0x594734c7e06C3D483466ADBCe401C6Bd269746C8);
     uint256 constant BASIS_POINT = 1e5;
 
     uint16 internal constant ENABLED                         = 1 << 0;
