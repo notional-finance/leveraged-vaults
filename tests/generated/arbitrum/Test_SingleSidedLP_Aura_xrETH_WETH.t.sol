@@ -7,7 +7,7 @@ import {
     VaultConfigParams,
     IERC20
 } from "../../SingleSidedLP/pools/BaseComposablePool.sol";
-import { BaseCurve2Token } from "../../SingleSidedLP/pools/BaseCurve2Token.sol";
+import { BaseCurve2Token, CurveInterface } from "../../SingleSidedLP/pools/BaseCurve2Token.sol";
 import { BaseWeightedPool } from "../../SingleSidedLP/pools/BaseWeightedPool.sol";
 
 contract Test_SingleSidedLP_Aura_xrETH_WETH is BaseComposablePool {

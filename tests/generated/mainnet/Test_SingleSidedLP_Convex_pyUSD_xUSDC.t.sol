@@ -7,7 +7,7 @@ import {
     VaultConfigParams,
     IERC20
 } from "../../SingleSidedLP/pools/BaseComposablePool.sol";
-import { BaseCurve2Token } from "../../SingleSidedLP/pools/BaseCurve2Token.sol";
+import { BaseCurve2Token, CurveInterface } from "../../SingleSidedLP/pools/BaseCurve2Token.sol";
 import { BaseWeightedPool } from "../../SingleSidedLP/pools/BaseWeightedPool.sol";
 
 contract Test_SingleSidedLP_Convex_pyUSD_xUSDC is BaseCurve2Token {
@@ -52,6 +52,7 @@ contract Test_SingleSidedLP_Convex_pyUSD_xUSDC is BaseCurve2Token {
         
         poolToken = IERC20(0x383E6b4437b59fff47B619CBA855CA29342A8559);
         lpToken = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
+        curveInterface = CurveInterface.StableSwapNG;
         
         settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,

@@ -7,11 +7,13 @@ import {Constants} from "../../global/Constants.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
 import {
+    CurveInterface,
     ICurvePool,
     ICurvePoolV1,
     ICurvePoolV2,
     ICurve2TokenPoolV1,
-    ICurve2TokenPoolV2
+    ICurve2TokenPoolV2,
+    ICurveStableSwapNG
 } from "../../../interfaces/curve/ICurvePool.sol";
 import {SingleSidedLPVaultBase} from "../common/SingleSidedLPVaultBase.sol";
 import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
@@ -21,6 +23,7 @@ struct DeploymentParams {
     address pool;
     ITradingModule tradingModule;
     address poolToken;
+    CurveInterface curveInterface;
 }
 
 abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
@@ -29,7 +32,7 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
 
     address internal immutable CURVE_POOL;
     IERC20 internal immutable CURVE_POOL_TOKEN;
-    bool internal immutable IS_CURVE_V2;
+    CurveInterface internal immutable CURVE_INTERFACE;
 
     uint8 internal immutable _PRIMARY_INDEX;
     uint8 internal immutable SECONDARY_INDEX;
@@ -59,26 +62,8 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         DeploymentParams memory params
     ) SingleSidedLPVaultBase(notional_, params.tradingModule) {
         CURVE_POOL = params.pool;
-
-        bool isCurveV2 = false;
-        // if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
-        //     address[10] memory handlers = 
-        //         Deployments.CURVE_META_REGISTRY.get_registry_handlers_from_pool(address(CURVE_POOL));
-
-        //     require(
-        //         handlers[0] == Deployments.CURVE_V1_HANDLER ||
-        //         handlers[0] == Deployments.CURVE_V2_HANDLER
-        //     ); // @dev unknown Curve version
-        //     isCurveV2 = (handlers[0] == Deployments.CURVE_V2_HANDLER);
-        // }
-        IS_CURVE_V2 = isCurveV2;
-        // There are some cases where the pool token address is not directly exposed on the Curve pool
-        // itself. In those cases, the pool token address will be manually passed in via the constructor.
-        CURVE_POOL_TOKEN = params.poolToken != address(0) ? IERC20(params.poolToken) : (
-            IS_CURVE_V2 ? 
-                IERC20(ICurvePoolV2(address(CURVE_POOL)).token()) :
-                IERC20(ICurvePoolV1(address(CURVE_POOL)).lp_token())
-        );
+        CURVE_INTERFACE = params.curveInterface;
+        CURVE_POOL_TOKEN = IERC20(params.poolToken);
 
         address primaryToken = _getNotionalUnderlyingToken(params.primaryBorrowCurrencyId);
 
@@ -105,12 +90,14 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         // We need to set the LP token amount to 1 for Curve V2 pools to bypass
         // the underflow check
         uint256[2] memory minAmounts;
-        if (IS_CURVE_V2) {
+        if (CURVE_INTERFACE == CurveInterface.V1 || CURVE_INTERFACE == CurveInterface.StableSwapNG) {
+            ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity(0, minAmounts);
+        } else if (CURVE_INTERFACE == CurveInterface.V2) {
             // Curve V2 does a `-1` on the liquidity amount so set the amount removed to 1 to
             // avoid an underflow.
             ICurve2TokenPoolV2(CURVE_POOL).remove_liquidity(1, minAmounts, true, address(this));
         } else {
-            ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity(0, minAmounts);
+            revert();
         }
     }
 }

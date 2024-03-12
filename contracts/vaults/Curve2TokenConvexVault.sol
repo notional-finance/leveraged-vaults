@@ -9,9 +9,11 @@ import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
 import {IConvexBooster, IConvexBoosterArbitrum} from "../../interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../interfaces/convex/IConvexRewardPool.sol";
 import {
+    CurveInterface,
     ICurvePool,
     ICurve2TokenPoolV1,
-    ICurve2TokenPoolV2
+    ICurve2TokenPoolV2,
+    ICurveStableSwapNG
 } from "../../interfaces/curve/ICurvePool.sol";
 
 contract Curve2TokenConvexVault is ConvexStakingMixin {
@@ -46,14 +48,21 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
         }
 
         // Slightly different method signatures in v1 and v2
-        if (IS_CURVE_V2) {
-            lpTokens = ICurve2TokenPoolV2(CURVE_POOL).add_liquidity{value: msgValue}(
-                amounts, minPoolClaim, 0 < msgValue // use_eth = true if msgValue > 0
-            );
-        } else {
+        if (CURVE_INTERFACE == CurveInterface.V1) {
             lpTokens = ICurve2TokenPoolV1(CURVE_POOL).add_liquidity{value: msgValue}(
                 amounts, minPoolClaim
             );
+        } else if (CURVE_INTERFACE == CurveInterface.V2) {
+            lpTokens = ICurve2TokenPoolV2(CURVE_POOL).add_liquidity{value: msgValue}(
+                amounts, minPoolClaim, 0 < msgValue // use_eth = true if msgValue > 0
+            );
+        } else if (CURVE_INTERFACE == CurveInterface.StableSwapNG) {
+            // StableSwapNG uses dynamic arrays
+            lpTokens = ICurveStableSwapNG(CURVE_POOL).add_liquidity{value: msgValue}(
+                _amounts, minPoolClaim
+            );
+        } else {
+            revert();
         }
 
         // Method signatures are slightly different on mainnet and arbitrum
@@ -81,15 +90,18 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
         exitBalances = new uint256[](2);
         if (isSingleSided) {
             // Redeem single-sided
-            if (IS_CURVE_V2) {
+            if (CURVE_INTERFACE == CurveInterface.V1 || CURVE_INTERFACE == CurveInterface.StableSwapNG) {
+                // Method signature is the same for v1 and stable swap ng
+                exitBalances[_PRIMARY_INDEX] = ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity_one_coin(
+                    poolClaim, int8(_PRIMARY_INDEX), _minAmounts[_PRIMARY_INDEX]
+                );
+            } else if (CURVE_INTERFACE == CurveInterface.V2) {
                 exitBalances[_PRIMARY_INDEX] = ICurve2TokenPoolV2(CURVE_POOL).remove_liquidity_one_coin(
                     // Last two parameters are useEth = true and receiver = this contract
                     poolClaim, _PRIMARY_INDEX, _minAmounts[_PRIMARY_INDEX], true, address(this)
                 );
             } else {
-                exitBalances[_PRIMARY_INDEX] = ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity_one_coin(
-                    poolClaim, int8(_PRIMARY_INDEX), _minAmounts[_PRIMARY_INDEX]
-                );
+                revert();
             }
         } else {
             // Redeem proportionally, min amounts are rewritten to a fixed length array
@@ -97,7 +109,11 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
             minAmounts[0] = _minAmounts[0];
             minAmounts[1] = _minAmounts[1];
 
-            if (IS_CURVE_V2) {
+            if (CURVE_INTERFACE == CurveInterface.V1) {
+                uint256[2] memory _exitBalances = ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity(poolClaim, minAmounts);
+                exitBalances[0] = _exitBalances[0];
+                exitBalances[1] = _exitBalances[1];
+            } else if (CURVE_INTERFACE == CurveInterface.V2) {
                 exitBalances[0] = TokenUtils.tokenBalance(TOKEN_1);
                 exitBalances[1] = TokenUtils.tokenBalance(TOKEN_2);
                 // Remove liquidity on CurveV2 does not return the exit amounts so we have to measure
@@ -108,10 +124,10 @@ contract Curve2TokenConvexVault is ConvexStakingMixin {
                 );
                 exitBalances[0] = TokenUtils.tokenBalance(TOKEN_1) - exitBalances[0];
                 exitBalances[1] = TokenUtils.tokenBalance(TOKEN_2) - exitBalances[1];
+            } else if (CURVE_INTERFACE == CurveInterface.StableSwapNG) {
+                exitBalances = ICurveStableSwapNG(CURVE_POOL).remove_liquidity(poolClaim, _minAmounts);
             } else {
-                uint256[2] memory _exitBalances = ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity(poolClaim, minAmounts);
-                exitBalances[0] = _exitBalances[0];
-                exitBalances[1] = _exitBalances[1];
+                revert();
             }
         }
     }

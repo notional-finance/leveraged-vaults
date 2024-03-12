@@ -7,6 +7,7 @@ import "../../../contracts/vaults/curve/ConvexStakingMixin.sol";
 
 abstract contract BaseCurve2Token is DeployProxyVault, BaseSingleSidedLPVault {
     address lpToken;
+    CurveInterface curveInterface;
 
     function getTradingPermissions() internal pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
@@ -36,7 +37,8 @@ abstract contract BaseCurve2Token is DeployProxyVault, BaseSingleSidedLPVault {
                     primaryBorrowCurrencyId: primaryBorrowCurrency,
                     pool: address(poolToken),
                     tradingModule: Deployments.TRADING_MODULE,
-                    poolToken: address(lpToken)
+                    poolToken: address(lpToken),
+                    curveInterface: curveInterface
                 })
             })
         );

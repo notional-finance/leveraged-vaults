@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6;
 
+enum CurveInterface {
+    V1,
+    V2,
+    StableSwapNG
+}
+
 interface ICurvePool {
     function coins(uint256 idx) external view returns (address);
 
@@ -43,4 +49,10 @@ interface ICurve2TokenPoolV2 is ICurvePoolV2 {
     function remove_liquidity_one_coin(uint256 token_amount, uint256 i, uint256 min_amount, bool use_eth, address receiver) external returns (uint256);
     // Curve V2 does not return the amounts removed
     function remove_liquidity(uint256 amount, uint256[2] calldata _min_amounts, bool use_eth, address receiver) external;
+}
+
+interface ICurveStableSwapNG is ICurvePoolV1 {
+    function add_liquidity(uint256[] calldata amounts, uint256 min_mint_amount) external payable returns (uint256);
+    function remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 _min_amount) external returns (uint256);
+    function remove_liquidity(uint256 amount, uint256[] calldata _min_amounts) external returns (uint256[] memory);
 }

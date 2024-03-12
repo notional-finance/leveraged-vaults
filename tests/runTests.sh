@@ -3,9 +3,8 @@ source .env
 python tests/SingleSidedLP/generate_tests.py
 
 export RPC_URL=$MAINNET_RPC_URL
-export FORK_BLOCK=19364776
-forge test --mp "tests/generated/mainnet/Test_SingleSidedLP_Convex_xUSDT_crvUSD.t.sol" --mt RewardReinvestment -vvvv
-# forge test --mp "tests/generated/mainnet/**"
+export FORK_BLOCK=19415853
+forge test --mp "tests/generated/mainnet/**"
 
 # export RPC_URL=$ARBITRUM_RPC_URL
 # export FORK_BLOCK=176730531
