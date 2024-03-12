@@ -27,12 +27,6 @@ abstract contract BaseCurve2Token is DeployProxyVault, BaseSingleSidedLPVault {
         );
     }
 
-    function setUp() public override virtual {
-        // CRV on Arbitrum
-        rewardTokens.push(IERC20(0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978));
-        super.setUp();
-    }
-
     function deployVaultImplementation() internal override returns (address) {
         IStrategyVault impl = new Curve2TokenConvexVault(
             NOTIONAL, ConvexVaultDeploymentParams({

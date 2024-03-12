@@ -56,6 +56,12 @@ contract Test_SingleSidedLP_Aura_xrETH_weETH is BaseComposablePool {
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 100
         });
+
+        // AURA
+        rewardTokens.push(IERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF));
+        // BAL
+        rewardTokens.push(IERC20(0xba100000625a3754423978a60c9317c58a424e3D));
+        
     }
 
     function setUp() public override virtual {

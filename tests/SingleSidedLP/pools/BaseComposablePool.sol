@@ -35,12 +35,6 @@ abstract contract BaseComposablePool is BaseSingleSidedLPVault {
         );
     }
 
-    function setUp() public override virtual {
-        // BAL on Arbitrum
-        rewardTokens.push(IERC20(0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8));
-        super.setUp();
-    }
-
     function deployVaultImplementation() internal override returns (address impl) {
         poolToken = IERC20(IAuraRewardPool(address(rewardPool)).asset());
         balancerPoolId = IBalancerPool(address(poolToken)).getPoolId();

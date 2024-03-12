@@ -59,16 +59,23 @@ contract Test_SingleSidedLP_Aura_GHO_USDT_xUSDC is BaseComposablePool {
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 100
         });
+
+        // AURA
+        rewardTokens.push(IERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF));
+        // BAL
+        rewardTokens.push(IERC20(0xba100000625a3754423978a60c9317c58a424e3D));
+        
     }
 
     function setUp() public override virtual {
+        WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
         primaryBorrowCurrency = USDC;
         initVariables();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 1000e8;
-        maxDeposit = 1e18;
+        minDeposit = 1000e6;
+        maxDeposit = 100_000e6;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
         super.setUp();

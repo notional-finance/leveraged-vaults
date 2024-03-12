@@ -381,7 +381,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
 
         for (uint256 i; i < rewardTokens.length; i++) {
             uint256 rewardBalance = rewardTokens[i].balanceOf(address(vault));
-            assertGe(rewardBalance - initialBalance[i], 0);
+            assertGe(rewardBalance - initialBalance[i], 0, "Reward Balance Decrease");
         }
     }
 

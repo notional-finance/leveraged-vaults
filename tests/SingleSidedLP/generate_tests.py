@@ -23,6 +23,8 @@ token = {
         "osETH": "0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38",
         "weETH": "0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee",
         "GHO": "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f",
+        'CVX': "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+        'SWISE': "0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2"
     },
     "arbitrum": {
         "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -106,6 +108,12 @@ def get_oracles(network, oracles):
         "oracleAddress": oracle[network][o]
     } for o in oracles]
 
+def get_tokens(network, tokens):
+    return [{
+        "symbol": t,
+        "tokenAddress": token[network][t],
+    } for t in tokens]
+
 def render_template(template, data):
     template = Template(template)
     return template.render(data)
@@ -131,6 +139,7 @@ def generate_files(network, yaml_file, template_file):
         test['config'] = { **defaults['config'], **test['config'] } if 'config' in test else defaults['config']
         test['contractName'] = get_contract_name(test)
         test['oracles'] = get_oracles(network, test['oracles'])
+        test['rewards'] = get_tokens(network, test['rewards']) if 'rewards' in test else []
 
         output = render_template(template, test)
         output_file = f"{output_dir}/{test['contractName']}.t.sol"  # Define the output file name

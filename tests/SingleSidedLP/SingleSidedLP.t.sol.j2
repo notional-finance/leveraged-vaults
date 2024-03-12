@@ -57,6 +57,11 @@ contract {{ contractName }} is {{ vaultType }} {
             maxPoolShare: {{ settings.maxPoolShare }},
             oraclePriceDeviationLimitPercent: {{ settings.oraclePriceDeviationLimitPercent }}
         });
+
+        {% for reward in rewards -%}
+        // {{ reward.symbol }}
+        rewardTokens.push(IERC20({{ reward.tokenAddress }}));
+        {% endfor %}
     }
 
     function setUp() public override virtual {

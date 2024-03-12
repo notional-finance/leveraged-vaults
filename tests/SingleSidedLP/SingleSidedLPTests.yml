@@ -188,6 +188,7 @@ mainnet:
     lpToken: "0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E"
     rewards: [CRV, CVX]
     oracles: [USDC, crvUSD]
+    whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
     settings:
       maxPoolShare: 2000
       oracleDeviationLimit: 0.15e4
@@ -205,6 +206,7 @@ mainnet:
     rewardPool: "0xc583e81bB36A1F620A804D8AF642B63b0ceEb5c0"
     poolToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"
     lpToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"
+    whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
     rewards: [CRV, CVX, pyUSD]
     oracles: [USDC, pyUSD]
     settings:
@@ -257,6 +259,7 @@ mainnet:
   - vaultName: SingleSidedLP:Aura:GHO/USDT/[USDC]
     vaultType: BaseComposablePool
     primaryBorrowCurrency: USDC
+    whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
     rewardPool: "0xBDD6984C3179B099E9D383ee2F44F3A57764BF7d"
     rewards: [AURA, BAL]
     oracles: [GHO, USDT, USDC]
@@ -264,8 +267,8 @@ mainnet:
       maxPoolShare: 2000
       oracleDeviationLimit: 0.15e4
     setUp:
-      minDeposit: 1000e8
-      maxDeposit: 1e18
+      minDeposit: 1000e6
+      maxDeposit: 100_000e6
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
     config:

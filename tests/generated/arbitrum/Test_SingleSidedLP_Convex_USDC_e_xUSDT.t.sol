@@ -59,6 +59,12 @@ contract Test_SingleSidedLP_Convex_USDC_e_xUSDT is BaseCurve2Token {
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 100
         });
+
+        // CRV
+        rewardTokens.push(IERC20(0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978));
+        // ARB
+        rewardTokens.push(IERC20(0x912CE59144191C1204E64559FE8253a0e49E6548));
+        
     }
 
     function setUp() public override virtual {
