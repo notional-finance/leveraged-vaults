@@ -32,5 +32,5 @@ remappings = [
     "@deployments/=contracts/global/mainnet/"
 ]
 libraries = [
-  "@contracts/vaults/common/StrategyUtils.sol:StrategyUtils:0x863C4B7C2c78CA1C6C8Ba644d1f34476F37922e4"
+  "@contracts/vaults/common/StrategyUtils.sol:StrategyUtils:0xE78D09c8B6cCF9C1732d14353a708b75f6C67c67"
 ]

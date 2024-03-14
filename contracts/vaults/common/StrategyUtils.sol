@@ -191,4 +191,9 @@ library StrategyUtils {
         // Execute trade using the absolute slippage limit set by `oracleSlippagePercentOrLimit`
         (amountSold, amountBought) = trade._executeTrade(params.dexId, tradingModule);
     }
+
+    function getLibInfo() external pure returns (address notional, address tradingModule) {
+        notional = address(Deployments.NOTIONAL);
+        tradingModule = address(Deployments.TRADING_MODULE);
+    }
 }
