@@ -8,7 +8,8 @@ compiler:
       - "@openzeppelin/contracts=OpenZeppelin/openzeppelin-contracts@4.6.0/contracts"
       - "@openzeppelin/contracts-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.6.0/contracts"
       - "@contracts=contracts"
-      - "@deployments=contracts/global/arbitrum"
+      # - "@deployments=contracts/global/arbitrum"
+      - "@deployments=contracts/global/mainnet"
       - "@interfaces=interfaces"
 networks:
   default: development

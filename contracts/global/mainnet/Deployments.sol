@@ -39,8 +39,7 @@ library Deployments {
     address internal constant TREASURY_MANAGER = 0x53144559C0d4a3304e2DD9dAfBD685247429216d;
     // Notional Inc
     address internal constant EMERGENCY_EXIT_MANAGER = 0x02479BFC7Dce53A02e26fE7baea45a0852CB0909;
-    // TODO: not deployed
-    address internal constant BALANCER_SPOT_PRICE = address(0);
+    address internal constant BALANCER_SPOT_PRICE = 0xA153B3E85833F8a323E60Dcdc08F6286eae28728;
 
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(address(0));
