@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import "forge-std/Script.sol";
 import "./GnosisHelper.s.sol";
-import "../../contracts/global/Deployments.sol";
+import "@deployments/Deployments.sol";
 import "../../contracts/trading/TradingModule.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 

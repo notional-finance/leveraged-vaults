@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {IERC20} from "../../../interfaces/IERC20.sol";
+import {IERC20} from "@interfaces/IERC20.sol";
 import {
     TradeParams,
     DepositTradeParams,
     RedeemParams,
     SingleSidedRewardTradeParams
-} from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
+} from "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {TradeHandler} from "../../trading/TradeHandler.sol";
-import {Deployments} from "../../global/Deployments.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 import {Constants} from "../../global/Constants.sol";
 import {Errors} from "../../global/Errors.sol";
-import {ITradingModule, Trade, TradeType, DexId} from "../../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule, Trade, TradeType, DexId} from "@interfaces/trading/ITradingModule.sol";
 
 /**
  * @notice External library deployed for the purposes of handling SingleSidedLP trades. All

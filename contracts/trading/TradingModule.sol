@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-import {Deployments} from "../global/Deployments.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
 import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
@@ -14,9 +14,9 @@ import {CurveV2Adapter} from "./adapters/CurveV2Adapter.sol";
 import {TradingUtils} from "./TradingUtils.sol";
 
 import {IERC20} from "../utils/TokenUtils.sol";
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule, Trade, TradeType, DexId} from "../../interfaces/trading/ITradingModule.sol";
-import "../../interfaces/chainlink/AggregatorV2V3Interface.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {ITradingModule, Trade, TradeType, DexId} from "@interfaces/trading/ITradingModule.sol";
+import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 /// @notice TradingModule is meant to be an upgradeable contract deployed to help Strategy Vaults
 /// exchange tokens via multiple DEXes as well as receive price oracle information

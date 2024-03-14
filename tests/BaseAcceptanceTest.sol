@@ -3,12 +3,12 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 
-import "../interfaces/WETH9.sol";
-import "../interfaces/notional/NotionalProxy.sol";
-import "../interfaces/notional/IStrategyVault.sol";
-import "../interfaces/trading/ITradingModule.sol";
-import {IERC20} from "../contracts/utils/TokenUtils.sol";
-import "../contracts/global/Constants.sol";
+import "@interfaces/WETH9.sol";
+import "@interfaces/notional/NotionalProxy.sol";
+import "@interfaces/notional/IStrategyVault.sol";
+import "@interfaces/trading/ITradingModule.sol";
+import {IERC20} from "@contracts/utils/TokenUtils.sol";
+import "@contracts/global/Constants.sol";
 
 abstract contract BaseAcceptanceTest is Test {
     // TODO: read these from Deployments.sol

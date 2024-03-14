@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {Deployments} from "../../global/Deployments.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 import {TradeHandler} from "../TradeHandler.sol";
-import "../../../interfaces/trading/ITradingModule.sol";
-import "../../../interfaces/uniswap/v3/ISwapRouter.sol";
+import "@interfaces/trading/ITradingModule.sol";
+import "@interfaces/uniswap/v3/ISwapRouter.sol";
 
 library UniV3Adapter {
 

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {Deployments} from "../../../global/Deployments.sol";
-import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {IAuraBooster, IAuraBoosterLite} from "../../../../interfaces/aura/IAuraBooster.sol";
-import {IAuraRewardPool} from "../../../../interfaces/aura/IAuraRewardPool.sol";
-import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
+import {Deployments} from "@deployments/Deployments.sol";
+import {IERC20} from "@interfaces/IERC20.sol";
+import {IAuraBooster, IAuraBoosterLite} from "@interfaces/aura/IAuraBooster.sol";
+import {IAuraRewardPool} from "@interfaces/aura/IAuraRewardPool.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {BalancerPoolMixin, DeploymentParams} from "./BalancerPoolMixin.sol";
 import {TokenUtils} from "../../../utils/TokenUtils.sol";
 

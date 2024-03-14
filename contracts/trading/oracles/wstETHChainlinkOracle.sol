@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {AggregatorV2V3Interface} from "../../../interfaces/chainlink/AggregatorV2V3Interface.sol";
-import {IWstETH} from "../../../interfaces/IWstETH.sol";
+import {AggregatorV2V3Interface} from "@interfaces/chainlink/AggregatorV2V3Interface.sol";
+import {IWstETH} from "@interfaces/IWstETH.sol";
 import {TypeConvert} from "../../global/TypeConvert.sol";
 
 contract WstETHChainlinkOracle is AggregatorV2V3Interface {

@@ -2,8 +2,8 @@
 pragma solidity 0.8.17;
 
 import "../BaseSingleSidedLPVault.sol";
-import "../../../contracts/vaults/Curve2TokenConvexVault.sol";
-import "../../../contracts/vaults/curve/ConvexStakingMixin.sol";
+import "@contracts/vaults/Curve2TokenConvexVault.sol";
+import "@contracts/vaults/curve/ConvexStakingMixin.sol";
 
 abstract contract BaseCurve2Token is DeployProxyVault, BaseSingleSidedLPVault {
     address lpToken;

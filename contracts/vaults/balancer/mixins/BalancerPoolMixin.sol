@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {IERC20} from "../../../../interfaces/IERC20.sol";
-import {Deployments} from "../../../global/Deployments.sol";
-import {NotionalProxy} from "../../../../interfaces/notional/NotionalProxy.sol";
-import {IBalancerVault, IAsset} from "../../../../interfaces/balancer/IBalancerVault.sol";
-import {IBalancerPool} from "../../../../interfaces/balancer/IBalancerPool.sol";
+import {IERC20} from "@interfaces/IERC20.sol";
+import {Deployments} from "@deployments/Deployments.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {IBalancerVault, IAsset} from "@interfaces/balancer/IBalancerVault.sol";
+import {IBalancerPool} from "@interfaces/balancer/IBalancerPool.sol";
 import {SingleSidedLPVaultBase} from "../../common/SingleSidedLPVaultBase.sol";
 import {TokenUtils} from "../../../utils/TokenUtils.sol";
-import {ITradingModule} from "../../../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 
 /// @notice Deployment parameters
 struct DeploymentParams {

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
-import {WETH9} from "../../interfaces/WETH9.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {IStrategyVault} from "@interfaces/notional/IStrategyVault.sol";
+import {WETH9} from "@interfaces/WETH9.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
 import {Constants} from "../global/Constants.sol";
 import {
@@ -16,7 +16,7 @@ import {
     PortfolioAsset
 } from "../global/Types.sol";
 import {BoringOwnable} from "./BoringOwnable.sol";
-import {Deployments} from "../global/Deployments.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 
 abstract contract FlashLiquidatorBase is BoringOwnable {
     using TokenUtils for IERC20;

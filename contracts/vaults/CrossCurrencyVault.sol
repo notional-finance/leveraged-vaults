@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {IWrappedfCashFactory} from "../../interfaces/notional/IWrappedfCashFactory.sol";
-import {IWrappedfCashComplete as IWrappedfCash} from "../../interfaces/notional/IWrappedfCash.sol";
-import {WETH9} from "../../interfaces/WETH9.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {IWrappedfCashFactory} from "@interfaces/notional/IWrappedfCashFactory.sol";
+import {IWrappedfCashComplete as IWrappedfCash} from "@interfaces/notional/IWrappedfCash.sol";
+import {WETH9} from "@interfaces/WETH9.sol";
 
 import {BaseStrategyVault} from "./common/BaseStrategyVault.sol";
 import {IERC20, TokenUtils} from "../utils/TokenUtils.sol";
 import {TypeConvert} from "../global/TypeConvert.sol";
 import {Token, TokenType} from "../global/Types.sol";
 import {Constants} from "../global/Constants.sol";
-import {ITradingModule, DexId, TradeType, Trade} from "../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule, DexId, TradeType, Trade} from "@interfaces/trading/ITradingModule.sol";
 
 /**
  * @notice This vault borrows in one currency, trades it to a different currency

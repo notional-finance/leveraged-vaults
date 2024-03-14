@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {Deployments} from "../global/Deployments.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 import {BalancerSpotPrice} from "./balancer/BalancerSpotPrice.sol";
 import {
     AuraStakingMixin,
@@ -10,8 +10,8 @@ import {
     DeploymentParams
 } from "./balancer/mixins/AuraStakingMixin.sol";
 import {IERC20} from "../utils/TokenUtils.sol";
-import {IComposablePool} from "../../interfaces/balancer/IBalancerPool.sol";
-import {IBalancerVault} from "../../interfaces/balancer/IBalancerVault.sol";
+import {IComposablePool} from "@interfaces/balancer/IBalancerPool.sol";
+import {IBalancerVault} from "@interfaces/balancer/IBalancerVault.sol";
 
 contract BalancerComposableAuraVault is AuraStakingMixin {
     /// @notice Helper singleton function to calculate spot prices

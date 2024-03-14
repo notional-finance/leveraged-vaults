@@ -2,12 +2,12 @@
 pragma solidity 0.8.17;
 
 import "../BaseAcceptanceTest.sol";
-import "../../contracts/vaults/CrossCurrencyVault.sol";
-import "../../contracts/proxy/nUpgradeableBeacon.sol";
-import "../../contracts/proxy/nBeaconProxy.sol";
-import "../../contracts/trading/TradingModule.sol";
-import "../../interfaces/notional/IWrappedfCashFactory.sol";
-import "../../interfaces/trading/ITradingModule.sol";
+import "@contracts/vaults/CrossCurrencyVault.sol";
+import "@contracts/proxy/nUpgradeableBeacon.sol";
+import "@contracts/proxy/nBeaconProxy.sol";
+import "@contracts/trading/TradingModule.sol";
+import "@interfaces/notional/IWrappedfCashFactory.sol";
+import "@interfaces/trading/ITradingModule.sol";
 
 abstract contract BaseCrossCurrencyVault is BaseAcceptanceTest {
     IWrappedfCashFactory constant WRAPPED_FCASH_FACTORY = IWrappedfCashFactory(0x5D051DeB5db151C2172dCdCCD42e6A2953E27261);

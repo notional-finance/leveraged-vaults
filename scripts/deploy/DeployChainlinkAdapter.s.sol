@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "forge-std/Script.sol";
-import "@contracts/global/Deployments.sol";
+import "@deployments/Deployments.sol";
 import "@contracts/trading/oracles/ChainlinkAdapter.sol";
 
 contract DeployChainlinkAdapater is Script, Test {

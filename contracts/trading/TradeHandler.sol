@@ -6,7 +6,7 @@ import {
     Trade,
     TradeFailed,
     DynamicTradeFailed
-} from "../../interfaces/trading/ITradingModule.sol";
+} from "@interfaces/trading/ITradingModule.sol";
 import {nProxy} from "../proxy/nProxy.sol";
 
 /// @notice TradeHandler is an internal library to be compiled into StrategyVaults to interact

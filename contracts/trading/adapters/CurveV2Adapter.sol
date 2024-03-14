@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {Deployments} from "../../global/Deployments.sol";
-import {Trade, TradeType, InvalidTrade} from "../../../interfaces/trading/ITradingModule.sol";
-import {ICurveRouterV2} from "../../../interfaces/curve/ICurveRouterV2.sol";
+import {Deployments} from "@deployments/Deployments.sol";
+import {Trade, TradeType, InvalidTrade} from "@interfaces/trading/ITradingModule.sol";
+import {ICurveRouterV2} from "@interfaces/curve/ICurveRouterV2.sol";
 
 library CurveV2Adapter {
     uint256 internal constant ROUTE_LEN = 9;

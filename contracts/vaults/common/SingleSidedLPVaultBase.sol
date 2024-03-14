@@ -11,7 +11,7 @@ import {TokenUtils} from "../../utils/TokenUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
 import {VaultStorage} from "./VaultStorage.sol";
 
-import {IERC20} from "../../../interfaces/IERC20.sol";
+import {IERC20} from "@interfaces/IERC20.sol";
 import {
     ISingleSidedLPStrategyVault,
     StrategyVaultSettings,
@@ -22,9 +22,9 @@ import {
     DepositTradeParams,
     RedeemParams,
     TradeParams
-} from "../../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
-import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import {ITradingModule, DexId} from "../../../interfaces/trading/ITradingModule.sol";
+} from "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {ITradingModule, DexId} from "@interfaces/trading/ITradingModule.sol";
 
 /**
  * @notice Base contract for the SingleSidedLP strategy. This strategy deposits into an LP

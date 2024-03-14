@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {IERC20} from "../../../interfaces/IERC20.sol";
-import {Deployments} from "../../global/Deployments.sol";
+import {IERC20} from "@interfaces/IERC20.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 import {Constants} from "../../global/Constants.sol";
 import {TokenUtils} from "../../utils/TokenUtils.sol";
-import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {
     CurveInterface,
     ICurvePool,
@@ -14,9 +14,9 @@ import {
     ICurve2TokenPoolV1,
     ICurve2TokenPoolV2,
     ICurveStableSwapNG
-} from "../../../interfaces/curve/ICurvePool.sol";
+} from "@interfaces/curve/ICurvePool.sol";
 import {SingleSidedLPVaultBase} from "../common/SingleSidedLPVaultBase.sol";
-import {ITradingModule} from "../../../interfaces/trading/ITradingModule.sol";
+import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 
 struct DeploymentParams {
     uint16 primaryBorrowCurrencyId;

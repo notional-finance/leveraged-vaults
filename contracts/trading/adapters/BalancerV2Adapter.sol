@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {Deployments} from "../../global/Deployments.sol";
-import "../../../interfaces/trading/ITradingModule.sol";
-import "../../../interfaces/balancer/IBalancerVault.sol";
+import {Deployments} from "@deployments/Deployments.sol";
+import "@interfaces/trading/ITradingModule.sol";
+import "@interfaces/balancer/IBalancerVault.sol";
 
 library BalancerV2Adapter {
     struct SingleSwapData {

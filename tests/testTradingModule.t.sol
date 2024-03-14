@@ -3,13 +3,13 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 
-import "../contracts/trading/TradingModule.sol";
-import "../contracts/trading/TradeHandler.sol";
-import "../interfaces/WETH9.sol";
-import "../interfaces/notional/NotionalProxy.sol";
-import "../interfaces/notional/IStrategyVault.sol";
-import "../interfaces/trading/ITradingModule.sol";
-import {IERC20} from "../contracts/utils/TokenUtils.sol";
+import "@contracts/trading/TradingModule.sol";
+import "@contracts/trading/TradeHandler.sol";
+import "@interfaces/WETH9.sol";
+import "@interfaces/notional/NotionalProxy.sol";
+import "@interfaces/notional/IStrategyVault.sol";
+import "@interfaces/trading/ITradingModule.sol";
+import {IERC20} from "@contracts/utils/TokenUtils.sol";
 
 contract TestTradingModule is Test {
     using TradeHandler for Trade;

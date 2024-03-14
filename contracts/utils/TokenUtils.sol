@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {IERC20} from "../../interfaces/IERC20.sol";
-import {IEIP20NonStandard} from "../../interfaces/IEIP20NonStandard.sol";
-import {Deployments} from "../global/Deployments.sol";
+import {IERC20} from "@interfaces/IERC20.sol";
+import {IEIP20NonStandard} from "@interfaces/IEIP20NonStandard.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 
 library TokenUtils {
     error ERC20Error();

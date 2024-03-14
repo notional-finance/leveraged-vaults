@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {AggregatorV2V3Interface} from "../../../interfaces/chainlink/AggregatorV2V3Interface.sol";
-import {IPriceOracle} from "../../../interfaces/balancer/IPriceOracle.sol";
-import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
+import {AggregatorV2V3Interface} from "@interfaces/chainlink/AggregatorV2V3Interface.sol";
+import {IPriceOracle} from "@interfaces/balancer/IPriceOracle.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {TypeConvert} from "../../global/TypeConvert.sol";
 
 contract BalancerPoolChainlinkAdapter is AggregatorV2V3Interface {

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {Deployments} from "../../global/Deployments.sol";
-import {Trade} from "../../../interfaces/trading/ITradingModule.sol";
+import {Deployments} from "@deployments/Deployments.sol";
+import {Trade} from "@interfaces/trading/ITradingModule.sol";
 
 library ZeroExAdapter {
     /// @dev executeTrade validates pre and post trade balances and also

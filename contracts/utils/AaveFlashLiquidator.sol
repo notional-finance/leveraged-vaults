@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {IFlashLoanReceiver} from "../../interfaces/aave/IFlashLoanReceiver.sol";
-import {IFlashLender} from "../../interfaces/aave/IFlashLender.sol";
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
+import {IFlashLoanReceiver} from "@interfaces/aave/IFlashLoanReceiver.sol";
+import {IFlashLender} from "@interfaces/aave/IFlashLender.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {FlashLiquidatorBase} from "./FlashLiquidatorBase.sol";
 
 contract AaveFlashLiquidator is IFlashLoanReceiver, FlashLiquidatorBase {

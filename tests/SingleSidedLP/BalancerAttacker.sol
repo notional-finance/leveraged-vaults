@@ -2,11 +2,11 @@
 pragma solidity 0.8.17;
 
 import {Test} from "forge-std/Test.sol";
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {IStrategyVault} from "../../interfaces/notional/IStrategyVault.sol";
-import {VaultAccount} from "../../contracts/global/Types.sol";
-import {Constants} from "../../contracts/global/Constants.sol";
-import {IERC20} from "../../interfaces/IERC20.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {IStrategyVault} from "@interfaces/notional/IStrategyVault.sol";
+import {VaultAccount} from "@contracts/global/Types.sol";
+import {Constants} from "@contracts/global/Constants.sol";
+import {IERC20} from "@interfaces/IERC20.sol";
 
 contract BalancerAttacker is Test {
     NotionalProxy immutable NOTIONAL;

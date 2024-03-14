@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {Deployments} from "../global/Deployments.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {IERC20, TokenUtils} from "../utils/TokenUtils.sol";
 import {ConvexStakingMixin, ConvexVaultDeploymentParams} from "./curve/ConvexStakingMixin.sol";
-import {NotionalProxy} from "../../interfaces/notional/NotionalProxy.sol";
-import {IConvexBooster, IConvexBoosterArbitrum} from "../../interfaces/convex/IConvexBooster.sol";
-import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../interfaces/convex/IConvexRewardPool.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {IConvexBooster, IConvexBoosterArbitrum} from "@interfaces/convex/IConvexBooster.sol";
+import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "@interfaces/convex/IConvexRewardPool.sol";
 import {
     CurveInterface,
     ICurvePool,
     ICurve2TokenPoolV1,
     ICurve2TokenPoolV2,
     ICurveStableSwapNG
-} from "../../interfaces/curve/ICurvePool.sol";
+} from "@interfaces/curve/ICurvePool.sol";
 
 contract Curve2TokenConvexVault is ConvexStakingMixin {
     // This contract does not properly support Curve pools where one of the tokens is

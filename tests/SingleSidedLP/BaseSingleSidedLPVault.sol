@@ -3,10 +3,10 @@ pragma solidity 0.8.17;
 
 import "../BaseAcceptanceTest.sol";
 import "../../scripts/deploy/DeployProxyVault.sol";
-import "../../contracts/vaults/common/SingleSidedLPVaultBase.sol";
-import "../../contracts/proxy/nProxy.sol";
-import "../../interfaces/notional/ISingleSidedLPStrategyVault.sol";
-import "../../interfaces/trading/ITradingModule.sol";
+import "@contracts/vaults/common/SingleSidedLPVaultBase.sol";
+import "@contracts/proxy/nProxy.sol";
+import "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
+import "@interfaces/trading/ITradingModule.sol";
 
 abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest {
     bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");

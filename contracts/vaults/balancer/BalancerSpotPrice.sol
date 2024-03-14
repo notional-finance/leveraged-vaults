@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {Deployments} from "../../global/Deployments.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 import {StableMath} from "./math/StableMath.sol";
-import {IComposablePool, IWeightedPool} from "../../../interfaces/balancer/IBalancerPool.sol";
-import {IBalancerVault} from "../../../interfaces/balancer/IBalancerVault.sol";
+import {IComposablePool, IWeightedPool} from "@interfaces/balancer/IBalancerPool.sol";
+import {IBalancerVault} from "@interfaces/balancer/IBalancerVault.sol";
 
 /**
  * @notice External, singleton helper contract deployed to calculate spot prices for Balancer pools.

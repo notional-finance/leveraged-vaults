@@ -3,11 +3,11 @@ pragma solidity 0.8.17;
 
 import {TokenUtils, IERC20} from "../../utils/TokenUtils.sol";
 import {Constants} from "../../global/Constants.sol";
-import {Deployments} from "../../global/Deployments.sol";
-import {NotionalProxy} from "../../../interfaces/notional/NotionalProxy.sol";
-import {IConvexBooster} from "../../../interfaces/convex/IConvexBooster.sol";
-import {IConvexRewardToken} from "../../../interfaces/convex/IConvexRewardToken.sol";
-import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "../../../interfaces/convex/IConvexRewardPool.sol";
+import {Deployments} from "@deployments/Deployments.sol";
+import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {IConvexBooster} from "@interfaces/convex/IConvexBooster.sol";
+import {IConvexRewardToken} from "@interfaces/convex/IConvexRewardToken.sol";
+import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "@interfaces/convex/IConvexRewardPool.sol";
 import {Curve2TokenPoolMixin, DeploymentParams} from "./Curve2TokenPoolMixin.sol";
 
 struct ConvexVaultDeploymentParams {

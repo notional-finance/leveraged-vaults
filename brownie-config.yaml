@@ -7,6 +7,8 @@ compiler:
     remappings:
       - "@openzeppelin/contracts=OpenZeppelin/openzeppelin-contracts@4.6.0/contracts"
       - "@openzeppelin/contracts-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.6.0/contracts"
+      - "@deployments=contracts/global/arbitrum"
+      - "@interfaces=interfaces"
 networks:
   default: development
 
@@ -19,10 +21,6 @@ networks:
     cmd_settings:
       fork_block: 142354748
   
-reports:
-  exclude_paths:
-    - interfaces/**/*.*
-
 dependencies:
   - OpenZeppelin/openzeppelin-contracts@4.6.0
   - OpenZeppelin/openzeppelin-contracts-upgradeable@4.6.0

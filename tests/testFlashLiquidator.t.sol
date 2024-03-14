@@ -3,11 +3,11 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "./SingleSidedLP/pools/BaseComposablePool.sol";
-import "../contracts/utils/AaveFlashLiquidator.sol";
-import "../contracts/global/Deployments.sol";
-import "../interfaces/notional/NotionalProxy.sol";
-import "../interfaces/notional/IVaultController.sol";
-import "../interfaces/notional/ISingleSidedLPStrategyVault.sol";
+import "@contracts/utils/AaveFlashLiquidator.sol";
+import "@deployments/Deployments.sol";
+import "@interfaces/notional/NotionalProxy.sol";
+import "@interfaces/notional/IVaultController.sol";
+import "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
 
 contract TestFlashLiquidator is Test {
     string RPC_URL = vm.envString("RPC_URL");

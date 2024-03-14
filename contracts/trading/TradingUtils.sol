@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {Deployments} from "../global/Deployments.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 import {Constants} from "../global/Constants.sol";
 import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
-import "../../interfaces/trading/ITradingModule.sol";
+import "@interfaces/trading/ITradingModule.sol";
 import {nProxy} from "../proxy/nProxy.sol";
 
 /// @notice Utility library used by the trading module
