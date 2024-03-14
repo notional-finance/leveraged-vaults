@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 
-import "@interfaces/WETH9.sol";
+import "@deployments/Deployments.sol";
 import "@interfaces/notional/NotionalProxy.sol";
 import "@interfaces/notional/IStrategyVault.sol";
 import "@interfaces/trading/ITradingModule.sol";
@@ -11,11 +11,9 @@ import {IERC20} from "@contracts/utils/TokenUtils.sol";
 import "@contracts/global/Constants.sol";
 
 abstract contract BaseAcceptanceTest is Test {
-    // TODO: read these from Deployments.sol
-
-    WETH9 constant WETH = WETH9(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    NotionalProxy constant NOTIONAL = NotionalProxy(0x6e7058c91F85E0F6db4fc9da2CA41241f5e4263f);
-    ITradingModule constant TRADING_MODULE = ITradingModule(0x594734c7e06C3D483466ADBCe401C6Bd269746C8);
+    WETH9 constant WETH = Deployments.WETH;
+    NotionalProxy constant NOTIONAL = Deployments.NOTIONAL;
+    ITradingModule constant TRADING_MODULE = Deployments.TRADING_MODULE;
     uint256 constant BASIS_POINT = 1e5;
 
     uint16 internal constant ENABLED                         = 1 << 0;
