@@ -4,14 +4,14 @@ pragma solidity 0.8.17;
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "../../proxy/AccessControlUpgradeable.sol";
 
-import {Token, TokenType} from "../../global/Types.sol";
+import {Token, TokenType} from "@contracts/global/Types.sol";
 import {Deployments} from "@deployments/Deployments.sol";
-import {Constants} from "../../global/Constants.sol";
+import {Constants} from "@contracts/global/Constants.sol";
 import {IStrategyVault} from "@interfaces/notional/IStrategyVault.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, Trade} from "@interfaces/trading/ITradingModule.sol";
 import {IERC20} from "@interfaces/IERC20.sol";
-import {TokenUtils} from "../../utils/TokenUtils.sol";
+import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {TradeHandler} from "../../trading/TradeHandler.sol";
 import {nProxy} from "../../proxy/nProxy.sol";
 

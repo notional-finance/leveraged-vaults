@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import "@interfaces/trading/ITradingModule.sol";
 import "@interfaces/uniswap/v2/IUniV2Router2.sol";
 import {Deployments} from "@deployments/Deployments.sol";
-import {Constants} from "../../global/Constants.sol";
+import {Constants} from "@contracts/global/Constants.sol";
 
 library UniV2Adapter {
 

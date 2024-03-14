@@ -3,8 +3,8 @@ pragma solidity 0.8.17;
 
 import {IERC20} from "@interfaces/IERC20.sol";
 import {Deployments} from "@deployments/Deployments.sol";
-import {Constants} from "../../global/Constants.sol";
-import {TokenUtils} from "../../utils/TokenUtils.sol";
+import {Constants} from "@contracts/global/Constants.sol";
+import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {
     CurveInterface,
@@ -15,7 +15,7 @@ import {
     ICurve2TokenPoolV2,
     ICurveStableSwapNG
 } from "@interfaces/curve/ICurvePool.sol";
-import {SingleSidedLPVaultBase} from "../common/SingleSidedLPVaultBase.sol";
+import {SingleSidedLPVaultBase} from "@contracts/vaults/common/SingleSidedLPVaultBase.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 
 struct DeploymentParams {

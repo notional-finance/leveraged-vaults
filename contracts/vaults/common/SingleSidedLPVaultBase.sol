@@ -4,10 +4,10 @@ pragma solidity 0.8.17;
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 import {BaseStrategyVault} from "./BaseStrategyVault.sol";
-import {Errors} from "../../global/Errors.sol";
-import {Constants} from "../../global/Constants.sol";
-import {TypeConvert} from "../../global/TypeConvert.sol";
-import {TokenUtils} from "../../utils/TokenUtils.sol";
+import {Errors} from "@contracts/global/Errors.sol";
+import {Constants} from "@contracts/global/Constants.sol";
+import {TypeConvert} from "@contracts/global/TypeConvert.sol";
+import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
 import {VaultStorage} from "./VaultStorage.sol";
 

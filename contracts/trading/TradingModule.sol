@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import {Deployments} from "@deployments/Deployments.sol";
-import {Constants} from "../global/Constants.sol";
+import {Constants} from "@contracts/global/Constants.sol";
 import {BalancerV2Adapter} from "./adapters/BalancerV2Adapter.sol";
 import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
 import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
@@ -13,7 +13,7 @@ import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
 import {CurveV2Adapter} from "./adapters/CurveV2Adapter.sol";
 import {TradingUtils} from "./TradingUtils.sol";
 
-import {IERC20} from "../utils/TokenUtils.sol";
+import {IERC20} from "@contracts/utils/TokenUtils.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, Trade, TradeType, DexId} from "@interfaces/trading/ITradingModule.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";

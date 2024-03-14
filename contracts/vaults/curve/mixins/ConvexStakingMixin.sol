@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
-import {TokenUtils, IERC20} from "../../utils/TokenUtils.sol";
-import {Constants} from "../../global/Constants.sol";
+import {TokenUtils, IERC20} from "@contracts/utils/TokenUtils.sol";
+import {Constants} from "@contracts/global/Constants.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {IConvexBooster} from "@interfaces/convex/IConvexBooster.sol";

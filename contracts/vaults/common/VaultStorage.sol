@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import {StrategyVaultSettings, StrategyVaultState} from "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
-import {Constants} from "../../global/Constants.sol";
+import {Constants} from "@contracts/global/Constants.sol";
 
 /** 
  * Common vault storage slots

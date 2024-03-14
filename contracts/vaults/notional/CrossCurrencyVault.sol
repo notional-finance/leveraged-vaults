@@ -6,11 +6,11 @@ import {IWrappedfCashFactory} from "@interfaces/notional/IWrappedfCashFactory.so
 import {IWrappedfCashComplete as IWrappedfCash} from "@interfaces/notional/IWrappedfCash.sol";
 import {WETH9} from "@interfaces/WETH9.sol";
 
-import {BaseStrategyVault} from "./common/BaseStrategyVault.sol";
-import {IERC20, TokenUtils} from "../utils/TokenUtils.sol";
-import {TypeConvert} from "../global/TypeConvert.sol";
-import {Token, TokenType} from "../global/Types.sol";
-import {Constants} from "../global/Constants.sol";
+import {BaseStrategyVault} from "@contracts/vaults/common/BaseStrategyVault.sol";
+import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
+import {TypeConvert} from "@contracts/global/TypeConvert.sol";
+import {Token, TokenType} from "@contracts/global/Types.sol";
+import {Constants} from "@contracts/global/Constants.sol";
 import {ITradingModule, DexId, TradeType, Trade} from "@interfaces/trading/ITradingModule.sol";
 
 /**

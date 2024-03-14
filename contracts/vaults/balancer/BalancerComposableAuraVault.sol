@@ -3,13 +3,13 @@ pragma solidity 0.8.17;
 
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {Deployments} from "@deployments/Deployments.sol";
-import {BalancerSpotPrice} from "./balancer/BalancerSpotPrice.sol";
+import {BalancerSpotPrice} from "./BalancerSpotPrice.sol";
 import {
     AuraStakingMixin,
     AuraVaultDeploymentParams,
     DeploymentParams
-} from "./balancer/mixins/AuraStakingMixin.sol";
-import {IERC20} from "../utils/TokenUtils.sol";
+} from "./mixins/AuraStakingMixin.sol";
+import {IERC20} from "@contracts/utils/TokenUtils.sol";
 import {IComposablePool} from "@interfaces/balancer/IBalancerPool.sol";
 import {IBalancerVault} from "@interfaces/balancer/IBalancerVault.sol";
 

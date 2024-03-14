@@ -7,7 +7,7 @@ import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {IBalancerVault, IAsset} from "@interfaces/balancer/IBalancerVault.sol";
 import {IBalancerPool} from "@interfaces/balancer/IBalancerPool.sol";
 import {SingleSidedLPVaultBase} from "../../common/SingleSidedLPVaultBase.sol";
-import {TokenUtils} from "../../../utils/TokenUtils.sol";
+import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 
 /// @notice Deployment parameters

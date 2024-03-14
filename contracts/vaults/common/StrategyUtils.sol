@@ -10,8 +10,8 @@ import {
 } from "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {TradeHandler} from "../../trading/TradeHandler.sol";
 import {Deployments} from "@deployments/Deployments.sol";
-import {Constants} from "../../global/Constants.sol";
-import {Errors} from "../../global/Errors.sol";
+import {Constants} from "@contracts/global/Constants.sol";
+import {Errors} from "@contracts/global/Errors.sol";
 import {ITradingModule, Trade, TradeType, DexId} from "@interfaces/trading/ITradingModule.sol";
 
 /**

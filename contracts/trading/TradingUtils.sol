@@ -2,8 +2,8 @@
 pragma solidity 0.8.17;
 
 import {Deployments} from "@deployments/Deployments.sol";
-import {Constants} from "../global/Constants.sol";
-import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
+import {Constants} from "@contracts/global/Constants.sol";
+import {TokenUtils, IERC20} from "@contracts/utils/TokenUtils.sol";
 import "@interfaces/trading/ITradingModule.sol";
 import {nProxy} from "../proxy/nProxy.sol";
 

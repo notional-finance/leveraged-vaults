@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import "../BaseSingleSidedLPVault.sol";
-import "@contracts/vaults/BalancerComposableAuraVault.sol";
+import "@contracts/vaults/balancer/BalancerComposableAuraVault.sol";
 import "@contracts/vaults/balancer/mixins/AuraStakingMixin.sol";
 import "@interfaces/balancer/IBalancerPool.sol";
 import "@contracts/trading/adapters/BalancerV2Adapter.sol";

@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import "../BaseAcceptanceTest.sol";
-import "@contracts/vaults/CrossCurrencyVault.sol";
+import "@contracts/vaults/notional/CrossCurrencyVault.sol";
 import "@contracts/proxy/nUpgradeableBeacon.sol";
 import "@contracts/proxy/nBeaconProxy.sol";
 import "@contracts/trading/TradingModule.sol";

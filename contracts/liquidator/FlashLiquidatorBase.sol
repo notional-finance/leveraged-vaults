@@ -4,8 +4,8 @@ pragma solidity 0.8.17;
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {IStrategyVault} from "@interfaces/notional/IStrategyVault.sol";
 import {WETH9} from "@interfaces/WETH9.sol";
-import {TokenUtils, IERC20} from "../utils/TokenUtils.sol";
-import {Constants} from "../global/Constants.sol";
+import {TokenUtils, IERC20} from "@contracts/utils/TokenUtils.sol";
+import {Constants} from "@contracts/global/Constants.sol";
 import {
     Token, 
     VaultAccount, 
@@ -14,7 +14,7 @@ import {
     TradeActionType,
     DepositActionType,
     PortfolioAsset
-} from "../global/Types.sol";
+} from "@contracts/global/Types.sol";
 import {BoringOwnable} from "./BoringOwnable.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 

@@ -2,9 +2,9 @@
 pragma solidity 0.8.17;
 
 import {Deployments} from "@deployments/Deployments.sol";
-import {Constants} from "../global/Constants.sol";
-import {IERC20, TokenUtils} from "../utils/TokenUtils.sol";
-import {ConvexStakingMixin, ConvexVaultDeploymentParams} from "./curve/ConvexStakingMixin.sol";
+import {Constants} from "@contracts/global/Constants.sol";
+import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
+import {ConvexStakingMixin, ConvexVaultDeploymentParams} from "./mixins/ConvexStakingMixin.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {IConvexBooster, IConvexBoosterArbitrum} from "@interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "@interfaces/convex/IConvexRewardPool.sol";
