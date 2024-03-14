@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "./SingleSidedLP/pools/BaseComposablePool.sol";
-import "@contracts/utils/AaveFlashLiquidator.sol";
+import "@contracts/liquidator/AaveFlashLiquidator.sol";
 import "@deployments/Deployments.sol";
 import "@interfaces/notional/NotionalProxy.sol";
 import "@interfaces/notional/IVaultController.sol";
