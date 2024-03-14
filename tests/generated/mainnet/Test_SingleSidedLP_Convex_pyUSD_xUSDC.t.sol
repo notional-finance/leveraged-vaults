@@ -78,7 +78,7 @@ contract Test_SingleSidedLP_Convex_pyUSD_xUSDC is BaseCurve2Token {
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 1e6;
-        maxDeposit = 100_000e6;
+        maxDeposit = 90_000e6;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
         super.setUp();

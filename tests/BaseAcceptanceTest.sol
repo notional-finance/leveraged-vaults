@@ -62,8 +62,7 @@ abstract contract BaseAcceptanceTest is Test {
 
     function setUp() public virtual {
         // Skip test setup when deploying
-        string memory profile = vm.envOr(string("FOUNDRY_PROFILE"), string("default"));
-        if (keccak256(abi.encodePacked(profile)) != keccak256("default")) return;
+        if (vm.envOr("DEPLOYMENT", false)) return;
 
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
 
@@ -225,8 +224,10 @@ abstract contract BaseAcceptanceTest is Test {
 
     function test_EnterVault(uint256 maturityIndex, uint256 depositAmount) public {
         address account = makeAddr("account");
+        console.log(maturities.length);
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
+        console.log("maturity");
         depositAmount = boundDepositAmount(depositAmount);
 
         hook_beforeEnterVault(account, maturity, depositAmount);
