@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 
+import "./StrategyVaultHarness.sol";
 import "@deployments/Deployments.sol";
 import "@interfaces/notional/NotionalProxy.sol";
 import "@interfaces/notional/IStrategyVault.sol";
@@ -11,9 +12,6 @@ import {IERC20} from "@contracts/utils/TokenUtils.sol";
 import "@contracts/global/Constants.sol";
 
 abstract contract BaseAcceptanceTest is Test {
-    WETH9 constant WETH = Deployments.WETH;
-    NotionalProxy constant NOTIONAL = Deployments.NOTIONAL;
-    ITradingModule constant TRADING_MODULE = Deployments.TRADING_MODULE;
     uint256 constant BASIS_POINT = 1e5;
 
     uint16 internal constant ENABLED                         = 1 << 0;
@@ -43,6 +41,7 @@ abstract contract BaseAcceptanceTest is Test {
     string RPC_URL = vm.envString("RPC_URL");
     uint256 FORK_BLOCK = vm.envUint("FORK_BLOCK");
     IStrategyVault vault;
+    StrategyVaultHarness harness;
     VaultConfigParams config;
     uint256[] maturities;
     IERC20 primaryBorrowToken;
@@ -61,22 +60,19 @@ abstract contract BaseAcceptanceTest is Test {
     address WHALE;
 
     function setUp() public virtual {
-        // Skip test setup when deploying
-        if (vm.envOr("DEPLOYMENT", false)) return;
-
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
 
-        config = getTestVaultConfig();
-        MarketParameters[] memory m = NOTIONAL.getActiveMarkets(config.borrowCurrencyId);
+        config = harness.getTestVaultConfig();
+        MarketParameters[] memory m = Deployments.NOTIONAL.getActiveMarkets(config.borrowCurrencyId);
         maturities = new uint256[](m.length + 1);
         maturities[0] = Constants.PRIME_CASH_VAULT_MATURITY;
         for (uint256 i; i < m.length; i++) maturities[i + 1] = m[i].maturity;
 
         vault = deployTestVault();
-        vm.prank(NOTIONAL.owner());
-        NOTIONAL.updateVault(address(vault), config, getMaxPrimaryBorrow());
+        vm.prank(Deployments.NOTIONAL.owner());
+        Deployments.NOTIONAL.updateVault(address(vault), config, getMaxPrimaryBorrow());
 
-        (/* */, Token memory underlyingToken) = NOTIONAL.getCurrency(config.borrowCurrencyId);
+        (/* */, Token memory underlyingToken) = Deployments.NOTIONAL.getCurrency(config.borrowCurrencyId);
         primaryBorrowToken = IERC20(underlyingToken.tokenAddress);
         isETH = underlyingToken.tokenType == TokenType.Ether;
         uint16 decimals = isETH ? 18 : primaryBorrowToken.decimals();
@@ -101,13 +97,12 @@ abstract contract BaseAcceptanceTest is Test {
         address token,
         ITradingModule.TokenPermissions memory permissions
     ) internal {
-        vm.prank(NOTIONAL.owner());
-        TRADING_MODULE.setTokenPermissions(vault_, token, permissions);
+        vm.prank(Deployments.NOTIONAL.owner());
+        Deployments.TRADING_MODULE.setTokenPermissions(vault_, token, permissions);
     }
 
-    function getVaultName() internal pure virtual returns (string memory);
     function deployTestVault() internal virtual returns (IStrategyVault);
-    function getTestVaultConfig() internal view virtual returns (VaultConfigParams memory);
+
     function getPrimaryVaultToken(uint256 /* maturity */) internal virtual returns (address) {
         return address(0);
     }
@@ -127,7 +122,7 @@ abstract contract BaseAcceptanceTest is Test {
 
     function dealTokens(uint256 depositAmount) internal {
         if (isETH) {
-            deal(address(NOTIONAL), depositAmount);
+            deal(address(Deployments.NOTIONAL), depositAmount);
         } else if (WHALE != address(0)) {
             // USDC does not work with `deal` so transfer from a whale account instead.
             vm.prank(WHALE);
@@ -146,7 +141,7 @@ abstract contract BaseAcceptanceTest is Test {
     ) internal virtual {
         dealTokens(depositAmount);
 
-        vm.prank(address(NOTIONAL));
+        vm.prank(address(Deployments.NOTIONAL));
         vm.expectRevert(revertMsg);
         if (isETH) {
             vault.depositFromNotional{value: depositAmount}(account, depositAmount, maturity, data);
@@ -163,7 +158,7 @@ abstract contract BaseAcceptanceTest is Test {
     ) internal virtual {
         dealTokens(depositAmount);
 
-        vm.prank(address(NOTIONAL));
+        vm.prank(address(Deployments.NOTIONAL));
         vm.expectRevert();
         if (isETH) {
             vault.depositFromNotional{value: depositAmount}(account, depositAmount, maturity, data);
@@ -181,7 +176,7 @@ abstract contract BaseAcceptanceTest is Test {
     ) internal virtual {
         dealTokens(depositAmount);
 
-        vm.prank(address(NOTIONAL));
+        vm.prank(address(Deployments.NOTIONAL));
         vm.expectRevert(selector);
         if (isETH) {
             vault.depositFromNotional{value: depositAmount}(account, depositAmount, maturity, data);
@@ -198,7 +193,7 @@ abstract contract BaseAcceptanceTest is Test {
     ) internal virtual returns (uint256 vaultShares) {
         dealTokens(depositAmount);
 
-        vm.prank(address(NOTIONAL));
+        vm.prank(address(Deployments.NOTIONAL));
         if (isETH) {
             vaultShares = vault.depositFromNotional{value: depositAmount}(account, depositAmount, maturity, data);
         } else {
@@ -215,7 +210,7 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 maturity,
         bytes memory data
     ) internal virtual returns (uint256 totalToReceiver) {
-        vm.prank(address(NOTIONAL));
+        vm.prank(address(Deployments.NOTIONAL));
         totalToReceiver = vault.redeemFromNotional(account, account, vaultShares, maturity, 0, data);
 
         totalVaultShares[maturity] -= vaultShares;
@@ -306,9 +301,9 @@ abstract contract BaseAcceptanceTest is Test {
 
         vm.roll(5);
         vm.warp(maturity);
-        for (uint16 i = 1; i <= USDT; i++) NOTIONAL.initializeMarkets(i, false);
+        for (uint16 i = 1; i <= USDT; i++) Deployments.NOTIONAL.initializeMarkets(i, false);
 
-        vm.prank(address(NOTIONAL));
+        vm.prank(address(Deployments.NOTIONAL));
         uint256 primeVaultShares = vault.convertVaultSharesToPrimeMaturity(
             account,
             vaultShares * 90 / 100,

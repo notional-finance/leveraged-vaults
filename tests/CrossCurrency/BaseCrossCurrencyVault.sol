@@ -17,14 +17,16 @@ abstract contract BaseCrossCurrencyVault is BaseAcceptanceTest {
     bytes exchangeData;
 
     function deployTestVault() internal override returns (IStrategyVault) {
-        IStrategyVault impl = new CrossCurrencyVault(NOTIONAL, TRADING_MODULE, WRAPPED_FCASH_FACTORY, WETH);
+        IStrategyVault impl = new CrossCurrencyVault(
+            Deployments.NOTIONAL, Deployments.TRADING_MODULE, WRAPPED_FCASH_FACTORY, Deployments.WETH
+        );
         bytes memory callData = abi.encodeWithSelector(
             CrossCurrencyVault.initialize.selector, "Vault", primaryBorrowCurrency, lendCurrencyId
         );
 
         nUpgradeableBeacon beacon = new nUpgradeableBeacon(address(impl));
         nBeaconProxy proxy = new nBeaconProxy(address(beacon), callData);
-        (/* */, Token memory underlyingToken) = NOTIONAL.getCurrency(primaryBorrowCurrency);
+        (/* */, Token memory underlyingToken) = Deployments.NOTIONAL.getCurrency(primaryBorrowCurrency);
 
         // Start with the first index
         for (uint256 i = 1; i < maturities.length; i++) {
@@ -94,7 +96,7 @@ abstract contract BaseCrossCurrencyVault is BaseAcceptanceTest {
     }
 
     function checkInvariants() internal override {
-        IERC20 pCash = IERC20(NOTIONAL.pCashAddress(lendCurrencyId));
+        IERC20 pCash = IERC20(Deployments.NOTIONAL.pCashAddress(lendCurrencyId));
 
         assertEq(
             totalVaultShares[maturities[0]],
@@ -160,14 +162,14 @@ abstract contract BaseCrossCurrencyVault is BaseAcceptanceTest {
 
     function test_ShortCircuitOnZeroDeposit() public {
         address account = makeAddr("account");
-        vm.expectCall(address(NOTIONAL), "", 0);
+        vm.expectCall(address(Deployments.NOTIONAL), "", 0);
         uint256 vaultShares = enterVaultBypass(account, 0, maturities[1], "");
         assertEq(vaultShares, 0);
     }
 
     function test_ShortCircuitOnZeroRedeem() public {
         address account = makeAddr("account");
-        vm.expectCall(address(NOTIONAL), "", 0);
+        vm.expectCall(address(Deployments.NOTIONAL), "", 0);
         uint256 amount = exitVaultBypass(account, 0, maturities[1], "");
         assertEq(amount, 0);
     }

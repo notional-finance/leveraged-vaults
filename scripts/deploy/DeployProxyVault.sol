@@ -7,28 +7,14 @@ import "./GnosisHelper.s.sol";
 import "@deployments/Deployments.sol";
 import "@contracts/global/Types.sol";
 import "@contracts/trading/TradingModule.sol";
+import "../../tests/StrategyVaultHarness.sol";
 import "@contracts/proxy/nProxy.sol";
 import "@interfaces/notional/IVaultController.sol";
 import "@interfaces/trading/ITradingModule.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 abstract contract DeployProxyVault is Script, GnosisHelper {
-    address EXISTING_DEPLOYMENT;
-
-    function initVariables() internal virtual;
-    function deployVaultImplementation() internal virtual returns (address impl);
-    function getInitializeData() internal view virtual returns (bytes memory initData);
-    function getRequiredOracles() internal view virtual returns (
-        address[] memory token, address[] memory oracle
-    );
-
-    // By default, these two are left unimplemented
-    function getDeploymentConfig() internal view virtual returns (
-        VaultConfigParams memory params, uint80 maxPrimaryBorrow
-    ) {}
-    function getTradingPermissions() internal view virtual returns (
-        address[] memory token, ITradingModule.TokenPermissions[] memory permissions
-    ) {}
+    StrategyVaultHarness harness;
 
     function run() public {
         require(block.chainid == Deployments.CHAIN_ID, "Invalid Chain");
@@ -36,11 +22,11 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
         bool updateConfig = vm.envOr("UPDATE_CONFIG", false);
         address proxy = vm.envOr("PROXY", address(0));
 
-        if (EXISTING_DEPLOYMENT == address(0)) {
+        if (harness.EXISTING_DEPLOYMENT() == address(0)) {
             // Create a new deployment if value is not set
             console.log("Creating a new vault deployment");
-            (address[] memory tkOracles, address[] memory oracles) = getRequiredOracles();
-            (address[] memory tkPerms, ITradingModule.TokenPermissions[] memory permissions) = getTradingPermissions();
+            (address[] memory tkOracles, address[] memory oracles) = harness.getRequiredOracles();
+            (address[] memory tkPerms, ITradingModule.TokenPermissions[] memory permissions) = harness.getTradingPermissions();
 
             uint256 totalCalls = tkPerms.length + 3;
 
@@ -57,7 +43,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
             // Broadcast the implementation if proxy is not set
             if (proxy == address(0)) {
                 vm.startBroadcast();
-                address impl = deployVaultImplementation();
+                address impl = harness.deployVaultImplementation();
                 console.log("Implementation Address", impl);
                 vm.stopBroadcast();
                 return;
@@ -68,7 +54,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
             {
                 // Set the implementation
                 init[callIndex].to = proxy;
-                init[callIndex].callData = getInitializeData();
+                init[callIndex].callData = harness.getInitializeData();
                 callIndex++;
 
                 // Grant roles for emergency exit and reward reinvestment
@@ -115,21 +101,25 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                 string(abi.encodePacked("./scripts/deploy/", vm.toString(proxy),".initVault.json")),
                 init
             );
-            EXISTING_DEPLOYMENT = proxy;
+            harness.setDeployment(proxy);
         }
         
         if (upgradeVault) {
             vm.startBroadcast();
-            address impl = deployVaultImplementation();
+            address impl = harness.deployVaultImplementation();
             vm.stopBroadcast();
 
             MethodCall[] memory upgrade = new MethodCall[](1);
-            upgrade[0].to = EXISTING_DEPLOYMENT;
+            upgrade[0].to = harness.EXISTING_DEPLOYMENT();
             upgrade[0].callData = abi.encodeWithSelector(UUPSUpgradeable.upgradeTo.selector, impl);
 
             // Outputs the upgrade code that needs to be run by the owner
             generateBatch(
-                string(abi.encodePacked("./scripts/deploy/", vm.toString(EXISTING_DEPLOYMENT),".upgradeVault.json")),
+                string(abi.encodePacked(
+                    "./scripts/deploy/",
+                    vm.toString(harness.EXISTING_DEPLOYMENT()),
+                    ".upgradeVault.json")
+                ),
                 upgrade
             );
         }
@@ -137,15 +127,19 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
         if (updateConfig) {
             MethodCall[] memory update = new MethodCall[](1);
             update[0].to = address(Deployments.NOTIONAL);
-            (VaultConfigParams memory p, uint80 maxBorrow) = getDeploymentConfig();
+            (VaultConfigParams memory p, uint80 maxBorrow) = harness.getDeploymentConfig();
             update[0].callData = abi.encodeWithSelector(
                 IVaultAction.updateVault.selector,
-                EXISTING_DEPLOYMENT, p, maxBorrow
+                harness.EXISTING_DEPLOYMENT(), p, maxBorrow
             );
 
             // Outputs the upgrade code that needs to be run by the owner
             generateBatch(
-                string(abi.encodePacked("./scripts/deploy/", vm.toString(EXISTING_DEPLOYMENT),".updateConfig.json")),
+                string(abi.encodePacked(
+                    "./scripts/deploy/",
+                    vm.toString(harness.EXISTING_DEPLOYMENT()),
+                    ".updateConfig.json")
+                ),
                 update
             );
         }

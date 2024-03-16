@@ -8,7 +8,7 @@ import "@contracts/proxy/nProxy.sol";
 import "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import "@interfaces/trading/ITradingModule.sol";
 
-abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest {
+abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
     bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
 
@@ -23,7 +23,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
     function getInitializeData() internal view override returns (bytes memory initData) {
         return abi.encodeWithSelector(
             ISingleSidedLPStrategyVault.initialize.selector, InitParams({
-                name: getVaultName(),
+                name: harness.getVaultName(),
                 borrowCurrencyId: primaryBorrowCurrency,
                 settings: settings
             })
@@ -31,17 +31,18 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
     }
 
     function deployTestVault() internal override returns (IStrategyVault) {
-        address impl = deployVaultImplementation();
+        address impl = harness.deployVaultImplementation();
         nProxy proxy;
 
-        if (EXISTING_DEPLOYMENT != address(0)) {
-            proxy = nProxy(payable(EXISTING_DEPLOYMENT));
-            vm.prank(NOTIONAL.owner());
-            UUPSUpgradeable(EXISTING_DEPLOYMENT).upgradeTo(impl);
+        if (harness.EXISTING_DEPLOYMENT() != address(0)) {
+            proxy = nProxy(payable(harness.EXISTING_DEPLOYMENT()));
+            vm.prank(Deployments.NOTIONAL.owner());
+            UUPSUpgradeable(harness.EXISTING_DEPLOYMENT()).upgradeTo(impl);
+            // TODO: check before and after storage....
         } else {
-            bytes memory initData = getInitializeData();
+            bytes memory initData = harness.getInitializeData();
 
-            vm.prank(NOTIONAL.owner());
+            vm.prank(Deployments.NOTIONAL.owner());
             proxy = new nProxy(address(impl), initData);
         }
 
@@ -52,17 +53,17 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
             numTokens = tokens.length;
         }
 
-        (address[] memory t, address[] memory oracles) = getRequiredOracles();
+        (address[] memory t, address[] memory oracles) = harness.getRequiredOracles();
         for (uint256 i; i < t.length; i++) {
-            (AggregatorV2V3Interface oracle, /* */) = TRADING_MODULE.priceOracles(t[i]);
+            (AggregatorV2V3Interface oracle, /* */) = Deployments.TRADING_MODULE.priceOracles(t[i]);
             if (address(oracle) == address(0)) {
                 if (Deployments.CHAIN_ID == 1) {
                     // NOTE: temporary code b/c owner has not changed yet
                     vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
                 } else {
-                    vm.prank(NOTIONAL.owner());
+                    vm.prank(Deployments.NOTIONAL.owner());
                 }
-                TRADING_MODULE.setPriceOracle(t[i], AggregatorV2V3Interface(oracles[i]));
+                Deployments.TRADING_MODULE.setPriceOracle(t[i], AggregatorV2V3Interface(oracles[i]));
             } else {
                 require(address(oracle) == oracles[i], "Oracle Mismatch");
             }
@@ -150,7 +151,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         address account = makeAddr("account");
         uint256 maturity = maturities[0];
 
-        vm.prank(NOTIONAL.owner());
+        vm.prank(Deployments.NOTIONAL.owner());
         v().setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
@@ -218,7 +219,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
-        vm.prank(NOTIONAL.owner());
+        vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(EMERGENCY_EXIT_ROLE, exit);
 
         initialBalance = rewardPool.balanceOf(address(vault));
@@ -293,7 +294,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         (uint256[] memory exitBalances, /* */, uint256 initialBalance) = setup_EmergencyExit();
 
         // Restore the vault
-        vm.prank(NOTIONAL.owner());
+        vm.prank(Deployments.NOTIONAL.owner());
         v().restoreVault(0, abi.encode(exitBalances));
 
         (IERC20[] memory tokens, /* */) = v().TOKENS();
@@ -326,7 +327,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
-        vm.prank(NOTIONAL.owner());
+        vm.prank(Deployments.NOTIONAL.owner());
         v().setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
@@ -340,7 +341,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         vm.expectRevert();
         vault.convertStrategyToUnderlying(account, vaultShares, maturity);
         
-        vm.prank(NOTIONAL.owner());
+        vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
 
         vm.prank(reward);
@@ -371,7 +372,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         uint256 maturity = maturities[0];
         enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
 
-        vm.prank(NOTIONAL.owner());
+        vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
 
         skip(3600);
@@ -395,7 +396,7 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
         uint256 maturity = maturities[0];
         enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
 
-        vm.prank(NOTIONAL.owner());
+        vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
         SingleSidedRewardTradeParams[] memory t = new SingleSidedRewardTradeParams[](numTokens);
         t[0].sellToken = address(rewardPool);
@@ -408,9 +409,10 @@ abstract contract BaseSingleSidedLPVault is DeployProxyVault, BaseAcceptanceTest
     }
 
     function test_cannotReinitialize() public {
-        vm.prank(NOTIONAL.owner());
+        vm.prank(Deployments.NOTIONAL.owner());
         vm.expectRevert("Initializable: contract is already initialized");
-        address(vault).call(getInitializeData());
+        (bool success, /* */) = address(vault).call(getInitializeData());
+        require(!success);
     }
 
 }

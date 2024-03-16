@@ -23,11 +23,6 @@ contract TestCrossCurrency_ETH_WSTETH is BaseCrossCurrencyVault {
         maxRelExitValuation = 75 * BASIS_POINT;
 
         super.setUp();
-
-        // NOTE: temporarily upgrade the TradingModule for the payable fix
-        address impl = address(new TradingModule(NOTIONAL, TRADING_MODULE));
-        vm.prank(NOTIONAL.owner());
-        TradingModule(address(TRADING_MODULE)).upgradeTo(impl);
     }
 }
 

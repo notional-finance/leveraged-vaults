@@ -15,7 +15,7 @@ abstract contract BaseWeightedPool is BaseSingleSidedLPVault {
         balancerPoolId = IBalancerPool(address(poolToken)).getPoolId();
 
         impl = address(new BalancerWeightedAuraVault(
-            NOTIONAL, AuraVaultDeploymentParams({
+            Deployments.NOTIONAL, AuraVaultDeploymentParams({
                 rewardPool: IAuraRewardPool(address(rewardPool)),
                 whitelistedReward: whitelistedReward,
                 baseParams: DeploymentParams({
