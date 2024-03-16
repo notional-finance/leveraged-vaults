@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity 0.8.17;
+
+import {
+    BalancerComposableAuraVault,
+    NotionalProxy,
+    AuraVaultDeploymentParams,
+    BalancerSpotPrice,
+    IERC20
+} from "./BalancerComposableAuraVault.sol";
+import {BalancerV2Adapter} from "@contracts/trading/adapters/BalancerV2Adapter.sol";
+import {IAsset} from "@interfaces/balancer/IBalancerVault.sol";
+import {DexId, TradeType} from "@interfaces/trading/ITradingModule.sol";
+import {Constants} from "@contracts/global/Constants.sol";
+import {TradeHandler, Trade} from "@contracts/trading/TradeHandler.sol";
+
+contract weETHBalancerComposableAuraVault is BalancerComposableAuraVault {
+    using TradeHandler for Trade;
+    address constant rETH = 0xae78736Cd615f374D3085123A210448E74Fc6393;
+    bytes constant exchangeData = abi.encode(
+        BalancerV2Adapter.SingleSwapData(0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112)
+    );
+
+    function TOKENS() public view override returns (IERC20[] memory, uint8[] memory) {
+        IERC20[] memory tokens = new IERC20[](_NUM_TOKENS);
+        uint8[] memory decimals = new uint8[](_NUM_TOKENS);
+
+        (tokens[0], decimals[0]) = (IERC20(TOKEN_1), DECIMALS_1);
+        (tokens[1], decimals[1]) = (IERC20(TOKEN_2), DECIMALS_2);
+
+        return (tokens, decimals);
+    }
+
+    function ASSETS() internal view override returns (IAsset[] memory) {
+        IAsset[] memory assets = new IAsset[](_NUM_TOKENS);
+        assets[0] = IAsset(TOKEN_1);
+        assets[1] = IAsset(TOKEN_2);
+        return assets;
+    }
+
+    constructor(
+        NotionalProxy notional_,
+        AuraVaultDeploymentParams memory params,
+        BalancerSpotPrice _spotPrice
+    ) BalancerComposableAuraVault(notional_, params, _spotPrice) { }
+
+    function _depositFromNotional(
+        address account, uint256 deposit, uint256 maturity, bytes calldata data
+    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+
+        (/* */, uint256 amountBought) = Trade({
+            tradeType: TradeType.EXACT_IN_SINGLE,
+            sellToken: Constants.ETH_ADDRESS,
+            buyToken: rETH,
+            amount: deposit,
+            limit: 0.01e9,
+            deadline: block.timestamp,
+            exchangeData: exchangeData
+        })._executeTradeWithDynamicSlippage(
+            uint16(DexId.BALANCER_V2), TRADING_MODULE, uint32(0.01e9)
+        );
+
+        return super._depositFromNotional(account, amountBought, maturity, data);
+    }
+
+    function _redeemFromNotional(
+        address account, uint256 vaultShares, uint256 maturity, bytes calldata data
+    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+        uint256 primaryBalance = super._redeemFromNotional(
+            account, vaultShares, maturity, data
+        );
+
+        (/* */, finalPrimaryBalance) = Trade({
+            tradeType: TradeType.EXACT_IN_SINGLE,
+            sellToken: rETH,
+            buyToken: Constants.ETH_ADDRESS,
+            amount: primaryBalance,
+            limit: 0.01e9,
+            deadline: block.timestamp,
+            exchangeData: exchangeData
+        })._executeTradeWithDynamicSlippage(
+            uint16(DexId.BALANCER_V2), TRADING_MODULE, uint32(0.01e9)
+        );
+    }
+
+    function convertStrategyToUnderlying(
+        address account, uint256 vaultShares, uint256 maturity
+    ) public view override whenNotLocked returns (int256 underlyingValue) {
+        int256 weETHValue = super.convertStrategyToUnderlying(
+            account, vaultShares, maturity
+        );
+
+        (int256 rate, int256 rateDecimals) = TRADING_MODULE.getOraclePrice(
+            address(0), Constants.ETH_ADDRESS
+        );
+
+        // Convert this back to the borrow currency, external precision
+        return (weETHValue * 1e18 * rate) / (rateDecimals * 1e18);
+    }
+}

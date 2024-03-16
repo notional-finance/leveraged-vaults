@@ -198,7 +198,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// the funds given and then return the total vault shares minted.
     function _depositFromNotional(
         address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
-    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+    ) internal override virtual whenNotLocked returns (uint256 vaultSharesMinted) {
         // Short circuit any zero deposit amounts
         if (deposit == 0) return 0;
 
@@ -260,7 +260,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// to Notional and the account to repay debts and withdraw profits.
     function _redeemFromNotional(
         address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
-    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+    ) internal override virtual whenNotLocked returns (uint256 finalPrimaryBalance) {
         // Short circuit any zero redemption amounts, this can occur during rolling positions
         // or withdraw cash balances post liquidation.
         if (vaultShares == 0) return 0;
@@ -312,7 +312,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// therefore this calculation will not be correct.
     function convertStrategyToUnderlying(
         address /* */, uint256 vaultShares, uint256 /* */
-    ) public view override whenNotLocked returns (int256 underlyingValue) {
+    ) public view virtual override whenNotLocked returns (int256 underlyingValue) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         // Will revert on divide by zero, which is the correct behavior
         uint256 lpTokens = (vaultShares * state.totalPoolClaim) / state.totalVaultSharesGlobal;

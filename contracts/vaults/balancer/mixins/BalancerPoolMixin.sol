@@ -49,7 +49,7 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
     function PRIMARY_INDEX() internal view override returns (uint256) { return _PRIMARY_INDEX; }
     function POOL_TOKEN() internal view override returns (IERC20) { return BALANCER_POOL_TOKEN; }
     function POOL_PRECISION() internal pure override returns (uint256) { return BALANCER_PRECISION; }
-    function TOKENS() public view override returns (IERC20[] memory, uint8[] memory) {
+    function TOKENS() public view virtual override returns (IERC20[] memory, uint8[] memory) {
         IERC20[] memory tokens = new IERC20[](_NUM_TOKENS);
         uint8[] memory decimals = new uint8[](_NUM_TOKENS);
 
@@ -63,7 +63,7 @@ abstract contract BalancerPoolMixin is SingleSidedLPVaultBase {
     }
 
     /// @notice Used to get type compatibility with the Balancer join and exit methods.
-    function ASSETS() private view returns (IAsset[] memory) {
+    function ASSETS() internal virtual view returns (IAsset[] memory) {
         IAsset[] memory assets = new IAsset[](_NUM_TOKENS);
         if (_NUM_TOKENS > 0) assets[0] = IAsset(TOKEN_1);
         if (_NUM_TOKENS > 1) assets[1] = IAsset(TOKEN_2);
