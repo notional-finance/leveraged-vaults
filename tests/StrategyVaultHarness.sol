@@ -20,8 +20,6 @@ abstract contract StrategyVaultHarness {
     uint16 internal constant DISABLE_DELEVERAGE              = 1 << 8;
     uint16 internal constant ENABLE_FCASH_DISCOUNT           = 1 << 9;
 
-    function setUp() public virtual;
-
     function setDeployment(address deployment) public {
         EXISTING_DEPLOYMENT = deployment;
     }
@@ -29,7 +27,6 @@ abstract contract StrategyVaultHarness {
     function getVaultName() public pure virtual returns (string memory);
     function getTestVaultConfig() public view virtual returns (VaultConfigParams memory);
 
-    function initVariables() public virtual;
     function deployVaultImplementation() public virtual returns (
         address impl, bytes memory _metadata
     );
@@ -38,11 +35,8 @@ abstract contract StrategyVaultHarness {
         address[] memory token, address[] memory oracle
     );
 
-    // By default, these two are left unimplemented
-    function getDeploymentConfig() public view virtual returns (
-        VaultConfigParams memory params, uint80 maxPrimaryBorrow
-    ) {}
+    function getDeploymentConfig() public view virtual returns (VaultConfigParams memory params, uint80 maxPrimaryBorrow);
     function getTradingPermissions() public view virtual returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
-    ) {}
+    );
 }

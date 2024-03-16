@@ -20,7 +20,7 @@ defaults:
 
 arbitrum:
   - vaultName: SingleSidedLP:Aura:[RDNT]/WETH
-    vaultType: BaseWeightedPool
+    vaultType: WeightedPool
     primaryBorrowCurrency: RDNT
     rewardPool: "0xa17492d89cB2D0bE1dDbd0008F8585EDc5B0ACf3"
     rewards: [AURA, BAL]
@@ -31,7 +31,7 @@ arbitrum:
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 100e8
   - vaultName: SingleSidedLP:Aura:[rETH]/WETH
-    vaultType: BaseComposablePool
+    vaultType: ComposablePool
     primaryBorrowCurrency: rETH
     existingDeployment: "0x3Df035433cFACE65b6D68b77CC916085d020C8B8"
     rewardPool: "0x129A44AC6ff0f965C907579F96F2eD682E52c84A"
@@ -41,7 +41,7 @@ arbitrum:
       minAccountBorrowSize: 2e8
       maxPrimaryBorrow: 100e8
   - vaultName: SingleSidedLP:Aura:[USDC]/DAI/USDT/USDC.e
-    vaultType: BaseComposablePool
+    vaultType: ComposablePool
     primaryBorrowCurrency: USDC
     whale: "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
     existingDeployment: "0x8Ae7A8789A81A43566d0ee70264252c0DB826940"
@@ -60,7 +60,7 @@ arbitrum:
       minAccountBorrowSize: 5_000e8
       maxPrimaryBorrow: 300_000e8
   - vaultName: SingleSidedLP:Aura:USDC/DAI/[USDT]/USDC.e
-    vaultType: BaseComposablePool
+    vaultType: ComposablePool
     primaryBorrowCurrency: USDT
     rewardPool: "0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E"
     rewards: [AURA, BAL, ARB]
@@ -75,7 +75,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Aura:USDC/[DAI]/USDT/USDC.e
-    vaultType: BaseComposablePool
+    vaultType: ComposablePool
     primaryBorrowCurrency: DAI
     rewardPool: "0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E"
     rewards: [AURA, BAL, ARB]
@@ -88,7 +88,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Aura:[wstETH]/cbETH/rETH
-    vaultType: BaseComposablePool
+    vaultType: ComposablePool
     primaryBorrowCurrency: wstETH
     existingDeployment: "0x37dD23Ab1885982F789A2D6400B583B8aE09223d"
     rewardPool: "0x8cA64Bd82AbFE138E195ce5Cb7268CA285D42245"
@@ -102,7 +102,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Aura:wstETH/[WETH]
-    vaultType: BaseComposablePool
+    vaultType: ComposablePool
     primaryBorrowCurrency: ETH
     existingDeployment: "0x0E8C1A069f40D0E8Fa861239D3e62003cBF3dCB2"
     rewardPool: "0xa7BdaD177D474f946f3cDEB4bcea9d24Cf017471"
@@ -120,7 +120,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Convex:[FRAX]/USDC.e
-    vaultType: BaseCurve2Token
+    vaultType: Curve2Token
     primaryBorrowCurrency: FRAX
     existingDeployment: "0xdb08f663e5D765949054785F2eD1b2aa1e9C22Cf"
     rewardPool: "0x93729702Bf9E1687Ae2124e191B8fFbcC0C8A0B0"
@@ -142,7 +142,7 @@ arbitrum:
       maxDeleverageCollateralRatioBPS: 1700
       minAccountBorrowSize: 1e8
   - vaultName: SingleSidedLP:Convex:USDC.e/[USDT]
-    vaultType: BaseCurve2Token
+    vaultType: Curve2Token
     primaryBorrowCurrency: USDT
     existingDeployment: "0x431dbfE3050eA39abBfF3E0d86109FB5BafA28fD"
     rewardPool: "0x971E732B5c91A59AEa8aa5B0c763E6d648362CF8"
@@ -164,7 +164,7 @@ arbitrum:
       maxDeleverageCollateralRatioBPS: 1900
 mainnet:
   - vaultName: SingleSidedLP:Convex:[USDT]/crvUSD
-    vaultType: BaseCurve2Token
+    vaultType: Curve2Token
     primaryBorrowCurrency: USDT
     rewardPool: "0xD1DdB0a0815fD28932fBb194C84003683AF8a824"
     poolToken: "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4"
@@ -184,7 +184,7 @@ mainnet:
       minCollateralRatioBPS: 500
       maxDeleverageCollateralRatioBPS: 2600
   - vaultName: SingleSidedLP:Convex:[USDC]/crvUSD
-    vaultType: BaseCurve2Token
+    vaultType: Curve2Token
     primaryBorrowCurrency: USDC
     curveInterface: V1
     rewardPool: "0x44D8FaB7CD8b7877D5F79974c2F501aF6E65AbBA"
@@ -205,7 +205,7 @@ mainnet:
       minCollateralRatioBPS: 500
       maxDeleverageCollateralRatioBPS: 2600
   - vaultName: SingleSidedLP:Convex:pyUSD/[USDC]
-    vaultType: BaseCurve2Token
+    vaultType: Curve2Token
     curveInterface: StableSwapNG
     primaryBorrowCurrency: USDC
     rewardPool: "0xc583e81bB36A1F620A804D8AF642B63b0ceEb5c0"
@@ -226,7 +226,7 @@ mainnet:
       minCollateralRatioBPS: 500
       maxDeleverageCollateralRatioBPS: 2600
   - vaultName: SingleSidedLP:Aura:osETH/[WETH]
-    vaultType: BaseComposablePool
+    vaultType: ComposablePool
     primaryBorrowCurrency: ETH
     rewardPool: "0x5F032f15B4e910252EDaDdB899f7201E89C8cD6b"
     rewards: [AURA, BAL, SWISE]
@@ -244,7 +244,7 @@ mainnet:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Aura:[rETH]/weETH
-    vaultType: BaseComposablePool
+    vaultType: ComposablePool
     primaryBorrowCurrency: rETH
     rewardPool: "0x07A319A023859BbD49CC9C38ee891c3EA9283Cc5"
     rewards: [AURA, BAL]
@@ -262,7 +262,7 @@ mainnet:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Aura:GHO/USDT/[USDC]
-    vaultType: BaseComposablePool
+    vaultType: ComposablePool
     primaryBorrowCurrency: USDC
     whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
     rewardPool: "0xBDD6984C3179B099E9D383ee2F44F3A57764BF7d"

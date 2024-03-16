@@ -25,18 +25,6 @@ abstract contract BaseAcceptanceTest is Test {
     uint16 internal constant DISABLE_DELEVERAGE              = 1 << 8;
     uint16 internal constant ENABLE_FCASH_DISCOUNT           = 1 << 9;
 
-    uint16 constant ETH = 1;
-    uint16 constant DAI = 2;
-    uint16 constant USDC = 3;
-    uint16 constant WBTC = 4;
-    uint16 constant WSTETH = 5;
-    uint16 constant FRAX = 6;
-    uint16 constant RETH = 7;
-    uint16 constant USDT = 8;
-    uint16 constant CBETH = 9;
-    uint16 constant GMX = 10;
-    uint16 constant ARB = 11;
-    uint16 constant RDNT = 12;
 
     string RPC_URL = vm.envString("RPC_URL");
     uint256 FORK_BLOCK = vm.envUint("FORK_BLOCK");
@@ -301,7 +289,8 @@ abstract contract BaseAcceptanceTest is Test {
 
         vm.roll(5);
         vm.warp(maturity);
-        for (uint16 i = 1; i <= USDT; i++) Deployments.NOTIONAL.initializeMarkets(i, false);
+        uint16 maxCurrency = Deployments.NOTIONAL.getMaxCurrencyId();
+        for (uint16 i = 1; i <= maxCurrency; i++) Deployments.NOTIONAL.initializeMarkets(i, false);
 
         vm.prank(address(Deployments.NOTIONAL));
         uint256 primeVaultShares = vault.convertVaultSharesToPrimeMaturity(

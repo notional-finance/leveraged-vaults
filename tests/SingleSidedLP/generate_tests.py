@@ -3,6 +3,34 @@ import shutil
 import os
 from jinja2 import Template
 
+currencyIds = {
+    "mainnet": {
+        "ETH": 1,
+        "DAI": 2,
+        "USDC": 3,
+        "WBTC": 4,
+        "wstETH": 5,
+        "FRAX": 6,
+        "rETH": 7,
+        "USDT": 8,
+        "sDAI": 9,
+    },
+    "arbitrum": {
+        "ETH": 1,
+        "DAI": 2,
+        "USDC": 3,
+        "WBTC": 4,
+        "wstETH": 5,
+        "FRAX": 6,
+        "rETH": 7,
+        "USDT": 8,
+        "CBETH": 9,
+        "GMX": 10,
+        "ARB": 11,
+        "RDNT": 12,
+    }
+}
+
 token = {
     "mainnet": {
         "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -140,6 +168,7 @@ def generate_files(network, yaml_file, template_file):
         test['contractName'] = get_contract_name(test)
         test['oracles'] = get_oracles(network, test['oracles'])
         test['rewards'] = get_tokens(network, test['rewards']) if 'rewards' in test else []
+        test['primaryBorrowCurrency'] = currencyIds[network][test['primaryBorrowCurrency']]
 
         output = render_template(template, test)
         output_file = f"{output_dir}/{test['contractName']}.t.sol"  # Define the output file name
