@@ -7,6 +7,9 @@ import "@interfaces/trading/ITradingModule.sol";
 
 abstract contract StrategyVaultHarness {
     address public EXISTING_DEPLOYMENT;
+    bytes public metadata;
+
+    function setUp() public virtual;
 
     function setDeployment(address deployment) public {
         EXISTING_DEPLOYMENT = deployment;
@@ -16,7 +19,9 @@ abstract contract StrategyVaultHarness {
     function getTestVaultConfig() public view virtual returns (VaultConfigParams memory);
 
     function initVariables() public virtual;
-    function deployVaultImplementation() public virtual returns (address impl);
+    function deployVaultImplementation() public virtual returns (
+        address impl, bytes memory _metadata
+    );
     function getInitializeData() public view virtual returns (bytes memory initData);
     function getRequiredOracles() public view virtual returns (
         address[] memory token, address[] memory oracle

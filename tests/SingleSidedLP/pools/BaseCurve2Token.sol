@@ -5,7 +5,7 @@ import "../BaseSingleSidedLPVault.sol";
 import "@contracts/vaults/curve/Curve2TokenConvexVault.sol";
 import "@contracts/vaults/curve/mixins/ConvexStakingMixin.sol";
 
-abstract contract BaseCurve2Token is BaseSingleSidedLPVault {
+abstract contract BaseCurve2Token is StrategyVaultHarness {
     address lpToken;
     CurveInterface curveInterface;
 
@@ -29,22 +29,26 @@ abstract contract BaseCurve2Token is BaseSingleSidedLPVault {
     //     );
     // }
 
-    function deployVaultImplementation() internal override returns (address) {
-        IStrategyVault impl = new Curve2TokenConvexVault(
+    function deployVaultImplementation() public override returns (
+        address impl, bytes memory _metadata
+    ) {
+        SingleSidedLPMetadata memory _m = abi.decode(metadata, (SingleSidedLPMetadata));
+
+        impl = address(new Curve2TokenConvexVault(
             Deployments.NOTIONAL, ConvexVaultDeploymentParams({
-                rewardPool: address(rewardPool),
-                whitelistedReward: whitelistedReward,
+                rewardPool: address(_m.rewardPool),
+                whitelistedReward: _m.whitelistedReward,
                 baseParams: DeploymentParams({
-                    primaryBorrowCurrencyId: primaryBorrowCurrency,
-                    pool: address(poolToken),
+                    primaryBorrowCurrencyId: _m.primaryBorrowCurrency,
+                    pool: address(_m.poolToken),
                     tradingModule: Deployments.TRADING_MODULE,
                     poolToken: address(lpToken),
                     curveInterface: curveInterface
                 })
             })
-        );
+        ));
 
-        return address(impl);
+        _metadata = abi.encode(_m);
     }
 }
 

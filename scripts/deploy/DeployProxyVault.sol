@@ -43,7 +43,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
             // Broadcast the implementation if proxy is not set
             if (proxy == address(0)) {
                 vm.startBroadcast();
-                address impl = harness.deployVaultImplementation();
+                (address impl, /* */) = harness.deployVaultImplementation();
                 console.log("Implementation Address", impl);
                 vm.stopBroadcast();
                 return;
@@ -106,7 +106,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
         
         if (upgradeVault) {
             vm.startBroadcast();
-            address impl = harness.deployVaultImplementation();
+            (address impl, /* */) = harness.deployVaultImplementation();
             vm.stopBroadcast();
 
             MethodCall[] memory upgrade = new MethodCall[](1);

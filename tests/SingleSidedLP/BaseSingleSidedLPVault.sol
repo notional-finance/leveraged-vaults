@@ -7,31 +7,53 @@ import "@contracts/vaults/common/SingleSidedLPVaultBase.sol";
 import "@contracts/proxy/nProxy.sol";
 import "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import "@interfaces/trading/ITradingModule.sol";
+import "./BalancerAttacker.sol";
+
+struct SingleSidedLPMetadata {
+    bytes32 balancerPoolId;
+    uint16 primaryBorrowCurrency;
+    StrategyVaultSettings settings;
+    IERC20 rewardPool;
+    IERC20 poolToken;
+    IERC20[] rewardTokens;
+    address whitelistedReward;
+}
 
 abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
     bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
 
-    uint16 primaryBorrowCurrency;
-    StrategyVaultSettings settings;
     uint256 numTokens;
-    IERC20 rewardPool;
-    IERC20 poolToken;
-    IERC20[] rewardTokens;
-    address whitelistedReward;
+    SingleSidedLPMetadata metadata;
 
-    function getInitializeData() internal view override returns (bytes memory initData) {
-        return abi.encodeWithSelector(
-            ISingleSidedLPStrategyVault.initialize.selector, InitParams({
-                name: harness.getVaultName(),
-                borrowCurrencyId: primaryBorrowCurrency,
-                settings: settings
-            })
-        );
-    }
+    // function getInitializeData() internal view override returns (bytes memory initData) {
+    //     return abi.encodeWithSelector(
+    //         ISingleSidedLPStrategyVault.initialize.selector, InitParams({
+    //             name: harness.getVaultName(),
+    //             borrowCurrencyId: metadata.primaryBorrowCurrency,
+    //             settings: metadata.settings
+    //         })
+    //     );
+    // }
+
+    // function getTestVaultConfig() internal view override returns (VaultConfigParams memory p) {
+    //     p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;
+    //     p.borrowCurrencyId = metadata.primaryBorrowCurrency;
+    //     p.minAccountBorrowSize = 0.01e8;
+    //     p.minCollateralRatioBPS = 5000;
+    //     p.feeRate5BPS = 5;
+    //     p.liquidationRate = 102;
+    //     p.reserveFeeShare = 80;
+    //     p.maxBorrowMarketIndex = 2;
+    //     p.maxDeleverageCollateralRatioBPS = 7000;
+    //     p.maxRequiredAccountCollateralRatioBPS = 10000;
+    //     p.excessCashLiquidationBonus = 100;
+    // }
+
 
     function deployTestVault() internal override returns (IStrategyVault) {
-        address impl = harness.deployVaultImplementation();
+        (address impl, bytes memory _metadata) = harness.deployVaultImplementation();
+        metadata = abi.decode(_metadata, (SingleSidedLPMetadata));
         nProxy proxy;
 
         if (harness.EXISTING_DEPLOYMENT() != address(0)) {
@@ -71,20 +93,6 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
 
         // NOTE: no token permissions set, single sided join by default
         return IStrategyVault(address(proxy));
-    }
-
-    function getTestVaultConfig() internal view override returns (VaultConfigParams memory p) {
-        p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;
-        p.borrowCurrencyId = primaryBorrowCurrency;
-        p.minAccountBorrowSize = 0.01e8;
-        p.minCollateralRatioBPS = 5000;
-        p.feeRate5BPS = 5;
-        p.liquidationRate = 102;
-        p.reserveFeeShare = 80;
-        p.maxBorrowMarketIndex = 2;
-        p.maxDeleverageCollateralRatioBPS = 7000;
-        p.maxRequiredAccountCollateralRatioBPS = 10000;
-        p.excessCashLiquidationBonus = 100;
     }
 
     function getDepositParams(
@@ -141,7 +149,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
 
         vm.expectRevert("Initializable: contract is already initialized");
         StrategyVaultSettings memory s;
-        v().initialize(InitParams("Vault", primaryBorrowCurrency, s));
+        v().initialize(InitParams("Vault", metadata.primaryBorrowCurrency, s));
 
         vm.expectRevert(Errors.VaultNotLocked.selector);
         v().tradeTokensBeforeRestore(new SingleSidedRewardTradeParams[](0));
@@ -222,13 +230,13 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(EMERGENCY_EXIT_ROLE, exit);
 
-        initialBalance = rewardPool.balanceOf(address(vault));
+        initialBalance = metadata.rewardPool.balanceOf(address(vault));
         assertGt(initialBalance, 0);
         (IERC20[] memory tokens, /* */) = v().TOKENS();
         for (uint256 i; i < tokens.length; i++) {
             if (address(tokens[i]) == address(0)) {
                 assertEq(address(vault).balance, 0);
-            } else if (tokens[i] != poolToken) {
+            } else if (tokens[i] != metadata.poolToken) {
                 assertEq(tokens[i].balanceOf(address(vault)), 0);
             }
         }
@@ -241,7 +249,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
             if (address(tokens[i]) == address(0)) {
                 exitBalances[i] = address(vault).balance;
                 assertGt(exitBalances[i], 0);
-            } else if (tokens[i] != poolToken) {
+            } else if (tokens[i] != metadata.poolToken) {
                 exitBalances[i] = tokens[i].balanceOf(address(vault));
                 assertGt(exitBalances[i], 0);
             }
@@ -253,8 +261,8 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         uint256 maturity = maturities[0];
         (uint256[] memory exitBalances, address exit, /* */) = setup_EmergencyExit();
 
-        assertEq(rewardPool.balanceOf(address(vault)), 0);
-        assertEq(poolToken.balanceOf(address(vault)), 0);
+        assertEq(metadata.rewardPool.balanceOf(address(vault)), 0);
+        assertEq(metadata.poolToken.balanceOf(address(vault)), 0);
         assertEq(v().isLocked(), true);
 
         // Assert that these methods revert due to locking
@@ -302,11 +310,11 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         for (uint256 i; i < tokens.length; i++) {
             if (address(tokens[i]) == address(0)) {
                 assertEq(address(vault).balance, 0, "eth balance");
-            } else if (tokens[i] != poolToken) {
+            } else if (tokens[i] != metadata.poolToken) {
                 assertEq(tokens[i].balanceOf(address(vault)), 0, "token balance");
             }
         }
-        uint256 postRestore = rewardPool.balanceOf(address(vault));
+        uint256 postRestore = metadata.rewardPool.balanceOf(address(vault));
         assertRelDiff(initialBalance, postRestore, 0.0001e9, "Restore Balance");
         assertEq(v().isLocked(), false);
 
@@ -376,16 +384,16 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
 
         skip(3600);
-        uint256[] memory initialBalance = new uint256[](rewardTokens.length);
-        for (uint256 i; i < rewardTokens.length; i++) {
-            initialBalance[i] = rewardTokens[i].balanceOf(address(vault));
+        uint256[] memory initialBalance = new uint256[](metadata.rewardTokens.length);
+        for (uint256 i; i < metadata.rewardTokens.length; i++) {
+            initialBalance[i] = metadata.rewardTokens[i].balanceOf(address(vault));
         }
 
         vm.prank(reward);
         v().claimRewardTokens();
 
-        for (uint256 i; i < rewardTokens.length; i++) {
-            uint256 rewardBalance = rewardTokens[i].balanceOf(address(vault));
+        for (uint256 i; i < metadata.rewardTokens.length; i++) {
+            uint256 rewardBalance = metadata.rewardTokens[i].balanceOf(address(vault));
             assertGe(rewardBalance - initialBalance[i], 0, "Reward Balance Decrease");
         }
     }
@@ -399,11 +407,11 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
         SingleSidedRewardTradeParams[] memory t = new SingleSidedRewardTradeParams[](numTokens);
-        t[0].sellToken = address(rewardPool);
+        t[0].sellToken = address(metadata.rewardPool);
 
         vm.prank(reward);
         vm.expectRevert(
-            abi.encodeWithSelector(Errors.InvalidRewardToken.selector, address(rewardPool))
+            abi.encodeWithSelector(Errors.InvalidRewardToken.selector, address(metadata.rewardPool))
         );
         v().reinvestReward(t, 0);
     }
@@ -411,8 +419,94 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     function test_cannotReinitialize() public {
         vm.prank(Deployments.NOTIONAL.owner());
         vm.expectRevert("Initializable: contract is already initialized");
-        (bool success, /* */) = address(vault).call(getInitializeData());
+        (bool success, /* */) = address(vault).call(harness.getInitializeData());
         require(!success);
+    }
+
+    function test_RevertIf_ReadOnlyReentrancyAttack() public {
+        if (metadata.balancerPoolId == bytes32(0)) return;
+
+        uint256 maturity = maturities[0];
+        uint16 decimals = isETH ? 18 : primaryBorrowToken.decimals();
+
+        BalancerAttacker balancerAttacker = new BalancerAttacker(
+            Deployments.NOTIONAL,
+            address(vault),
+            maxDeposit / 100,
+            maturity,
+            address(primaryBorrowToken),
+            getRedeemParams(1, maturity),
+            getDepositParams(0, 0),
+            WHALE
+        );
+        balancerAttacker.prepareForAttack();
+
+        address account = address(balancerAttacker);
+        uint256 deposit = 1 * (10 ** decimals);
+
+        (address[] memory tokens, ,) = IBalancerVault(Deployments.BALANCER_VAULT)
+            .getPoolTokens(metadata.balancerPoolId);
+
+        uint256[] memory amounts = new uint256[](tokens.length);
+        address borrowToken =
+            address(primaryBorrowToken) == address(0) ? address(Deployments.WETH) : address(primaryBorrowToken);
+        IAsset[] memory assets = new IAsset[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            assets[i] = IAsset(tokens[i]);
+            if (tokens[i] == borrowToken) {
+                amounts[i] = deposit;
+                if (isETH) assets[i] = IAsset(address(0));
+            }
+        }
+
+        uint256[] memory amountsWithoutBpt = new uint256[](tokens.length - 1);
+        uint256 j;
+        for (uint256 i; i < amounts.length; i++) {
+            if (tokens[i] != address(metadata.poolToken)) {
+                amountsWithoutBpt[j] = amounts[i];
+                j++;
+            }
+        }
+
+        bytes memory customData = abi.encode(
+            IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            amountsWithoutBpt,
+            0
+        );
+
+        uint256 value;
+        if (isETH) {
+            deal(account, deposit);
+            value = deposit;
+        } else {
+            if (WHALE != address(0)) {
+                // USDC does not work with `deal` so transfer from a whale account instead.
+                vm.prank(WHALE);
+                primaryBorrowToken.transfer(address(account), deposit);
+            } else {
+                deal(address(primaryBorrowToken), address(account), deposit, true);
+            }
+            vm.prank(account);
+            primaryBorrowToken.approve(address(Deployments.BALANCER_VAULT), deposit);
+        }
+
+        deal(account, 2 ether);
+        vm.prank(account);
+        // send excess amount of eth so we can execute attack when balancer vault
+        // returns excess value
+        Deployments.BALANCER_VAULT.joinPool{value: value + 0.5 ether}(
+            metadata.balancerPoolId,
+            account, // sender
+            account, // reciever
+            IBalancerVault.JoinPoolRequest(
+                assets,
+                amounts,
+                customData,
+                false // Don't use internal balances
+            )
+        );
+        // check BalancerAttacker was actually called
+        assertTrue(balancerAttacker.called());
     }
 
 }
