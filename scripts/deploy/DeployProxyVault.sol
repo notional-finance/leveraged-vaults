@@ -16,6 +16,8 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
 abstract contract DeployProxyVault is Script, GnosisHelper {
     StrategyVaultHarness harness;
 
+    function setUp() public virtual;
+
     function run() public {
         require(block.chainid == Deployments.CHAIN_ID, "Invalid Chain");
         bool upgradeVault = vm.envOr("UPGRADE_VAULT", false);

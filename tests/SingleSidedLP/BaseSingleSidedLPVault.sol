@@ -35,7 +35,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         if (harness.EXISTING_DEPLOYMENT() != address(0)) {
             proxy = nProxy(payable(harness.EXISTING_DEPLOYMENT()));
             vm.prank(Deployments.NOTIONAL.owner());
-            UUPSUpgradeable(harness.EXISTING_DEPLOYMENT()).upgradeTo(impl);
+            UUPSUpgradeable(address(proxy)).upgradeTo(impl);
             // TODO: check before and after storage....
         } else {
             bytes memory initData = harness.getInitializeData();
@@ -394,9 +394,9 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
 
     function test_cannotReinitialize() public {
         vm.prank(Deployments.NOTIONAL.owner());
+        bytes memory init = harness.getInitializeData();
         vm.expectRevert("Initializable: contract is already initialized");
-        (bool success, /* */) = address(vault).call(harness.getInitializeData());
-        require(!success);
+        address(vault).call(init);
     }
 
     function test_RevertIf_ReadOnlyReentrancyAttack() public {
@@ -435,7 +435,8 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
             }
         }
 
-        uint256[] memory amountsWithoutBpt = new uint256[](tokens.length - 1);
+        bool isComposable = v().strategy() == bytes4(keccak256("BalancerComposableAuraVault"));
+        uint256[] memory amountsWithoutBpt = new uint256[](isComposable ? tokens.length - 1 : tokens.length);
         uint256 j;
         for (uint256 i; i < amounts.length; i++) {
             if (tokens[i] != address(metadata.poolToken)) {

@@ -8,15 +8,39 @@ import {
     VaultConfigParams,
     IERC20
 } from "../../SingleSidedLP/harness/ComposablePoolHarness.sol";
+import { DeployProxyVault} from "../../../scripts/deploy/DeployProxyVault.sol";
+import { BaseSingleSidedLPVault } from "../../SingleSidedLP/BaseSingleSidedLPVault.sol";
 import { Curve2TokenHarness, CurveInterface } from "../../SingleSidedLP/harness/Curve2TokenHarness.sol";
 import { WeightedPoolHarness } from "../../SingleSidedLP/harness/WeightedPoolHarness.sol";
 import { ITradingModule } from "@interfaces/trading/ITradingModule.sol";
 
-contract Test_SingleSidedLP_Aura_USDC_xDAI_USDT_USDC_e is 
+contract Test_SingleSidedLP_Aura_xUSDC_DAI_USDT_USDC_e is BaseSingleSidedLPVault {
+    function setUp() public override {
+        harness = new Harness_SingleSidedLP_Aura_xUSDC_DAI_USDT_USDC_e();
+
+        WHALE = 0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D;
+        // NOTE: need to enforce some minimum deposit here b/c of rounding issues
+        // on the DEX side, even though we short circuit 0 deposits
+        minDeposit = 0.01e6;
+        maxDeposit = 100_000e6;
+        maxRelEntryValuation = 15 * BASIS_POINT;
+        maxRelExitValuation = 15 * BASIS_POINT;
+
+        super.setUp();
+    }
+}
+
+contract Deploy_SingleSidedLP_Aura_xUSDC_DAI_USDT_USDC_e is DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_SingleSidedLP_Aura_xUSDC_DAI_USDT_USDC_e();
+    }
+}
+
+contract Harness_SingleSidedLP_Aura_xUSDC_DAI_USDT_USDC_e is 
 ComposablePoolHarness
  {
     function getVaultName() public pure override returns (string memory) {
-        return 'SingleSidedLP:Aura:USDC/[DAI]/USDT/USDC.e';
+        return 'SingleSidedLP:Aura:[USDC]/DAI/USDT/USDC.e';
     }
 
     function getDeploymentConfig() public view override returns (
@@ -32,8 +56,8 @@ ComposablePoolHarness
         params.maxDeleverageCollateralRatioBPS = 1700;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.001e8;
-        maxPrimaryBorrow = 100e8;
+        params.minAccountBorrowSize = 5_000e8;
+        maxPrimaryBorrow = 300_000e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -85,8 +109,9 @@ ComposablePoolHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0x8Ae7A8789A81A43566d0ee70264252c0DB826940;
         SingleSidedLPMetadata memory _m;
-        _m.primaryBorrowCurrency = 2;
+        _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
@@ -105,18 +130,7 @@ ComposablePoolHarness
         // ARB
         _m.rewardTokens[2] = IERC20(0x912CE59144191C1204E64559FE8253a0e49E6548);
         
+
+        setMetadata(_m);
     }
 }
-
-
-
-/*
-        # TODO: this is only for tests...
-        # // NOTE: need to enforce some minimum deposit here b/c of rounding issues
-        // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
-        maxDeposit = 50e18;
-        maxRelEntryValuation = 15 * BASIS_POINT;
-        maxRelExitValuation = 15 * BASIS_POINT;
-        super.setUp();
-*/

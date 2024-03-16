@@ -8,11 +8,34 @@ import {
     VaultConfigParams,
     IERC20
 } from "../../SingleSidedLP/harness/ComposablePoolHarness.sol";
+import { DeployProxyVault} from "../../../scripts/deploy/DeployProxyVault.sol";
+import { BaseSingleSidedLPVault } from "../../SingleSidedLP/BaseSingleSidedLPVault.sol";
 import { Curve2TokenHarness, CurveInterface } from "../../SingleSidedLP/harness/Curve2TokenHarness.sol";
 import { WeightedPoolHarness } from "../../SingleSidedLP/harness/WeightedPoolHarness.sol";
 import { ITradingModule } from "@interfaces/trading/ITradingModule.sol";
 
-contract Test_SingleSidedLP_Aura_xRDNT_WETH is 
+contract Test_SingleSidedLP_Aura_xRDNT_WETH is BaseSingleSidedLPVault {
+    function setUp() public override {
+        harness = new Harness_SingleSidedLP_Aura_xRDNT_WETH();
+
+        // NOTE: need to enforce some minimum deposit here b/c of rounding issues
+        // on the DEX side, even though we short circuit 0 deposits
+        minDeposit = 0.001e18;
+        maxDeposit = 50e18;
+        maxRelEntryValuation = 75 * BASIS_POINT;
+        maxRelExitValuation = 75 * BASIS_POINT;
+
+        super.setUp();
+    }
+}
+
+contract Deploy_SingleSidedLP_Aura_xRDNT_WETH is DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_SingleSidedLP_Aura_xRDNT_WETH();
+    }
+}
+
+contract Harness_SingleSidedLP_Aura_xRDNT_WETH is 
 WeightedPoolHarness
  {
     function getVaultName() public pure override returns (string memory) {
@@ -91,18 +114,7 @@ WeightedPoolHarness
         // BAL
         _m.rewardTokens[1] = IERC20(0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8);
         
+
+        setMetadata(_m);
     }
 }
-
-
-
-/*
-        # TODO: this is only for tests...
-        # // NOTE: need to enforce some minimum deposit here b/c of rounding issues
-        // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
-        maxDeposit = 50e18;
-        maxRelEntryValuation = 75 * BASIS_POINT;
-        maxRelExitValuation = 75 * BASIS_POINT;
-        super.setUp();
-*/

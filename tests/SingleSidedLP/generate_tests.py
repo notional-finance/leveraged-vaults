@@ -122,7 +122,7 @@ oracle = {
 networks = ['arbitrum', 'mainnet']
 
 def get_contract_name(test):
-    return 'Test_' + test['vaultName'] \
+    return test['vaultName'] \
         .replace(".", "_") \
         .replace(":", "_") \
         .replace('/', '_') \

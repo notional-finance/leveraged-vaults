@@ -8,11 +8,37 @@ import {
     VaultConfigParams,
     IERC20
 } from "../../SingleSidedLP/harness/ComposablePoolHarness.sol";
+import { DeployProxyVault} from "../../../scripts/deploy/DeployProxyVault.sol";
+import { BaseSingleSidedLPVault } from "../../SingleSidedLP/BaseSingleSidedLPVault.sol";
 import { Curve2TokenHarness, CurveInterface } from "../../SingleSidedLP/harness/Curve2TokenHarness.sol";
 import { WeightedPoolHarness } from "../../SingleSidedLP/harness/WeightedPoolHarness.sol";
 import { ITradingModule } from "@interfaces/trading/ITradingModule.sol";
 
-contract {{ contractName }} is 
+contract Test_{{ contractName }} is BaseSingleSidedLPVault {
+    function setUp() public override {
+        harness = new Harness_{{contractName}}();
+
+        {% if whale is defined -%}
+        WHALE = {{ whale }};
+        {% endif -%}
+        // NOTE: need to enforce some minimum deposit here b/c of rounding issues
+        // on the DEX side, even though we short circuit 0 deposits
+        minDeposit = {{ setUp.minDeposit }};
+        maxDeposit = {{ setUp.maxDeposit }};
+        maxRelEntryValuation = {{ setUp.maxRelEntryValuation }} * BASIS_POINT;
+        maxRelExitValuation = {{ setUp.maxRelExitValuation }} * BASIS_POINT;
+
+        super.setUp();
+    }
+}
+
+contract Deploy_{{ contractName }} is DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_{{contractName}}();
+    }
+}
+
+contract Harness_{{ contractName }} is 
 {% if vaultType == "WeightedPool" -%}
     WeightedPoolHarness
 {% elif vaultType == "ComposablePool" -%}
@@ -96,21 +122,7 @@ contract {{ contractName }} is
         // {{ reward.symbol }}
         _m.rewardTokens[{{ loop.index - 1}}] = IERC20({{ reward.tokenAddress }});
         {% endfor %}
+
+        setMetadata(_m);
     }
 }
-
-
-
-/*
-        # TODO: this is only for tests...
-        # {% if whale is defined -%}
-        # WHALE = {{ whale }};
-        # {% endif -%}
-        // NOTE: need to enforce some minimum deposit here b/c of rounding issues
-        // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = {{ setUp.minDeposit }};
-        maxDeposit = {{ setUp.maxDeposit }};
-        maxRelEntryValuation = {{ setUp.maxRelEntryValuation }} * BASIS_POINT;
-        maxRelExitValuation = {{ setUp.maxRelExitValuation }} * BASIS_POINT;
-        super.setUp();
-*/
