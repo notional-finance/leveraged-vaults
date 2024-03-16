@@ -26,30 +26,6 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     uint256 numTokens;
     SingleSidedLPMetadata metadata;
 
-    // function getInitializeData() internal view override returns (bytes memory initData) {
-    //     return abi.encodeWithSelector(
-    //         ISingleSidedLPStrategyVault.initialize.selector, InitParams({
-    //             name: harness.getVaultName(),
-    //             borrowCurrencyId: metadata.primaryBorrowCurrency,
-    //             settings: metadata.settings
-    //         })
-    //     );
-    // }
-
-    // function getTestVaultConfig() internal view override returns (VaultConfigParams memory p) {
-    //     p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;
-    //     p.borrowCurrencyId = metadata.primaryBorrowCurrency;
-    //     p.minAccountBorrowSize = 0.01e8;
-    //     p.minCollateralRatioBPS = 5000;
-    //     p.feeRate5BPS = 5;
-    //     p.liquidationRate = 102;
-    //     p.reserveFeeShare = 80;
-    //     p.maxBorrowMarketIndex = 2;
-    //     p.maxDeleverageCollateralRatioBPS = 7000;
-    //     p.maxRequiredAccountCollateralRatioBPS = 10000;
-    //     p.excessCashLiquidationBonus = 100;
-    // }
-
 
     function deployTestVault() internal override returns (IStrategyVault) {
         (address impl, bytes memory _metadata) = harness.deployVaultImplementation();

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "../BaseSingleSidedLPVault.sol";
+import "./SingleSidedLPHarness.sol";
 import "@contracts/vaults/curve/Curve2TokenConvexVault.sol";
 import "@contracts/vaults/curve/mixins/ConvexStakingMixin.sol";
 
-abstract contract BaseCurve2Token is StrategyVaultHarness {
+abstract contract Curve2TokenHarness is SingleSidedLPHarness {
     address lpToken;
     CurveInterface curveInterface;
 

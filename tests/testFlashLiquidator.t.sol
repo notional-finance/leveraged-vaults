@@ -2,7 +2,9 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
-import "./SingleSidedLP/pools/BaseComposablePool.sol";
+import "@contracts/vaults/balancer/BalancerComposableAuraVault.sol";
+import "@contracts/vaults/balancer/mixins/AuraStakingMixin.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@contracts/liquidator/AaveFlashLiquidator.sol";
 import "@deployments/Deployments.sol";
 import "@interfaces/notional/NotionalProxy.sol";

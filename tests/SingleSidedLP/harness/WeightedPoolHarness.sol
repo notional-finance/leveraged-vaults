@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "../BaseSingleSidedLPVault.sol";
+import "./SingleSidedLPHarness.sol";
 import "@contracts/vaults/balancer/BalancerWeightedAuraVault.sol";
 import "@contracts/vaults/balancer/mixins/AuraStakingMixin.sol";
 import "@interfaces/balancer/IBalancerPool.sol";
 import "@contracts/trading/adapters/BalancerV2Adapter.sol";
 
-abstract contract BaseWeightedPool is StrategyVaultHarness {
+abstract contract WeightedPoolHarness is SingleSidedLPHarness {
 
     function deployVaultImplementation() public override returns (
         address impl, bytes memory _metadata

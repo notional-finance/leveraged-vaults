@@ -9,6 +9,17 @@ abstract contract StrategyVaultHarness {
     address public EXISTING_DEPLOYMENT;
     bytes public metadata;
 
+    uint16 internal constant ENABLED                         = 1 << 0;
+    uint16 internal constant ALLOW_ROLL_POSITION             = 1 << 1;
+    uint16 internal constant ONLY_VAULT_ENTRY                = 1 << 2;
+    uint16 internal constant ONLY_VAULT_EXIT                 = 1 << 3;
+    uint16 internal constant ONLY_VAULT_ROLL                 = 1 << 4;
+    uint16 internal constant ONLY_VAULT_DELEVERAGE           = 1 << 5;
+    uint16 internal constant VAULT_MUST_SETTLE               = 1 << 6;
+    uint16 internal constant ALLOW_REENTRANCY                = 1 << 7;
+    uint16 internal constant DISABLE_DELEVERAGE              = 1 << 8;
+    uint16 internal constant ENABLE_FCASH_DISCOUNT           = 1 << 9;
+
     function setUp() public virtual;
 
     function setDeployment(address deployment) public {

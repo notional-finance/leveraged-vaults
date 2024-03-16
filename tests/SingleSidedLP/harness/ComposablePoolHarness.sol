@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "../BaseSingleSidedLPVault.sol";
+import "./SingleSidedLPHarness.sol";
 import "@contracts/vaults/balancer/BalancerComposableAuraVault.sol";
 import "@contracts/vaults/balancer/mixins/AuraStakingMixin.sol";
 import "@interfaces/balancer/IBalancerPool.sol";
-import "../BaseSingleSidedLPVault.sol";
 import "@contracts/trading/adapters/BalancerV2Adapter.sol";
 
-abstract contract BaseComposablePool is StrategyVaultHarness {
+abstract contract ComposablePoolHarness is SingleSidedLPHarness {
     bytes32 balancerPoolId;
 
     // function getTradingPermissions() internal pure override returns (
@@ -38,7 +37,7 @@ abstract contract BaseComposablePool is StrategyVaultHarness {
     function deployVaultImplementation() public override returns (
         address impl, bytes memory _metadata
     ) {
-        SingleSidedLPMetadata memory _m = abi.decode(metadata, (SingleSidedLPMetadata));
+        SingleSidedLPMetadata memory _m = getMetadata();
 
         _m.poolToken = IERC20(IAuraRewardPool(address(_m.rewardPool)).asset());
         _m.balancerPoolId = IBalancerPool(address(_m.poolToken)).getPoolId();
@@ -58,7 +57,7 @@ abstract contract BaseComposablePool is StrategyVaultHarness {
             BalancerSpotPrice(Deployments.BALANCER_SPOT_PRICE)
         ));
 
-        _metadata = abi.encode(_m);
+        _metadata = setMetadata(_m);
     }
 
 }
