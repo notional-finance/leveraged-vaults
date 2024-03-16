@@ -2,22 +2,20 @@
 set -e
 
 source .env
-export FOUNDRY_PROFILE=deployment
-
-CHAIN=42161
 
 # Check if exactly two arguments are provided
 if [ $# -lt 3 ]; then
-    echo "Usage: $0 PROTOCOL POOL_NAME TOKEN"
+    echo "Usage: $0 CHAIN PROTOCOL POOL_NAME TOKEN"
     echo "  --upgrade only deploys a new implementation"
     echo "  --update  creates config update json"
     exit 1
 fi
 
 # Assign arguments to named variables
-PROTOCOL=$1
-POOL_NAME=$2
-TOKEN=$3
+CHAIN=$1
+PROTOCOL=$2
+POOL_NAME=$3
+TOKEN=$4
 
 UPGRADE_VAULT=false
 UPDATE_CONFIG=false
@@ -34,8 +32,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+export FOUNDRY_PROFILE=$CHAIN
 export UPGRADE_VAULT=$UPGRADE_VAULT
 export UPDATE_CONFIG=$UPDATE_CONFIG
+RPC_VAR="$(echo "$CHAIN"_RPC_URL | tr '[:lower:]' '[:upper:]')"
+export RPC_URL="${!RPC_VAR}"
 
 # Function to prompt for confirmation
 confirm() {
@@ -73,25 +74,37 @@ process_json_file() {
 
 
 CONTRACT=""
+CONTRACT_PATH=""
 # Switch statement for contract verification
 case "$PROTOCOL" in
     "Convex")
         CONTRACT="Curve2TokenConvexVault"
+        CONTRACT_PATH="vaults/curve"
         ;;
     "Aura")
         CONTRACT="BalancerComposableAuraVault"
+        CONTRACT_PATH="vaults/balancer"
         ;;
 esac
 
-# TODO: rewrite test name using pool and protocol
+CHAIN_ID=""
+case "$CHAIN" in
+    "mainnet")
+        CHAIN_ID=1
+        ;;
+    "arbitrum")
+        CHAIN_ID=42161
+        ;;
+esac
 
-
-forge script tests/SingleSidedLP/pools/$PROTOCOL/$POOL_NAME.t.sol:Test_$TOKEN \
+forge build --force
+FILE_NAME=SingleSidedLP_${PROTOCOL}_${POOL_NAME}
+forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
     -f $RPC_URL --sender 0x8F5ea3CDe898B208280c0e93F3aDaaf1F5c35a7e \
-    --gas-limit 1125899906842624 --chain $CHAIN --account ARBITRUM-ONE_DEPLOYER
+   --chain $CHAIN_ID --account ARBITRUM-ONE_DEPLOYER -vvvv
 
-VAULT_CODE=`jq '.transactions[0].transaction.data' broadcast/$POOL_NAME.t.sol/$CHAIN/dry-run/run-latest.json | tr -d '"'`
-IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' broadcast/$POOL_NAME.t.sol/$CHAIN/dry-run/run-latest.json | tr -d '"'`
+VAULT_CODE=`jq '.transactions[0].transaction.data' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
+IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
 
 echo "Expected Implementation Address: $IMPLEMENTATION_ADDRESS"
 print_constructor_args $VAULT_CODE 448
@@ -100,11 +113,11 @@ confirm "Do you want to proceed?" || exit 0
 
 # NOTE: if this fails on estimating gas when executing the deployment we have to manually
 # send the transaction. Verification will not be required if the code has not changed.
-cast send --account ARBITRUM-ONE_DEPLOYER --chain 42161  --gas-limit 120935302 --gas-price 0.1gwei --create $VAULT_CODE
+cast send --account ARBITRUM-ONE_DEPLOYER --chain $CHAIN_ID  --gas-limit 120935302 --gas-price 0.1gwei --create $VAULT_CODE
 
 # Requires manual verification
 forge verify-contract $IMPLEMENTATION_ADDRESS \
-    contracts/vaults/$CONTRACT.sol:$CONTRACT -c 42161 \
+    contracts/$CONTRACT_PATH/$CONTRACT.sol:$CONTRACT -c $CHAIN \
     --show-standard-json-input > json-input.std.json
 
 if [ "$UPGRADE_VAULT" = true ]; then
@@ -124,15 +137,15 @@ confirm "Do you want to proceed?" || exit 0
 # TODO: need to read the proxy address from the json file
 forge create contracts/proxy/nProxy.sol:nProxy \
     --verify --gas-limit 120935302 --gas-price 0.1gwei \
-    --chain 42161 --account ARBITRUM-ONE_DEPLOYER --legacy --json \
+    --chain $CHAIN_ID --account ARBITRUM-ONE_DEPLOYER --legacy --json \
     --constructor-args $IMPLEMENTATION_ADDRESS "" | tee proxy.json
 
 # export PROXY="0x431dbfE3050eA39abBfF3E0d86109FB5BafA28fD"
 
 # Re-run this to generate the gnosis outputs
-forge script tests/SingleSidedLP/pools/$PROTOCOL/$POOL_NAME.t.sol:Test_$TOKEN \
+forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
     -f $RPC_URL --sender 0x8F5ea3CDe898B208280c0e93F3aDaaf1F5c35a7e \
-    --gas-limit 1125899906842624 --chain $CHAIN --account ARBITRUM-ONE_DEPLOYER
+    --gas-limit 1125899906842624 --chain $CHAIN_ID --account ARBITRUM-ONE_DEPLOYER
 
 process_json_file "scripts/deploy/$PROXY.initVault.json"
 process_json_file "scripts/deploy/$PROXY.updateConfig.json"
