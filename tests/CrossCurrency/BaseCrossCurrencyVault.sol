@@ -56,20 +56,6 @@ abstract contract BaseCrossCurrencyVault is BaseAcceptanceTest {
         return IStrategyVault(address(proxy));
     }
 
-    function getTestVaultConfig() internal view override returns (VaultConfigParams memory p) {
-        p.flags = ENABLED | ALLOW_REENTRANCY | ENABLE_FCASH_DISCOUNT | VAULT_MUST_SETTLE;
-        p.borrowCurrencyId = primaryBorrowCurrency;
-        p.minAccountBorrowSize = 0.01e8;
-        p.minCollateralRatioBPS = 5000;
-        p.feeRate5BPS = 5;
-        p.liquidationRate = 102;
-        p.reserveFeeShare = 80;
-        p.maxBorrowMarketIndex = 2;
-        p.maxDeleverageCollateralRatioBPS = 7000;
-        p.maxRequiredAccountCollateralRatioBPS = 10000;
-        p.excessCashLiquidationBonus = 100;
-    }
-
     function getDepositParams(
         uint256 /* depositAmount */,
         uint256 /* maturity */

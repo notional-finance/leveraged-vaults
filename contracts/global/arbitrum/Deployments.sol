@@ -13,6 +13,7 @@ import {ICurveRegistry} from "@interfaces/curve/ICurveRegistry.sol";
 import {ICurveMetaRegistry} from "@interfaces/curve/ICurveMetaRegistry.sol";
 import {ICurveRouterV2} from "@interfaces/curve/ICurveRouterV2.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
+import {IWrappedfCashFactory} from "@interfaces/notional/IWrappedfCashFactory.sol";
 import {AggregatorV2V3Interface} from "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 library Deployments {
@@ -39,6 +40,7 @@ library Deployments {
     address internal constant TREASURY_MANAGER = 0x53144559C0d4a3304e2DD9dAfBD685247429216d;
     address internal constant EMERGENCY_EXIT_MANAGER = 0xbf778Fc19d0B55575711B6339A3680d07352B221;
     address internal constant BALANCER_SPOT_PRICE = 0x904d881ceC1b8bc3f3Ff32cCf9533c1843706E9e;
+    IWrappedfCashFactory internal constant WRAPPED_FCASH_FACTORY = IWrappedfCashFactory(0x5D051DeB5db151C2172dCdCCD42e6A2953E27261);
 
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(0xFdB631F5EE196F0ed6FAa767959853A9F217697D);

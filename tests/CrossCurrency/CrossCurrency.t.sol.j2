@@ -3,30 +3,63 @@ pragma solidity 0.8.17;
 
 import "../CrossCurrency/BaseCrossCurrencyVault.sol";
 
-contract {{ contractName }} is BaseCrossCurrencyVault {
+contract {{ contractName }} is CrossCurrencyHarness {
     function getVaultName() internal pure override returns (string memory) {
         return '{{ vaultName }}';
     }
-    
-    function getRequiredOracles() internal override view virtual returns (
+
+    function getRequiredOracles() public override pure returns (
         address[] memory token, address[] memory oracle
     ) {
         token = new address[](2);
         oracle = new address[](2);
 
-        // {{ primaryBorrowCurrency }}
-        token[0] = {{ borrowToken }};
-        oracle[0] = {{ borrowOracle }};
-        
-        // {{ lendCurrency }}
-        token[1] = {{ lendToken }};
-        oracle[1] = {{ lendOracle }};
+        // {{ lendToken.symbol }}
+        token[0] = {{ lendToken.tokenAddress }};
+        oracle[0] = {{ lendToken.oracleAddress }};
+
+        // {{ borrowToken.symbol }}
+        token[1] = {{ borrowToken.tokenAddress }};
+        oracle[1] = {{ borrowToken.oracleAddress }};
     }
 
+    function getTradingPermissions() public pure override returns (
+        address[] memory token, ITradingModule.TokenPermissions[] memory permissions
+    ) {
+        token = new address[](2);
+        permissions = new ITradingModule.TokenPermissions[](2);
+
+        // {{ lendToken.symbol }}
+        token[0] = {{ lendToken.tokenAddress}};
+        permissions[0] = ITradingModule.TokenPermissions(
+            // 0x, EXACT_IN_SINGLE
+            { allowSell: true, dexFlags: {{ lendToken.dexFlags }}, tradeTypeFlags: 0 }
+        );
+
+        // {{ borrowToken.symbol }}
+        token[0] = {{ borrowToken.tokenAddress}};
+        permissions[0] = ITradingModule.TokenPermissions(
+            // 0x, EXACT_IN_SINGLE
+            { allowSell: true, dexFlags: {{ borrowToken.dexFlags }}, tradeTypeFlags: 0 }
+        );
+    }
+    
+    constructor() {
+        {% if existingDeployment is defined -%}
+        EXISTING_DEPLOYMENT = {{ existingDeployment }};
+        {% endif -%}
+
+        CrossCurrencyMetadata memory _m;
+        _m.primaryBorrowCurrency = {{ borrowToken.currencyId }};
+        _m.lendCurrencyId = {{ lendToken.currencyId }};
+        setMetadata(_m);
+    }
+}
+
+contract Test_{{ contractName }} is BaseCrossCurrencyVault {
     function setUp() public override {
-        primaryBorrowCurrency = {{ primaryBorrowCurrency }};
-        lendCurrencyId = {{ lendCurrency }};
-        
+        harness = new Harness_{{ contractName }}()
+
         {% if dex == "CurveV2" -%}
         primaryDexId = uint16(DexId.CURVE_V2);
         CurveV2Adapter.CurveV2SingleData memory c;
@@ -42,5 +75,15 @@ contract {{ contractName }} is BaseCrossCurrencyVault {
         maxRelExitValuation = {{ setUp.maxRelExitValuation }} * BASIS_POINT;
 
         super.setUp();
+    }
+}
+
+contract Deploy_{{ contractName }} is Harness_{{ contractName }}, DeployBeaconVault {
+    function setUp() public override {
+        harness = new Harness_{{contractName}}();
+    }
+
+    function deployVault() internal override returns (address impl, bytes memory _metadata) {
+        return deployVaultImplementation();
     }
 }

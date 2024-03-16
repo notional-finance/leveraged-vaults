@@ -13,6 +13,7 @@ import {ICurveRegistry} from "@interfaces/curve/ICurveRegistry.sol";
 import {ICurveMetaRegistry} from "@interfaces/curve/ICurveMetaRegistry.sol";
 import {ICurveRouterV2} from "@interfaces/curve/ICurveRouterV2.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
+import {IWrappedfCashFactory} from "@interfaces/notional/IWrappedfCashFactory.sol";
 import {AggregatorV2V3Interface} from "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 /// @title Hardcoded Deployment Addresses for Mainnet
@@ -40,6 +41,7 @@ library Deployments {
     // Notional Inc
     address internal constant EMERGENCY_EXIT_MANAGER = 0x02479BFC7Dce53A02e26fE7baea45a0852CB0909;
     address internal constant BALANCER_SPOT_PRICE = 0xA153B3E85833F8a323E60Dcdc08F6286eae28728;
+    IWrappedfCashFactory internal constant WRAPPED_FCASH_FACTORY = IWrappedfCashFactory(address(0));
 
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(address(0));
