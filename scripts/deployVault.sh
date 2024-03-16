@@ -104,10 +104,11 @@ forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
    --chain $CHAIN_ID --account ARBITRUM-ONE_DEPLOYER -vvvv
 
 VAULT_CODE=`jq '.transactions[0].transaction.data' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
+DEPLOYMENT_ARGS=`jq '.transactions[0].arguments' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
 IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
 
 echo "Expected Implementation Address: $IMPLEMENTATION_ADDRESS"
-print_constructor_args $VAULT_CODE 448
+echo "Arguments: $DEPLOYMENT_ARGS"
 
 confirm "Do you want to proceed?" || exit 0
 

@@ -17,6 +17,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
     StrategyVaultHarness harness;
 
     function setUp() public virtual;
+    function deployVault() internal virtual returns (address impl, bytes memory _metadata);
 
     function run() public {
         require(block.chainid == Deployments.CHAIN_ID, "Invalid Chain");
@@ -45,7 +46,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
             // Broadcast the implementation if proxy is not set
             if (proxy == address(0)) {
                 vm.startBroadcast();
-                (address impl, /* */) = harness.deployVaultImplementation();
+                (address impl, /* */) = deployVault();
                 console.log("Implementation Address", impl);
                 vm.stopBroadcast();
                 return;

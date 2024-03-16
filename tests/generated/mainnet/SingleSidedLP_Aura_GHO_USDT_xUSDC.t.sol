@@ -30,12 +30,6 @@ contract Test_SingleSidedLP_Aura_GHO_USDT_xUSDC is BaseSingleSidedLPVault {
     }
 }
 
-contract Deploy_SingleSidedLP_Aura_GHO_USDT_xUSDC is DeployProxyVault {
-    function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_GHO_USDT_xUSDC();
-    }
-}
-
 contract Harness_SingleSidedLP_Aura_GHO_USDT_xUSDC is 
 ComposablePoolHarness
  {
@@ -120,5 +114,15 @@ ComposablePoolHarness
         
 
         setMetadata(_m);
+    }
+}
+
+contract Deploy_SingleSidedLP_Aura_GHO_USDT_xUSDC is Harness_SingleSidedLP_Aura_GHO_USDT_xUSDC, DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_SingleSidedLP_Aura_GHO_USDT_xUSDC();
+    }
+
+    function deployVault() internal override returns (address impl, bytes memory _metadata) {
+        return deployVaultImplementation();
     }
 }

@@ -32,12 +32,6 @@ contract Test_{{ contractName }} is BaseSingleSidedLPVault {
     }
 }
 
-contract Deploy_{{ contractName }} is DeployProxyVault {
-    function setUp() public override {
-        harness = new Harness_{{contractName}}();
-    }
-}
-
 contract Harness_{{ contractName }} is 
 {% if vaultType == "WeightedPool" -%}
     WeightedPoolHarness
@@ -124,5 +118,15 @@ contract Harness_{{ contractName }} is
         {% endfor %}
 
         setMetadata(_m);
+    }
+}
+
+contract Deploy_{{ contractName }} is Harness_{{ contractName }}, DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_{{contractName}}();
+    }
+
+    function deployVault() internal override returns (address impl, bytes memory _metadata) {
+        return deployVaultImplementation();
     }
 }

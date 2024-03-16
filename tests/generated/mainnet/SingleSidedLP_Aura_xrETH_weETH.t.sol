@@ -29,12 +29,6 @@ contract Test_SingleSidedLP_Aura_xrETH_weETH is BaseSingleSidedLPVault {
     }
 }
 
-contract Deploy_SingleSidedLP_Aura_xrETH_weETH is DeployProxyVault {
-    function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_xrETH_weETH();
-    }
-}
-
 contract Harness_SingleSidedLP_Aura_xrETH_weETH is 
 ComposablePoolHarness
  {
@@ -116,5 +110,15 @@ ComposablePoolHarness
         
 
         setMetadata(_m);
+    }
+}
+
+contract Deploy_SingleSidedLP_Aura_xrETH_weETH is Harness_SingleSidedLP_Aura_xrETH_weETH, DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_SingleSidedLP_Aura_xrETH_weETH();
+    }
+
+    function deployVault() internal override returns (address impl, bytes memory _metadata) {
+        return deployVaultImplementation();
     }
 }

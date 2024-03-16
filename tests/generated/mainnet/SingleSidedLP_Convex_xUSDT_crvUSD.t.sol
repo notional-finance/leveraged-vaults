@@ -29,12 +29,6 @@ contract Test_SingleSidedLP_Convex_xUSDT_crvUSD is BaseSingleSidedLPVault {
     }
 }
 
-contract Deploy_SingleSidedLP_Convex_xUSDT_crvUSD is DeployProxyVault {
-    function setUp() public override {
-        harness = new Harness_SingleSidedLP_Convex_xUSDT_crvUSD();
-    }
-}
-
 contract Harness_SingleSidedLP_Convex_xUSDT_crvUSD is 
 Curve2TokenHarness
  {
@@ -120,5 +114,15 @@ Curve2TokenHarness
         
 
         setMetadata(_m);
+    }
+}
+
+contract Deploy_SingleSidedLP_Convex_xUSDT_crvUSD is Harness_SingleSidedLP_Convex_xUSDT_crvUSD, DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_SingleSidedLP_Convex_xUSDT_crvUSD();
+    }
+
+    function deployVault() internal override returns (address impl, bytes memory _metadata) {
+        return deployVaultImplementation();
     }
 }

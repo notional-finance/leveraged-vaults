@@ -29,12 +29,6 @@ contract Test_SingleSidedLP_Convex_xFRAX_USDC_e is BaseSingleSidedLPVault {
     }
 }
 
-contract Deploy_SingleSidedLP_Convex_xFRAX_USDC_e is DeployProxyVault {
-    function setUp() public override {
-        harness = new Harness_SingleSidedLP_Convex_xFRAX_USDC_e();
-    }
-}
-
 contract Harness_SingleSidedLP_Convex_xFRAX_USDC_e is 
 Curve2TokenHarness
  {
@@ -113,5 +107,15 @@ Curve2TokenHarness
         
 
         setMetadata(_m);
+    }
+}
+
+contract Deploy_SingleSidedLP_Convex_xFRAX_USDC_e is Harness_SingleSidedLP_Convex_xFRAX_USDC_e, DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_SingleSidedLP_Convex_xFRAX_USDC_e();
+    }
+
+    function deployVault() internal override returns (address impl, bytes memory _metadata) {
+        return deployVaultImplementation();
     }
 }
