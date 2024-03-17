@@ -1,11 +1,8 @@
-export FOUNDRY_PROFILE=deployment
-export UPDATE_CONFIG=true
-
-CHAIN=42161
+source .env
 
 # Check if exactly two arguments are provided
-if [ $# -ne 3 ]; then
-    echo "Usage: $0 PROTOCOL POOL_NAME TOKEN"
+if [ $# -ne 4 ]; then
+    echo "Usage: $0 CHAIN PROTOCOL POOL_NAME TOKEN"
     exit 1
 fi
 
@@ -17,9 +14,10 @@ process_json_file() {
 }
 
 # Assign arguments to named variables
-PROTOCOL=$1
-POOL_NAME=$2
-TOKEN=$3
+CHAIN=$1
+PROTOCOL=$2
+POOL_NAME=$3
+TOKEN=$4
 
 PROXY=$(jq --arg network "$CHAIN" \
            --arg protocol "$PROTOCOL" \
@@ -27,12 +25,30 @@ PROXY=$(jq --arg network "$CHAIN" \
            -r '.[$network][$protocol][$pair]' "vaults.json")
 
 
-source .env
+
+CHAIN_ID=""
+case "$CHAIN" in
+    "mainnet")
+        CHAIN_ID=1
+        ;;
+    "arbitrum")
+        CHAIN_ID=42161
+        export ETHERSCAN_API_KEY=$ARBISCAN_API_KEY
+        ;;
+esac
+
+export UPDATE_CONFIG=true
+export FOUNDRY_PROFILE=$CHAIN
+RPC_VAR="$(echo "$CHAIN"_RPC_URL | tr '[:lower:]' '[:upper:]')"
+export ETH_RPC_URL="${!RPC_VAR}"
+
+DEPLOYER=MAINNET_V2_DEPLOYER
+DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
 echo "Updating Config at Proxy Address:" $PROXY
+FILE_NAME=SingleSidedLP_${PROTOCOL}_${POOL_NAME}
 # Re-run this to generate the gnosis outputs
-forge script tests/SingleSidedLP/pools/$PROTOCOL/$POOL_NAME.t.sol:Test_$TOKEN \
-    -f $RPC_URL --sender 0x8F5ea3CDe898B208280c0e93F3aDaaf1F5c35a7e \
-    --gas-limit 1125899906842624 --chain $CHAIN --account ARBITRUM-ONE_DEPLOYER
+forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
+    -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS --chain $CHAIN_ID --account $DEPLOYER
 
 process_json_file "scripts/deploy/$PROXY.updateConfig.json"

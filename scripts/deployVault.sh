@@ -4,7 +4,7 @@ set -e
 source .env
 
 # Check if exactly two arguments are provided
-if [ $# -lt 3 ]; then
+if [ $# -lt 4 ]; then
     echo "Usage: $0 CHAIN PROTOCOL POOL_NAME TOKEN"
     echo "  --upgrade only deploys a new implementation"
     echo "  --update  creates config update json"
