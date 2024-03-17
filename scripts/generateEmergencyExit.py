@@ -1,6 +1,6 @@
 import json
 import os
-from brownie import interface
+from brownie import interface, network
 from brownie.network.contract import Contract
 
 pools = json.load(open("vaults.json", "r"))
@@ -34,20 +34,24 @@ def transactionTemplate(vault):
 
 
 def main():
-    for (network, protocol) in pools.items():
+    # Can only generate exits for one network at a time
+    networkName = network.show_active()
+    for (n, protocol) in pools.items():
+        if n != networkName:
+            continue
         for (protocol, vaults) in protocol.items():
             allVaultTxns = []
             for (vaultName, vaultAddress) in vaults.items():
                 txn = transactionTemplate(vaultAddress)
                 allVaultTxns.append(txn)
 
-                os.makedirs('./emergency/%s/%s' % (network, protocol), exist_ok=True)
+                os.makedirs('./emergency/%s/%s' % (n, protocol), exist_ok=True)
 
                 # Individual txn
-                with open('./emergency/%s/%s/%s.json' % (network, protocol, vaultName), 'w') as f:
-                    json.dump(gnosisBatch(network, [txn]), f, indent=2)
+                with open('./emergency/%s/%s/%s.json' % (n, protocol, vaultName), 'w') as f:
+                    json.dump(gnosisBatch(n, [txn]), f, indent=2)
 
             # All for a protocol
-            with open('./emergency/%s/%s.json' % (network, protocol), 'w') as f:
-                json.dump(gnosisBatch(network, allVaultTxns), f, indent=2)
+            with open('./emergency/%s/%s.json' % (n, protocol), 'w') as f:
+                json.dump(gnosisBatch(n, allVaultTxns), f, indent=2)
 

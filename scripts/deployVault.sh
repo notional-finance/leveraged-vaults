@@ -162,4 +162,4 @@ jq --arg chain "$CHAIN" \
    '.[$chain][$protocol][$pair] = $addr' vaults.json > tmp.json && mv tmp.json vaults.json
 
 source venv/bin/activate
-brownie run scripts/generateEmergencyExit.py --network arbitrum-one
+brownie run scripts/generateEmergencyExit.py --network $CHAIN
