@@ -41,17 +41,17 @@ Curve2TokenHarness
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
         params = getTestVaultConfig();
-        params.feeRate5BPS = 10;
-        params.liquidationRate = 102;
+        params.feeRate5BPS = 20;
+        params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
         params.minCollateralRatioBPS = 500;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 2600;
+        params.maxDeleverageCollateralRatioBPS = 800;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.001e8;
-        maxPrimaryBorrow = 100e8;
+        params.minAccountBorrowSize = 1e8;
+        maxPrimaryBorrow = 5000e8;
     }
 
     function getRequiredOracles() public override pure returns (
