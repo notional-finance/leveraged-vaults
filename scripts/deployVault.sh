@@ -36,7 +36,7 @@ export FOUNDRY_PROFILE=$CHAIN
 export UPGRADE_VAULT=$UPGRADE_VAULT
 export UPDATE_CONFIG=$UPDATE_CONFIG
 RPC_VAR="$(echo "$CHAIN"_RPC_URL | tr '[:lower:]' '[:upper:]')"
-export RPC_URL="${!RPC_VAR}"
+export ETH_RPC_URL="${!RPC_VAR}"
 
 # Function to prompt for confirmation
 confirm() {
@@ -97,11 +97,14 @@ case "$CHAIN" in
         ;;
 esac
 
+DEPLOYER=MAINNET_V2_DEPLOYER
+DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
+
 forge build --force
 FILE_NAME=SingleSidedLP_${PROTOCOL}_${POOL_NAME}
 forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
-    -f $RPC_URL --sender 0x8F5ea3CDe898B208280c0e93F3aDaaf1F5c35a7e \
-   --chain $CHAIN_ID --account ARBITRUM-ONE_DEPLOYER -vvvv
+    -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
+   --chain $CHAIN_ID --account $DEPLOYER -vvvv
 
 VAULT_CODE=`jq '.transactions[0].transaction.data' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
 DEPLOYMENT_ARGS=`jq '.transactions[0].arguments' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
@@ -109,12 +112,13 @@ IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' broadcast/$FILE_NA
 
 echo "Expected Implementation Address: $IMPLEMENTATION_ADDRESS"
 echo "Arguments: $DEPLOYMENT_ARGS"
+echo "Deployer: $DEPLOYER_ADDRESS ($DEPLOYER)"
 
 confirm "Do you want to proceed?" || exit 0
 
 # NOTE: if this fails on estimating gas when executing the deployment we have to manually
 # send the transaction. Verification will not be required if the code has not changed.
-cast send --account ARBITRUM-ONE_DEPLOYER --chain $CHAIN_ID  --gas-limit 120935302 --gas-price 0.1gwei --create $VAULT_CODE
+cast send --account $DEPLOYER --chain $CHAIN_ID -r $ETH_RPC_URL --create $VAULT_CODE
 
 # Requires manual verification
 forge verify-contract $IMPLEMENTATION_ADDRESS \
@@ -137,16 +141,14 @@ confirm "Do you want to proceed?" || exit 0
 
 # TODO: need to read the proxy address from the json file
 forge create contracts/proxy/nProxy.sol:nProxy \
-    --verify --gas-limit 120935302 --gas-price 0.1gwei \
-    --chain $CHAIN_ID --account ARBITRUM-ONE_DEPLOYER --legacy --json \
-    --constructor-args $IMPLEMENTATION_ADDRESS "" | tee proxy.json
+    --verify --chain $CHAIN_ID --account $DEPLOYER --legacy --json \
+    --constructor-args $IMPLEMENTATION_ADDRESS "0x" | tee proxy.json
 
 # export PROXY="0x431dbfE3050eA39abBfF3E0d86109FB5BafA28fD"
 
 # Re-run this to generate the gnosis outputs
 forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
-    -f $RPC_URL --sender 0x8F5ea3CDe898B208280c0e93F3aDaaf1F5c35a7e \
-    --gas-limit 1125899906842624 --chain $CHAIN_ID --account ARBITRUM-ONE_DEPLOYER
+    -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS --chain $CHAIN_ID 
 
 process_json_file "scripts/deploy/$PROXY.initVault.json"
 process_json_file "scripts/deploy/$PROXY.updateConfig.json"
