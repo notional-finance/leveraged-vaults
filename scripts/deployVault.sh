@@ -94,6 +94,7 @@ case "$CHAIN" in
         ;;
     "arbitrum")
         CHAIN_ID=42161
+        export ETHERSCAN_API_KEY=$ARBISCAN_API_KEY
         ;;
 esac
 
@@ -139,12 +140,12 @@ fi
 echo "Deploying Proxy contract for $IMPLEMENTATION_ADDRESS"
 confirm "Do you want to proceed?" || exit 0
 
-# TODO: need to read the proxy address from the json file
 forge create contracts/proxy/nProxy.sol:nProxy \
     --verify --chain $CHAIN_ID --account $DEPLOYER --legacy --json \
     --constructor-args $IMPLEMENTATION_ADDRESS "0x" | tee proxy.json
 
-# export PROXY="0x431dbfE3050eA39abBfF3E0d86109FB5BafA28fD"
+export PROXY=`head -n 1 proxy.json | jq '.deployedTo' | tr -d '"'`
+rm proxy.json
 
 # Re-run this to generate the gnosis outputs
 forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \

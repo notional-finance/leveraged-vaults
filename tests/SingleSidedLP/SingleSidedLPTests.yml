@@ -208,6 +208,7 @@ mainnet:
     vaultType: Curve2Token
     curveInterface: StableSwapNG
     primaryBorrowCurrency: USDC
+    existingDeployment: "0x84e58d8faA4e3B74d55D9fc762230f15d95570B8"
     rewardPool: "0xc583e81bB36A1F620A804D8AF642B63b0ceEb5c0"
     poolToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"
     lpToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"

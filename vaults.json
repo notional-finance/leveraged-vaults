@@ -10,5 +10,10 @@
       "[ETH]:ETH_wstETH": "0x0E8C1A069f40D0E8Fa861239D3e62003cBF3dCB2",
       "[wstETH]:wstETH_cbETH_rETH": "0x37dD23Ab1885982F789A2D6400B583B8aE09223d"
     }
+  },
+  "mainnet": {
+    "Convex": {
+      "[USDC]:pyUSD_xUSDC": "0x84e58d8faA4e3B74d55D9fc762230f15d95570B8"
+    }
   }
 }
