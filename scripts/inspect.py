@@ -26,10 +26,9 @@ def get_addresses():
     networkName = network.show_active()
     if networkName == "mainnet-fork" or networkName == "mainnet-current" or networkName == "mainnet":
         networkName = "mainnet"
-        output_file = "v2.{}.json".format(networkName)
     if networkName == "arbitrum-fork" or networkName == "arbitrum-current":
         networkName = "arbitrum-one"
-        output_file = "v3.{}.json".format(networkName)
+    output_file = "v3.{}.json".format(networkName)
     addresses = None
     with open(output_file, "r") as f:
         addresses = json.load(f)

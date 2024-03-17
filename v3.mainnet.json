@@ -1,0 +1,55 @@
+{
+    "aaveLendingPool": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+    "actions": {
+        "AccountAction": "0x922E6E0B80eE037B32266BCa33713B2043Bc87d0",
+        "BatchAction": "0x4fc792418b8901d5593dC89d7627d2DAF2EbEdE9",
+        "CalculationViews": "0x851a28260227f9a8e6BF39a5Fa3b5132Fa49c7F3",
+        "ERC1155Action": "0x51888550902159F2Eb7C43B8589DBe975379AA10",
+        "GovernanceAction": "0x514f9563ACE90BdE2F0f00091208236E1864690F",
+        "InitializeMarketsAction": "0x884b74912be39e925D60ef3aA13b6321E645c893",
+        "LiquidateCurrencyAction": "0x0ff45Fd2ad282B7E6E29dc10DbE6B3fc907284b0",
+        "LiquidatefCashAction": "0xF38A93Ee78912b10fF722d187554406B0416a800",
+        "TreasuryAction": "0x3965D75Bfe40435246c22F75db2e170210b8bC68",
+        "VaultAccountAction": "0xF8b25dA34367e5Fe6d9cD03d1eCfD227EE06021a",
+        "VaultAccountHealth": "0x7d764650690e60a7a6647F2d12708F8434b87052",
+        "VaultAction": "0x67E5f0db833e7E4f000A768D1eb7a8e87B31AA75",
+        "VaultLiquidationAction": "0x49d0E97bA2F4cf0E5e4f86C0d9C5c8aCBacFF50C",
+        "Views": "0x54BB219281Fe0EeF1483bc4421e6502Fe1e30A97",
+        "nTokenAction": "0x3533F05B2C54Ce1C2321cfe3c6F693A3cBbAEa10"
+    },
+    "beacons": {
+        "PrimeCashProxy": "0x92DC86B93fb564131Aa6F961A98465355D58A560",
+        "PrimeDebtProxy": "0x366d5b255D97C5fee2283561Bd89fCe5566b178F",
+        "nTokenBeacon": "0xc4FD259b816d081C8bdd22D6bbd3495DB1573DB7",
+        "nTokenERC20Proxy": "0xEB2577109a7c636f0e65b75d2C1cb55A54fd8EC5",
+        "pCashBeacon": "0x1F681977aF5392d9Ca5572FB394BC4D12939A6A9",
+        "pDebtBeacon": "0xDF08039c0af34E34660aC7c2705C0Da953247640"
+    },
+    "callbacks": {
+        "LeveragedNTokenAdapter": "0x25ee011B6Af5537eCD520f40CA759899a064CfCF"
+    },
+    "chainId": 1,
+    "deployer": "0x8B64fA5Fd129df9c755eB82dB1e16D6D0Bdf5Bc3",
+    "guardian": "",
+    "libs": {
+        "FreeCollateralExternal": "0xeA7aa69DbEEA9deB4294109BD344F69c79c6FDF7",
+        "SettleAssetsExternal": "0xe10836BA543Be91e978fC9b455BF483572a44B21",
+        "TradingAction": "0xCAc9c01d1207e5D06bB0fD5b854832F35FE97E68",
+        "nTokenMintAction": "0x65C23F235a630Ca918cB1AcC37533597A413ca2e",
+        "nTokenRedeemAction": "0xcE3F1D83CEcee26b1D4a7010123b86cED67a48d4"
+    },
+    "networkName": "mainnet",
+    "note": "0xCFEAead4947f0705A14ec42aC3D44129E1Ef3eD5",
+    "notional": "0x6e7058c91F85E0F6db4fc9da2CA41241f5e4263f",
+    "routers": {
+        "PauseRouter": "0x8470516910062633bBF959f940232F9d300eF0f6",
+        "Router": "0xfEbC565a1C8C70dBbDC11F0E6Ad8cc33B6F3Dd1B"
+    },
+    "startBlock": 0,
+    "tokens": {
+        "WETH": {
+            "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+        }
+    },
+    "tradingModule": "0x594734c7e06C3D483466ADBCe401C6Bd269746C8"
+}
