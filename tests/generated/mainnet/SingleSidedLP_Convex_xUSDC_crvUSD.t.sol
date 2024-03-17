@@ -97,7 +97,7 @@ Curve2TokenHarness
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            oraclePriceDeviationLimitPercent: 0.015e4
         });
         _m.rewardPool = IERC20(0x44D8FaB7CD8b7877D5F79974c2F501aF6E65AbBA);
 

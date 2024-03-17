@@ -102,7 +102,7 @@ ComposablePoolHarness
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            oraclePriceDeviationLimitPercent: 0.015e4
         });
         _m.rewardPool = IERC20(0x5F032f15B4e910252EDaDdB899f7201E89C8cD6b);
 

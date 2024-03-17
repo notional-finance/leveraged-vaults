@@ -97,13 +97,14 @@ Curve2TokenHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0x84e58d8faA4e3B74d55D9fc762230f15d95570B8;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            oraclePriceDeviationLimitPercent: 0.015e4
         });
         _m.rewardPool = IERC20(0xc583e81bB36A1F620A804D8AF642B63b0ceEb5c0);
 

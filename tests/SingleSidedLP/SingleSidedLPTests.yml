@@ -174,7 +174,7 @@ mainnet:
     oracles: [USDT, crvUSD]
     settings:
       maxPoolShare: 2000
-      oracleDeviationLimit: 0.15e4
+      oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e6
       maxDeposit: 90_000e6
@@ -195,7 +195,7 @@ mainnet:
     whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
     settings:
       maxPoolShare: 2000
-      oracleDeviationLimit: 0.15e4
+      oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e6
       maxDeposit: 90_000e6
@@ -217,7 +217,7 @@ mainnet:
     oracles: [USDC, pyUSD]
     settings:
       maxPoolShare: 2000
-      oracleDeviationLimit: 0.15e4
+      oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e6
       maxDeposit: 90_000e6
@@ -234,7 +234,7 @@ mainnet:
     oracles: [osETH, ETH]
     settings:
       maxPoolShare: 2000
-      oracleDeviationLimit: 0.15e4
+      oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1000e8
       maxDeposit: 1e18
@@ -252,7 +252,7 @@ mainnet:
     oracles: [rETH, weETH]
     settings:
       maxPoolShare: 2000
-      oracleDeviationLimit: 0.15e4
+      oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1000e8
       maxDeposit: 1e18
@@ -271,7 +271,7 @@ mainnet:
     oracles: [GHO, USDT, USDC]
     settings:
       maxPoolShare: 2000
-      oracleDeviationLimit: 0.15e4
+      oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1000e6
       maxDeposit: 100_000e6
