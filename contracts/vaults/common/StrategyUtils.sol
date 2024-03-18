@@ -159,7 +159,7 @@ library StrategyUtils {
         );
 
         (amountSold, amountBought) = trade._executeTradeWithDynamicSlippage(
-            params.dexId, tradingModule, uint32(params.oracleSlippagePercentOrLimit)
+            params.dexId, uint32(params.oracleSlippagePercentOrLimit)
         );
     }
 
@@ -189,7 +189,7 @@ library StrategyUtils {
         );
 
         // Execute trade using the absolute slippage limit set by `oracleSlippagePercentOrLimit`
-        (amountSold, amountBought) = trade._executeTrade(params.dexId, tradingModule);
+        (amountSold, amountBought) = trade._executeTrade(params.dexId);
     }
 
     function getLibInfo() external pure returns (address notional, address tradingModule) {

@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import "./SingleSidedLPHarness.sol";
-import "@contracts/vaults/balancer/BalancerComposableAura_rETH_weETH.sol";
+import "@contracts/vaults/balancer/BalancerComposableWrappedTwoToken.sol";
 import "@contracts/vaults/balancer/mixins/AuraStakingMixin.sol";
 import "@interfaces/balancer/IBalancerPool.sol";
 import "@contracts/trading/adapters/BalancerV2Adapter.sol";
@@ -16,7 +16,7 @@ abstract contract ComposablePoolHarness_rETH_weETH is SingleSidedLPHarness {
         _m.poolToken = IERC20(IAuraRewardPool(address(_m.rewardPool)).asset());
         _m.balancerPoolId = IBalancerPool(address(_m.poolToken)).getPoolId();
 
-        impl = address(new BalancerComposableAura_rETH_weETH(
+        impl = address(new BalancerComposableWrappedTwoToken(
             Deployments.NOTIONAL, AuraVaultDeploymentParams({
                 rewardPool: IAuraRewardPool(address(_m.rewardPool)),
                 whitelistedReward: _m.whitelistedReward,
@@ -30,7 +30,6 @@ abstract contract ComposablePoolHarness_rETH_weETH is SingleSidedLPHarness {
             // you need to change the deployment
             BalancerSpotPrice(Deployments.BALANCER_SPOT_PRICE)
         ));
-        console.log("DEPLOYED VAULT");
 
         _metadata = setMetadata(_m);
     }

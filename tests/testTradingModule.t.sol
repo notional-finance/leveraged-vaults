@@ -132,7 +132,7 @@ contract TestTradingModule is Test {
         uint16 dexId,
         Trade memory trade
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-        return trade._executeTrade(dexId, TRADING_MODULE);
+        return trade._executeTrade(dexId);
     }
 
     function executeTradeWithDynamicSlippage(
@@ -140,7 +140,7 @@ contract TestTradingModule is Test {
         Trade memory trade,
         uint32 dynamicSlippageLimit
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-        return trade._executeTradeWithDynamicSlippage(dexId, TRADING_MODULE, dynamicSlippageLimit);
+        return trade._executeTradeWithDynamicSlippage(dexId, dynamicSlippageLimit);
     }
 
     function test_RevertIf_ReinitializeConstructor() public {

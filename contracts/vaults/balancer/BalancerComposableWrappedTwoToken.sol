@@ -14,14 +14,17 @@ import {DexId, TradeType} from "@interfaces/trading/ITradingModule.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {TradeHandler, Trade} from "@contracts/trading/TradeHandler.sol";
 
-contract BalancerComposableAura_rETH_weETH is BalancerComposableAuraVault {
+contract BalancerComposableWrappedTwoToken is BalancerComposableAuraVault {
     using TradeHandler for Trade;
 
     // Set to 50 basis points, if this needs to change then the contract will
     // need to be upgraded.
     uint32 constant DEFAULT_SLIPPAGE_LIMIT = 0.01e8;
-    address constant rETH = 0xae78736Cd615f374D3085123A210448E74Fc6393;
-    bytes constant exchangeData = abi.encode(
+    address constant PRIMARY_TOKEN = 0xae78736Cd615f374D3085123A210448E74Fc6393;
+    address constant BORROW_TOKEN = address(0);
+    int256 constant BORROW_DECIMALS = 1e18;
+    int256 constant PRIMARY_DECIMALS = 1e18;
+    bytes constant EXCHANGE_DATA = abi.encode(
         BalancerV2Adapter.SingleSwapData(0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112)
     );
 
@@ -52,18 +55,18 @@ contract BalancerComposableAura_rETH_weETH is BalancerComposableAuraVault {
 
     function _depositFromNotional(
         address account, uint256 deposit, uint256 maturity, bytes calldata data
-    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+    ) internal override returns (uint256 vaultSharesMinted) {
 
         (/* */, uint256 amountBought) = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
             sellToken: Constants.ETH_ADDRESS,
-            buyToken: rETH,
+            buyToken: PRIMARY_TOKEN,
             amount: deposit,
             limit: DEFAULT_SLIPPAGE_LIMIT,
             deadline: block.timestamp,
-            exchangeData: exchangeData
+            exchangeData: EXCHANGE_DATA
         })._executeTradeWithDynamicSlippage(
-            uint16(DexId.BALANCER_V2), TRADING_MODULE, DEFAULT_SLIPPAGE_LIMIT
+            uint16(DexId.BALANCER_V2), DEFAULT_SLIPPAGE_LIMIT
         );
 
         return super._depositFromNotional(account, amountBought, maturity, data);
@@ -71,36 +74,36 @@ contract BalancerComposableAura_rETH_weETH is BalancerComposableAuraVault {
 
     function _redeemFromNotional(
         address account, uint256 vaultShares, uint256 maturity, bytes calldata data
-    ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
+    ) internal override returns (uint256 finalPrimaryBalance) {
         uint256 primaryBalance = super._redeemFromNotional(
             account, vaultShares, maturity, data
         );
 
         (/* */, finalPrimaryBalance) = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
-            sellToken: rETH,
-            buyToken: Constants.ETH_ADDRESS,
+            sellToken: PRIMARY_TOKEN,
+            buyToken: BORROW_TOKEN,
             amount: primaryBalance,
             limit: DEFAULT_SLIPPAGE_LIMIT,
             deadline: block.timestamp,
-            exchangeData: exchangeData
+            exchangeData: EXCHANGE_DATA
         })._executeTradeWithDynamicSlippage(
-            uint16(DexId.BALANCER_V2), TRADING_MODULE, DEFAULT_SLIPPAGE_LIMIT
+            uint16(DexId.BALANCER_V2), DEFAULT_SLIPPAGE_LIMIT
         );
     }
 
     function convertStrategyToUnderlying(
         address account, uint256 vaultShares, uint256 maturity
-    ) public view override whenNotLocked returns (int256 underlyingValue) {
-        int256 rETHValue = super.convertStrategyToUnderlying(
+    ) public view override returns (int256 underlyingValue) {
+        int256 primaryValue = super.convertStrategyToUnderlying(
             account, vaultShares, maturity
         );
 
         (int256 rate, int256 rateDecimals) = TRADING_MODULE.getOraclePrice(
-            rETH, Constants.ETH_ADDRESS
+            PRIMARY_TOKEN, BORROW_TOKEN
         );
 
         // Convert this back to the borrow currency, external precision
-        return (rETHValue * 1e18 * rate) / (rateDecimals * 1e18);
+        return (primaryValue * BORROW_DECIMALS * rate) / (rateDecimals * PRIMARY_DECIMALS);
     }
 }

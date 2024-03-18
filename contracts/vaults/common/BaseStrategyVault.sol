@@ -117,7 +117,7 @@ abstract contract BaseStrategyVault is Initializable, IStrategyVault, AccessCont
         uint16 dexId,
         Trade memory trade
     ) internal returns (uint256 amountSold, uint256 amountBought) {
-        return trade._executeTrade(dexId, TRADING_MODULE);
+        return trade._executeTrade(dexId);
     }
 
     /**************************************************************************/
