@@ -15,14 +15,14 @@ import { WeightedPoolHarness } from "../../SingleSidedLP/harness/WeightedPoolHar
 import { ComposablePoolHarness_rETH_weETH } from "../../SingleSidedLP/harness/ComposablePoolHarness_rETH_weETH.sol";
 import { ITradingModule } from "@interfaces/trading/ITradingModule.sol";
 
-contract Test_SingleSidedLP_Aura_xrETH_weETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Aura_rETH_weETH_xETH is BaseSingleSidedLPVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_xrETH_weETH();
+        harness = new Harness_SingleSidedLP_Aura_rETH_weETH_xETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 1000e8;
-        maxDeposit = 1e18;
+        minDeposit = 1e18;
+        maxDeposit = 100_000e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
 
@@ -30,35 +30,35 @@ contract Test_SingleSidedLP_Aura_xrETH_weETH is BaseSingleSidedLPVault {
     }
 }
 
-contract Harness_SingleSidedLP_Aura_xrETH_weETH is 
-ComposablePoolHarness
+contract Harness_SingleSidedLP_Aura_rETH_weETH_xETH is 
+ComposablePoolHarness_rETH_weETH
  {
     function getVaultName() public pure override returns (string memory) {
-        return 'SingleSidedLP:Aura:[rETH]/weETH';
+        return 'SingleSidedLP:Aura:rETH/weETH:[ETH]';
     }
 
     function getDeploymentConfig() public view override returns (
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
         params = getTestVaultConfig();
-        params.feeRate5BPS = 10;
-        params.liquidationRate = 102;
+        params.feeRate5BPS = 20;
+        params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 1000;
+        params.minCollateralRatioBPS = 500;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1700;
+        params.maxDeleverageCollateralRatioBPS = 800;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.001e8;
-        maxPrimaryBorrow = 100e8;
+        params.minAccountBorrowSize = 1e8;
+        maxPrimaryBorrow = 5000e8;
     }
 
     function getRequiredOracles() public override pure returns (
         address[] memory token, address[] memory oracle
     ) {
-        token = new address[](2);
-        oracle = new address[](2);
+        token = new address[](3);
+        oracle = new address[](3);
 
         // rETH
         token[0] = 0xae78736Cd615f374D3085123A210448E74Fc6393;
@@ -66,6 +66,9 @@ ComposablePoolHarness
         // weETH
         token[1] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
         oracle[1] = 0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136;
+        // ETH
+        token[2] = 0x0000000000000000000000000000000000000000;
+        oracle[2] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         
     }
 
@@ -92,7 +95,7 @@ ComposablePoolHarness
 
     constructor() {
         SingleSidedLPMetadata memory _m;
-        _m.primaryBorrowCurrency = 7;
+        _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
@@ -114,9 +117,9 @@ ComposablePoolHarness
     }
 }
 
-contract Deploy_SingleSidedLP_Aura_xrETH_weETH is Harness_SingleSidedLP_Aura_xrETH_weETH, DeployProxyVault {
+contract Deploy_SingleSidedLP_Aura_rETH_weETH_xETH is Harness_SingleSidedLP_Aura_rETH_weETH_xETH, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_xrETH_weETH();
+        harness = new Harness_SingleSidedLP_Aura_rETH_weETH_xETH();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {

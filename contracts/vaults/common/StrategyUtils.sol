@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.17;
+pragma solidity 0.8.24;
 
 import {IERC20} from "@interfaces/IERC20.sol";
 import {
@@ -42,7 +42,7 @@ library StrategyUtils {
             if (t.tradeAmount > 0) {
                 // Always selling the primaryToken and buying the secondary token.
                 (uint256 amountSold, uint256 amountBought) = _executeDynamicSlippageTradeExactIn(
-                    Deployments.TRADING_MODULE, t.tradeParams, primaryToken, address(tokens[i]), t.tradeAmount
+                    t.tradeParams, primaryToken, address(tokens[i]), t.tradeAmount
                 );
 
                 amounts[i] = amountBought;
@@ -78,7 +78,7 @@ library StrategyUtils {
             // Always sell the entire exit balance to the primary token
             if (exitBalances[i] > 0) {
                 (/* */, uint256 amountBought) = _executeDynamicSlippageTradeExactIn(
-                    Deployments.TRADING_MODULE, t, address(tokens[i]), primaryToken, exitBalances[i]
+                    t, address(tokens[i]), primaryToken, exitBalances[i]
                 );
 
                 finalPrimaryBalance += amountBought;
@@ -118,7 +118,7 @@ library StrategyUtils {
                 // It may be possible that the entire balance of reward tokens is not sold by the vault,
                 // but that is ok.
                 (sold, bought) = _executeTradeWithStaticSlippage(
-                    Deployments.TRADING_MODULE, trades[i].tradeParams, rewardToken, trades[i].buyToken, trades[i].amount
+                    trades[i].tradeParams, rewardToken, trades[i].buyToken, trades[i].amount
                 );
             }
 
@@ -134,7 +134,6 @@ library StrategyUtils {
     /// @notice Executes a trade that uses a dynamic slippage amount relative to the current
     /// oracle price.
     function _executeDynamicSlippageTradeExactIn(
-        ITradingModule tradingModule,
         TradeParams memory params,
         address sellToken,
         address buyToken,
@@ -167,7 +166,6 @@ library StrategyUtils {
     /// reward reinvestment trades since oracles between the reward token and the
     /// purchased tokens may not exist.
     function _executeTradeWithStaticSlippage(
-        ITradingModule tradingModule,
         TradeParams memory params,
         address sellToken,
         address buyToken,

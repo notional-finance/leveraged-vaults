@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity 0.8.24;
 
 import "./SingleSidedLPHarness.sol";
 import "@contracts/vaults/balancer/BalancerWeightedAuraVault.sol";

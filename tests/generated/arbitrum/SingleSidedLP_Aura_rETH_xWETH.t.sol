@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity 0.8.24;
 
 import {
     SingleSidedLPMetadata,
@@ -12,6 +12,7 @@ import { DeployProxyVault} from "../../../scripts/deploy/DeployProxyVault.sol";
 import { BaseSingleSidedLPVault } from "../../SingleSidedLP/BaseSingleSidedLPVault.sol";
 import { Curve2TokenHarness, CurveInterface } from "../../SingleSidedLP/harness/Curve2TokenHarness.sol";
 import { WeightedPoolHarness } from "../../SingleSidedLP/harness/WeightedPoolHarness.sol";
+import { ComposablePoolHarness_rETH_weETH } from "../../SingleSidedLP/harness/ComposablePoolHarness_rETH_weETH.sol";
 import { ITradingModule } from "@interfaces/trading/ITradingModule.sol";
 
 contract Test_SingleSidedLP_Aura_rETH_xWETH is BaseSingleSidedLPVault {
@@ -96,6 +97,7 @@ ComposablePoolHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0xA0d61c08e642103158Fc6a1495E7Ff82bAF25857;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({

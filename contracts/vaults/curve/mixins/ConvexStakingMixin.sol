@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.17;
+pragma solidity 0.8.24;
 
 import {TokenUtils, IERC20} from "@contracts/utils/TokenUtils.sol";
 import {Constants} from "@contracts/global/Constants.sol";

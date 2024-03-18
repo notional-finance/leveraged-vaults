@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.17;
+pragma solidity 0.8.24;
 
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {IStrategyVault} from "@interfaces/notional/IStrategyVault.sol";
