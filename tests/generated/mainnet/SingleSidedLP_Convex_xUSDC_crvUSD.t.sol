@@ -91,6 +91,7 @@ Curve2TokenHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0xba4eb30f7F2e378249cf94E08F581e704326e9c6;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({

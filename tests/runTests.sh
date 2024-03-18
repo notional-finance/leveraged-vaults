@@ -3,7 +3,7 @@ source .env
 python tests/SingleSidedLP/generate_tests.py
 
 export RPC_URL=$MAINNET_RPC_URL
-export FORK_BLOCK=19457495
+export FORK_BLOCK=19462721
 export FOUNDRY_PROFILE=mainnet
 forge build --force
 forge test --mp "tests/generated/mainnet/**"

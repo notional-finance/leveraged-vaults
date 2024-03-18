@@ -94,6 +94,7 @@ ComposablePoolHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0xeEB885Af7C8075Aa3b93e2F95E1c0bD51c758F91;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({

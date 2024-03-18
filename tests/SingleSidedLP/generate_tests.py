@@ -1,3 +1,4 @@
+import json
 import yaml
 import shutil
 import os
@@ -154,6 +155,9 @@ def generate_files(network, yaml_file, template_file):
     with open(template_file, 'r') as f:
         template = f.read()
 
+    with open("vaults.json", 'r') as f:
+        vaults = json.load(f)
+
     # Get defaults
     defaults = tests['defaults']
 
@@ -166,6 +170,14 @@ def generate_files(network, yaml_file, template_file):
         test['setUp'] = { **defaults['setUp'], **test['setUp'] } if 'setUp' in test else defaults['setUp']
         test['config'] = { **defaults['config'], **test['config'] } if 'config' in test else defaults['config']
         test['contractName'] = get_contract_name(test)
+
+        # Look up the existing deployment from the json registry
+        [_, protocol, poolName] = test['contractName'].split("_", 2)
+        poolName = "[{}]:{}".format(test['primaryBorrowCurrency'], poolName)
+        try:
+            test['existingDeployment'] = vaults[network][protocol][poolName]
+        except:
+            pass
         test['oracles'] = get_oracles(network, test['oracles'])
         test['rewards'] = get_tokens(network, test['rewards']) if 'rewards' in test else []
         test['primaryBorrowCurrency'] = currencyIds[network][test['primaryBorrowCurrency']]
