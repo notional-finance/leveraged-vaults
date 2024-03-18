@@ -9,7 +9,7 @@ forge build --force
 forge test --mp "tests/generated/mainnet/**"
 
 export RPC_URL=$ARBITRUM_RPC_URL
-export FORK_BLOCK=176730531
+export FORK_BLOCK=191743200
 export FOUNDRY_PROFILE=arbitrum
 forge build --force
 forge test --mp "tests/generated/arbitrum/**"

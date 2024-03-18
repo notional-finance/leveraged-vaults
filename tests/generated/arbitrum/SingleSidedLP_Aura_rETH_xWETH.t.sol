@@ -14,26 +14,26 @@ import { Curve2TokenHarness, CurveInterface } from "../../SingleSidedLP/harness/
 import { WeightedPoolHarness } from "../../SingleSidedLP/harness/WeightedPoolHarness.sol";
 import { ITradingModule } from "@interfaces/trading/ITradingModule.sol";
 
-contract Test_SingleSidedLP_Aura_xrETH_WETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Aura_rETH_xWETH is BaseSingleSidedLPVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_xrETH_WETH();
+        harness = new Harness_SingleSidedLP_Aura_rETH_xWETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
-        maxDeposit = 50e18;
-        maxRelEntryValuation = 75 * BASIS_POINT;
-        maxRelExitValuation = 75 * BASIS_POINT;
+        minDeposit = 1000e8;
+        maxDeposit = 1e18;
+        maxRelEntryValuation = 50 * BASIS_POINT;
+        maxRelExitValuation = 50 * BASIS_POINT;
 
         super.setUp();
     }
 }
 
-contract Harness_SingleSidedLP_Aura_xrETH_WETH is 
+contract Harness_SingleSidedLP_Aura_rETH_xWETH is 
 ComposablePoolHarness
  {
     function getVaultName() public pure override returns (string memory) {
-        return 'SingleSidedLP:Aura:[rETH]/WETH';
+        return 'SingleSidedLP:Aura:rETH/[WETH]';
     }
 
     function getDeploymentConfig() public view override returns (
@@ -44,9 +44,9 @@ ComposablePoolHarness
         params.liquidationRate = 102;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 1000;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1500;
+        params.maxDeleverageCollateralRatioBPS = 1700;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 2e8;
@@ -71,8 +71,8 @@ ComposablePoolHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](2);
-        permissions = new ITradingModule.TokenPermissions[](2);
+        token = new address[](3);
+        permissions = new ITradingModule.TokenPermissions[](3);
 
         // AURA
         token[0] = 0x1509706a6c66CA549ff0cB464de88231DDBe213B;
@@ -86,37 +86,44 @@ ComposablePoolHarness
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
+        // ARB
+        token[2] = 0x912CE59144191C1204E64559FE8253a0e49E6548;
+        permissions[2] = ITradingModule.TokenPermissions(
+            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
+        );
         
     }
 
     constructor() {
-        EXISTING_DEPLOYMENT = 0x3Df035433cFACE65b6D68b77CC916085d020C8B8;
         SingleSidedLPMetadata memory _m;
-        _m.primaryBorrowCurrency = 7;
+        _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            maxPoolShare: 3000,
+            oraclePriceDeviationLimitPercent: 0.01e4
         });
-        _m.rewardPool = IERC20(0x129A44AC6ff0f965C907579F96F2eD682E52c84A);
+        _m.rewardPool = IERC20(0x17F061160A167d4303d5a6D32C2AC693AC87375b);
 
         
 
-        _m.rewardTokens = new IERC20[](2);
+        _m.rewardTokens = new IERC20[](3);
         // AURA
         _m.rewardTokens[0] = IERC20(0x1509706a6c66CA549ff0cB464de88231DDBe213B);
         // BAL
         _m.rewardTokens[1] = IERC20(0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8);
+        // ARB
+        _m.rewardTokens[2] = IERC20(0x912CE59144191C1204E64559FE8253a0e49E6548);
         
 
         setMetadata(_m);
     }
 }
 
-contract Deploy_SingleSidedLP_Aura_xrETH_WETH is Harness_SingleSidedLP_Aura_xrETH_WETH, DeployProxyVault {
+contract Deploy_SingleSidedLP_Aura_rETH_xWETH is Harness_SingleSidedLP_Aura_rETH_xWETH, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_xrETH_WETH();
+        harness = new Harness_SingleSidedLP_Aura_rETH_xWETH();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {

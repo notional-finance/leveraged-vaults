@@ -30,14 +30,28 @@ arbitrum:
     config:
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 100e8
-  - vaultName: SingleSidedLP:Aura:[rETH]/WETH
+  - vaultName: SingleSidedLP:Aura:rETH/[WETH]
     vaultType: ComposablePool
-    primaryBorrowCurrency: rETH
-    existingDeployment: "0x3Df035433cFACE65b6D68b77CC916085d020C8B8"
-    rewardPool: "0x129A44AC6ff0f965C907579F96F2eD682E52c84A"
-    rewards: [AURA, BAL]
+    primaryBorrowCurrency: ETH
+    rewardPool: "0x17F061160A167d4303d5a6D32C2AC693AC87375b"
+    rewards: [AURA, BAL, ARB]
     oracles: [rETH, ETH]
+    settings:
+      maxPoolShare: 3000
+      oraclePriceDeviationLimitPercent: 0.01e4
+    setUp:
+      minDeposit: 1000e8
+      maxDeposit: 1e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
     config:
+      feeRate5BPS: 10
+      liquidationRate: 102
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 2
+      minCollateralRatioBPS: 1_000
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 1700
       minAccountBorrowSize: 2e8
       maxPrimaryBorrow: 100e8
   - vaultName: SingleSidedLP:Aura:[USDC]/DAI/USDT/USDC.e
@@ -85,20 +99,6 @@ arbitrum:
       maxRelExitValuation: 15
     config:
       minCollateralRatioBPS: 1100
-      maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 1700
-  - vaultName: SingleSidedLP:Aura:[wstETH]/cbETH/rETH
-    vaultType: ComposablePool
-    primaryBorrowCurrency: wstETH
-    existingDeployment: "0x37dD23Ab1885982F789A2D6400B583B8aE09223d"
-    rewardPool: "0x8cA64Bd82AbFE138E195ce5Cb7268CA285D42245"
-    rewards: [AURA, BAL]
-    oracles: [wstETH, cbETH, rETH]
-    setUp:
-      maxRelEntryValuation: 50
-      maxRelExitValuation: 50
-    config:
-      minCollateralRatioBPS: 1000
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Aura:wstETH/[WETH]
