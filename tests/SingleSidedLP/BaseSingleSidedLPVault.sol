@@ -33,10 +33,15 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         nProxy proxy;
 
         if (harness.EXISTING_DEPLOYMENT() != address(0)) {
+            SingleSidedLPVaultBase b = SingleSidedLPVaultBase(payable(harness.EXISTING_DEPLOYMENT()));
+            ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory beforeInfo = b.getStrategyVaultInfo();
+            
             proxy = nProxy(payable(harness.EXISTING_DEPLOYMENT()));
             vm.prank(Deployments.NOTIONAL.owner());
             UUPSUpgradeable(address(proxy)).upgradeTo(impl);
-            // TODO: check before and after storage....
+
+            ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory afterInfo = b.getStrategyVaultInfo();
+            assertEq(abi.encode(afterInfo), abi.encode(beforeInfo));
         } else {
             bytes memory initData = harness.getInitializeData();
 

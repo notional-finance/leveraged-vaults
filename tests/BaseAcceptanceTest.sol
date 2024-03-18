@@ -66,6 +66,25 @@ abstract contract BaseAcceptanceTest is Test {
         uint16 decimals = isETH ? 18 : primaryBorrowToken.decimals();
         precision = uint256(underlyingToken.decimals);
         roundingPrecision = decimals > 8 ? 10 ** (decimals - 8) : 10 ** (8 - decimals);
+
+        if (Deployments.CHAIN_ID == 1) {
+            vm.startPrank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+        } else {
+            vm.startPrank(Deployments.NOTIONAL.owner());
+        }
+        (
+            address[] memory tokens,
+            ITradingModule.TokenPermissions[] memory permissions
+        ) = harness.getTradingPermissions();
+
+        for (uint256 i; i < tokens.length; i++) {
+            Deployments.TRADING_MODULE.setTokenPermissions(
+                address(vault),
+                tokens[i],
+                permissions[i]
+            );
+        }
+        vm.stopPrank();
     }
 
     function assertAbsDiff(uint256 a, uint256 b, uint256 diff, string memory m) internal {
