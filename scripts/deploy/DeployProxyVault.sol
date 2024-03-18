@@ -109,7 +109,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
         
         if (upgradeVault) {
             vm.startBroadcast();
-            (address impl, /* */) = harness.deployVaultImplementation();
+            (address impl, /* */) = deployVault();
             vm.stopBroadcast();
 
             MethodCall[] memory upgrade = new MethodCall[](1);
