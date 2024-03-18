@@ -14,8 +14,12 @@ import {DexId, TradeType} from "@interfaces/trading/ITradingModule.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {TradeHandler, Trade} from "@contracts/trading/TradeHandler.sol";
 
-contract weETHBalancerComposableAuraVault is BalancerComposableAuraVault {
+contract BalancerComposableAura_rETH_weETH is BalancerComposableAuraVault {
     using TradeHandler for Trade;
+
+    // Set to 50 basis points, if this needs to change then the contract will
+    // need to be upgraded.
+    uint32 constant DEFAULT_SLIPPAGE_LIMIT = 0.01e8;
     address constant rETH = 0xae78736Cd615f374D3085123A210448E74Fc6393;
     bytes constant exchangeData = abi.encode(
         BalancerV2Adapter.SingleSwapData(0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112)
@@ -27,6 +31,7 @@ contract weETHBalancerComposableAuraVault is BalancerComposableAuraVault {
 
         (tokens[0], decimals[0]) = (IERC20(TOKEN_1), DECIMALS_1);
         (tokens[1], decimals[1]) = (IERC20(TOKEN_2), DECIMALS_2);
+        (tokens[2], decimals[2]) = (IERC20(TOKEN_3), DECIMALS_3);
 
         return (tokens, decimals);
     }
@@ -35,6 +40,7 @@ contract weETHBalancerComposableAuraVault is BalancerComposableAuraVault {
         IAsset[] memory assets = new IAsset[](_NUM_TOKENS);
         assets[0] = IAsset(TOKEN_1);
         assets[1] = IAsset(TOKEN_2);
+        assets[2] = IAsset(TOKEN_3);
         return assets;
     }
 
@@ -53,11 +59,11 @@ contract weETHBalancerComposableAuraVault is BalancerComposableAuraVault {
             sellToken: Constants.ETH_ADDRESS,
             buyToken: rETH,
             amount: deposit,
-            limit: 0.01e9,
+            limit: DEFAULT_SLIPPAGE_LIMIT,
             deadline: block.timestamp,
             exchangeData: exchangeData
         })._executeTradeWithDynamicSlippage(
-            uint16(DexId.BALANCER_V2), TRADING_MODULE, uint32(0.01e9)
+            uint16(DexId.BALANCER_V2), TRADING_MODULE, DEFAULT_SLIPPAGE_LIMIT
         );
 
         return super._depositFromNotional(account, amountBought, maturity, data);
@@ -75,26 +81,26 @@ contract weETHBalancerComposableAuraVault is BalancerComposableAuraVault {
             sellToken: rETH,
             buyToken: Constants.ETH_ADDRESS,
             amount: primaryBalance,
-            limit: 0.01e9,
+            limit: DEFAULT_SLIPPAGE_LIMIT,
             deadline: block.timestamp,
             exchangeData: exchangeData
         })._executeTradeWithDynamicSlippage(
-            uint16(DexId.BALANCER_V2), TRADING_MODULE, uint32(0.01e9)
+            uint16(DexId.BALANCER_V2), TRADING_MODULE, DEFAULT_SLIPPAGE_LIMIT
         );
     }
 
     function convertStrategyToUnderlying(
         address account, uint256 vaultShares, uint256 maturity
     ) public view override whenNotLocked returns (int256 underlyingValue) {
-        int256 weETHValue = super.convertStrategyToUnderlying(
+        int256 rETHValue = super.convertStrategyToUnderlying(
             account, vaultShares, maturity
         );
 
         (int256 rate, int256 rateDecimals) = TRADING_MODULE.getOraclePrice(
-            address(0), Constants.ETH_ADDRESS
+            rETH, Constants.ETH_ADDRESS
         );
 
         // Convert this back to the borrow currency, external precision
-        return (weETHValue * 1e18 * rate) / (rateDecimals * 1e18);
+        return (rETHValue * 1e18 * rate) / (rateDecimals * 1e18);
     }
 }

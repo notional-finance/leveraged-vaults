@@ -299,3 +299,24 @@ mainnet:
       liquidationRate: 103
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 5000e8
+  - vaultName: SingleSidedLP:Aura:rETH/weETH:[ETH]
+    vaultType: ComposablePool_rETH_weETH
+    primaryBorrowCurrency: ETH
+    rewardPool: "0x07A319A023859BbD49CC9C38ee891c3EA9283Cc5"
+    rewards: [AURA, BAL]
+    oracles: [rETH, weETH, ETH]
+    settings:
+      maxPoolShare: 2000
+      oraclePriceDeviationLimitPercent: 0.015e4
+    setUp:
+      minDeposit: 1e18
+      maxDeposit: 100_000e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      feeRate5BPS: 20
+      minCollateralRatioBPS: 500
+      maxDeleverageCollateralRatioBPS: 800
+      liquidationRate: 103
+      minAccountBorrowSize: 1e8
+      maxPrimaryBorrow: 5000e8

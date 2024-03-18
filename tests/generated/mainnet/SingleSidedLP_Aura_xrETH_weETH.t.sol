@@ -12,6 +12,7 @@ import { DeployProxyVault} from "../../../scripts/deploy/DeployProxyVault.sol";
 import { BaseSingleSidedLPVault } from "../../SingleSidedLP/BaseSingleSidedLPVault.sol";
 import { Curve2TokenHarness, CurveInterface } from "../../SingleSidedLP/harness/Curve2TokenHarness.sol";
 import { WeightedPoolHarness } from "../../SingleSidedLP/harness/WeightedPoolHarness.sol";
+import { ComposablePoolHarness_rETH_weETH } from "../../SingleSidedLP/harness/ComposablePoolHarness_rETH_weETH.sol";
 import { ITradingModule } from "@interfaces/trading/ITradingModule.sol";
 
 contract Test_SingleSidedLP_Aura_xrETH_weETH is BaseSingleSidedLPVault {
@@ -30,7 +31,7 @@ contract Test_SingleSidedLP_Aura_xrETH_weETH is BaseSingleSidedLPVault {
 }
 
 contract Harness_SingleSidedLP_Aura_xrETH_weETH is 
-ComposablePoolHarness
+ComposablePoolHarness_rETH_weETH
  {
     function getVaultName() public pure override returns (string memory) {
         return 'SingleSidedLP:Aura:[rETH]/weETH';
@@ -71,8 +72,8 @@ ComposablePoolHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](2);
-        permissions = new ITradingModule.TokenPermissions[](2);
+        token = new address[](4);
+        permissions = new ITradingModule.TokenPermissions[](4);
 
         // AURA
         token[0] = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
@@ -87,11 +88,24 @@ ComposablePoolHarness
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
         
+        // ETH
+        token[2] = 0x0000000000000000000000000000000000000000;
+        permissions[2] = ITradingModule.TokenPermissions(
+            // BalancerV2, EXACT_IN_SINGLE
+            { allowSell: true, dexFlags: 16, tradeTypeFlags: 1 }
+        );
+
+        // rETH
+        token[3] = 0xae78736Cd615f374D3085123A210448E74Fc6393;
+        permissions[3] = ITradingModule.TokenPermissions(
+            // BalancerV2, EXACT_IN_SINGLE
+            { allowSell: true, dexFlags: 16, tradeTypeFlags: 1 }
+        );
     }
 
     constructor() {
         SingleSidedLPMetadata memory _m;
-        _m.primaryBorrowCurrency = 7;
+        _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
