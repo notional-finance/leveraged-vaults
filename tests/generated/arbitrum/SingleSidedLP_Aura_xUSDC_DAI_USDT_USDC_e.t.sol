@@ -89,6 +89,8 @@ ComposablePoolHarness
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
         
+
+        
     }
 
     constructor() {
@@ -113,7 +115,6 @@ ComposablePoolHarness
         // ARB
         _m.rewardTokens[2] = IERC20(0x912CE59144191C1204E64559FE8253a0e49E6548);
         
-
         setMetadata(_m);
     }
 }

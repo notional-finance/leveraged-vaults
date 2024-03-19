@@ -80,6 +80,8 @@ ComposablePoolHarness
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
         
+
+        
     }
 
     constructor() {
@@ -102,7 +104,6 @@ ComposablePoolHarness
         // BAL
         _m.rewardTokens[1] = IERC20(0xba100000625a3754423978a60c9317c58a424e3D);
         
-
         setMetadata(_m);
     }
 }

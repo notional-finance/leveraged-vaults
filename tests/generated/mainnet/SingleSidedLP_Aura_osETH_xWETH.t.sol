@@ -82,6 +82,8 @@ ComposablePoolHarness
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
         
+
+        
     }
 
     constructor() {
@@ -105,7 +107,6 @@ ComposablePoolHarness
         // SWISE
         _m.rewardTokens[2] = IERC20(0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2);
         
-
         setMetadata(_m);
     }
 }

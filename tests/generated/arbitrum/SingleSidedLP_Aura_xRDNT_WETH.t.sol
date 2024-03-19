@@ -76,6 +76,8 @@ WeightedPoolHarness
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
         
+
+        
     }
 
     constructor() {
@@ -97,7 +99,6 @@ WeightedPoolHarness
         // BAL
         _m.rewardTokens[1] = IERC20(0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8);
         
-
         setMetadata(_m);
     }
 }

@@ -68,8 +68,9 @@ contract Harness_{{ contractName }} is
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[]({{ rewards | length}});
-        permissions = new ITradingModule.TokenPermissions[]({{ rewards | length }});
+        {%- set tokenLength = rewards | length + (permissions | default([]) | length) %}
+        token = new address[]({{ tokenLength }});
+        permissions = new ITradingModule.TokenPermissions[]({{ tokenLength }});
 
         {% for reward in rewards -%}
         // {{ reward.symbol }}
@@ -77,6 +78,13 @@ contract Harness_{{ contractName }} is
         permissions[{{ loop.index - 1}}] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
+        );
+        {% endfor %}
+
+        {% for p in (permissions | default([])) -%}
+        token[{{ rewards | length + loop.index - 1 }}] = {{ p.tokenAddress }};
+        permissions[{{ rewards | length + loop.index - 1 }}] = ITradingModule.TokenPermissions(
+            { allowSell: true, dexFlags: 1 << {{ p.dexId }}, tradeTypeFlags: {{ p.tradeTypeFlags }} }
         );
         {% endfor %}
     }
@@ -108,7 +116,17 @@ contract Harness_{{ contractName }} is
         _m.rewardTokens[{{ loop.index - 1}}] = IERC20({{ reward.tokenAddress }});
         {% endfor %}
 
+        {%- if vaultType == "WrappedComposablePool" %}
+        WrappedComposableMetadata memory meta;
+        meta.meta = _m;
+        meta.defaultSlippage = {{ wrapped.defaultSlippage }};
+        meta.dexId = {{ wrapped.dexId }};
+        meta.exchangeData = {{ wrapped.exchangeData }};
+        meta.borrowToken = {{ wrapped.borrowToken }};
+        setMetadata(meta);
+        {%- else %}
         setMetadata(_m);
+        {%- endif %}
     }
 }
 

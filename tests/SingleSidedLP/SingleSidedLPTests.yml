@@ -259,24 +259,6 @@ mainnet:
       liquidationRate: 103
       minAccountBorrowSize: 0.1e8
       maxPrimaryBorrow: 1e8
-  - vaultName: SingleSidedLP:Aura:[rETH]/weETH
-    vaultType: ComposablePool
-    primaryBorrowCurrency: rETH
-    rewardPool: "0x07A319A023859BbD49CC9C38ee891c3EA9283Cc5"
-    rewards: [AURA, BAL]
-    oracles: [rETH, weETH]
-    settings:
-      maxPoolShare: 2000
-      oraclePriceDeviationLimitPercent: 0.015e4
-    setUp:
-      minDeposit: 1000e8
-      maxDeposit: 1e18
-      maxRelEntryValuation: 50
-      maxRelExitValuation: 50
-    config:
-      minCollateralRatioBPS: 1000
-      maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Aura:GHO/USDT/[USDC]
     vaultType: ComposablePool
     primaryBorrowCurrency: USDC
@@ -310,7 +292,7 @@ mainnet:
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e18
-      maxDeposit: 100_000e18
+      maxDeposit: 100e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
     config:
@@ -320,3 +302,15 @@ mainnet:
       liquidationRate: 103
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 5000e8
+    wrapped:
+      defaultSlippage: 0.99e8
+      dexId: 4
+      exchangeData: "0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112"
+      borrowToken: address(0)
+    permissions:
+      - tokenAddress: address(0)
+        dexId: 4
+        tradeTypeFlags: 1
+      - tokenAddress: "0xae78736Cd615f374D3085123A210448E74Fc6393"
+        dexId: 4
+        tradeTypeFlags: 1

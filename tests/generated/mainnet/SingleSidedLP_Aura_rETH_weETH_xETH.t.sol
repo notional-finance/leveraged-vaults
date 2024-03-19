@@ -10,7 +10,7 @@ contract Test_SingleSidedLP_Aura_rETH_weETH_xETH is BaseSingleSidedLPVault {
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 1e18;
-        maxDeposit = 100_000e18;
+        maxDeposit = 100e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
 
@@ -63,8 +63,8 @@ WrappedComposablePoolHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](2);
-        permissions = new ITradingModule.TokenPermissions[](2);
+        token = new address[](4);
+        permissions = new ITradingModule.TokenPermissions[](4);
 
         // AURA
         token[0] = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
@@ -77,6 +77,16 @@ WrappedComposablePoolHarness
         permissions[1] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
+        );
+        
+
+        token[2] = address(0);
+        permissions[2] = ITradingModule.TokenPermissions(
+            { allowSell: true, dexFlags: 1 << 4, tradeTypeFlags: 1 }
+        );
+        token[3] = 0xae78736Cd615f374D3085123A210448E74Fc6393;
+        permissions[3] = ITradingModule.TokenPermissions(
+            { allowSell: true, dexFlags: 1 << 4, tradeTypeFlags: 1 }
         );
         
     }
@@ -100,8 +110,13 @@ WrappedComposablePoolHarness
         // BAL
         _m.rewardTokens[1] = IERC20(0xba100000625a3754423978a60c9317c58a424e3D);
         
-
-        setMetadata(_m);
+        WrappedComposableMetadata memory meta;
+        meta.meta = _m;
+        meta.defaultSlippage = 0.99e8;
+        meta.dexId = 4;
+        meta.exchangeData = 0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112;
+        meta.borrowToken = address(0);
+        setMetadata(meta);
     }
 }
 

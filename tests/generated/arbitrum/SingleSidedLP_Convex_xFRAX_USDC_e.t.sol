@@ -70,6 +70,8 @@ Curve2TokenHarness
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
         
+
+        
     }
 
     constructor() {
@@ -94,7 +96,6 @@ Curve2TokenHarness
         // CRV
         _m.rewardTokens[0] = IERC20(0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978);
         
-
         setMetadata(_m);
     }
 }

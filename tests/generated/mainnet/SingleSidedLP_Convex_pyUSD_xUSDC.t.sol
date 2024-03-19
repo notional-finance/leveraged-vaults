@@ -83,6 +83,8 @@ Curve2TokenHarness
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
         
+
+        
     }
 
     constructor() {
@@ -111,7 +113,6 @@ Curve2TokenHarness
         // pyUSD
         _m.rewardTokens[2] = IERC20(0x6c3ea9036406852006290770BEdFcAbA0e23A0e8);
         
-
         setMetadata(_m);
     }
 }

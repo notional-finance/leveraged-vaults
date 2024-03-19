@@ -8,19 +8,37 @@ import "@interfaces/balancer/IBalancerPool.sol";
 import "@contracts/trading/adapters/BalancerV2Adapter.sol";
 
 abstract contract WrappedComposablePoolHarness is SingleSidedLPHarness {
+    struct WrappedComposableMetadata {
+        SingleSidedLPMetadata meta;
+        uint32 defaultSlippage;
+        uint16 dexId;
+        bytes32 exchangeData;
+        address borrowToken;
+    }
+
+    function getMetadata() override public view returns (SingleSidedLPMetadata memory _m) {
+        return abi.decode(metadata, (WrappedComposableMetadata)).meta;
+    }
+
+    function setMetadata(WrappedComposableMetadata memory _m) internal returns (bytes memory) {
+        metadata = abi.encode(_m);
+        return metadata;
+    }
+
     function deployVaultImplementation() public override returns (
         address impl, bytes memory _metadata
     ) {
-        SingleSidedLPMetadata memory _m = getMetadata();
+        WrappedComposableMetadata memory meta = abi.decode(metadata, (WrappedComposableMetadata));
+        SingleSidedLPMetadata memory _m = meta.meta;
 
         _m.poolToken = IERC20(IAuraRewardPool(address(_m.rewardPool)).asset());
         _m.balancerPoolId = IBalancerPool(address(_m.poolToken)).getPoolId();
 
         impl = address(new BalancerComposableWrappedTwoToken(
-            0,
-            0,
-            bytes32(0),
-            address(0),
+            meta.defaultSlippage,
+            meta.dexId,
+            meta.exchangeData,
+            meta.borrowToken,
             Deployments.NOTIONAL, AuraVaultDeploymentParams({
                 rewardPool: IAuraRewardPool(address(_m.rewardPool)),
                 whitelistedReward: _m.whitelistedReward,
@@ -35,6 +53,7 @@ abstract contract WrappedComposablePoolHarness is SingleSidedLPHarness {
             BalancerSpotPrice(Deployments.BALANCER_SPOT_PRICE)
         ));
 
-        _metadata = setMetadata(_m);
+        setMetadata(meta);
+        _metadata = abi.encode(meta.meta);
     }
 }

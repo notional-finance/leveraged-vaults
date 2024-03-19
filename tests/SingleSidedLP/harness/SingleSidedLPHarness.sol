@@ -5,11 +5,11 @@ import "../BaseSingleSidedLPVault.sol";
 
 abstract contract SingleSidedLPHarness is StrategyVaultHarness {
 
-    function getMetadata() public view returns (SingleSidedLPMetadata memory _m) {
+    function getMetadata() virtual public view returns (SingleSidedLPMetadata memory _m) {
         return abi.decode(metadata, (SingleSidedLPMetadata));
     }
 
-    function setMetadata(SingleSidedLPMetadata memory _m) internal returns (bytes memory) {
+    function setMetadata(SingleSidedLPMetadata memory _m) virtual internal returns (bytes memory) {
         metadata = abi.encode(_m);
         return metadata;
     }
