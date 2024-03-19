@@ -11,26 +11,55 @@ import {
 import {BalancerV2Adapter} from "@contracts/trading/adapters/BalancerV2Adapter.sol";
 import {IAsset} from "@interfaces/balancer/IBalancerVault.sol";
 import {DexId, TradeType} from "@interfaces/trading/ITradingModule.sol";
+import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {TradeHandler, Trade} from "@contracts/trading/TradeHandler.sol";
 
 contract BalancerComposableWrappedTwoToken is BalancerComposableAuraVault {
     using TradeHandler for Trade;
 
-    // Set to 50 basis points, if this needs to change then the contract will
-    // need to be upgraded.
-    uint32 constant DEFAULT_SLIPPAGE_LIMIT = 0.01e8;
-    address constant PRIMARY_TOKEN = 0xae78736Cd615f374D3085123A210448E74Fc6393;
-    address constant BORROW_TOKEN = address(0);
-    int256 constant BORROW_DECIMALS = 1e18;
-    int256 constant PRIMARY_DECIMALS = 1e18;
-    bytes constant EXCHANGE_DATA = abi.encode(
-        BalancerV2Adapter.SingleSwapData(0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112)
-    );
+    /// @notice All initial trades will use this slippage limit, if this needs to change
+    /// then the contract must be upgraded
+    uint32 immutable DEFAULT_SLIPPAGE_LIMIT;
+
+    /// @notice Only BalancerV2 or CurveV2 are supported as dexes here
+    uint16 immutable DEX_ID;
+    /// @notice For BalancerV2 this is the balancer pool id, for curve v2 this
+    /// is the pool address.
+    bytes32 immutable EXCHANGE_DATA;
+
+    int256 immutable BORROW_DECIMALS;
+    int256 immutable PRIMARY_DECIMALS;
+    address immutable PRIMARY_TOKEN;
+    address immutable BORROW_TOKEN;
+ 
+    constructor(
+        uint32 _defaultSlippage,
+        uint16 _dexId,
+        bytes32 exchangeData,
+        address _borrowToken,
+        NotionalProxy notional,
+        AuraVaultDeploymentParams memory params,
+        BalancerSpotPrice spotPrice
+    ) BalancerComposableAuraVault(notional, params, spotPrice) {
+        require(_dexId == uint16(DexId.BALANCER_V2) || _dexId == uint16(DexId.CURVE_V2));
+        require(_NUM_TOKENS == 3);
+
+        DEFAULT_SLIPPAGE_LIMIT = _defaultSlippage;
+        EXCHANGE_DATA = exchangeData;
+        DEX_ID = _dexId;
+
+        (IERC20[] memory tokens, uint8[] memory decimals) = TOKENS();
+        PRIMARY_TOKEN = address(tokens[_PRIMARY_INDEX]);
+        PRIMARY_DECIMALS = int256(10**decimals[_PRIMARY_INDEX]);
+
+        BORROW_TOKEN = _borrowToken;
+        BORROW_DECIMALS = int256(10**TokenUtils.getDecimals(_borrowToken));
+    }
 
     function TOKENS() public view override returns (IERC20[] memory, uint8[] memory) {
-        IERC20[] memory tokens = new IERC20[](_NUM_TOKENS);
-        uint8[] memory decimals = new uint8[](_NUM_TOKENS);
+        IERC20[] memory tokens = new IERC20[](3);
+        uint8[] memory decimals = new uint8[](3);
 
         (tokens[0], decimals[0]) = (IERC20(TOKEN_1), DECIMALS_1);
         (tokens[1], decimals[1]) = (IERC20(TOKEN_2), DECIMALS_2);
@@ -40,18 +69,12 @@ contract BalancerComposableWrappedTwoToken is BalancerComposableAuraVault {
     }
 
     function ASSETS() internal view override returns (IAsset[] memory) {
-        IAsset[] memory assets = new IAsset[](_NUM_TOKENS);
+        IAsset[] memory assets = new IAsset[](3);
         assets[0] = IAsset(TOKEN_1);
         assets[1] = IAsset(TOKEN_2);
         assets[2] = IAsset(TOKEN_3);
         return assets;
     }
-
-    constructor(
-        NotionalProxy notional_,
-        AuraVaultDeploymentParams memory params,
-        BalancerSpotPrice _spotPrice
-    ) BalancerComposableAuraVault(notional_, params, _spotPrice) { }
 
     function _depositFromNotional(
         address account, uint256 deposit, uint256 maturity, bytes calldata data
@@ -64,9 +87,9 @@ contract BalancerComposableWrappedTwoToken is BalancerComposableAuraVault {
             amount: deposit,
             limit: DEFAULT_SLIPPAGE_LIMIT,
             deadline: block.timestamp,
-            exchangeData: EXCHANGE_DATA
+            exchangeData: abi.encode(BalancerV2Adapter.SingleSwapData(EXCHANGE_DATA))
         })._executeTradeWithDynamicSlippage(
-            uint16(DexId.BALANCER_V2), DEFAULT_SLIPPAGE_LIMIT
+            DEX_ID, DEFAULT_SLIPPAGE_LIMIT
         );
 
         return super._depositFromNotional(account, amountBought, maturity, data);
@@ -86,9 +109,9 @@ contract BalancerComposableWrappedTwoToken is BalancerComposableAuraVault {
             amount: primaryBalance,
             limit: DEFAULT_SLIPPAGE_LIMIT,
             deadline: block.timestamp,
-            exchangeData: EXCHANGE_DATA
+            exchangeData: abi.encode(BalancerV2Adapter.SingleSwapData(EXCHANGE_DATA))
         })._executeTradeWithDynamicSlippage(
-            uint16(DexId.BALANCER_V2), DEFAULT_SLIPPAGE_LIMIT
+            DEX_ID, DEFAULT_SLIPPAGE_LIMIT
         );
     }
 

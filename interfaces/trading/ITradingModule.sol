@@ -9,7 +9,8 @@ enum DexId {
     UNISWAP_V3,     // flag = 4
     ZERO_EX,        // flag = 8
     BALANCER_V2,    // flag = 16
-    CURVE,          // flag = 32
+    // NOTE: this id is unused in the TradingModule
+    CURVE,          // flag = 32 
     NOTIONAL_VAULT, // flag = 64
     CURVE_V2        // flag = 128
 }
