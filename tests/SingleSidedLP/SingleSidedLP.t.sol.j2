@@ -1,19 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {
-    SingleSidedLPMetadata,
-    ComposablePoolHarness,
-    StrategyVaultSettings,
-    VaultConfigParams,
-    IERC20
-} from "../../SingleSidedLP/harness/ComposablePoolHarness.sol";
-import { DeployProxyVault} from "../../../scripts/deploy/DeployProxyVault.sol";
-import { BaseSingleSidedLPVault } from "../../SingleSidedLP/BaseSingleSidedLPVault.sol";
-import { Curve2TokenHarness, CurveInterface } from "../../SingleSidedLP/harness/Curve2TokenHarness.sol";
-import { WeightedPoolHarness } from "../../SingleSidedLP/harness/WeightedPoolHarness.sol";
-import { ComposablePoolHarness_rETH_weETH } from "../../SingleSidedLP/harness/ComposablePoolHarness_rETH_weETH.sol";
-import { ITradingModule } from "@interfaces/trading/ITradingModule.sol";
+import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_{{ contractName }} is BaseSingleSidedLPVault {
     function setUp() public override {
@@ -38,8 +26,8 @@ contract Harness_{{ contractName }} is
     WeightedPoolHarness
 {% elif vaultType == "ComposablePool" -%}
     ComposablePoolHarness
-{% elif vaultType == "ComposablePool_rETH_weETH" -%}
-    ComposablePoolHarness_rETH_weETH
+{% elif vaultType == "WrappedComposablePool" -%}
+    WrappedComposablePoolHarness
 {% elif vaultType == "Curve2Token" -%}
     Curve2TokenHarness
 {% endif %} {

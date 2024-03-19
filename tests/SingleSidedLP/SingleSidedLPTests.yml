@@ -300,7 +300,7 @@ mainnet:
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 5000e8
   - vaultName: SingleSidedLP:Aura:rETH/weETH:[ETH]
-    vaultType: ComposablePool_rETH_weETH
+    vaultType: WrappedComposablePool
     primaryBorrowCurrency: ETH
     rewardPool: "0x07A319A023859BbD49CC9C38ee891c3EA9283Cc5"
     rewards: [AURA, BAL]

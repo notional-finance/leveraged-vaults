@@ -7,7 +7,7 @@ import "@contracts/vaults/balancer/mixins/AuraStakingMixin.sol";
 import "@interfaces/balancer/IBalancerPool.sol";
 import "@contracts/trading/adapters/BalancerV2Adapter.sol";
 
-abstract contract ComposablePoolHarness_rETH_weETH is SingleSidedLPHarness {
+abstract contract WrappedComposablePoolHarness is SingleSidedLPHarness {
     function deployVaultImplementation() public override returns (
         address impl, bytes memory _metadata
     ) {
@@ -17,6 +17,10 @@ abstract contract ComposablePoolHarness_rETH_weETH is SingleSidedLPHarness {
         _m.balancerPoolId = IBalancerPool(address(_m.poolToken)).getPoolId();
 
         impl = address(new BalancerComposableWrappedTwoToken(
+            0,
+            0,
+            bytes32(0),
+            address(0),
             Deployments.NOTIONAL, AuraVaultDeploymentParams({
                 rewardPool: IAuraRewardPool(address(_m.rewardPool)),
                 whitelistedReward: _m.whitelistedReward,
