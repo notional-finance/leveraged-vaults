@@ -90,8 +90,10 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         // We need to set the LP token amount to 1 for Curve V2 pools to bypass
         // the underflow check
         uint256[2] memory minAmounts;
-        if (CURVE_INTERFACE == CurveInterface.V1 || CURVE_INTERFACE == CurveInterface.StableSwapNG) {
+        if (CURVE_INTERFACE == CurveInterface.V1) {
             ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity(0, minAmounts);
+        } else if (CURVE_INTERFACE == CurveInterface.StableSwapNG) {
+            ICurveStableSwapNG(CURVE_POOL).remove_liquidity(0, new uint256[](2));
         } else if (CURVE_INTERFACE == CurveInterface.V2) {
             // Curve V2 does a `-1` on the liquidity amount so set the amount removed to 1 to
             // avoid an underflow.
