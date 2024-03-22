@@ -1,4 +1,5 @@
 source .env
+python tests/SingleSidedLP/generate_tests.py
 
 # Check if exactly two arguments are provided
 if [ $# -ne 4 ]; then
@@ -42,13 +43,13 @@ export FOUNDRY_PROFILE=$CHAIN
 RPC_VAR="$(echo "$CHAIN"_RPC_URL | tr '[:lower:]' '[:upper:]')"
 export ETH_RPC_URL="${!RPC_VAR}"
 
-DEPLOYER=MAINNET_V2_DEPLOYER
-DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
+# Deployer address is not used in the script
+DEPLOYER_ADDRESS="0x8B64fA5Fd129df9c755eB82dB1e16D6D0Bdf5Bc3"
 
 echo "Updating Config at Proxy Address:" $PROXY
 FILE_NAME=SingleSidedLP_${PROTOCOL}_${POOL_NAME}
 # Re-run this to generate the gnosis outputs
 forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
-    -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS --chain $CHAIN_ID --account $DEPLOYER
+    -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS --chain $CHAIN_ID
 
 process_json_file "scripts/deploy/$PROXY.updateConfig.json"

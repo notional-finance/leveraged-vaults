@@ -185,8 +185,8 @@ mainnet:
       minCollateralRatioBPS: 1400
       maxDeleverageCollateralRatioBPS: 2600
       liquidationRate: 103
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5000e8
+      minAccountBorrowSize: 100_000e8
+      maxPrimaryBorrow: 5_000_000e8
   - vaultName: SingleSidedLP:Convex:[USDC]/crvUSD
     vaultType: Curve2Token
     primaryBorrowCurrency: USDC
@@ -210,8 +210,8 @@ mainnet:
       minCollateralRatioBPS: 1400
       maxDeleverageCollateralRatioBPS: 2600
       liquidationRate: 103
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5000e8
+      minAccountBorrowSize: 100_000e8
+      maxPrimaryBorrow: 5_000_000e8
   - vaultName: SingleSidedLP:Convex:pyUSD/[USDC]
     vaultType: Curve2Token
     curveInterface: StableSwapNG
@@ -233,11 +233,11 @@ mainnet:
       maxRelExitValuation: 50
     config:
       feeRate5BPS: 20
-      minCollateralRatioBPS: 500
-      maxDeleverageCollateralRatioBPS: 800
+      minCollateralRatioBPS: 1100
+      maxDeleverageCollateralRatioBPS: 1900
       liquidationRate: 103
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5000e8
+      minAccountBorrowSize: 100_000e8
+      maxPrimaryBorrow: 8_000_000e8
   - vaultName: SingleSidedLP:Aura:osETH/[WETH]
     vaultType: ComposablePool
     primaryBorrowCurrency: ETH
@@ -276,11 +276,11 @@ mainnet:
       maxRelExitValuation: 50
     config:
       feeRate5BPS: 20
-      minCollateralRatioBPS: 500
-      maxDeleverageCollateralRatioBPS: 800
+      minCollateralRatioBPS: 1400
+      maxDeleverageCollateralRatioBPS: 2600
       liquidationRate: 103
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5000e8
+      minAccountBorrowSize: 100_000e8
+      maxPrimaryBorrow: 2_000_000e8
   - vaultName: SingleSidedLP:Aura:rETH/weETH:[ETH]
     vaultType: WrappedComposablePool
     primaryBorrowCurrency: ETH
