@@ -39,8 +39,8 @@ Curve2TokenHarness
         params.maxDeleverageCollateralRatioBPS = 1900;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 100_000e8;
-        maxPrimaryBorrow = 8_000_000e8;
+        params.minAccountBorrowSize = 1e8;
+        maxPrimaryBorrow = 5_000e8;
     }
 
     function getRequiredOracles() public override pure returns (
