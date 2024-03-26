@@ -9,6 +9,7 @@ import "@interfaces/notional/NotionalProxy.sol";
 import "@interfaces/notional/IStrategyVault.sol";
 import "@interfaces/trading/ITradingModule.sol";
 import {IERC20} from "@contracts/utils/TokenUtils.sol";
+import "@contracts/liquidator/AaveFlashLiquidator.sol";
 import "@contracts/global/Constants.sol";
 
 abstract contract BaseAcceptanceTest is Test {
@@ -46,6 +47,8 @@ abstract contract BaseAcceptanceTest is Test {
 
     // Used for transferring tokens when `deal` does not work, like for USDC.
     address WHALE;
+
+    AaveFlashLiquidator liquidator;
 
     function setUp() public virtual {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
@@ -85,6 +88,12 @@ abstract contract BaseAcceptanceTest is Test {
             );
         }
         vm.stopPrank();
+
+        address aave = Deployments.CHAIN_ID == 1 ?
+            0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 :
+            0x794a61358D6845594F94dc1DB02A252b5b4814aD;
+
+        liquidator = new AaveFlashLiquidator(Deployments.NOTIONAL, aave);
     }
 
     function assertAbsDiff(uint256 a, uint256 b, uint256 diff, string memory m) internal {
@@ -388,5 +397,100 @@ abstract contract BaseAcceptanceTest is Test {
             }
         }
     }
+
+    /**** Liquidation Tests *****/
+
+    function getLiquidationParams(address account) internal returns (
+        FlashLiquidatorBase.LiquidationParams memory params,
+        address asset,
+        int256 maxUnderlying
+    ) {
+        (/* */, maxUnderlying) = liquidator.getOptimalDeleveragingParams(
+            account, address(vault)
+        );
+        VaultAccount memory va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
+
+        (
+            /* VaultAccountHealthFactors memory h */,
+            /* int256[3] memory maxLiquidatorDepositUnderlying */,
+            uint256[3] memory vaultSharesToLiquidator
+        ) = Deployments.NOTIONAL.getVaultAccountHealthFactors(account, address(vault));
+
+        bytes memory redeem = getRedeemParams(vaultSharesToLiquidator[0], va.maturity);
+        params = FlashLiquidatorBase.LiquidationParams({
+            liquidationType: FlashLiquidatorBase.LiquidationType.DELEVERAGE_VAULT_ACCOUNT,
+            currencyId: config.borrowCurrencyId,
+            currencyIndex: 0,
+            account: account,
+            vault: address(vault),
+            useVaultDeleverage: config.flags & ONLY_VAULT_DELEVERAGE == ONLY_VAULT_DELEVERAGE,
+            actionData: redeem
+        });
+
+        (/* */, Token memory t) = Deployments.NOTIONAL.getCurrency(config.borrowCurrencyId);
+        asset =  t.tokenAddress == address(0) ? address(Deployments.WETH) : t.tokenAddress;
+    }
+
+
+    function test_deleverageVariableBorrow() public {
+        address account = makeAddr("account");
+        VaultConfig memory c = Deployments.NOTIONAL.getVaultConfig(address(vault));
+        uint256 depositAmountExternal = uint256(c.minAccountBorrowSize) * precision / 1e8;
+        uint256 msgValue = c.borrowCurrencyId == 1 ? depositAmountExternal : 0;
+
+        // step 1: create a vault account directly via notional
+        deal(account, 1000e18);
+        vm.prank(account);
+        Deployments.NOTIONAL.enterVault{value: msgValue}(
+            account,
+            address(vault),
+            depositAmountExternal,
+            maturities[0], // prime cash maturity
+            depositAmountExternal * 1e8 / precision * 1e9 / (uint256(c.minCollateralRatio) + maxRelEntryValuation),
+            0,
+            getDepositParams(depositAmountExternal, maturities[0])
+        );
+
+        // step 2: increase the min collateral ratio
+        VaultConfigParams memory cp = config;
+        cp.minCollateralRatioBPS = cp.minCollateralRatioBPS + cp.minCollateralRatioBPS / 4;
+        vm.startPrank(Deployments.NOTIONAL.owner());
+        Deployments.NOTIONAL.updateVault(address(vault), cp, getMaxPrimaryBorrow());
+        vm.stopPrank();
+
+        // step 3: get params and asset
+        (
+            FlashLiquidatorBase.LiquidationParams memory params,
+            address asset,
+            int256 maxUnderlying
+        ) = getLiquidationParams(account);
+        assertGt(maxUnderlying, 0, "Not Under Collateralized");
+
+        liquidator.flashLiquidate(
+            asset,
+            uint256(maxUnderlying) * precision / 1e8 + roundingPrecision,
+            params
+        );
+        VaultAccount memory va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
+
+        // Assert liquidation was a success
+        (/* */, maxUnderlying) = liquidator.getOptimalDeleveragingParams(
+            account, address(vault)
+        );
+        assertEq(maxUnderlying, 0, "Zero Deposit");
+        assertEq(va.tempCashBalance, 0, "Cash Balance");
+    }
+
+    // function test_deleverageVariableBorrow_accruedFees() public {
+    // }
+
+    // function test_deleverageFixedBorrow_cashPurchase() public {
+    // }
+
+    // function test_deleverageFixedBorrow_noCashPurchase() public {
+    // }
+
+    // function test_RevertIf_VaultAccountCollateralized() public {
+    // }
 
 }
