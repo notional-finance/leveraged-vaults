@@ -11,6 +11,7 @@ import "@interfaces/trading/ITradingModule.sol";
 import {IERC20} from "@contracts/utils/TokenUtils.sol";
 import "@contracts/liquidator/AaveFlashLiquidator.sol";
 import "@contracts/global/Constants.sol";
+import "@contracts/trading/TradingModule.sol";
 
 abstract contract BaseAcceptanceTest is Test {
     uint256 constant BASIS_POINT = 1e5;
@@ -136,15 +137,15 @@ abstract contract BaseAcceptanceTest is Test {
     function getRedeemParams(uint256 vaultShares, uint256 maturity) internal view virtual returns (bytes memory);
     function checkInvariants() internal virtual;
 
-    function dealTokens(uint256 depositAmount) internal {
+    function dealTokens(address to, uint256 depositAmount) internal {
         if (isETH) {
-            deal(address(Deployments.NOTIONAL), depositAmount);
+            deal(to, depositAmount);
         } else if (WHALE != address(0)) {
             // USDC does not work with `deal` so transfer from a whale account instead.
             vm.prank(WHALE);
-            primaryBorrowToken.transfer(address(vault), depositAmount);
+            primaryBorrowToken.transfer(to, depositAmount);
         } else {
-            deal(address(primaryBorrowToken), address(vault), depositAmount, true);
+            deal(address(primaryBorrowToken), to, depositAmount, true);
         }
     }
 
@@ -155,7 +156,7 @@ abstract contract BaseAcceptanceTest is Test {
         bytes memory data,
         bytes memory revertMsg
     ) internal virtual {
-        dealTokens(depositAmount);
+        dealTokens(isETH ? address(Deployments.NOTIONAL) : address(vault), depositAmount);
 
         vm.prank(address(Deployments.NOTIONAL));
         vm.expectRevert(revertMsg);
@@ -172,7 +173,7 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 maturity,
         bytes memory data
     ) internal virtual {
-        dealTokens(depositAmount);
+        dealTokens(isETH ? address(Deployments.NOTIONAL) : address(vault), depositAmount);
 
         vm.prank(address(Deployments.NOTIONAL));
         vm.expectRevert();
@@ -190,7 +191,7 @@ abstract contract BaseAcceptanceTest is Test {
         bytes memory data,
         bytes4 selector
     ) internal virtual {
-        dealTokens(depositAmount);
+        dealTokens(isETH ? address(Deployments.NOTIONAL) : address(vault), depositAmount);
 
         vm.prank(address(Deployments.NOTIONAL));
         vm.expectRevert(selector);
@@ -207,7 +208,7 @@ abstract contract BaseAcceptanceTest is Test {
         uint256 maturity,
         bytes memory data
     ) internal virtual returns (uint256 vaultShares) {
-        dealTokens(depositAmount);
+        dealTokens(isETH ? address(Deployments.NOTIONAL) : address(vault), depositAmount);
 
         vm.prank(address(Deployments.NOTIONAL));
         if (isETH) {
@@ -235,10 +236,8 @@ abstract contract BaseAcceptanceTest is Test {
 
     function test_EnterVault(uint256 maturityIndex, uint256 depositAmount) public {
         address account = makeAddr("account");
-        console.log(maturities.length);
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
-        console.log("maturity");
         depositAmount = boundDepositAmount(depositAmount);
 
         hook_beforeEnterVault(account, maturity, depositAmount);
@@ -431,34 +430,102 @@ abstract contract BaseAcceptanceTest is Test {
         asset =  t.tokenAddress == address(0) ? address(Deployments.WETH) : t.tokenAddress;
     }
 
-
-    function test_deleverageVariableBorrow() public {
-        address account = makeAddr("account");
+    function _enterVaultLiquidation(address account, uint256 maturity) internal {
         VaultConfig memory c = Deployments.NOTIONAL.getVaultConfig(address(vault));
         uint256 depositAmountExternal = uint256(c.minAccountBorrowSize) * precision / 1e8;
-        uint256 msgValue = c.borrowCurrencyId == 1 ? depositAmountExternal : 0;
+        uint256 msgValue = isETH ? depositAmountExternal : 0;
 
-        // step 1: create a vault account directly via notional
-        deal(account, 1000e18);
-        vm.prank(account);
+        dealTokens(account, depositAmountExternal);
+        vm.startPrank(account);
+        if (!isETH) primaryBorrowToken.approve(address(Deployments.NOTIONAL), type(uint256).max);
         Deployments.NOTIONAL.enterVault{value: msgValue}(
             account,
             address(vault),
             depositAmountExternal,
-            maturities[0], // prime cash maturity
-            depositAmountExternal * 1e8 / precision * 1e9 / (uint256(c.minCollateralRatio) + maxRelEntryValuation),
+            maturity, // prime cash maturity
+            depositAmountExternal * 1e8 / precision * 1e9 / (uint256(c.minCollateralRatio) + 10 * maxRelEntryValuation),
             0,
-            getDepositParams(depositAmountExternal, maturities[0])
+            getDepositParams(depositAmountExternal, maturity)
         );
+        vm.stopPrank();
+    }
 
-        // step 2: increase the min collateral ratio
+    function _changeCollateralRatio() internal {
         VaultConfigParams memory cp = config;
         cp.minCollateralRatioBPS = cp.minCollateralRatioBPS + cp.minCollateralRatioBPS / 4;
         vm.startPrank(Deployments.NOTIONAL.owner());
         Deployments.NOTIONAL.updateVault(address(vault), cp, getMaxPrimaryBorrow());
         vm.stopPrank();
+    }
 
-        // step 3: get params and asset
+    function test_RevertIf_VaultAccountCollateralized(uint256 maturityIndex) public {
+        address account = makeAddr("account");
+        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
+        uint256 maturity = maturities[maturityIndex];
+
+        _enterVaultLiquidation(account, maturity);
+        (
+            FlashLiquidatorBase.LiquidationParams memory params,
+            address asset,
+            int256 maxUnderlying
+        ) = getLiquidationParams(account);
+        assertEq(maxUnderlying, 0, "Under Collateralized");
+
+        vm.expectRevert();
+        liquidator.flashLiquidate(
+            asset,
+            // This number does not really matter
+            uint256(100e8) * precision / 1e8 + roundingPrecision,
+            params
+        );
+    }
+
+    function test_deleverageVariableFixed_noCashPurchase(uint256 maturityIndex) public {
+        address account = makeAddr("account");
+        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
+        uint256 maturity = maturities[maturityIndex];
+        _enterVaultLiquidation(account, maturity);
+
+        // Increases the collateral ratio for liquidation
+        _changeCollateralRatio();
+
+        (
+            FlashLiquidatorBase.LiquidationParams memory params,
+            address asset,
+            int256 maxUnderlying
+        ) = getLiquidationParams(account);
+        assertGt(maxUnderlying, 0, "Not Under Collateralized");
+
+        liquidator.flashLiquidate(
+            asset,
+            uint256(maxUnderlying) * precision / 1e8 + roundingPrecision,
+            params
+        );
+        VaultAccount memory va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
+
+        // Assert liquidation was a success
+        (/* */, maxUnderlying) = liquidator.getOptimalDeleveragingParams(
+            account, address(vault)
+        );
+        assertEq(maxUnderlying, 0, "Zero Deposit");
+        if (maturityIndex == 0) {
+            assertEq(va.tempCashBalance, 0, "Cash Balance");
+        } else {
+            assertGt(va.tempCashBalance, 0, "Cash Balance");
+        }
+    }
+
+    function test_deleverageVariableBorrow_accruedFees() public {
+        address account = makeAddr("account");
+        _enterVaultLiquidation(account, maturities[0]);
+
+        // Increases the collateral ratio for liquidation
+        _changeCollateralRatio();
+
+        skip(30 days);
+        vm.prank(Deployments.NOTIONAL.owner());
+        TradingModule(address(Deployments.TRADING_MODULE)).setMaxOracleFreshness(type(uint32).max);
+
         (
             FlashLiquidatorBase.LiquidationParams memory params,
             address asset,
@@ -481,16 +548,35 @@ abstract contract BaseAcceptanceTest is Test {
         assertEq(va.tempCashBalance, 0, "Cash Balance");
     }
 
-    // function test_deleverageVariableBorrow_accruedFees() public {
-    // }
+    function test_deleverageFixedBorrow_cashPurchase() public {
+        if (maturities.length == 1) return;
+        address account = makeAddr("account");
+        _enterVaultLiquidation(account, maturities[1]);
 
-    // function test_deleverageFixedBorrow_cashPurchase() public {
-    // }
+        // Increases the collateral ratio for liquidation
+        _changeCollateralRatio();
 
-    // function test_deleverageFixedBorrow_noCashPurchase() public {
-    // }
+        (
+            FlashLiquidatorBase.LiquidationParams memory params,
+            address asset,
+            int256 maxUnderlying
+        ) = getLiquidationParams(account);
+        assertGt(maxUnderlying, 0, "Not Under Collateralized");
 
-    // function test_RevertIf_VaultAccountCollateralized() public {
-    // }
+        liquidator.flashLiquidate(
+            asset,
+            uint256(maxUnderlying) * precision / 1e8 + roundingPrecision,
+            params
+        );
+        params.liquidationType = FlashLiquidatorBase.LiquidationType.DELEVERAGE_VAULT_ACCOUNT_AND_LIQUIDATE_CASH;
+        VaultAccount memory va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
 
+        // Assert liquidation was a success
+        (/* */, maxUnderlying) = liquidator.getOptimalDeleveragingParams(
+            account, address(vault)
+        );
+        assertEq(maxUnderlying, 0, "Zero Deposit");
+        // Allow a little dust
+        assertLt(va.tempCashBalance, 50e5, "Cash Balance");
+    }
 }

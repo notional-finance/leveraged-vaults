@@ -63,9 +63,9 @@ arbitrum:
     rewards: [AURA, BAL, ARB]
     oracles: [USDC, DAI, USDT, USDC_e]
     setUp:
-      minDeposit: 0.01e6
+      minDeposit: 1e6
       maxDeposit: 100_000e6
-      maxRelEntryValuation: 15
+      maxRelEntryValuation: 50
       maxRelExitValuation: 15
     config:
       minCollateralRatioBPS: 1100
@@ -80,11 +80,12 @@ arbitrum:
     rewards: [AURA, BAL, ARB]
     oracles: [USDC, DAI, USDT, USDC_e]
     setUp:
-      minDeposit: 0.01e6
+      minDeposit: 1e6
       maxDeposit: 100_000e6
-      maxRelEntryValuation: 15
+      maxRelEntryValuation: 50
       maxRelExitValuation: 15
     config:
+      minAccountBorrowSize: 1e8
       minCollateralRatioBPS: 1100
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
@@ -95,9 +96,10 @@ arbitrum:
     rewards: [AURA, BAL, ARB]
     oracles: [USDC, DAI, USDT, USDC_e]
     setUp:
-      maxRelEntryValuation: 15
+      maxRelEntryValuation: 50
       maxRelExitValuation: 15
     config:
+      minAccountBorrowSize: 1e8
       minCollateralRatioBPS: 1100
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700

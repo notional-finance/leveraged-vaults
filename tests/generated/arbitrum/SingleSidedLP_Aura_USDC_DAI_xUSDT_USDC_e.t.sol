@@ -9,9 +9,9 @@ contract Test_SingleSidedLP_Aura_USDC_DAI_xUSDT_USDC_e is BaseSingleSidedLPVault
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.01e6;
+        minDeposit = 1e6;
         maxDeposit = 100_000e6;
-        maxRelEntryValuation = 15 * BASIS_POINT;
+        maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 15 * BASIS_POINT;
 
         super.setUp();
@@ -38,7 +38,7 @@ ComposablePoolHarness
         params.maxDeleverageCollateralRatioBPS = 1700;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.001e8;
+        params.minAccountBorrowSize = 1e8;
         maxPrimaryBorrow = 100e8;
     }
 
