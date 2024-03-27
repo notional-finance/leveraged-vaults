@@ -19,17 +19,17 @@ defaults:
     maxPrimaryBorrow: 100e8
 
 arbitrum:
-  - vaultName: SingleSidedLP:Aura:[RDNT]/WETH
-    vaultType: WeightedPool
-    primaryBorrowCurrency: RDNT
-    rewardPool: "0xa17492d89cB2D0bE1dDbd0008F8585EDc5B0ACf3"
-    rewards: [AURA, BAL]
-    oracles: [RDNT, ETH]
-    settings:
-      oraclePriceDeviationLimitPercent: 200
-    config:
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 100e8
+  # - vaultName: SingleSidedLP:Aura:[RDNT]/WETH
+  #   vaultType: WeightedPool
+  #   primaryBorrowCurrency: RDNT
+  #   rewardPool: "0xa17492d89cB2D0bE1dDbd0008F8585EDc5B0ACf3"
+  #   rewards: [AURA, BAL]
+  #   oracles: [RDNT, ETH]
+  #   settings:
+  #     oraclePriceDeviationLimitPercent: 200
+  #   config:
+  #     minAccountBorrowSize: 1e8
+  #     maxPrimaryBorrow: 100e8
   - vaultName: SingleSidedLP:Aura:rETH/[WETH]
     vaultType: ComposablePool
     primaryBorrowCurrency: ETH
@@ -389,3 +389,24 @@ mainnet:
       liquidationRate: 103
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 5000e8
+  # - vaultName: SingleSidedLP:Aura:ezETH/WETH
+  #   vaultType: ComposablePool
+  #   primaryBorrowCurrency: ETH
+  #   rewardPool: "0x95ec73baa0ecf8159b4ee897d973e41f51978e50"
+  #   rewards: [AURA, BAL]
+  #   oracles: [ezETH, ETH]
+  #   settings:
+  #     maxPoolShare: 2000
+  #     oraclePriceDeviationLimitPercent: 0.015e4
+  #   setUp:
+  #     minDeposit: 1e18
+  #     maxDeposit: 100e18
+  #     maxRelEntryValuation: 50
+  #     maxRelExitValuation: 50
+  #   config:
+  #     feeRate5BPS: 20
+  #     minCollateralRatioBPS: 500
+  #     maxDeleverageCollateralRatioBPS: 800
+  #     liquidationRate: 103
+  #     minAccountBorrowSize: 1e8
+  #     maxPrimaryBorrow: 5000e8

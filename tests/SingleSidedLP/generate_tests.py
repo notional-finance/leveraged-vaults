@@ -53,7 +53,8 @@ token = {
         "weETH": "0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee",
         "GHO": "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f",
         'CVX': "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
-        'SWISE': "0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2"
+        'SWISE': "0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2",
+        'ezETH': "0xbf5495Efe5DB9ce00f80364C8B423567e58d2110"
     },
     "arbitrum": {
         "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -104,6 +105,7 @@ oracle = {
         'osETH': "0x3d3d7d124B0B80674730e0D31004790559209DEb",
         'weETH': "0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136",
         'GHO': "0x3f12643D3f6f874d39C2a4c9f2Cd6f2DbAC877FC",
+        'ezETH': "0xF4a3e183F59D2599ee3DF213ff78b1B3b1923696" # todo: need to deploy a usd oracle
     },
     "arbitrum": {
         "WETH": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
