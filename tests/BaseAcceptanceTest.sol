@@ -8,12 +8,13 @@ import "@deployments/Deployments.sol";
 import "@interfaces/notional/NotionalProxy.sol";
 import "@interfaces/notional/IStrategyVault.sol";
 import "@interfaces/trading/ITradingModule.sol";
-import {IERC20} from "@contracts/utils/TokenUtils.sol";
+import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import "@contracts/liquidator/AaveFlashLiquidator.sol";
 import "@contracts/global/Constants.sol";
 import "@contracts/trading/TradingModule.sol";
 
 abstract contract BaseAcceptanceTest is Test {
+    using TokenUtils for IERC20;
     uint256 constant BASIS_POINT = 1e5;
 
     uint16 internal constant ENABLED                         = 1 << 0;
@@ -433,17 +434,40 @@ abstract contract BaseAcceptanceTest is Test {
     function _enterVaultLiquidation(address account, uint256 maturity) internal {
         VaultConfig memory c = Deployments.NOTIONAL.getVaultConfig(address(vault));
         uint256 depositAmountExternal = uint256(c.minAccountBorrowSize) * precision / 1e8;
-        uint256 msgValue = isETH ? depositAmountExternal : 0;
+
+        uint256 borrowAmount;
+        if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {
+            borrowAmount = depositAmountExternal * 1e8 / precision * 1e9 / (
+                uint256(c.minCollateralRatio) + 10 * maxRelEntryValuation
+            );
+        } else {
+            uint256 borrowAmountExternal = depositAmountExternal * 1e9 / (uint256(c.minCollateralRatio) + maxRelEntryValuation);
+            // Calculate the fCash amount because of slippage
+            (borrowAmount, /* */, /* */) = Deployments.NOTIONAL.getfCashBorrowFromPrincipal(
+                c.borrowCurrencyId,
+                borrowAmountExternal,
+                maturity,
+                0,
+                block.timestamp,
+                true
+            );
+            // Add slippage into the deposit to maintain the collateral ratio
+            depositAmountExternal = depositAmountExternal + 2 * (borrowAmount * precision / 1e8 - borrowAmountExternal);
+        }
 
         dealTokens(account, depositAmountExternal);
         vm.startPrank(account);
-        if (!isETH) primaryBorrowToken.approve(address(Deployments.NOTIONAL), type(uint256).max);
+        if (!isETH) {
+            primaryBorrowToken.checkApprove(address(Deployments.NOTIONAL), type(uint256).max);
+        }
+        uint256 msgValue = isETH ? depositAmountExternal : 0;
+
         Deployments.NOTIONAL.enterVault{value: msgValue}(
             account,
             address(vault),
             depositAmountExternal,
-            maturity, // prime cash maturity
-            depositAmountExternal * 1e8 / precision * 1e9 / (uint256(c.minCollateralRatio) + 10 * maxRelEntryValuation),
+            maturity,
+            borrowAmount,
             0,
             getDepositParams(depositAmountExternal, maturity)
         );
@@ -523,7 +547,11 @@ abstract contract BaseAcceptanceTest is Test {
         _changeCollateralRatio();
 
         skip(30 days);
-        vm.prank(Deployments.NOTIONAL.owner());
+        if (Deployments.CHAIN_ID == 1) {
+            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+        } else {
+            vm.prank(Deployments.NOTIONAL.owner());
+        }
         TradingModule(address(Deployments.TRADING_MODULE)).setMaxOracleFreshness(type(uint32).max);
 
         (

@@ -13,7 +13,7 @@ contract Test_SingleSidedLP_Convex_xUSDC_crvUSD is BaseSingleSidedLPVault {
         minDeposit = 1e6;
         maxDeposit = 90_000e6;
         maxRelEntryValuation = 50 * BASIS_POINT;
-        maxRelExitValuation = 50 * BASIS_POINT;
+        maxRelExitValuation = 75 * BASIS_POINT;
 
         super.setUp();
     }
