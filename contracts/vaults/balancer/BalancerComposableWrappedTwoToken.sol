@@ -57,6 +57,11 @@ contract BalancerComposableWrappedTwoToken is BalancerComposableAuraVault {
         BORROW_DECIMALS = int256(10**TokenUtils.getDecimals(_borrowToken));
     }
 
+    /// @notice strategy identifier
+    function strategy() external override pure returns (bytes4) {
+        return bytes4(keccak256("BalancerComposableWrappedTwoToken"));
+    }
+
     function TOKENS() public view override returns (IERC20[] memory, uint8[] memory) {
         IERC20[] memory tokens = new IERC20[](3);
         uint8[] memory decimals = new uint8[](3);
