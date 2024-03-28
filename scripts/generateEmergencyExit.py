@@ -36,6 +36,9 @@ def transactionTemplate(vault):
 def main():
     # Can only generate exits for one network at a time
     networkName = network.show_active()
+    if networkName == "arbitrum-one":
+        networkName = "arbitrum"
+
     for (n, protocol) in pools.items():
         if n != networkName:
             continue
