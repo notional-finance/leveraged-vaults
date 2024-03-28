@@ -3,9 +3,9 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Aura_rETH_weETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Aura_ezETH_xWETH is BaseSingleSidedLPVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_rETH_weETH();
+        harness = new Harness_SingleSidedLP_Aura_ezETH_xWETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -18,11 +18,11 @@ contract Test_SingleSidedLP_Aura_rETH_weETH is BaseSingleSidedLPVault {
     }
 }
 
-contract Harness_SingleSidedLP_Aura_rETH_weETH is 
+contract Harness_SingleSidedLP_Aura_ezETH_xWETH is 
 ComposablePoolHarness
  {
     function getVaultName() public pure override returns (string memory) {
-        return 'SingleSidedLP:Aura:rETH/weETH';
+        return 'SingleSidedLP:Aura:ezETH/[WETH]';
     }
 
     function getDeploymentConfig() public view override returns (
@@ -48,12 +48,12 @@ ComposablePoolHarness
         token = new address[](2);
         oracle = new address[](2);
 
-        // rETH
-        token[0] = 0xae78736Cd615f374D3085123A210448E74Fc6393;
-        oracle[0] = 0xA7D273951861CF07Df8B0A1C3c934FD41bA9E8Eb;
-        // weETH
-        token[1] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
-        oracle[1] = 0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136;
+        // ezETH
+        token[0] = 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110;
+        oracle[0] = 0xCa140AE5a361b7434A729dCadA0ea60a50e249dd;
+        // ETH
+        token[1] = 0x0000000000000000000000000000000000000000;
+        oracle[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         
     }
 
@@ -82,14 +82,14 @@ ComposablePoolHarness
 
     constructor() {
         SingleSidedLPMetadata memory _m;
-        _m.primaryBorrowCurrency = 7;
+        _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 0.015e4
         });
-        _m.rewardPool = IERC20(0x07A319A023859BbD49CC9C38ee891c3EA9283Cc5);
+        _m.rewardPool = IERC20(0x95eC73Baa0eCF8159b4EE897D973E41f51978E50);
 
         
 
@@ -103,9 +103,9 @@ ComposablePoolHarness
     }
 }
 
-contract Deploy_SingleSidedLP_Aura_rETH_weETH is Harness_SingleSidedLP_Aura_rETH_weETH, DeployProxyVault {
+contract Deploy_SingleSidedLP_Aura_ezETH_xWETH is Harness_SingleSidedLP_Aura_ezETH_xWETH, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_rETH_weETH();
+        harness = new Harness_SingleSidedLP_Aura_ezETH_xWETH();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {

@@ -105,7 +105,7 @@ oracle = {
         'osETH': "0x3d3d7d124B0B80674730e0D31004790559209DEb",
         'weETH': "0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136",
         'GHO': "0x3f12643D3f6f874d39C2a4c9f2Cd6f2DbAC877FC",
-        'ezETH': "0xF4a3e183F59D2599ee3DF213ff78b1B3b1923696" # todo: need to deploy a usd oracle
+        'ezETH': "0xCa140AE5a361b7434A729dCadA0ea60a50e249dd"
     },
     "arbitrum": {
         "WETH": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
