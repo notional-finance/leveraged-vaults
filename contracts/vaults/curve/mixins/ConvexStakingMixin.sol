@@ -25,7 +25,7 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
     address internal immutable CONVEX_REWARD_POOL;
     uint256 internal immutable CONVEX_POOL_ID;
 
-    address WHITELISTED_REWARD;
+    address immutable WHITELISTED_REWARD;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
         Curve2TokenPoolMixin(notional_, params.baseParams) {

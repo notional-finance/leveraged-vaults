@@ -33,13 +33,13 @@ ComposablePoolHarness
         params.liquidationRate = 102;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 1000;
+        params.minCollateralRatioBPS = 500;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1700;
+        params.maxDeleverageCollateralRatioBPS = 800;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 2e8;
-        maxPrimaryBorrow = 100e8;
+        params.minAccountBorrowSize = 0.1e8;
+        maxPrimaryBorrow = 1e8;
     }
 
     function getRequiredOracles() public override pure returns (
