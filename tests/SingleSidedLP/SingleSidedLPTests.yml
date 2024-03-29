@@ -388,7 +388,7 @@ mainnet:
       maxDeleverageCollateralRatioBPS: 800
       liquidationRate: 103
       minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5000e8
+      maxPrimaryBorrow: 10e8
   - vaultName: SingleSidedLP:Aura:ezETH/[WETH]
     vaultType: ComposablePool
     primaryBorrowCurrency: ETH
@@ -409,4 +409,4 @@ mainnet:
       maxDeleverageCollateralRatioBPS: 800
       liquidationRate: 103
       minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5000e8
+      maxPrimaryBorrow: 10e8

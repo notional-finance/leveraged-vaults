@@ -39,7 +39,7 @@ ComposablePoolHarness
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 1e8;
-        maxPrimaryBorrow = 5000e8;
+        maxPrimaryBorrow = 10e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -81,6 +81,7 @@ ComposablePoolHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0x32D82A1C8618c7Be7Fe85B2F1C44357A871d52D1;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 7;
         _m.settings = StrategyVaultSettings({
