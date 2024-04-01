@@ -39,8 +39,8 @@ ComposablePoolHarness
         params.maxDeleverageCollateralRatioBPS = 2600;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 1e8;
-        maxPrimaryBorrow = 5_000e8;
+        params.minAccountBorrowSize = 100_000e8;
+        maxPrimaryBorrow = 750_000e8;
     }
 
     function getRequiredOracles() public override pure returns (

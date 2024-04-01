@@ -333,8 +333,8 @@ mainnet:
       minCollateralRatioBPS: 1400
       maxDeleverageCollateralRatioBPS: 2600
       liquidationRate: 103
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5_000e8
+      minAccountBorrowSize: 100_000e8
+      maxPrimaryBorrow: 750_000e8
   - vaultName: SingleSidedLP:Aura:rETH/weETH:[ETH]
     vaultType: WrappedComposablePool
     primaryBorrowCurrency: ETH
