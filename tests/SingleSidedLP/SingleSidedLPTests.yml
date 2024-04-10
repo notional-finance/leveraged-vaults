@@ -215,6 +215,27 @@ arbitrum:
       maxDeleverageCollateralRatioBPS: 800
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 5_000e8
+  # - vaultName: SingleSidedLP:Aura:ezETH/[wstETH]
+  #   vaultType: ComposablePool
+  #   primaryBorrowCurrency: wstETH
+  #   rewardPool: "0xc3c454095a988013c4d1a9166c345f7280332e1a"
+  #   rewards: [AURA, BAL]
+  #   oracles: [ezETH, wstETH]
+  #   settings:
+  #     maxPoolShare: 2000
+  #     oraclePriceDeviationLimitPercent: 0.015e4
+  #   setUp:
+  #     minDeposit: 1e18
+  #     maxDeposit: 100e18
+  #     maxRelEntryValuation: 50
+  #     maxRelExitValuation: 50
+  #   config:
+  #     feeRate5BPS: 20
+  #     minCollateralRatioBPS: 500
+  #     maxDeleverageCollateralRatioBPS: 800
+  #     liquidationRate: 103
+  #     minAccountBorrowSize: 0.1e8
+  #     maxPrimaryBorrow: 1e8
 mainnet:
   - vaultName: SingleSidedLP:Convex:[USDT]/crvUSD
     vaultType: Curve2Token
@@ -384,8 +405,8 @@ mainnet:
       maxRelExitValuation: 75
     config:
       feeRate5BPS: 20
-      minCollateralRatioBPS: 1_400
-      maxDeleverageCollateralRatioBPS: 2_700
+      minCollateralRatioBPS: 1_300
+      maxDeleverageCollateralRatioBPS: 2_500
       liquidationRate: 103
       minAccountBorrowSize: 30e8
       maxPrimaryBorrow: 150e8

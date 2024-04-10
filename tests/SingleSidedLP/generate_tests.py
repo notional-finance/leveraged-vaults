@@ -74,7 +74,8 @@ token = {
         "BAL": "0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8",
         "AURA": "0x1509706a6c66CA549ff0cB464de88231DDBe213B",
         "CRV": "0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978",
-        "crvUSD": "0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5"
+        "crvUSD": "0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5",
+        "ezETH": "0x2416092f143378750bb29b79eD961ab195CcEea5"
     }
 }
 
@@ -121,6 +122,7 @@ oracle = {
         "cbETH": "0x4763672dEa3bF087929d5537B6BAfeB8e6938F46",
         "RDNT": "0x20d0Fcab0ECFD078B036b6CAf1FaC69A6453b352",
         "crvUSD": "0x0a32255dd4BB6177C994bAAc73E0606fDD568f66"
+        # "ezETH": "0x...." # TODO: deploy and list oracle...
     }
 }
 
