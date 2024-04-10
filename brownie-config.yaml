@@ -1,6 +1,6 @@
 compiler:
   solc:
-    version: 0.8.17
+    version: 0.8.24
     optimizer:
       enabled: true
       runs: 200

@@ -384,11 +384,11 @@ mainnet:
       maxRelExitValuation: 75
     config:
       feeRate5BPS: 20
-      minCollateralRatioBPS: 500
-      maxDeleverageCollateralRatioBPS: 800
+      minCollateralRatioBPS: 1_400
+      maxDeleverageCollateralRatioBPS: 2_700
       liquidationRate: 103
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 10e8
+      minAccountBorrowSize: 30e8
+      maxPrimaryBorrow: 150e8
   - vaultName: SingleSidedLP:Aura:ezETH/[WETH]
     vaultType: ComposablePool
     primaryBorrowCurrency: ETH
@@ -405,8 +405,8 @@ mainnet:
       maxRelExitValuation: 50
     config:
       feeRate5BPS: 20
-      minCollateralRatioBPS: 500
-      maxDeleverageCollateralRatioBPS: 800
+      minCollateralRatioBPS: 1_400
+      maxDeleverageCollateralRatioBPS: 2_700
       liquidationRate: 103
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 10e8
+      minAccountBorrowSize: 30e8
+      maxPrimaryBorrow: 250e8

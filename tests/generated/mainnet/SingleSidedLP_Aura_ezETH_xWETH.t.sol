@@ -33,13 +33,13 @@ ComposablePoolHarness
         params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 500;
+        params.minCollateralRatioBPS = 1400;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 800;
+        params.maxDeleverageCollateralRatioBPS = 2700;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 1e8;
-        maxPrimaryBorrow = 10e8;
+        params.minAccountBorrowSize = 30e8;
+        maxPrimaryBorrow = 250e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -49,7 +49,7 @@ ComposablePoolHarness
         oracle = new address[](2);
 
         // ezETH
-        token[0] = 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110;
+        token[0] = 0xE1fFDC18BE251E76Fb0A1cBfA6d30692c374C5fc;
         oracle[0] = 0xCa140AE5a361b7434A729dCadA0ea60a50e249dd;
         // ETH
         token[1] = 0x0000000000000000000000000000000000000000;
