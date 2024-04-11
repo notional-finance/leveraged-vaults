@@ -62,9 +62,12 @@ arbitrum:
     rewardPool: "0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E"
     rewards: [AURA, BAL, ARB]
     oracles: [USDC, DAI, USDT, USDC_e]
+    settings:
+      maxPoolShare: 2000
+      oraclePriceDeviationLimitPercent: 100
     setUp:
       minDeposit: 1e6
-      maxDeposit: 100_000e6
+      maxDeposit: 50_000e6
       maxRelEntryValuation: 50
       maxRelExitValuation: 15
     config:
@@ -215,27 +218,27 @@ arbitrum:
       maxDeleverageCollateralRatioBPS: 800
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 5_000e8
-  # - vaultName: SingleSidedLP:Aura:ezETH/[wstETH]
-  #   vaultType: ComposablePool
-  #   primaryBorrowCurrency: wstETH
-  #   rewardPool: "0xc3c454095a988013c4d1a9166c345f7280332e1a"
-  #   rewards: [AURA, BAL]
-  #   oracles: [ezETH, wstETH]
-  #   settings:
-  #     maxPoolShare: 2000
-  #     oraclePriceDeviationLimitPercent: 0.015e4
-  #   setUp:
-  #     minDeposit: 1e18
-  #     maxDeposit: 100e18
-  #     maxRelEntryValuation: 50
-  #     maxRelExitValuation: 50
-  #   config:
-  #     feeRate5BPS: 20
-  #     minCollateralRatioBPS: 500
-  #     maxDeleverageCollateralRatioBPS: 800
-  #     liquidationRate: 103
-  #     minAccountBorrowSize: 0.1e8
-  #     maxPrimaryBorrow: 1e8
+  - vaultName: SingleSidedLP:Aura:ezETH/[wstETH]
+    vaultType: ComposablePool
+    primaryBorrowCurrency: wstETH
+    rewardPool: "0xC3c454095A988013C4D1a9166C345f7280332E1A"
+    rewards: [AURA, BAL]
+    oracles: [ezETH, wstETH]
+    settings:
+      maxPoolShare: 3000
+      oraclePriceDeviationLimitPercent: 0.015e4
+    setUp:
+      minDeposit: 1e18
+      maxDeposit: 25e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      feeRate5BPS: 20
+      minCollateralRatioBPS: 500
+      maxDeleverageCollateralRatioBPS: 800
+      liquidationRate: 103
+      minAccountBorrowSize: 0.1e8
+      maxPrimaryBorrow: 1e8
 mainnet:
   - vaultName: SingleSidedLP:Convex:[USDT]/crvUSD
     vaultType: Curve2Token
@@ -417,7 +420,7 @@ mainnet:
     rewards: [AURA, BAL]
     oracles: [ezETH, ETH]
     settings:
-      maxPoolShare: 2000
+      maxPoolShare: 3000
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e18
