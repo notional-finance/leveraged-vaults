@@ -8,6 +8,7 @@ import {IAuraRewardPool} from "@interfaces/aura/IAuraRewardPool.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {BalancerPoolMixin, DeploymentParams} from "./BalancerPoolMixin.sol";
 import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
+import {RewardPoolStorage, RewardPoolType} from "@contracts/vaults/common/VaultStorage.sol";
 
 /// @notice Deployment parameters with Aura staking
 struct AuraVaultDeploymentParams {

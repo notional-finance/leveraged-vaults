@@ -9,6 +9,7 @@ import {IConvexBooster} from "@interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardToken} from "@interfaces/convex/IConvexRewardToken.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "@interfaces/convex/IConvexRewardPool.sol";
 import {Curve2TokenPoolMixin, DeploymentParams} from "./Curve2TokenPoolMixin.sol";
+import {RewardPoolStorage, RewardPoolType} from "@contracts/vaults/common/VaultStorage.sol";
 
 struct ConvexVaultDeploymentParams {
     address rewardPool;

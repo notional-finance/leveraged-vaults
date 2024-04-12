@@ -157,15 +157,15 @@ abstract contract BaseAcceptanceTest is Test {
             vm.prank(WHALE);
             primaryBorrowToken.transfer(account, depositAmount);
             vm.prank(account);
-            primaryBorrowToken.approve(address(NOTIONAL), depositAmount);
+            primaryBorrowToken.approve(address(Deployments.NOTIONAL), depositAmount);
         } else {
             deal(address(primaryBorrowToken), account, depositAmount + primaryBorrowToken.balanceOf(account), true);
             vm.prank(account);
-            primaryBorrowToken.approve(address(NOTIONAL), depositAmount);
+            primaryBorrowToken.approve(address(Deployments.NOTIONAL), depositAmount);
         }
     }
 
-    function dealTokens(uint256 depositAmount) internal {
+    function dealTokens(address to, uint256 depositAmount) internal {
         if (isETH) {
             deal(to, depositAmount);
         } else if (WHALE != address(0)) {
@@ -289,7 +289,7 @@ abstract contract BaseAcceptanceTest is Test {
             depositAmount * uint256(Constants.INTERNAL_TOKEN_PRECISION) / (10 ** decimals);
         vm.prank(account);
         if (expectRevert) vm.expectRevert(error);
-        vaultShares = NOTIONAL.enterVault{value: value}(
+        vaultShares = Deployments.NOTIONAL.enterVault{value: value}(
           account,
           address(vault),
           depositAmount,
@@ -347,12 +347,12 @@ abstract contract BaseAcceptanceTest is Test {
           lendAmount = type(uint256).max;
         } else {
           lendAmount = uint256(
-            NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
+            Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
           );
         }
         if (expectRevert) vm.expectRevert(error);
         vm.prank(account);
-        totalToReceiver = NOTIONAL.exitVault(
+        totalToReceiver = Deployments.NOTIONAL.exitVault(
           account,
           address(vault),
           account,
@@ -446,9 +446,9 @@ abstract contract BaseAcceptanceTest is Test {
         );
         vm.roll(5);
         vm.warp(maturity);
-        for (uint16 i = 1; i <= NOTIONAL.getMaxCurrencyId(); i++) {
-            try NOTIONAL.nTokenAddress(i) {
-                NOTIONAL.initializeMarkets(i, false);
+        for (uint16 i = 1; i <= Deployments.NOTIONAL.getMaxCurrencyId(); i++) {
+            try Deployments.NOTIONAL.nTokenAddress(i) {
+                Deployments.NOTIONAL.initializeMarkets(i, false);
             }  catch {}
         }
 

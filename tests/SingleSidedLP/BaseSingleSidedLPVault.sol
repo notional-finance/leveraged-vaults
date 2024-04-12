@@ -38,7 +38,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
             
             proxy = nProxy(payable(harness.EXISTING_DEPLOYMENT()));
             vm.prank(Deployments.NOTIONAL.owner());
-            UUPSUpgradeable(EXISTING_DEPLOYMENT).upgradeToAndCall(
+            UUPSUpgradeable(address(proxy)).upgradeToAndCall(
                 impl,
                 abi.encodeWithSelector(SingleSidedLPVaultBase.setRewardPoolStorage.selector)
             );
