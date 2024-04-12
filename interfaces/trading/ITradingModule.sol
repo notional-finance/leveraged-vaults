@@ -57,6 +57,10 @@ interface ITradingModule {
     event MaxOracleFreshnessUpdated(uint32 currentValue, uint32 newValue);
     event TokenPermissionsUpdated(address sender, address token, TokenPermissions permissions);
 
+    function tokenWhitelist(address spender, address token) external view returns (
+        bool allowSell, uint32 dexFlags, uint32 tradeTypeFlags
+    );
+
     function priceOracles(address token) external view returns (AggregatorV2V3Interface oracle, uint8 rateDecimals);
 
     function getExecutionData(uint16 dexId, address from, Trade calldata trade)
@@ -66,6 +70,8 @@ interface ITradingModule {
             uint256 value,
             bytes memory params
         );
+
+    function setMaxOracleFreshness(uint32 newMaxOracleFreshnessInSeconds) external;
 
     function setPriceOracle(address token, AggregatorV2V3Interface oracle) external;
 
