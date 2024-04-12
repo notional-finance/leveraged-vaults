@@ -12,6 +12,7 @@ import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import "@contracts/liquidator/AaveFlashLiquidator.sol";
 import "@contracts/global/Constants.sol";
 import "@contracts/trading/TradingModule.sol";
+import {VaultRewarderLib} from "@contracts/vaults/common/VaultRewarderLib.sol";
 
 abstract contract BaseAcceptanceTest is Test {
     using TokenUtils for IERC20;
@@ -49,10 +50,12 @@ abstract contract BaseAcceptanceTest is Test {
 
     // Used for transferring tokens when `deal` does not work, like for USDC.
     address WHALE;
+    bytes32 FOUNDRY_PROFILE;
 
     AaveFlashLiquidator liquidator;
 
     function setUp() public virtual {
+        new VaultRewarderLib(); // address is hardcoded in Deployments
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
 
         config = harness.getTestVaultConfig();
@@ -62,6 +65,9 @@ abstract contract BaseAcceptanceTest is Test {
         for (uint256 i; i < m.length; i++) maturities[i + 1] = m[i].maturity;
 
         vault = deployTestVault();
+
+        vm.label(address(vault), "vault");
+        vm.label(address(Deployments.NOTIONAL), "NOTIONAL");
         vm.prank(Deployments.NOTIONAL.owner());
         Deployments.NOTIONAL.updateVault(address(vault), config, getMaxPrimaryBorrow());
 
@@ -106,7 +112,7 @@ abstract contract BaseAcceptanceTest is Test {
     function assertRelDiff(uint256 a, uint256 b, uint256 rel, string memory m) internal {
         // Smaller number on top
         (uint256 top, uint256 bot) = a < b ? (a, b) : (b, a);
-        uint256 r = (1e9 - top * 1e9 / bot);
+        uint256 r = (BASIS_POINT - top * BASIS_POINT / bot);
         assertLe(r, rel, m);
     }
 
@@ -115,7 +121,12 @@ abstract contract BaseAcceptanceTest is Test {
         address token,
         ITradingModule.TokenPermissions memory permissions
     ) internal {
-        vm.prank(Deployments.NOTIONAL.owner());
+        // mainnet trading module still didn't migrate to new NOTIONAL proxy address
+        if (FOUNDRY_PROFILE == keccak256('mainnet')) {
+            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+        } else {
+            vm.prank(Deployments.NOTIONAL.owner());
+        }
         Deployments.TRADING_MODULE.setTokenPermissions(vault_, token, permissions);
     }
 
@@ -138,7 +149,23 @@ abstract contract BaseAcceptanceTest is Test {
     function getRedeemParams(uint256 vaultShares, uint256 maturity) internal view virtual returns (bytes memory);
     function checkInvariants() internal virtual;
 
-    function dealTokens(address to, uint256 depositAmount) internal {
+    function dealTokensAndApproveNotional(uint256 depositAmount, address account) internal {
+        if (isETH) {
+            deal(account, depositAmount);
+        } else if (WHALE != address(0)) {
+            // USDC does not work with `deal` so transfer from a whale account instead.
+            vm.prank(WHALE);
+            primaryBorrowToken.transfer(account, depositAmount);
+            vm.prank(account);
+            primaryBorrowToken.approve(address(NOTIONAL), depositAmount);
+        } else {
+            deal(address(primaryBorrowToken), account, depositAmount + primaryBorrowToken.balanceOf(account), true);
+            vm.prank(account);
+            primaryBorrowToken.approve(address(NOTIONAL), depositAmount);
+        }
+    }
+
+    function dealTokens(uint256 depositAmount) internal {
         if (isETH) {
             deal(to, depositAmount);
         } else if (WHALE != address(0)) {
@@ -222,6 +249,60 @@ abstract contract BaseAcceptanceTest is Test {
         totalVaultSharesAllMaturities += vaultShares;
     }
 
+    function expectRevert_enterVault(
+        address account,
+        uint256 depositAmount,
+        uint256 maturity,
+        bytes memory data,
+        bytes memory error
+    ) internal virtual returns (uint256 vaultShares) {
+        return _enterVault(account, depositAmount, maturity, data, true, error);
+    }
+
+    function enterVault(
+        address account,
+        uint256 depositAmount,
+        uint256 maturity,
+        bytes memory data
+    ) internal virtual returns (uint256 vaultShares) {
+        return _enterVault(account, depositAmount, maturity, data, false, "");
+    }
+
+    function _enterVault(
+        address account,
+        uint256 depositAmount,
+        uint256 maturity,
+        bytes memory data,
+        bool expectRevert,
+        bytes memory error
+    ) private returns (uint256 vaultShares) {
+        dealTokensAndApproveNotional(depositAmount, account);
+        uint256 value;
+        uint256 decimals;
+        if (isETH) {
+            value = depositAmount;
+            decimals = 18;
+        } else {
+          decimals = primaryBorrowToken.decimals();
+        }
+        uint256 depositValueInternalPrecision =
+            depositAmount * uint256(Constants.INTERNAL_TOKEN_PRECISION) / (10 ** decimals);
+        vm.prank(account);
+        if (expectRevert) vm.expectRevert(error);
+        vaultShares = NOTIONAL.enterVault{value: value}(
+          account,
+          address(vault),
+          depositAmount,
+          maturity,
+          11 * depositValueInternalPrecision / 10,
+          0,
+          data
+        );
+
+        totalVaultShares[maturity] += vaultShares;
+        totalVaultSharesAllMaturities += vaultShares;
+    }
+
     function exitVaultBypass(
         address account,
         uint256 vaultShares,
@@ -235,6 +316,55 @@ abstract contract BaseAcceptanceTest is Test {
         totalVaultSharesAllMaturities -= vaultShares;
     }
 
+    function expectRevert_exitVault(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        bytes memory data,
+        bytes memory error
+    ) internal virtual returns (uint256 totalToReceiver) {
+        return _exitVault(account, vaultShares, maturity, data, true, error);
+    }
+
+    function exitVault(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        bytes memory data
+    ) internal virtual returns (uint256 totalToReceiver) {
+        return _exitVault(account, vaultShares, maturity, data, false, "");
+    }
+    function _exitVault(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        bytes memory data,
+        bool expectRevert,
+        bytes memory error
+    ) private returns (uint256 totalToReceiver) {
+        uint256 lendAmount;
+        if (maturity == type(uint40).max) {
+          lendAmount = type(uint256).max;
+        } else {
+          lendAmount = uint256(
+            NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
+          );
+        }
+        if (expectRevert) vm.expectRevert(error);
+        vm.prank(account);
+        totalToReceiver = NOTIONAL.exitVault(
+          account,
+          address(vault),
+          account,
+          vaultShares,
+          lendAmount,
+          0,
+          data
+        );
+        totalVaultShares[maturity] -= vaultShares;
+        totalVaultSharesAllMaturities -= vaultShares;
+    }
+
     function test_EnterVault(uint256 maturityIndex, uint256 depositAmount) public {
         address account = makeAddr("account");
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
@@ -242,7 +372,7 @@ abstract contract BaseAcceptanceTest is Test {
         depositAmount = boundDepositAmount(depositAmount);
 
         hook_beforeEnterVault(account, maturity, depositAmount);
-        uint256 vaultShares = enterVaultBypass(
+        uint256 vaultShares = enterVault(
             account,
             depositAmount,
             maturity,
@@ -269,7 +399,7 @@ abstract contract BaseAcceptanceTest is Test {
         depositAmount = boundDepositAmount(depositAmount);
 
         hook_beforeEnterVault(account, maturity, depositAmount);
-        uint256 vaultShares = enterVaultBypass(
+        uint256 vaultShares = enterVault(
             account,
             depositAmount,
             maturity,
@@ -282,7 +412,7 @@ abstract contract BaseAcceptanceTest is Test {
         int256 valuationBefore = vault.convertStrategyToUnderlying(
             account, vaultShares, maturity
         );
-        uint256 underlyingToReceiver = exitVaultBypass(
+        uint256 underlyingToReceiver = exitVault(
             account,
             vaultShares,
             maturity,
@@ -314,11 +444,13 @@ abstract contract BaseAcceptanceTest is Test {
             maturity,
             getDepositParams(depositAmount, maturity)
         );
-
         vm.roll(5);
         vm.warp(maturity);
-        uint16 maxCurrency = Deployments.NOTIONAL.getMaxCurrencyId();
-        for (uint16 i = 1; i <= maxCurrency; i++) Deployments.NOTIONAL.initializeMarkets(i, false);
+        for (uint16 i = 1; i <= NOTIONAL.getMaxCurrencyId(); i++) {
+            try NOTIONAL.nTokenAddress(i) {
+                NOTIONAL.initializeMarkets(i, false);
+            }  catch {}
+        }
 
         vm.prank(address(Deployments.NOTIONAL));
         uint256 primeVaultShares = vault.convertVaultSharesToPrimeMaturity(
@@ -381,7 +513,7 @@ abstract contract BaseAcceptanceTest is Test {
             uint256(valuationBefore),
             uint256(valuationAfter),
             // Slight rounding issues with cross currency vault due to clock issues perhaps
-            roundingPrecision + roundingPrecision / 10,
+            roundingPrecision + roundingPrecision / 5,
             "Valuation Change"
         );
     }

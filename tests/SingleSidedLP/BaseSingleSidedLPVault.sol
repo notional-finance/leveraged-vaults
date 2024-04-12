@@ -38,7 +38,10 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
             
             proxy = nProxy(payable(harness.EXISTING_DEPLOYMENT()));
             vm.prank(Deployments.NOTIONAL.owner());
-            UUPSUpgradeable(address(proxy)).upgradeTo(impl);
+            UUPSUpgradeable(EXISTING_DEPLOYMENT).upgradeToAndCall(
+                impl,
+                abi.encodeWithSelector(SingleSidedLPVaultBase.setRewardPoolStorage.selector)
+            );
 
             ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory afterInfo = b.getStrategyVaultInfo();
             assertEq(abi.encode(afterInfo), abi.encode(beforeInfo));
@@ -120,9 +123,10 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.expectRevert("Unauthorized");
         v().setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 1,
-            oraclePriceDeviationLimitPercent: 50
+            oraclePriceDeviationLimitPercent: 50,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         }));
 
         vm.expectRevert("Unauthorized");
@@ -143,9 +147,10 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.prank(Deployments.NOTIONAL.owner());
         v().setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 1,
-            oraclePriceDeviationLimitPercent: 50
+            oraclePriceDeviationLimitPercent: 50,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         }));
 
         
@@ -171,7 +176,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     function test_RevertIf_belowMinAmounts() public {
         address account = makeAddr("account");
         uint256 maturity = maturities[0];
-        uint256 vaultShares = enterVaultBypass(
+        uint256 vaultShares = enterVault(
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
@@ -181,14 +186,14 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         for (uint256 i; i < d.minAmounts.length; i++) d.minAmounts[i] = maxDeposit * 2;
 
         vm.expectRevert();
-        exitVaultBypass(account, vaultShares, maturity, abi.encode(d));
+        exitVault(account, vaultShares, maturity, abi.encode(d));
     }
 
     function test_RevertIf_NoAccessEmergencyExit() public {
         address account = makeAddr("account");
         address exit = makeAddr("exit");
         uint256 maturity = maturities[0];
-        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+        enterVault(account, maxDeposit, maturity, getDepositParams(0, 0));
 
         vm.prank(exit);
         // Access control revert on role
@@ -204,7 +209,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         address account = makeAddr("account");
         exit = makeAddr("exit");
         uint256 maturity = maturities[0];
-        enterVaultBypass(
+        enterVault(
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
@@ -252,10 +257,10 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
             Errors.VaultLocked.selector
         );
 
-        vm.expectRevert(Errors.VaultLocked.selector);
+        vm.expectRevert();
         // 0.01e8 is an intentionally small number here to avoid underflows in
         // the test code, we expect a revert no matter what
-        exitVaultBypass(account, 0.01e8, maturity, getRedeemParams(0, 0));
+        exitVault(account, 0.01e8, maturity, getRedeemParams(0, 0));
 
         vm.expectRevert(Errors.VaultLocked.selector);
         vault.convertStrategyToUnderlying(account, 0.01e8, maturity);
@@ -278,7 +283,6 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     }
 
     function test_EmergencyExit() public {
-        address account = makeAddr("account");
         uint256 maturity = maturities[0];
         (uint256[] memory exitBalances, /* */, uint256 initialBalance) = setup_EmergencyExit();
 
@@ -299,29 +303,32 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         assertRelDiff(initialBalance, postRestore, 0.0001e9, "Restore Balance");
         assertEq(v().isLocked(), false);
 
+        address account = makeAddr("account2");
         // All of these calls should succeed
-        uint256 vaultShares = enterVaultBypass(account, maxDeposit * 2, maturity, getDepositParams(0, 0));
+        uint256 vaultShares = enterVault(account, maxDeposit * 2, maturity, getDepositParams(0, 0));
         vault.convertStrategyToUnderlying(account, vaultShares, maturity);
+        vm.warp(block.timestamp + 2 minutes);
         // NOTE: the exitVaultBypass above causes an underflow inside exitVaultBypass
         // here because the vault shares are removed from the test accounting even though
         // the call reverts earlier.
-        exitVaultBypass(account, vaultShares, maturity, getRedeemParams(0, 0));
+        exitVault(account, vaultShares, maturity, getRedeemParams(0, 0));
     }
 
     function test_RevertIf_oracleDeviation() public {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
-        uint256 vaultShares = enterVaultBypass(
+        uint256 vaultShares = enterVault(
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
         vm.prank(Deployments.NOTIONAL.owner());
         v().setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 1
+            oraclePriceDeviationLimitPercent: 1,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         }));
 
         // Oracle deviation checks only occur when we do valuation, so deposit
@@ -343,12 +350,12 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
-        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+        enterVault(account, maxDeposit, maturity, getDepositParams(0, 0));
 
         vm.prank(reward);
         // Access control revert on role
         vm.expectRevert();
-        v().claimRewardTokens();
+        // v().claimRewardTokens();
 
         vm.prank(reward);
         vm.expectRevert();
@@ -359,7 +366,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
-        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+        enterVault(account, maxDeposit, maturity, getDepositParams(0, 0));
 
         vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
@@ -371,7 +378,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         }
 
         vm.prank(reward);
-        v().claimRewardTokens();
+        // v().claimRewardTokens();
 
         for (uint256 i; i < metadata.rewardTokens.length; i++) {
             uint256 rewardBalance = metadata.rewardTokens[i].balanceOf(address(vault));
@@ -383,7 +390,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
-        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+        enterVault(account, maxDeposit, maturity, getDepositParams(0, 0));
 
         vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);

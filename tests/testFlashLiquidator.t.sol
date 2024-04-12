@@ -159,6 +159,7 @@ contract TestFlashLiquidator is Test {
     function test_deleverageFixedBorrow_cashPurchase() public {
         // https://arbiscan.io/tx/0x0febc1d04e2cdecc7bb1b553957594576f2b7a44a02cf7ab9137c2954f8a6415
         vm.createSelectFork(RPC_URL, 160447900);
+        new VaultRewarderLib(); // address is hardcoded in Deployments
         address vault = 0x8Ae7A8789A81A43566d0ee70264252c0DB826940;
         address account = 0xf5c4e22e63F1eb3451cBE41Bd906229DCf9dba15;
         uint16 currencyId = 3; // USDC
@@ -184,7 +185,10 @@ contract TestFlashLiquidator is Test {
             BalancerSpotPrice(Deployments.BALANCER_SPOT_PRICE)
         ));
         vm.prank(NOTIONAL.owner());
-        UUPSUpgradeable(vault).upgradeTo(impl);
+        UUPSUpgradeable(vault).upgradeToAndCall(
+            impl,
+            abi.encodeWithSelector(SingleSidedLPVaultBase.setRewardPoolStorage.selector)
+        );
 
         (
             FlashLiquidatorBase.LiquidationParams memory params,

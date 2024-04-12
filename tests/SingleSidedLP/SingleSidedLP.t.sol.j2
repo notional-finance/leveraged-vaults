@@ -98,9 +98,9 @@ contract Harness_{{ contractName }} is
         _m.primaryBorrowCurrency = {{ primaryBorrowCurrency }};
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: {{ settings.maxPoolShare }},
-            oraclePriceDeviationLimitPercent: {{ settings.oraclePriceDeviationLimitPercent }}
+            oraclePriceDeviationLimitPercent: {{ settings.oraclePriceDeviationLimitPercent }},
+            numRewardTokens: 0
         });
         _m.rewardPool = IERC20({{ rewardPool }});
         {%- if whitelistedReward %}
