@@ -8,5 +8,9 @@ cache/
 venv
 artifacts
 out/
+out_mainnet/
+out_arbitrum/
 node_modules/
 hardhat.config.js
+tags
+cspell.json

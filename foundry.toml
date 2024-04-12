@@ -15,6 +15,7 @@ fs_permissions = [{ access = "read-write", path = "./scripts/deploy"}]
 
 [profile.arbitrum]
 chain_id = 42161
+out = "out_arbitrum"
 remappings = [
     "@interfaces/=interfaces/",
     "@contracts/=contracts/",
@@ -26,6 +27,7 @@ libraries = [
 
 [profile.mainnet]
 chain_id = 1
+out = "out_mainnet"
 remappings = [
     "@interfaces/=interfaces/",
     "@contracts/=contracts/",
