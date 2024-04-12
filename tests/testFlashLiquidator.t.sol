@@ -10,6 +10,8 @@ import "@deployments/Deployments.sol";
 import "@interfaces/notional/NotionalProxy.sol";
 import "@interfaces/notional/IVaultController.sol";
 import "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
+import "@contracts/vaults/common/VaultRewarderLib.sol";
+import "@contracts/vaults/common/SingleSidedLPVaultBase.sol";
 
 contract TestFlashLiquidator is Test {
     string RPC_URL = vm.envString("RPC_URL");

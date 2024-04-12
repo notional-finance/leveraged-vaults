@@ -97,9 +97,10 @@ ComposablePoolHarness
         _m.primaryBorrowCurrency = 2;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            oraclePriceDeviationLimitPercent: 100,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E);
 

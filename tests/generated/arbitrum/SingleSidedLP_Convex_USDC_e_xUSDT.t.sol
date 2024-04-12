@@ -86,9 +86,10 @@ Curve2TokenHarness
         _m.primaryBorrowCurrency = 8;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            oraclePriceDeviationLimitPercent: 100,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x971E732B5c91A59AEa8aa5B0c763E6d648362CF8);
 
