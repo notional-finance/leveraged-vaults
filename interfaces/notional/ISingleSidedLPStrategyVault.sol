@@ -65,6 +65,7 @@ struct StrategyVaultState {
     /// @notice Vault flags
     uint32 flags;
 }
+
 struct InitParams {
     string name;
     uint16 borrowCurrencyId;
@@ -79,8 +80,11 @@ struct StrategyVaultSettings {
     uint16 maxPoolShare;
     /// @notice Limits the amount of allowable deviation from the oracle price
     uint16 oraclePriceDeviationLimitPercent;
-    /// @notice Slippage limit for joining/exiting pools
-    uint16 deprecated_poolSlippageLimitPercent;
+    /// @notice Number of reward tokens
+    uint8 numRewardTokens;
+    /// @notice time in seconds after which claim will be triggered by account
+    // if bot did not trigger it before
+    uint32 forceClaimAfter;
 }
 
 interface ISingleSidedLPStrategyVault {
@@ -100,17 +104,19 @@ interface ISingleSidedLPStrategyVault {
         uint256 totalVaultShares;
         uint256 maxPoolShare;
         uint256 oraclePriceDeviationLimitPercent;
+        uint256 numRewardTokens;
+        uint256 forceClaimAfter;
     }
 
     function initialize(InitParams calldata params) external;
     function TOKENS() external view returns (IERC20[] memory, uint8[] memory decimals);
 
     function getStrategyVaultInfo() external view returns (SingleSidedLPStrategyVaultInfo memory);
+    function setStrategyVaultSettings(StrategyVaultSettings calldata settings) external;
     function emergencyExit(uint256 claimToExit, bytes calldata data) external;
     function restoreVault(uint256 minPoolClaim, bytes calldata data) external;
     function isLocked() external view returns (bool);
 
-    function claimRewardTokens() external;
     function reinvestReward(
         SingleSidedRewardTradeParams[] calldata trades,
         uint256 minPoolClaim

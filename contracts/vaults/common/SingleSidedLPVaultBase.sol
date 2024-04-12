@@ -8,6 +8,8 @@ import {Errors} from "@contracts/global/Errors.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
+import {Deployments} from "@deployments/Deployments.sol";
+import {Delegate} from "../../utils/Delegate.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
 import {VaultStorage} from "./VaultStorage.sol";
 
@@ -25,6 +27,7 @@ import {
 } from "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, DexId} from "@interfaces/trading/ITradingModule.sol";
+import {VaultRewarderLib, RewardPoolStorage} from "./VaultRewarderLib.sol";
 
 /**
  * @notice Base contract for the SingleSidedLP strategy. This strategy deposits into an LP
@@ -78,7 +81,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function _initialApproveTokens() internal virtual;
 
     /// @notice Called to claim reward tokens
-    function _claimRewardTokens() internal virtual;
+    function _rewardPoolStorage() internal view virtual returns (RewardPoolStorage memory);
 
     /// @notice Called during reward reinvestment to validate that the token being sold is not one
     /// of the tokens that is required for the vault to function properly (i.e. one of the pool tokens
@@ -128,7 +131,9 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             totalLPTokens: state.totalPoolClaim,
             totalVaultShares: state.totalVaultSharesGlobal,
             maxPoolShare: settings.maxPoolShare,
-            oraclePriceDeviationLimitPercent: settings.oraclePriceDeviationLimitPercent
+            oraclePriceDeviationLimitPercent: settings.oraclePriceDeviationLimitPercent,
+            numRewardTokens: settings.numRewardTokens,
+            forceClaimAfter: settings.forceClaimAfter
         });
     }
 
@@ -172,6 +177,11 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         VaultStorage.setStrategyVaultSettings(settings);
     }
 
+    // @notice need to be called with `upgradeToAndCall` when upgrading already deployed vaults
+    // does not need to be called on any upgrade after that
+    function setRewardPoolStorage() public onlyNotionalOwner {
+        VaultStorage.setRewardPoolStorage(_rewardPoolStorage());
+    }
     /// @notice Called to initialize the vault and set the initial approvals. All of the other vault
     /// parameters are set via immutable parameters already.
     function initialize(InitParams calldata params) external override initializer onlyNotionalOwner {
@@ -182,6 +192,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         VaultStorage.setStrategyVaultSettings(params.settings);
 
         _initialApproveTokens();
+        VaultStorage.setRewardPoolStorage(_rewardPoolStorage());
     }
 
     /************************************************************************
@@ -197,8 +208,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// the deposit amount has been transferred to this vault. Will join the LP pool with
     /// the funds given and then return the total vault shares minted.
     function _depositFromNotional(
-        address account, uint256 deposit, uint256 maturity, bytes calldata data
-    ) internal override whenNotLocked returns (uint256 vaultSharesMinted) {
+        address account, uint256 deposit, uint256 /* maturity */, bytes calldata data
+    ) internal override whenNotLocked returns (uint256) {
         // Short circuit any zero deposit amounts
         if (deposit == 0) return 0;
 
@@ -226,7 +237,13 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         uint256 lpTokens = _joinPoolAndStake(amounts, params.minPoolClaim);
         (uint256 vaultShares, uint256 totalVaultSharesBefore) = _mintVaultShares(lpTokens);
 
-        _postMintHook(account, maturity, vaultShares, totalVaultSharesBefore, deposit);
+        _updateAccountRewards({
+            account: account,
+            vaultShares: vaultShares,
+            totalVaultSharesBefore: totalVaultSharesBefore,
+            isMint: true
+        });
+        return vaultShares;
     }
 
     /// @notice Given a number of LP tokens minted, issues vault shares back to the holder. Vault
@@ -265,7 +282,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// @return finalPrimaryBalance which is the amount of funds that the vault will transfer back
     /// to Notional and the account to repay debts and withdraw profits.
     function _redeemFromNotional(
-        address account, uint256 vaultShares, uint256 maturity, bytes calldata data
+        address account, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
     ) internal override whenNotLocked returns (uint256 finalPrimaryBalance) {
         // Short circuit any zero redemption amounts, this can occur during rolling positions
         // or withdraw cash balances post liquidation.
@@ -297,8 +314,13 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             // ever withdraw to a single balance.
             finalPrimaryBalance = exitBalances[PRIMARY_INDEX()];
         }
-        
-        _postRedeemHook(account, maturity, vaultShares, totalVaultSharesBefore, finalPrimaryBalance);
+
+        _updateAccountRewards({
+            account: account,
+            vaultShares: vaultShares,
+            totalVaultSharesBefore: totalVaultSharesBefore,
+            isMint: false
+        });
     }
 
     /// @notice Updates internal account for vault share redemption.
@@ -389,11 +411,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
      * Methods used by bots to claim reward tokens and reinvest them as LP  *
      * tokens which are donated to all vault users.                         *
      ************************************************************************/
-
-    /// @notice Ensures that only whitelisted bots can claim reward tokens.
-    function claimRewardTokens() external override onlyRole(REWARD_REINVESTMENT_ROLE) {
-        _claimRewardTokens();
-    }
 
     /// @notice Ensures that only whitelisted bots can reinvest rewards. Since rewards
     /// are typically less liquid than pool tokens and lack oracles, reward reinvestment
@@ -547,21 +564,34 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         _executeRewardTrades(trades, trades[0].sellToken);
     }
 
-    function _postMintHook(
-        address account,
-        uint256 maturity,
-        uint256 vaultSharesMinted,
-        uint256 totalVaultSharesBefore,
-        uint256 depositAmount
-    ) internal virtual { }
+    function deleverageAccount(
+        address /* account */,
+        address /* vault */,
+        address liquidator,
+        uint16 /* currencyIndex */,
+        int256 /* depositUnderlyingInternal */
+    ) external payable override returns (uint256 /* vaultSharesFromLiquidation */, int256 /* depositAmountPrimeCash */) {
+        require(msg.sender == liquidator);
+        _checkReentrancyContext();
+        Delegate._delegate(Deployments.VAULT_REWARDER_LIB);
+    }
 
-    function _postRedeemHook(
+    fallback() external {
+        Delegate._delegate(Deployments.VAULT_REWARDER_LIB);
+    }
+
+    function _updateAccountRewards(
         address account,
-        uint256 maturity,
-        uint256 vaultSharesRedeemed,
+        uint256 vaultShares,
         uint256 totalVaultSharesBefore,
-        uint256 finalPrimaryBalance
-    ) internal virtual { }
+        bool isMint
+    ) internal {
+        (bool success, /* */) = Deployments.VAULT_REWARDER_LIB.delegatecall(abi.encodeWithSelector(
+            VaultRewarderLib.updateAccountRewards.selector,
+            account, vaultShares, totalVaultSharesBefore, isMint
+        ));
+        require(success);
+    }
 
     // Storage gap for future potential upgrades
     uint256[100] private __gap;

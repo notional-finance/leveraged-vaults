@@ -78,11 +78,12 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
         );
     }
 
-    function _claimRewardTokens() internal override {
+    function _rewardPoolStorage() internal view override returns (RewardPoolStorage memory r) {
+        r.rewardPool = address(CONVEX_REWARD_POOL);
         if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
-            require(IConvexRewardPool(CONVEX_REWARD_POOL).getReward(address(this), true));
+            r.poolType = RewardPoolType.CONVEX_MAINNET;
         } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
-            IConvexRewardPoolArbitrum(CONVEX_REWARD_POOL).getReward(address(this));
+            r.poolType = RewardPoolType.CONVEX_ARBITRUM;
         } else {
             revert();
         }
