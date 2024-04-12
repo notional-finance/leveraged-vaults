@@ -1,0 +1,364 @@
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity 0.8.17;
+
+import { Constants } from "../../global/Constants.sol";
+import { Deployments } from "@deployments/Deployments.sol";
+import {
+    BaseStrategyVault
+    IERC20,
+    NotionalProxy
+} from "../common/BaseStrategyVault.sol";
+import {
+    ITradingModule,
+    Trade,
+    TradeType
+} from "@interfaces/trading/ITradingModule.sol";
+
+contract PendlePrincipalTokenVault is BaseStrategyVault {
+    IPOracle immutable ORACLE = IPOracle(0x66a1096C6366b2529274dF4f5D8247827fe4CEA8);
+    IPRouter immutable ROUTER = IPRouter(0x00000000005BBB0EF59571E58418F9a4357b68A0);
+    // TODO: can use this to get estimations for trading amounts and bypass their SDK
+    IPStaticRouter immutable STATIC_ROUTER = IPStaticRouter(0x263833d47eA3fA4a30f269323aba6a107f9eB14C);
+    address immutable TOKEN_UNDERLYING_SY;
+    address immutable SY;
+    address immutable PT;
+    uint256 PT_PRECISION;
+    IPMarket immutable MARKET;
+
+    uint32 twapDuration;
+
+    constructor(
+        NotionalProxy notional_,
+        ITradingModule tradingModule_,
+        address market,
+        address tokenUnderlyingSY
+    ) BaseStrategyVault(notional_, tradingModule_) {
+        MARKET = IPMarket(market);
+        (SY, PT, /* */) = MARKET.readTokens();
+        require(SY.isValidTokenIn(tokenUnderlyingSY));
+        // TODO: this may not be the same as valid token in, for LRT you can
+        // put ETH in but you would only get weETH or eETH out
+        require(SY.isValidTokenOut(tokenUnderlyingSY));
+
+        TOKEN_UNDERLYING_SY = tokenUnderlyingSY;
+
+        // PT decimals vary with the underlying SY precision
+        PT_PRECISION = 10 ** PT.decimals();
+
+        // TODO: need to check that the market oracle is initialized
+    }
+
+    function convertStrategyToUnderlying(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity
+    ) public view override returns (int256 underlyingValue) {
+        return 0;
+    }
+
+    function getExchangeRate(uint256 maturity) external virtual view returns (int256) {
+        uint256 ptRateInEEth = ORACLE.getPtToAssetRate(address(MARKET), twapDuration);
+        console.log("1 PT = %s eEth (base 1e18)", ptRateInEEth);
+
+        uint256 ptRateInWeEth = IPMarket(market).getPtToSyRate(address(MARKET), twapDuration);
+        console.log("1 PT = %s weEth (base 1e18)", ptRateInWeEth);
+
+        return 0;
+    }
+
+    function _depositFromNotional(
+        address account,
+        uint256 deposit,
+        uint256 /* maturity */,
+        bytes calldata data
+    ) internal virtual returns (uint256 vaultSharesMinted) {
+        // TODO: revert if market expired
+        // TODO: allow for borrow against PT
+
+        DepositParams memory params = abi.decode(data, (DepositParams));
+        uint256 tokenInAmount;
+
+        // TODO: make the underlying immutable here?
+        address BORROW_TOKEN = address(_underlyingToken());
+        if (TOKEN_UNDERLYING_SY != BORROW_TOKEN) {
+            Trade memory trade = Trade({
+                tradeType: TradeType.EXACT_IN_SINGLE,
+                sellToken: BORROW_TOKEN,
+                buyToken: TOKEN_UNDERLYING_SY,
+                amount: deposit,
+                limit: params.minPurchaseAmount,
+                deadline: block.timestamp,
+                exchangeData: params.exchangeData
+            });
+
+            // Executes a trade on the given Dex, the vault must have permissions set for
+            // each dex and token it wants to sell.
+            (/* */, tokenInAmount) = _executeTrade(params.dexId, trade);
+        } else {
+            tokenInAmount = deposit;
+        }
+
+        (uint256 ptReceived, /* */, /* */) = ROUTER.swapExactTokenForPt(
+            address(this),
+            address(MARKET),
+            params.minPtOut,
+            params.approxParams,
+            // When tokenIn == tokenMintSy then the swap router can be set to
+            // empty data. This means that the vault must hold the underlying sy
+            // token when we begin the execution.
+            TokenInput({
+                tokenIn: TOKEN_UNDERLYING_SY,
+                netTokenIn: tokenInAmount,
+                tokenMintSy: TOKEN_UNDERLYING_SY,
+                pendleSwap: address(0),
+                swapData: EMPTY_SWAP
+            }),
+            EMPTY_LIMIT
+        );
+
+        return ptReceived * uint256(Constants.INTERNAL_TOKEN_PRECISION) / PT_PRECISION;
+    }
+
+    function _redeemFromNotional(
+        address account,
+        uint256 vaultShares,
+        uint256 /* maturity */,
+        bytes calldata data
+    ) internal virtual returns (uint256 tokensFromRedeem) {
+        // TODO: if expired and we have redeemed, vault shares will not equal
+        // a share of prime cash on notional (if we do that....)
+
+
+        uint256 exactPtIn = vaultShares * PT_PRECISION / uint256(Constants.INTERNAL_TOKEN_PRECISION);
+
+        (uint256 tokensFromPT, /* */, /* */) = ROUTER.swapExactPtForToken(
+            address(this),
+            address(MARKET),
+            exactPtIn,
+            TokenOutput({
+                tokenOut: TOKEN_UNDERLYING_SY,
+                // Slippage enforcement checked below
+                minTokenOut: 0,
+                tokenRedeemSy: TOKEN_UNDERLYING_SY
+                pendleSwap: address(0),
+                swapData: EMPTY_SWAP
+            }),
+            EMPTY_LIMIT
+        );
+
+        // TODO: make the underlying immutable here?
+        address BORROW_TOKEN = address(_underlyingToken());
+        if (TOKEN_UNDERLYING_SY != BORROW_TOKEN) {
+            RedeemParams memory params = abi.decode(data, (RedeemParams));
+
+            Trade memory trade = Trade({
+                tradeType: TradeType.EXACT_IN_SINGLE,
+                sellToken: TOKEN_UNDERLYING_SY,
+                buyToken: BORROW_TOKEN,
+                amount: tokensFromPT,
+                limit: params.minPurchaseAmount,
+                deadline: block.timestamp,
+                exchangeData: params.exchangeData
+            });
+
+            // Executes a trade on the given Dex, the vault must have permissions set for
+            // each dex and token it wants to sell.
+            (/* */, tokensFromRedeem) = _executeTrade(params.dexId, trade);
+        } else {
+            tokensFromRedeem = tokensFromPT;
+        }
+    }
+
+
+    function redeemPTPostExpiry() {
+        // Redeem all PT post expiry and then lend them all on notional
+        // Also lock the vault at this point
+    }
+
+
+    function _checkReentrancyContext() internal override {
+        // NO-OP
+    }
+}
+
+1. Are PT decimals in line with SY decimals (which are in turn in line with the underlying decimals)? (i.e. a weETH SY will be 18 decimals but a USDT SY is 6 decimals)
+2. Do you have a code example of using the RouterStatic to get the necessary inputs for Router.swapExactTokensForPT? Am I able to
+use the output and put it into `ApproxParams.guessOffchain`? What should I set the other values to in ApproxParams? What I would like
+to be able to do is just call RouterStatic from my frontend to get the expected PT and then just issue a transaction using that figure
+rather than integrate with the Pendle SDK. That would reduce my dependency chain quite a bit.
+3. We will mainly use one of the "valid tokens in" for the SY when buying PT. However, for the Router.swapExactTokensForPT I
+still need to generate an empty limit order and empty swap data. The structs are actually quite large, is there a method call that
+just drops these values? It should save a bit of gas if we don't need to generate unused memory slots.
+4. When I call redeemPyToToken for my expired PT, does the netPYIn represent my total PT balance?
+Some of the links are broken in the docs:
+https://github.com/pendle-finance/pendle-core-v2-public/blob/main/contracts/offchain-helpers/BoringPtSeller.sol
+
+interface IPOracle {
+    function getPtToAssetRate(address market, uint32 duration) external view returns (uint256);
+
+    function getPtToSyRate(address market, uint32 duration) external view returns (uint256);
+}
+
+interface IPRouter {
+    struct SwapData {
+        SwapType swapType;
+        address extRouter;
+        bytes extCalldata;
+        bool needScale;
+    }
+
+    enum SwapType {
+        NONE,
+        KYBERSWAP,
+        ONE_INCH,
+        // ETH_WETH not used in Aggregator
+        ETH_WETH
+    }
+
+    struct TokenInput {
+        // TOKEN DATA
+        address tokenIn;
+        uint256 netTokenIn;
+        address tokenMintSy;
+        // AGGREGATOR DATA
+        address pendleSwap;
+        SwapData swapData;
+    }
+
+    struct TokenOutput {
+        // TOKEN DATA
+        address tokenOut;
+        uint256 minTokenOut;
+        address tokenRedeemSy;
+        // AGGREGATOR DATA
+        address pendleSwap;
+        SwapData swapData;
+    }
+
+    struct LimitOrderData {
+        address limitRouter;
+        uint256 epsSkipMarket; // only used for swap operations, will be ignored otherwise
+        FillOrderParams[] normalFills;
+        FillOrderParams[] flashFills;
+        bytes optData;
+    }
+
+    enum OrderType {
+        SY_FOR_PT,
+        PT_FOR_SY,
+        SY_FOR_YT,
+        YT_FOR_SY
+    }
+
+    struct Order {
+        uint256 salt;
+        uint256 expiry;
+        uint256 nonce;
+        OrderType orderType;
+        address token;
+        address YT;
+        address maker;
+        address receiver;
+        uint256 makingAmount;
+        uint256 lnImpliedRate;
+        uint256 failSafeRate;
+        bytes permit;
+    }
+
+    struct FillOrderParams {
+        Order order;
+        bytes signature;
+        uint256 makingAmount;
+    }
+
+    struct ApproxParams {
+        uint256 guessMin;
+        uint256 guessMax;
+        uint256 guessOffchain; // pass 0 in to skip this variable
+        uint256 maxIteration; // every iteration, the diff between guessMin and guessMax will be divided by 2
+        uint256 eps; // the max eps between the returned result & the correct result, base 1e18. Normally this number will be set
+        // to 1e15 (1e18/1000 = 0.1%)
+    }
+
+    function swapExactTokenForPt(
+        address receiver,
+        address market,
+        uint256 minPtOut,
+        ApproxParams calldata guessPtOut,
+        TokenInput calldata input,
+        LimitOrderData calldata limit
+    ) external payable returns (uint256 netPtOut, uint256 netSyFee, uint256 netSyInterm);
+
+    function swapExactPtForToken(
+        address receiver,
+        address market,
+        uint256 exactPtIn,
+        TokenOutput calldata output,
+        LimitOrderData calldata limit
+    ) external returns (uint256 netTokenOut, uint256 netSyFee, uint256 netSyInterm);
+
+    function redeemPyToToken(
+        address receiver,
+        address YT,
+        uint256 netPyIn,
+        TokenOutput calldata output
+    ) external returns (uint256 netTokenOut, uint256 netSyInterm);
+}
+
+interface IPMarket {
+    function mint(
+        address receiver,
+        uint256 netSyDesired,
+        uint256 netPtDesired
+    ) external returns (uint256 netLpOut, uint256 netSyUsed, uint256 netPtUsed);
+
+    function burn(
+        address receiverSy,
+        address receiverPt,
+        uint256 netLpToBurn
+    ) external returns (uint256 netSyOut, uint256 netPtOut);
+
+    function swapExactPtForSy(
+        address receiver,
+        uint256 exactPtIn,
+        bytes calldata data
+    ) external returns (uint256 netSyOut, uint256 netSyFee);
+
+    function swapSyForExactPt(
+        address receiver,
+        uint256 exactPtOut,
+        bytes calldata data
+    ) external returns (uint256 netSyIn, uint256 netSyFee);
+
+    function redeemRewards(address user) external returns (uint256[] memory);
+
+    // function readState(address router) external view returns (MarketState memory market);
+
+    function observe(uint32[] memory secondsAgos) external view returns (uint216[] memory lnImpliedRateCumulative);
+
+    function increaseObservationsCardinalityNext(uint16 cardinalityNext) external;
+
+    function readTokens() external view returns (address _SY, address _PT, address _YT);
+
+    function getRewardTokens() external view returns (address[] memory);
+
+    function isExpired() external view returns (bool);
+
+    function expiry() external view returns (uint256);
+
+    function observations(
+        uint256 index
+    ) external view returns (uint32 blockTimestamp, uint216 lnImpliedRateCumulative, bool initialized);
+
+    function _storage()
+        external
+        view
+        returns (
+            int128 totalPt,
+            int128 totalSy,
+            uint96 lastLnImpliedRate,
+            uint16 observationIndex,
+            uint16 observationCardinality,
+            uint16 observationCardinalityNext
+        );
+}

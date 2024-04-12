@@ -1,0 +1,104 @@
+abstract contract BaseStaking is DeployProxyVault, BaseAcceptanceTest {
+
+    function getInitializeData() internal view override returns (bytes memory initData) {
+        return abi.encodeWithSelector(
+            ISingleSidedLPStrategyVault.initialize.selector, InitParams({
+                name: getVaultName(),
+                borrowCurrencyId: primaryBorrowCurrency,
+            })
+        );
+    }
+
+    function deployTestVault() internal override returns (IStrategyVault) {
+        address impl = deployVaultImplementation();
+        nProxy proxy;
+
+        if (EXISTING_DEPLOYMENT != address(0)) {
+            proxy = nProxy(payable(EXISTING_DEPLOYMENT));
+            vm.prank(NOTIONAL.owner());
+            UUPSUpgradeable(EXISTING_DEPLOYMENT).upgradeTo(impl);
+        } else {
+            bytes memory initData = getInitializeData();
+
+            vm.prank(NOTIONAL.owner());
+            proxy = new nProxy(address(impl), initData);
+        }
+
+        BaseStakingVault p = BaseStakingVault(payable(address(proxy)));
+        // TODO: do we need this?
+        totalVaultSharesAllMaturities = p.getStrategyVaultInfo().totalVaultShares;
+
+        (address[] memory t, address[] memory oracles) = getRequiredOracles();
+        for (uint256 i; i < t.length; i++) {
+            (AggregatorV2V3Interface oracle, /* */) = TRADING_MODULE.priceOracles(t[i]);
+            if (address(oracle) == address(0)) {
+                vm.prank(NOTIONAL.owner());
+                TRADING_MODULE.setPriceOracle(t[i], AggregatorV2V3Interface(oracles[i]));
+            } else {
+                require(address(oracle) == oracles[i], "Oracle Mismatch");
+            }
+        }
+
+        // NOTE: no token permissions set, single sided join by default
+        return IStrategyVault(address(proxy));
+    }
+
+    function getTestVaultConfig() internal view override returns (VaultConfigParams memory p) {
+        p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;
+        p.borrowCurrencyId = primaryBorrowCurrency;
+        p.minAccountBorrowSize = 0.01e8;
+        p.minCollateralRatioBPS = 5000;
+        p.feeRate5BPS = 5;
+        p.liquidationRate = 102;
+        p.reserveFeeShare = 80;
+        p.maxBorrowMarketIndex = 2;
+        p.maxDeleverageCollateralRatioBPS = 7000;
+        p.maxRequiredAccountCollateralRatioBPS = 10000;
+        p.excessCashLiquidationBonus = 100;
+    }
+
+    function getDepositParams(
+        uint256 /* depositAmount */,
+        uint256 /* maturity */
+    ) internal pure override returns (bytes memory) {
+        DepositParams memory d;
+        d.minPoolClaim = 0;
+
+        return abi.encode(d);
+    }
+
+    function getRedeemParams(
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal view override returns (bytes memory) {
+        RedeemParams memory d;
+        d.minAmounts = new uint256[](numTokens);
+
+        return abi.encode(d);
+    }
+
+    function v() internal view returns (BaseStakingVault) {
+        return BaseStakingVault(payable(address(vault)));
+    }
+
+    function checkInvariants() internal override {
+        // totalVaultShares == totalStakedTokens
+    }
+
+    // test_forceWithdraw_changeToAccountValue()
+    // test_accountWithdraw_changeToAccountValue()
+
+    // test_RevertIf_accountEntry_hasAccountWithdraw()
+    // test_RevertIf_accountEntry_hasForcedWithdraw()
+
+    // test_RevertIf_borrowAgainstTokens_InsufficientCollateral()
+    // test_RevertIf_liquidate_accountInsolvent()
+    // test_RevertIf_liquidate_accountCollateralDecrease()
+    // test_RevertIf_overRedeem_activeWithdraws()
+    // test_RevertIf_redeemWithdraw_incorrectVaultShares()
+
+    // test_finalizeWithdrawsOutOfBand()
+
+    // test_liquidate_borrowAgainstWithdrawRequest()
+    // test_liquidate_splitWithdrawRequest()
+}
