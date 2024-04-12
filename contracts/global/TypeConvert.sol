@@ -22,4 +22,9 @@ library TypeConvert {
         require (x <= uint256(type(uint80).max));
         return uint80(x);
     }
+
+    function toUint128(uint256 x) internal pure returns (uint128) {
+        require (x <= uint256(type(uint128).max));
+        return uint128(x);
+    }
 }
