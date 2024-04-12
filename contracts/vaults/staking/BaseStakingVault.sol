@@ -53,6 +53,10 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         BORROW_PRECISION = 10 ** TokenUtils.getDecimals(borrowToken);
     }
 
+    function _initialize() internal virtual {
+        // NO-OP in here but inheriting contracts can override
+    }
+
     function initialize(
         string memory name,
         uint16 borrowCurrencyId
@@ -60,6 +64,8 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         __INIT_VAULT(name, borrowCurrencyId);
         // Double check to ensure that these tokens are matching
         require(BORROW_TOKEN == address(_underlyingToken()));
+
+        _initialize();
     }
 
     function convertStrategyToUnderlying(

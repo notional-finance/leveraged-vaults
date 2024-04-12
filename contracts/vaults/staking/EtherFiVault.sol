@@ -59,6 +59,11 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
         Constants.ETH_ADDRESS
     ) { }
 
+    function _initialize() internal override {
+        // Required for minting weETH
+        eETH.approve(address(weETH), type(uint256).max);
+    }
+
     function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("Staking:EtherFi"));
     }
