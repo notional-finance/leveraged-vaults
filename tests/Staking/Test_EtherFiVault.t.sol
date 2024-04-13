@@ -15,7 +15,7 @@ import {VaultConfigParams, VaultAccount} from "@contracts/global/Types.sol";
 import {UniV3Adapter} from "@contracts/trading/adapters/UniV3Adapter.sol";
 import {BaseAcceptanceTest} from "../BaseAcceptanceTest.sol";
 import {DeployProxyVault} from "../../scripts/deploy/DeployProxyVault.sol";
-import "./harness/EtherFiStakingHarness.sol";
+import {EtherFiStakingHarness} from "./harness/EtherFiStakingHarness.sol";
 
 contract Test_EtherFiVault is BaseAcceptanceTest {
     uint16 primaryBorrowCurrency;
@@ -29,7 +29,7 @@ contract Test_EtherFiVault is BaseAcceptanceTest {
         harness = new EtherFiStakingHarness();
 
         minDeposit = 0.01e18;
-        maxDeposit = 50e18;
+        maxDeposit = 1e18;
         maxRelEntryValuation = 75 * BASIS_POINT;
         maxRelExitValuation = 75 * BASIS_POINT;
 

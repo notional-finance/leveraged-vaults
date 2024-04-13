@@ -76,38 +76,6 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
         return IERC721Receiver.onERC721Received.selector;
     }
 
-    function convertStrategyToUnderlying(
-        address account,
-        uint256 vaultShares,
-        uint256 /* maturity */
-    ) public override view returns (int256 underlyingValue) {
-        uint256 weETHPrice = uint256(getExchangeRate(0));
-
-        // TODO: we can't call WithdrawRequestNFT.getClaimableAmount until request is finalized
-        // (
-        //     WithdrawRequest memory f,
-        //     WithdrawRequest memory w
-        // ) = getWithdrawRequests(account);
-        // uint256 eth1 = _getValueOfWithdrawRequest(w, weETHPrice);
-        // uint256 eth2 = _getValueOfWithdrawRequest(f, weETHPrice);
-        // uint256 vaultSharesNotInWithdrawQueue = (
-        //     vaultShares - w.vaultShares - f.vaultShares
-        // );
-
-        return int256((vaultShares * weETHPrice) / uint256(Constants.INTERNAL_TOKEN_PRECISION));
-        // return int256(eth1 + eth2 +
-        //     (vaultSharesNotInWithdrawQueue * weETHPrice) /
-        //         uint256(Constants.INTERNAL_TOKEN_PRECISION));
-    }
-
-    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
-        (int256 rate, /* int256 rateDecimals */) = TRADING_MODULE.getOraclePrice(
-            address(weETH), address(_underlyingToken())
-        );
-        require(rate > 0);
-        return rate;
-    }
-
     function _stakeTokens(
         address /* account */,
         uint256 depositUnderlyingExternal,

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
-import { Constants } from "../../global/Constants.sol";
+import { Constants } from "@contracts/global/Constants.sol";
+import { TokenUtils } from "@contracts/utils/TokenUtils.sol";
 import {
     WithdrawRequestBase,
     WithdrawRequest,
     SplitWithdrawRequest
 } from "../common/WithdrawRequestBase.sol";
-import { TokenUtils } from "../../utils/TokenUtils.sol";
 import { Deployments } from "@deployments/Deployments.sol";
 import {
     BaseStrategyVault,
@@ -36,9 +36,9 @@ struct DepositParams {
 abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     using TokenUtils for IERC20;
 
-    address immutable STAKING_TOKEN;
+    address public immutable STAKING_TOKEN;
     uint256 immutable STAKING_PRECISION;
-    address immutable BORROW_TOKEN;
+    address public immutable BORROW_TOKEN;
     uint256 immutable BORROW_PRECISION;
 
     constructor(
@@ -132,7 +132,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
             return 0;
         }
 
-        _stakeTokens(account, depositUnderlyingExternal, maturity, data);
+        return _stakeTokens(account, depositUnderlyingExternal, maturity, data);
     }
 
     function _redeemFromNotional(

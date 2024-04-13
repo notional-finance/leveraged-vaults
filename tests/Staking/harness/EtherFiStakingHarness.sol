@@ -42,7 +42,7 @@ contract EtherFiStakingHarness is StrategyVaultHarness {
         p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;
         p.borrowCurrencyId = _m.primaryBorrowCurrency;
         p.minAccountBorrowSize = 0.01e8;
-        p.minCollateralRatioBPS = 5000;
+        p.minCollateralRatioBPS = 500;
         p.feeRate5BPS = 5;
         p.liquidationRate = 102;
         p.reserveFeeShare = 80;
