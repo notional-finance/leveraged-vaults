@@ -114,15 +114,13 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
             if (WithdrawRequestNFT.ownerOf(w.requestId) == address(0)) {
                 return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
             } else {
-                // TODO: this value needs to be discounted...
-                uint256 claimableETH = WithdrawRequestNFT.getClaimableAmount(w.requestId);
-                return (claimableETH * w.vaultShares * weETHPrice) /
-                    (s.totalVaultShares * BORROW_PRECISION);
+                return (w.vaultShares * weETHPrice * BORROW_PRECISION) /
+                    (s.totalVaultShares * EXCHANGE_RATE_PRECISION);
             }
         }
 
-        // TODO: this value needs to be discounted...
-        return WithdrawRequestNFT.getClaimableAmount(w.requestId) * weETHPrice / BORROW_PRECISION;
+        return (w.vaultShares * weETHPrice * BORROW_PRECISION) /
+            (uint256(Constants.INTERNAL_TOKEN_PRECISION) * EXCHANGE_RATE_PRECISION);
     }
 
     function _finalizeWithdrawImpl(

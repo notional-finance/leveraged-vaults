@@ -40,6 +40,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     uint256 immutable STAKING_PRECISION;
     address public immutable BORROW_TOKEN;
     uint256 immutable BORROW_PRECISION;
+    uint256 internal constant EXCHANGE_RATE_PRECISION = 1e18;
 
     constructor(
         NotionalProxy notional_,
@@ -85,8 +86,8 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
             vaultShares - w.vaultShares - f.vaultShares
         );
 
-        uint256 vaultSharesValue = (vaultSharesNotInWithdrawQueue * stakeAssetPrice * STAKING_PRECISION) /
-            (uint256(Constants.INTERNAL_TOKEN_PRECISION) * 1e18);
+        uint256 vaultSharesValue = (vaultSharesNotInWithdrawQueue * stakeAssetPrice * BORROW_PRECISION) /
+            (uint256(Constants.INTERNAL_TOKEN_PRECISION) * EXCHANGE_RATE_PRECISION);
         return int256(withdrawValue + forcedValue + vaultSharesValue);
     }
 
