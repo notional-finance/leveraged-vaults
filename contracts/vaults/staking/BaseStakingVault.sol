@@ -225,13 +225,13 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
             account, vault, liquidator, currencyIndex, depositUnderlyingInternal
         );
 
+        _splitWithdrawRequest(account, liquidator, vaultSharesBefore, vaultSharesFromLiquidation);
+
         (VaultAccountHealthFactors memory healthAfter, /* */, /* */) = NOTIONAL.getVaultAccountHealthFactors(
             account, vault
         );
         // Ensure that the health ratio increases as a result of liquidation
-        require(healthBefore.collateralRatio < healthAfter.collateralRatio);
-
-        _splitWithdrawRequest(account, liquidator, vaultSharesBefore, vaultSharesFromLiquidation);
+        require(healthBefore.collateralRatio < healthAfter.collateralRatio, "Collateral Decrease");
     }
 
     function initiateWithdraw(uint256 vaultShares) external {
