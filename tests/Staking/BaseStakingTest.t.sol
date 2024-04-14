@@ -8,7 +8,7 @@ import "@contracts/vaults/staking/BaseStakingVault.sol";
 import "@contracts/proxy/nProxy.sol";
 import "@interfaces/trading/ITradingModule.sol";
 
-abstract contract BaseStaking is BaseAcceptanceTest {
+abstract contract BaseStakingTest is BaseAcceptanceTest {
 
     function deployTestVault() internal override returns (IStrategyVault) {
         (address impl, /* */) = harness.deployVaultImplementation();
