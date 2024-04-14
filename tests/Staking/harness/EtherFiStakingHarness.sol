@@ -1,66 +1,44 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "../../StrategyVaultHarness.sol";
+import "./BaseStakingHarness.sol";
+import {UniV3Adapter} from "@contracts/trading/adapters/UniV3Adapter.sol";
+import "@contracts/vaults/staking/EtherFiVault.sol";
 import "@contracts/vaults/staking/BaseStakingVault.sol";
 
-struct StakingMetadata {
-    uint16 primaryBorrowCurrency;
-}
-
-contract EtherFiStakingHarness is StrategyVaultHarness {
+contract EtherFiStakingHarness is BaseStakingHarness {
 
     constructor() {
-        setMetadata(StakingMetadata({ primaryBorrowCurrency: 1 }));
+        UniV3Adapter.UniV3SingleData memory u;
+        u.fee = 500; // 0.05 %
+        bytes memory exchangeData = abi.encode(u);
+        uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
+
+        setMetadata(StakingMetadata({
+            primaryBorrowCurrency: 1,
+            primaryDexId: primaryDexId,
+            exchangeData: exchangeData
+        }));
     }
 
     function getVaultName() public override pure returns (string memory) {
-        return 'EtherFiVault';
-    }
-
-    function getMetadata() virtual public view returns (StakingMetadata memory _m) {
-        return abi.decode(metadata, (StakingMetadata));
-    }
-
-    function setMetadata(StakingMetadata memory _m) virtual internal returns (bytes memory) {
-        metadata = abi.encode(_m);
-        return metadata;
-    }
-
-    function getInitializeData() public view override returns (bytes memory initData) {
-        StakingMetadata memory _m = getMetadata();
-
-        return abi.encodeWithSelector(
-            BaseStakingVault.initialize.selector,
-            getVaultName(), _m.primaryBorrowCurrency
-        );
-    }
-
-    function getTestVaultConfig() public view override returns (VaultConfigParams memory p) {
-        StakingMetadata memory _m = getMetadata();
-
-        p.flags = ENABLED | ONLY_VAULT_DELEVERAGE | ALLOW_ROLL_POSITION;
-        p.borrowCurrencyId = _m.primaryBorrowCurrency;
-        p.minAccountBorrowSize = 0.01e8;
-        p.minCollateralRatioBPS = 500;
-        p.feeRate5BPS = 5;
-        p.liquidationRate = 102;
-        p.reserveFeeShare = 80;
-        p.maxBorrowMarketIndex = 2;
-        p.maxDeleverageCollateralRatioBPS = 7000;
-        p.maxRequiredAccountCollateralRatioBPS = 10000;
-        p.excessCashLiquidationBonus = 100;
+        return 'Staking:EtherFi';
     }
 
     function deployVaultImplementation() public override returns (
         address impl, bytes memory _metadata
     ) {
+        impl = address(new EtherFiVault());
+        _metadata = metadata;
     }
 
     function getRequiredOracles() public override pure returns (
         address[] memory token, address[] memory oracle
     ) {
-
+        token = new address[](1);
+        oracle = new address[](1);
+        token[0] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
+        oracle[0] = 0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136;
     }
 
     function getTradingPermissions() public pure override returns (

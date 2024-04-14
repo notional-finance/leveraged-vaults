@@ -2,7 +2,6 @@
 pragma solidity 0.8.24;
 
 import "../BaseAcceptanceTest.sol";
-import "../../scripts/deploy/DeployProxyVault.sol";
 import "@contracts/vaults/common/SingleSidedLPVaultBase.sol";
 import "@contracts/proxy/nProxy.sol";
 import "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
@@ -20,12 +19,8 @@ struct SingleSidedLPMetadata {
 }
 
 abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
-    bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
-    bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
-
     uint256 numTokens;
     SingleSidedLPMetadata metadata;
-
 
     function deployTestVault() internal override returns (IStrategyVault) {
         (address impl, bytes memory _metadata) = harness.deployVaultImplementation();

@@ -49,15 +49,15 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
     IWithdrawRequestNFT public constant WithdrawRequestNFT =
         IWithdrawRequestNFT(0x7d5706f6ef3F89B3951E23e557CDFBC3239D4E2c);
 
-    constructor(
-        NotionalProxy notional_,
-        ITradingModule tradingModule_
-    ) BaseStakingVault(
-        notional_,
-        tradingModule_,
+    constructor() BaseStakingVault(
+        Deployments.NOTIONAL,
+        Deployments.TRADING_MODULE,
         address(weETH),
         Constants.ETH_ADDRESS
-    ) { }
+    ) {
+        // Addresses in this vault are hardcoded to mainnet
+        require(block.chainid == Constants.CHAIN_ID_MAINNET);
+    }
 
     function _initialize() internal override {
         // Required for minting weETH

@@ -37,7 +37,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     using TokenUtils for IERC20;
 
     address public immutable STAKING_TOKEN;
-    uint256 immutable STAKING_PRECISION;
+    uint256 public immutable STAKING_PRECISION;
     address public immutable BORROW_TOKEN;
     uint256 immutable BORROW_PRECISION;
     uint256 internal constant EXCHANGE_RATE_PRECISION = 1e18;

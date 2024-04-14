@@ -15,6 +15,9 @@ import "@contracts/trading/TradingModule.sol";
 import {VaultRewarderLib} from "@contracts/vaults/common/VaultRewarderLib.sol";
 
 abstract contract BaseAcceptanceTest is Test {
+    bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
+    bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
+
     using TokenUtils for IERC20;
     uint256 constant BASIS_POINT = 1e5;
 
@@ -294,6 +297,7 @@ abstract contract BaseAcceptanceTest is Test {
           address(vault),
           depositAmount,
           maturity,
+          // TODO: change this to have configurable collateral ratios
           11 * depositValueInternalPrecision / 10,
           0,
           data
