@@ -121,21 +121,232 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         exitVaultBypass(account, vaultShares, maturity, abi.encode(r));
     }
 
-    /** Withdraw Tests **/
-
-    // test_forceWithdraw_changeToAccountValue()
-    // test_accountWithdraw_changeToAccountValue()
-
-    /** Liquidate Tests **/
-
-
-    // test_RevertIf_liquidate_accountInsolvent()
-    // test_RevertIf_liquidate_accountCollateralDecrease()
     // test_RevertIf_overRedeem_activeWithdraws()
     // test_RevertIf_redeemWithdraw_incorrectVaultShares()
 
-    // test_finalizeWithdrawsOutOfBand()
+    /** Withdraw Tests **/
+    function test_RevertIf_accountWithdraw_insufficientShares() public {
+        address account = makeAddr("account");
 
+        uint256 maturity = maturities[1];
+        uint256 depositAmount = 2 * minDeposit;
+        uint256 vaultShares =
+            enterVault(account, depositAmount, maturity, getDepositParams(depositAmount, maturity));
+
+        address accountWithNoShares = makeAddr("noShareAddress");
+
+        vm.prank(accountWithNoShares);
+        vm.expectRevert();
+        v().initiateWithdraw(0);
+
+        vm.prank(accountWithNoShares);
+        vm.expectRevert();
+        v().initiateWithdraw(vaultShares);
+    }
+
+    function test_RevertIf_accountWithdraw_unauthorizedAccount() public {
+        address account = makeAddr("account");
+
+        uint256 maturity = maturities[1];
+        uint256 depositAmount = 2 * minDeposit;
+        uint256 vaultShares =
+            enterVault(account, depositAmount, maturity, getDepositParams(depositAmount, maturity));
+
+        vm.startPrank(makeAddr("unauthorized account"));
+        vm.expectRevert();
+        v().initiateWithdraw(vaultShares);
+    }
+
+    function test_accountWithdraw(
+        uint8 maturityIndex, uint256 depositAmount, uint8 withdrawPercent
+    ) public {
+        withdrawPercent = uint8(bound(withdrawPercent, 1, 100));
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        (
+            WithdrawRequest memory f,
+            WithdrawRequest memory w
+        ) = v().getWithdrawRequests(account);
+        _assertWithdrawRequestIsEmpty(f);
+        _assertWithdrawRequestIsEmpty(w);
+        int256 valueBefore = v().convertStrategyToUnderlying(account, vaultShares, maturity);
+
+        uint256 vaultShareToWithdraw = vaultShares * withdrawPercent / 100;
+        vm.startPrank(account);
+        v().initiateWithdraw(vaultShareToWithdraw);
+        vm.stopPrank();
+        int256 valueAfter = v().convertStrategyToUnderlying(account, vaultShares, maturity);
+
+        (f, w) = v().getWithdrawRequests(account);
+        _assertWithdrawRequestIsEmpty(f);
+        assertTrue(w.requestId != 0);
+        assertEq(w.vaultShares, vaultShareToWithdraw);
+        assertEq(w.hasSplit, false);
+
+        // Assert no change to valuation
+        assertApproxEqAbs(valueBefore, valueAfter, roundingPrecision, "Valuation Change");
+    }
+
+    function test_RevertIf_accountWithdraw_hasExistingRequest(
+        uint8 maturityIndex, uint256 depositAmount, uint8 withdrawPercent, uint8 secondWithdrawPercent
+    ) public {
+        vm.assume(0 < withdrawPercent && withdrawPercent < 100);
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        vm.prank(account);
+        v().initiateWithdraw(vaultShares * withdrawPercent / 100);
+
+        secondWithdrawPercent = uint8(bound(secondWithdrawPercent, 1, 100 - withdrawPercent));
+        vm.prank(account);
+        vm.expectRevert("Existing Request");
+        v().initiateWithdraw(vaultShares * secondWithdrawPercent / 100);
+    }
+
+    function test_forceWithdraw(
+        uint8 maturityIndex, uint256 depositAmount, uint8 withdrawPercent
+    ) public {
+        withdrawPercent = uint8(bound(withdrawPercent, 0, 99));
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+        int256 valueBefore = v().convertStrategyToUnderlying(account, vaultShares, maturity);
+
+        uint256 vaultShareToWithdraw = vaultShares * withdrawPercent / 100;
+
+        (
+            WithdrawRequest memory f,
+            WithdrawRequest memory w
+        ) = v().getWithdrawRequests(account);
+        _assertWithdrawRequestIsEmpty(f);
+
+        // Only initiate the withdraw if we are withdrawing any shares
+        if (vaultShareToWithdraw > 0) {
+            vm.prank(account);
+            v().initiateWithdraw(vaultShareToWithdraw);
+            (f, w) = v().getWithdrawRequests(account);
+            assertTrue(w.requestId != 0, "4");
+            assertEq(w.vaultShares, vaultShareToWithdraw, "5");
+            assertEq(w.hasSplit, false, "6");
+        }
+
+        address admin = makeAddr("admin");
+        vm.prank(Deployments.NOTIONAL.owner());
+        v().grantRole(keccak256("EMERGENCY_EXIT_ROLE"), admin);
+        vm.prank(admin);
+        v().forceWithdraw(account);
+
+        (f, w) = v().getWithdrawRequests(account);
+        assertTrue(f.requestId != 0, "7");
+        assertEq(f.vaultShares, vaultShares - vaultShareToWithdraw, "8");
+        assertEq(f.hasSplit, false, "9");
+        if (vaultShareToWithdraw > 0) {
+            assertTrue(w.requestId != 0, "10");
+        }
+
+        assertEq(w.vaultShares, vaultShareToWithdraw, "11");
+        assertEq(w.hasSplit, false, "12");
+
+        int256 valueAfter = v().convertStrategyToUnderlying(account, vaultShares, maturity);
+        // Assert no change to valuation
+        assertApproxEqAbs(valueBefore, valueAfter, roundingPrecision, "Valuation Change");
+    }
+
+    function test_RevertIf_forceWithdraw_accountInitiatesWithdraw(
+        uint8 maturityIndex, uint256 depositAmount, uint8 withdrawPercent
+    ) public {
+        withdrawPercent = uint8(bound(withdrawPercent, 1, 100));
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        uint256 maturity = maturities[maturityIndex];
+        address account = makeAddr("account");
+
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        address admin = makeAddr("admin");
+        vm.prank(Deployments.NOTIONAL.owner());
+        v().grantRole(keccak256("EMERGENCY_EXIT_ROLE"), admin);
+        vm.prank(admin);
+        v().forceWithdraw(account);
+
+
+        vm.prank(account);
+        vm.expectRevert("Existing Request");
+        v().initiateWithdraw(vaultShares * withdrawPercent / 100);
+    }
+
+    function test_forceWithdraw_initiateNewWithdraw(
+        uint8 maturityIndex, uint256 depositAmount
+    ) public {
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+
+        uint256 maturity = maturities[maturityIndex];
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+        int256 valueBefore = v().convertStrategyToUnderlying(account, vaultShares, maturity);
+
+        address admin = makeAddr("admin");
+        vm.prank(Deployments.NOTIONAL.owner());
+        v().grantRole(keccak256("EMERGENCY_EXIT_ROLE"), admin);
+        vm.prank(admin);
+        v().forceWithdraw(account);
+        (
+            WithdrawRequest memory f,
+            WithdrawRequest memory w
+        ) = v().getWithdrawRequests(account);
+        _assertWithdrawRequestIsEmpty(w);
+        assertTrue(f.requestId != 0, "4");
+        assertEq(f.vaultShares, vaultShares, "5");
+        assertEq(f.hasSplit, false, "6");
+        int256 valueAfter = v().convertStrategyToUnderlying(account, vaultShares, maturity);
+
+        // Assert no change to valuation
+        assertApproxEqAbs(valueBefore, valueAfter, roundingPrecision, "Valuation Change");
+    }
+
+    function test_RevertIf_forceWithdraw_secondForceWithdraw(
+        uint8 maturityIndex, uint256 depositAmount
+    ) public {
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+        enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        _forceWithdraw(account);
+        _forceWithdraw({ account: account, expectRevert: true, error: "Existing Request" });
+    }
+
+    /** Liquidate Tests **/
+
+    // test_RevertIf_liquidate_accountInsolvent()
+    // test_RevertIf_liquidate_accountCollateralDecrease()
+    // test_finalizeWithdrawsOutOfBand()
     // test_liquidate_borrowAgainstWithdrawRequest()
     // test_liquidate_splitWithdrawRequest()
 
