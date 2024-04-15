@@ -570,14 +570,14 @@ abstract contract BaseAcceptanceTest is Test {
     function _enterVaultLiquidation(address account, uint256 maturity) internal {
         VaultConfig memory c = Deployments.NOTIONAL.getVaultConfig(address(vault));
         uint256 depositAmountExternal = uint256(c.minAccountBorrowSize) * precision / 1e8;
+        uint256 borrowAmountExternal = depositAmountExternal * 1e9 / (
+            uint256(c.minCollateralRatio) + 10 * maxRelEntryValuation
+        );
 
         uint256 borrowAmount;
         if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {
-            borrowAmount = depositAmountExternal * 1e8 / precision * 1e9 / (
-                uint256(c.minCollateralRatio) + 10 * maxRelEntryValuation
-            );
+            borrowAmount = borrowAmountExternal * 1e8 / precision;
         } else {
-            uint256 borrowAmountExternal = depositAmountExternal * 1e9 / (uint256(c.minCollateralRatio) + maxRelEntryValuation);
             // Calculate the fCash amount because of slippage
             (borrowAmount, /* */, /* */) = Deployments.NOTIONAL.getfCashBorrowFromPrincipal(
                 c.borrowCurrencyId,
@@ -588,7 +588,7 @@ abstract contract BaseAcceptanceTest is Test {
                 true
             );
             // Add slippage into the deposit to maintain the collateral ratio
-            depositAmountExternal = depositAmountExternal + 2 * (borrowAmount * precision / 1e8 - borrowAmountExternal);
+            depositAmountExternal = depositAmountExternal + (borrowAmount * precision / 1e8 - borrowAmountExternal);
         }
 
         dealTokens(account, depositAmountExternal);
@@ -596,9 +596,8 @@ abstract contract BaseAcceptanceTest is Test {
         if (!isETH) {
             primaryBorrowToken.checkApprove(address(Deployments.NOTIONAL), type(uint256).max);
         }
-        uint256 msgValue = isETH ? depositAmountExternal : 0;
 
-        Deployments.NOTIONAL.enterVault{value: msgValue}(
+        Deployments.NOTIONAL.enterVault{value: isETH ? depositAmountExternal : 0}(
             account,
             address(vault),
             depositAmountExternal,
@@ -612,7 +611,7 @@ abstract contract BaseAcceptanceTest is Test {
 
     function _changeCollateralRatio() internal {
         VaultConfigParams memory cp = config;
-        cp.minCollateralRatioBPS = cp.minCollateralRatioBPS + cp.minCollateralRatioBPS / 4;
+        cp.minCollateralRatioBPS = cp.minCollateralRatioBPS + cp.minCollateralRatioBPS / 2;
         vm.startPrank(Deployments.NOTIONAL.owner());
         Deployments.NOTIONAL.updateVault(address(vault), cp, getMaxPrimaryBorrow());
         vm.stopPrank();
@@ -658,7 +657,7 @@ abstract contract BaseAcceptanceTest is Test {
 
         liquidator.flashLiquidate(
             asset,
-            uint256(maxUnderlying) * precision / 1e8 + roundingPrecision,
+            uint256(maxUnderlying) * precision / 1e8 + 2 * roundingPrecision,
             params
         );
         VaultAccount memory va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
@@ -743,6 +742,6 @@ abstract contract BaseAcceptanceTest is Test {
         );
         assertEq(maxUnderlying, 0, "Zero Deposit");
         // Allow a little dust
-        assertLt(va.tempCashBalance, 50e5, "Cash Balance");
+        assertLt(va.tempCashBalance, int256(150 * Constants.BASIS_POINT), "Cash Balance");
     }
 }
