@@ -407,6 +407,7 @@ mainnet:
       maxRelEntryValuation: 75
       maxRelExitValuation: 75
     config:
+      maxBorrowMarketIndex: 0
       feeRate5BPS: 20
       minCollateralRatioBPS: 1_300
       maxDeleverageCollateralRatioBPS: 2_500

@@ -87,7 +87,7 @@ ComposablePoolHarness
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
+            maxPoolShare: 3000,
             oraclePriceDeviationLimitPercent: 0.015e4
         });
         _m.rewardPool = IERC20(0x95eC73Baa0eCF8159b4EE897D973E41f51978E50);
