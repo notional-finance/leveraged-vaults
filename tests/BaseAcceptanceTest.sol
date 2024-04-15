@@ -152,6 +152,16 @@ abstract contract BaseAcceptanceTest is Test {
     function getRedeemParams(uint256 vaultShares, uint256 maturity) internal view virtual returns (bytes memory);
     function checkInvariants() internal virtual;
 
+    function setPriceOracle(address token, address oracle) public {
+        if (Deployments.CHAIN_ID == 1) {
+            // NOTE: temporary code b/c owner has not changed yet
+            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+        } else {
+            vm.prank(Deployments.NOTIONAL.owner());
+        }
+        Deployments.TRADING_MODULE.setPriceOracle(token, AggregatorV2V3Interface(oracle));
+    }
+
     function dealTokensAndApproveNotional(uint256 depositAmount, address account) internal {
         if (isETH) {
             deal(account, depositAmount);

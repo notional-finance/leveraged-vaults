@@ -58,13 +58,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         for (uint256 i; i < t.length; i++) {
             (AggregatorV2V3Interface oracle, /* */) = Deployments.TRADING_MODULE.priceOracles(t[i]);
             if (address(oracle) == address(0)) {
-                if (Deployments.CHAIN_ID == 1) {
-                    // NOTE: temporary code b/c owner has not changed yet
-                    vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
-                } else {
-                    vm.prank(Deployments.NOTIONAL.owner());
-                }
-                Deployments.TRADING_MODULE.setPriceOracle(t[i], AggregatorV2V3Interface(oracles[i]));
+                setPriceOracle(t[i], oracles[i]);
             } else {
                 require(address(oracle) == oracles[i], "Oracle Mismatch");
             }

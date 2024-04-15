@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+import "../MockOracle.sol";
 import "../BaseAcceptanceTest.sol";
 import "./harness/BaseStakingHarness.sol";
 import "@deployments/Deployments.sol";
@@ -34,8 +35,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         for (uint256 i; i < t.length; i++) {
             (AggregatorV2V3Interface oracle, /* */) = Deployments.TRADING_MODULE.priceOracles(t[i]);
             if (address(oracle) == address(0)) {
-                vm.prank(Deployments.NOTIONAL.owner());
-                Deployments.TRADING_MODULE.setPriceOracle(t[i], AggregatorV2V3Interface(oracles[i]));
+                setPriceOracle(t[i], oracles[i]);
             } else {
                 require(address(oracle) == oracles[i], "Oracle Mismatch");
             }
@@ -76,6 +76,26 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             totalVaultSharesAllMaturities,
             stakingTokens * uint256(Constants.INTERNAL_TOKEN_PRECISION) / v().STAKING_PRECISION(),
             "Total Vault Shares"
+        );
+    }
+
+    function test_valuation(uint256 depositAmount, uint8 maturityIndex) public {
+        address account = makeAddr("account");
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        (int256 rate, /* int256 rateDecimals */) = Deployments.TRADING_MODULE.getOraclePrice(
+            v().STAKING_TOKEN(), address(primaryBorrowToken)
+        );
+
+        assertEq(
+            uint256(v().convertStrategyToUnderlying(account, vaultShares, maturity)),
+            vaultShares * uint256(rate) / uint256(Constants.INTERNAL_TOKEN_PRECISION)
         );
     }
 
@@ -344,6 +364,30 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
     /** Liquidate Tests **/
 
+    function test_deleverageAccount_noWithdrawRequest(uint8 maturityIndex, uint256 depositAmount) public {
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        address liquidator = _liquidateAccount(account);
+
+        (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
+        (VaultAccount memory liquidatorAccount) = Deployments.NOTIONAL.getVaultAccount(liquidator, address(v()));
+
+        uint256 liquidatedAmount = vaultShares - vaultAccount.vaultShares;
+        assertGt(liquidatedAmount, 0, "Liquidated amount should be larger than 0");
+        assertEq(liquidatorAccount.vaultShares, liquidatedAmount, "Liquidator account should receive liquidated amount");
+
+        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
+        // should not have initiated withdraw request
+        _assertWithdrawRequestIsEmpty(w);
+        _assertWithdrawRequestIsEmpty(f);
+    }
+
     // test_RevertIf_liquidate_accountInsolvent()
     // test_RevertIf_liquidate_accountCollateralDecrease()
     // test_finalizeWithdrawsOutOfBand()
@@ -351,6 +395,21 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     // test_liquidate_splitWithdrawRequest()
 
     /** Helper Methods **/
+
+    function _liquidateAccount(address account) internal returns (address liquidator) {
+        address token = v().STAKING_TOKEN();
+        (AggregatorV2V3Interface oracle, /* */) = Deployments.TRADING_MODULE.priceOracles(token);
+        MockOracle mock = new MockOracle();
+        mock.setAnswer(oracle.latestAnswer() * 57 / 100);
+
+        setPriceOracle(token, address(mock));
+
+        liquidator = makeAddr("liquidator");
+        uint256 value = 100 ether;
+        deal(liquidator, value);
+        vm.prank(liquidator);
+        v().deleverageAccount{value: value}(account, address(v()), liquidator, 0, int256(value / 1e10));
+    }
 
     function _assertWithdrawRequestIsEmpty(WithdrawRequest memory w) internal {
         assertEq(w.requestId, 0, "requestId should be 0");
