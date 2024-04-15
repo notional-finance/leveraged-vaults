@@ -79,13 +79,56 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         );
     }
 
-    // test_forceWithdraw_changeToAccountValue()
-    // test_accountWithdraw_changeToAccountValue()
+    /** Entry Tests **/
+    function test_ShortCircuitOnZeroDeposit() public {
+        address account = makeAddr("account");
+        vm.expectCall(address(Deployments.NOTIONAL), "", 0);
+        uint256 vaultShares = enterVaultBypass(account, 0, maturities[1], "");
+        assertEq(vaultShares, 0);
+    }
 
     // test_RevertIf_accountEntry_hasAccountWithdraw()
     // test_RevertIf_accountEntry_hasForcedWithdraw()
-
     // test_RevertIf_borrowAgainstTokens_InsufficientCollateral()
+    // test_borrowAgainstTokens()
+
+    /** Exit Tests **/
+    function test_ShortCircuitOnZeroRedeem() public {
+        address account = makeAddr("account");
+        vm.expectCall(address(Deployments.NOTIONAL), "", 0);
+        uint256 amount = exitVaultBypass(account, 0, maturities[1], "");
+        assertEq(amount, 0);
+    }
+
+    function test_RevertIf_ExitTradeSlippageFails() public {
+        address account = makeAddr("account");
+
+        uint256 maturity = maturities[1];
+        uint256 depositAmount = 2 * minDeposit;
+        bytes memory params = getDepositParams(depositAmount, maturity);
+        uint256 vaultShares = enterVault(account, depositAmount, maturity, params);
+
+        RedeemParams memory r;
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        r.minPurchaseAmount = 100e18;
+        r.dexId = m.primaryDexId;
+        r.exchangeData = m.exchangeData;
+
+        vm.roll(5);
+        vm.warp(block.timestamp + 3600);
+
+        vm.expectRevert(TradeFailed.selector);
+        exitVaultBypass(account, vaultShares, maturity, abi.encode(r));
+    }
+
+    /** Withdraw Tests **/
+
+    // test_forceWithdraw_changeToAccountValue()
+    // test_accountWithdraw_changeToAccountValue()
+
+    /** Liquidate Tests **/
+
+
     // test_RevertIf_liquidate_accountInsolvent()
     // test_RevertIf_liquidate_accountCollateralDecrease()
     // test_RevertIf_overRedeem_activeWithdraws()
