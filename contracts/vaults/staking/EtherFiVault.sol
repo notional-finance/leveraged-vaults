@@ -82,7 +82,9 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
         uint256 /* maturity */,
         bytes calldata /* data */
     ) internal override returns (uint256 vaultShares) {
-        uint256 eETHMinted = LiquidityPool.deposit{value: depositUnderlyingExternal}();
+        uint256 eEthBalBefore = eETH.balanceOf(address(this));
+        LiquidityPool.deposit{value: depositUnderlyingExternal}();
+        uint256 eETHMinted = eETH.balanceOf(address(this)) - eEthBalBefore;
         uint256 weETHReceived = weETH.wrap(eETHMinted);
         vaultShares = weETHReceived * uint256(Constants.INTERNAL_TOKEN_PRECISION) /
             uint256(BORROW_PRECISION);

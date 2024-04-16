@@ -144,6 +144,81 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     // test_RevertIf_overRedeem_activeWithdraws()
     // test_RevertIf_redeemWithdraw_incorrectVaultShares()
 
+    function test_exitVault_useWithdrawRequest(
+        uint8 maturityIndex, uint256 depositAmount, uint256 withdrawPercent, bool useForce
+    ) public {
+        vm.assume(0 <= withdrawPercent && withdrawPercent <= 100);
+        if (withdrawPercent == 0) useForce = true;
+        if (withdrawPercent == 100) useForce = false;
+
+        address account = makeAddr("account");
+
+        uint256 vaultShares;
+        {
+            maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
+            uint256 maturity = maturities[maturityIndex];
+            depositAmount =  bound(depositAmount, 5 * minDeposit, maxDeposit);
+
+            vaultShares = enterVault(
+                account,
+                depositAmount,
+                maturity,
+                getDepositParams(depositAmount, maturity)
+            );
+        }
+
+        vm.warp(block.timestamp + 3600);
+
+        uint256 shareForRedeem = useForce ? vaultShares : vaultShares * withdrawPercent / 100;
+        uint256 lendAmount = uint256(
+            Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
+        );
+        lendAmount = useForce ? lendAmount : lendAmount * withdrawPercent / 100;
+
+        vm.prank(account);
+        // should fail if withdraw is not initiated
+        vm.expectRevert();
+        Deployments.NOTIONAL.exitVault(
+            account, address(vault), account, vaultShares, lendAmount, 0, ""
+        );
+
+        vm.prank(account);
+        if (withdrawPercent > 0) {
+            v().initiateWithdraw(vaultShares * withdrawPercent / 100);
+        }
+        if (useForce) {
+            _forceWithdraw(account);
+        }
+        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
+
+
+        vm.prank(account);
+        // should fail if withdraw is not finalized
+        vm.expectRevert();
+        Deployments.NOTIONAL.exitVault(
+            account, address(vault), account, shareForRedeem, lendAmount, 0, ""
+        );
+
+        finalizeWithdrawRequest(account);
+
+        vm.prank(account);
+        uint256 totalToReceiver = Deployments.NOTIONAL.exitVault(
+            account, address(vault), account, shareForRedeem, lendAmount, 0, ""
+        );
+
+        uint256 maxDiff;
+        if (maturityIndex == 0) {
+            maxDiff = 1e14; // 0.01 %
+        } else {
+            maxDiff = 7e15; // 0.7%
+        }
+        assertApproxEqRel(totalToReceiver, useForce ? depositAmount : depositAmount * withdrawPercent / 100, maxDiff, "1");
+
+        (f, w) = v().getWithdrawRequests(account);
+        _assertWithdrawRequestIsEmpty(w);
+        _assertWithdrawRequestIsEmpty(f);
+    }
+
     /** Withdraw Tests **/
     function test_RevertIf_accountWithdraw_insufficientShares() public {
         address account = makeAddr("account");
@@ -596,4 +671,12 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         _forceWithdraw(account, false, "");
     }
 
+    function finalizeWithdrawRequest(address account) internal virtual {
+        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
+        IWithdrawRequestNFT withdrawRequestNFT = EtherFiVault(payable(address(vault))).WithdrawRequestNFT();
+        uint256 maxRequestId = f.requestId > w.requestId ? f.requestId : w.requestId;
+
+        vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
+        withdrawRequestNFT.finalizeRequests(maxRequestId);
+    }
 }
