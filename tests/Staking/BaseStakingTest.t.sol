@@ -107,8 +107,33 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(vaultShares, 0);
     }
 
-    // test_RevertIf_accountEntry_hasAccountWithdraw()
-    // test_RevertIf_accountEntry_hasForcedWithdraw()
+    function test_RevertIf_accountEntry_hasWithdraw(uint8 maturityIndex, bool useForce) public {
+        address account = makeAddr("account");
+        maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account,
+            maxDeposit,
+            maturity,
+            getDepositParams(maxDeposit, maturity)
+        );
+
+        if (useForce) {
+            _forceWithdraw(account);
+        } else {
+            vm.prank(account);
+            v().initiateWithdraw(vaultShares);
+        }
+
+        // Cannot enter the vault again because a withdraw is in process
+        expectRevert_enterVault(account, maxDeposit, maturity, getDepositParams(maxDeposit, maturity), "");
+    }
+
+    // TODO: these tests are up in the air, not sure if we should support this feature, it could allow
+    // an account to maximize their leverage while they cannot be liquidated due to restrictions we put
+    // on their account.
+    // test_liquidate_borrowAgainstWithdrawRequest()
     // test_RevertIf_borrowAgainstTokens_InsufficientCollateral()
     // test_borrowAgainstTokens()
 
@@ -141,8 +166,63 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         exitVaultBypass(account, vaultShares, maturity, abi.encode(r));
     }
 
-    // test_RevertIf_overRedeem_activeWithdraws()
-    // test_RevertIf_redeemWithdraw_incorrectVaultShares()
+    function test_exitVault_hasWithdrawRequest_tradeShares(
+        uint8 maturityIndex, uint256 withdrawPercent
+    ) public {
+        vm.assume(0 < withdrawPercent && withdrawPercent < 80);
+        address account = makeAddr("account");
+        maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account,
+            maxDeposit,
+            maturity,
+            getDepositParams(maxDeposit, maturity)
+        );
+
+        vm.roll(5);
+        vm.warp(block.timestamp + 3600);
+        uint256 sharesForWithdraw = vaultShares * withdrawPercent / 100;
+
+        // Initiate a withdraw for up to 70% of the shares.
+        vm.prank(account);
+        v().initiateWithdraw(sharesForWithdraw);
+
+        uint256 remainingShares = vaultShares - sharesForWithdraw;
+        console.log(vaultShares, sharesForWithdraw, remainingShares);
+
+        vm.prank(account);
+
+        // Should fail because insufficient liquid shares
+        bytes memory params = getRedeemParams(remainingShares + 1, maturity);
+        vm.expectRevert("Insufficient Shares");
+        vm.prank(account);
+        Deployments.NOTIONAL.exitVault(
+            account, address(vault), account, remainingShares + 1, 0, 0, params
+        );
+
+        uint256 lendAmount = uint256(
+            Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * 
+                -1 * int256(remainingShares) / int256(vaultShares)
+        );
+        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
+
+        params = getRedeemParams(remainingShares, maturity);
+        vm.prank(account);
+        Deployments.NOTIONAL.exitVault(
+            account, address(vault), account, remainingShares, lendAmount, 0, params
+        );
+
+        // Assert that the vault shares remaining are just in the withdraw request now
+        assertTrue(w.requestId != 0);
+        assertEq(
+            Deployments.NOTIONAL.getVaultAccount(account, address(vault)).vaultShares,
+            w.vaultShares
+        );
+        assertFalse(w.hasSplit);
+        _assertWithdrawRequestIsEmpty(f);
+    }
 
     function test_exitVault_useWithdrawRequest(
         uint8 maturityIndex, uint256 depositAmount, uint256 withdrawPercent, bool useForce
@@ -200,6 +280,13 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         );
 
         finalizeWithdrawRequest(account);
+
+        vm.prank(account);
+        vm.expectRevert();
+        // should fail if exact amount of shares is not specified
+        Deployments.NOTIONAL.exitVault(
+            account, address(vault), account, shareForRedeem - 1, lendAmount, 0, ""
+        );
 
         vm.prank(account);
         uint256 totalToReceiver = Deployments.NOTIONAL.exitVault(
@@ -438,6 +525,42 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     }
 
     /** Liquidate Tests **/
+    function test_RevertIf_deleverageAccount_isInsolvent(uint8 maturityIndex) public {
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+        enterVaultLiquidation(account, maturity);
+
+        _changeCollateralRatio(500);
+        (VaultAccountHealthFactors memory healthBefore, /* */, /* */) = Deployments.NOTIONAL.getVaultAccountHealthFactors(
+            account, address(vault)
+        );
+        assertLt(healthBefore.collateralRatio, 0);
+
+        address liquidator = makeAddr("liquidator");
+        uint256 value = 100 ether;
+        deal(liquidator, value);
+        vm.prank(liquidator);
+        vm.expectRevert("Insolvent");
+        v().deleverageAccount{value: value}(account, address(v()), liquidator, 0, int256(value / 1e10));
+    }
+
+    function test_RevertIf_deleverageAccount_collateralDecrease(uint8 maturityIndex) public {
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+        enterVaultLiquidation(account, maturity);
+
+        // TODO: need to try to find the right value per vault here...
+        _changeCollateralRatio(930);
+
+        address liquidator = makeAddr("liquidator");
+        uint256 value = 100 ether;
+        deal(liquidator, value);
+        vm.prank(liquidator);
+        vm.expectRevert("Collateral Decrease");
+        v().deleverageAccount{value: value}(account, address(v()), liquidator, 0, int256(value / 1e10));
+    }
 
     function test_deleverageAccount_noWithdrawRequest(uint8 maturityIndex) public {
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
@@ -714,14 +837,21 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     }
 
     /** Helper Methods **/
+    function _changeCollateralRatio() internal override {
+        _changeCollateralRatio(960);
+    }
 
-    function _liquidateAccount(address account) internal returns (address liquidator) {
+    function _changeCollateralRatio(int256 discount) internal {
         address token = v().STAKING_TOKEN();
         (AggregatorV2V3Interface oracle, /* */) = Deployments.TRADING_MODULE.priceOracles(token);
         MockOracle mock = new MockOracle();
-        mock.setAnswer(oracle.latestAnswer() * 960 / 1000);
+        mock.setAnswer(oracle.latestAnswer() * discount / 1000);
 
         setPriceOracle(token, address(mock));
+    }
+
+    function _liquidateAccount(address account) internal returns (address liquidator) {
+        _changeCollateralRatio();
 
         liquidator = makeAddr("liquidator");
         uint256 value = 100 ether;
@@ -754,12 +884,5 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         _forceWithdraw(account, false, "");
     }
 
-    function finalizeWithdrawRequest(address account) internal virtual {
-        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
-        IWithdrawRequestNFT withdrawRequestNFT = EtherFiVault(payable(address(vault))).WithdrawRequestNFT();
-        uint256 maxRequestId = f.requestId > w.requestId ? f.requestId : w.requestId;
-
-        vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
-        withdrawRequestNFT.finalizeRequests(maxRequestId);
-    }
+    function finalizeWithdrawRequest(address account) internal virtual;
 }

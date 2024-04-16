@@ -151,6 +151,14 @@ def render_template(template, data):
     template = Template(template)
     return template.render(data)
 
+def remove_files_except_prefix(folder_path, prefix):
+    for filename in os.listdir(folder_path):
+        if filename.startswith(prefix):
+            continue  # Skip files starting with the prefix
+        file_path = os.path.join(folder_path, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
 def generate_files(network, yaml_file, template_file):
     output_dir = f"./tests/generated/{network}"
     with open(yaml_file, 'r') as f:
@@ -166,8 +174,7 @@ def generate_files(network, yaml_file, template_file):
     defaults = tests['defaults']
 
     # Remove all files in the directory
-    shutil.rmtree(output_dir, ignore_errors=True)
-    os.makedirs(output_dir)
+    remove_files_except_prefix(output_dir, "Staking")
 
     for test in tests[network]:
         test['settings'] = { **defaults['settings'], **test['settings'] } if 'settings' in test else defaults['settings']

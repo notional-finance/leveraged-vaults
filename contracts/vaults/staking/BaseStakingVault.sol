@@ -217,7 +217,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         (VaultAccountHealthFactors memory healthBefore, /* */, /* */) = NOTIONAL.getVaultAccountHealthFactors(
             account, vault
         );
-        require(0 <= healthBefore.collateralRatio);
+        require(0 <= healthBefore.collateralRatio, "Insolvent");
 
         uint256 vaultSharesBefore = NOTIONAL.getVaultAccount(account, address(this)).vaultShares;
 

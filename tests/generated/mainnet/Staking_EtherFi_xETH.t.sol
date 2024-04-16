@@ -16,11 +16,20 @@ contract Test_Staking_EtherFi_xETH is BaseStakingTest {
 
         super.setUp();
     }
+
+    function finalizeWithdrawRequest(address account) internal override {
+        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
+        IWithdrawRequestNFT withdrawRequestNFT = EtherFiVault(payable(address(vault))).WithdrawRequestNFT();
+        uint256 maxRequestId = f.requestId > w.requestId ? f.requestId : w.requestId;
+
+        vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
+        withdrawRequestNFT.finalizeRequests(maxRequestId);
+    }
 }
 
 contract Harness_Staking_EtherFi_xETH is EtherFiStakingHarness { }
 
-contract Deploy_SingleSidedLP_Convex_xUSDT_crvUSD is Harness_Staking_EtherFi_xETH, DeployProxyVault {
+contract Deploy_Staking_EtherFi_xETH is Harness_Staking_EtherFi_xETH, DeployProxyVault {
     function setUp() public override {
         harness = new Harness_Staking_EtherFi_xETH();
     }
