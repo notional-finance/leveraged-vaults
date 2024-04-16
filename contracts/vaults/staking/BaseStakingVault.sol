@@ -244,7 +244,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         _initiateWithdraw({account: account, vaultShares: 0, isForced: true});
     }
 
-    function finalizeWithdrawsOutOfBand(address account) external {
-        return _finalizeWithdrawsOutOfBand(account);
+    function finalizeWithdrawsManual(address account) external {
+        return _finalizeWithdrawsManual(account);
     }
 }

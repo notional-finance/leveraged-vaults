@@ -5,7 +5,7 @@ contract MockOracle {
     int256 _answer;
     uint256 _updatedAt;
 
-    function decimals() public returns (uint8) { return 8; }
+    function decimals() public pure returns (uint8) { return 8; }
     function setAnswer(int256 answer_) public { _answer = answer_; }
     function setUpdatedAt(uint256 updatedAt_) public { _updatedAt = updatedAt_; }
 

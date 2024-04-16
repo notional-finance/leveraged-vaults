@@ -524,9 +524,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(s.finalized, false, "8");
     }
 
-    function test_deleverageAccount_splitAccountWithdrawRequest_hasForceWithdraw(
-        uint8 maturityIndex, uint8 withdrawPercent
-    ) public {
+    function test_deleverageAccount_splitAccountWithdrawRequest_hasForceWithdraw(uint8 maturityIndex) public {
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
         uint256 maturity = maturities[maturityIndex];
@@ -625,10 +623,95 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(s.finalized, false, "8");
     }
 
-    // test_RevertIf_liquidate_accountInsolvent()
-    // test_RevertIf_liquidate_accountCollateralDecrease()
-    // test_finalizeWithdrawsOutOfBand()
-    // test_liquidate_borrowAgainstWithdrawRequest()
+    function test_finalizeWithdrawsManual(
+        uint8 maturityIndex, uint256 depositAmount, uint256 withdrawPercent, bool useForce
+    ) public {
+        vm.assume(0 <= withdrawPercent && withdrawPercent <= 100);
+        if (withdrawPercent == 0) useForce = true;
+        if (withdrawPercent == 100) useForce = false;
+
+        address account = makeAddr("account");
+
+        uint256 vaultShares;
+        uint256 positionValue;
+        {
+            maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
+            uint256 maturity = maturities[maturityIndex];
+            depositAmount =  bound(depositAmount, 8 * minDeposit, maxDeposit);
+
+            vaultShares = enterVault(
+                account,
+                depositAmount,
+                maturity,
+                getDepositParams(depositAmount, maturity)
+            );
+            positionValue = uint256(v().convertStrategyToUnderlying(account, vaultShares, maturity));
+        }
+        vm.warp(block.timestamp + 3600);
+
+        // uint256 shareForRedeem = useForce ? vaultShares :  vaultShares * withdrawPercent / 100;
+        uint256 lendAmount = uint256(
+            Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
+        );
+        lendAmount = useForce ? lendAmount : lendAmount * withdrawPercent / 100;
+
+        vm.prank(account);
+        if (withdrawPercent > 0) {
+            v().initiateWithdraw(vaultShares * withdrawPercent / 100);
+        }
+        if (useForce) {
+            _forceWithdraw(account);
+        }
+        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
+
+        {
+            finalizeWithdrawRequest(account);
+
+            vm.prank(account);
+            v().finalizeWithdrawsManual(account);
+
+            (f, w) = v().getWithdrawRequests(account);
+        }
+
+        if (f.requestId != 0) {
+            SplitWithdrawRequest memory s = v().getSplitWithdrawRequest(f.requestId);
+            assertTrue(f.vaultShares != 0, "1");
+            assertTrue(f.hasSplit, "2");
+            assertEq(f.vaultShares, s.totalVaultShares);
+            assertTrue(s.finalized, "3");
+            assertGe(s.totalWithdraw, positionValue - positionValue * withdrawPercent / 100, "4");
+        }
+        if (w.requestId != 0) {
+            SplitWithdrawRequest memory s = v().getSplitWithdrawRequest(w.requestId);
+            assertTrue(w.vaultShares != 0, "5");
+            assertTrue(w.hasSplit, "6");
+            assertEq(w.vaultShares, s.totalVaultShares);
+            assertTrue(s.finalized, "7");
+            assertGe(s.totalWithdraw, positionValue * withdrawPercent / 100, "8");
+        }
+
+        vm.prank(account);
+
+        uint256 maxDiff;
+        if (maturityIndex == 0) {
+            maxDiff = 1e14; // 0.01 %
+        } else {
+            maxDiff = 7e15; // 0.7%
+        }
+        // exit vault and check that account received expected amount
+        assertApproxEqRel(
+            Deployments.NOTIONAL.exitVault(
+                account, address(vault), account, useForce ? vaultShares :  vaultShares * withdrawPercent / 100, lendAmount, 0, ""
+            ),
+            useForce ? depositAmount : depositAmount * withdrawPercent / 100,
+            maxDiff,
+            "9"
+        );
+
+        (f, w) = v().getWithdrawRequests(account);
+        _assertWithdrawRequestIsEmpty(w);
+        _assertWithdrawRequestIsEmpty(f);
+    }
 
     /** Helper Methods **/
 
@@ -636,7 +719,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         address token = v().STAKING_TOKEN();
         (AggregatorV2V3Interface oracle, /* */) = Deployments.TRADING_MODULE.priceOracles(token);
         MockOracle mock = new MockOracle();
-        mock.setAnswer(oracle.latestAnswer() * 975 / 1000);
+        mock.setAnswer(oracle.latestAnswer() * 960 / 1000);
 
         setPriceOracle(token, address(mock));
 

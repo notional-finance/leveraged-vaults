@@ -123,7 +123,7 @@ abstract contract WithdrawRequestBase {
         }
     }
 
-    function _finalizeWithdrawsOutOfBand(address account) internal {
+    function _finalizeWithdrawsManual(address account) internal {
         (
             WithdrawRequest memory forcedWithdraw,
             WithdrawRequest memory accountWithdraw
