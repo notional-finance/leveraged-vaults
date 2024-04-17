@@ -11,7 +11,11 @@ remappings = [
     "@deployments/=contracts/global/arbitrum/"
 ]
 evm_version = "shanghai"
-fs_permissions = [{ access = "read-write", path = "./scripts/deploy"}]
+fs_permissions = [
+  { access = "read-write", path = "./scripts/deploy"},
+  { access = "read", path = "./out_arbitrum"},
+  { access = "read", path = "./out_mainnet"},
+]
 
 [profile.arbitrum]
 chain_id = 42161

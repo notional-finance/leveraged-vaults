@@ -294,7 +294,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
 
         address account = makeAddr("account2");
         // All of these calls should succeed
-        uint256 vaultShares = enterVault(account, maxDeposit * 2, maturity, getDepositParams(0, 0));
+        uint256 vaultShares = enterVault(account, maxDeposit / 2, maturity, getDepositParams(0, 0));
         vault.convertStrategyToUnderlying(account, vaultShares, maturity);
         vm.warp(block.timestamp + 2 minutes);
         // NOTE: the exitVaultBypass above causes an underflow inside exitVaultBypass
@@ -315,7 +315,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         v().setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 1,
+            oraclePriceDeviationLimitPercent: 0,
             numRewardTokens: 0,
             forceClaimAfter: 1 weeks
         }));

@@ -58,8 +58,9 @@ abstract contract BaseAcceptanceTest is Test {
     AaveFlashLiquidator liquidator;
 
     function setUp() public virtual {
-        new VaultRewarderLib(); // address is hardcoded in Deployments
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
+        // NOTE: everything needs to run after create select fork
+        deployCodeTo("VaultRewarderLib.sol", Deployments.VAULT_REWARDER_LIB);
 
         config = harness.getTestVaultConfig();
         MarketParameters[] memory m = Deployments.NOTIONAL.getActiveMarkets(config.borrowCurrencyId);
@@ -169,12 +170,14 @@ abstract contract BaseAcceptanceTest is Test {
             // USDC does not work with `deal` so transfer from a whale account instead.
             vm.prank(WHALE);
             primaryBorrowToken.transfer(account, depositAmount);
-            vm.prank(account);
-            primaryBorrowToken.approve(address(Deployments.NOTIONAL), depositAmount);
+            vm.startPrank(account);
+            primaryBorrowToken.checkApprove(address(Deployments.NOTIONAL), depositAmount);
+            vm.stopPrank();
         } else {
             deal(address(primaryBorrowToken), account, depositAmount + primaryBorrowToken.balanceOf(account), true);
-            vm.prank(account);
-            primaryBorrowToken.approve(address(Deployments.NOTIONAL), depositAmount);
+            vm.startPrank(account);
+            primaryBorrowToken.checkApprove(address(Deployments.NOTIONAL), depositAmount);
+            vm.stopPrank();
         }
     }
 
@@ -629,6 +632,7 @@ abstract contract BaseAcceptanceTest is Test {
     function _changeCollateralRatio() internal virtual {
         VaultConfigParams memory cp = config;
         cp.minCollateralRatioBPS = cp.minCollateralRatioBPS + cp.minCollateralRatioBPS / 2;
+        cp.maxDeleverageCollateralRatioBPS = cp.minCollateralRatioBPS + 500;
         vm.startPrank(Deployments.NOTIONAL.owner());
         Deployments.NOTIONAL.updateVault(address(vault), cp, getMaxPrimaryBorrow());
         vm.stopPrank();

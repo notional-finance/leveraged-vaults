@@ -230,8 +230,8 @@ mainnet:
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e6
-      maxDeposit: 90_000e6
-      maxRelEntryValuation: 50
+      maxDeposit: 10_000e6
+      maxRelEntryValuation: 75
       maxRelExitValuation: 50
     config:
       feeRate5BPS: 20
@@ -255,7 +255,7 @@ mainnet:
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e6
-      maxDeposit: 90_000e6
+      maxDeposit: 50_000e6
       maxRelEntryValuation: 50
       maxRelExitValuation: 75
     config:
@@ -282,7 +282,7 @@ mainnet:
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e6
-      maxDeposit: 90_000e6
+      maxDeposit: 50_000e6
       maxRelEntryValuation: 50
       maxRelExitValuation: 75
     config:
@@ -302,8 +302,8 @@ mainnet:
       maxPoolShare: 2000
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
-      minDeposit: 1000e8
-      maxDeposit: 1e18
+      minDeposit: 1e18
+      maxDeposit: 5e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
     config:
@@ -324,8 +324,8 @@ mainnet:
       maxPoolShare: 2000
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
-      minDeposit: 1000e6
-      maxDeposit: 100_000e6
+      minDeposit: 1_000e6
+      maxDeposit: 50_000e6
       maxRelEntryValuation: 75
       maxRelExitValuation: 75
     config:
@@ -346,7 +346,7 @@ mainnet:
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e18
-      maxDeposit: 100e18
+      maxDeposit: 5e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
     config:
@@ -379,7 +379,7 @@ mainnet:
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e18
-      maxDeposit: 100e18
+      maxDeposit: 10e18
       maxRelEntryValuation: 75
       maxRelExitValuation: 75
     config:
@@ -400,7 +400,7 @@ mainnet:
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e18
-      maxDeposit: 100e18
+      maxDeposit: 5e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
     config:

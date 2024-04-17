@@ -10,8 +10,8 @@ contract Test_SingleSidedLP_Aura_GHO_USDT_xUSDC is BaseSingleSidedLPVault {
         WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 1000e6;
-        maxDeposit = 100_000e6;
+        minDeposit = 1_000e6;
+        maxDeposit = 50_000e6;
         maxRelEntryValuation = 75 * BASIS_POINT;
         maxRelExitValuation = 75 * BASIS_POINT;
 

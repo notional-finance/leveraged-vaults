@@ -38,7 +38,7 @@ contract EtherFiStakingHarness is BaseStakingHarness {
         token = new address[](1);
         oracle = new address[](1);
         token[0] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
-        oracle[0] = 0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136;
+        oracle[0] = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
     }
 
     function getTradingPermissions() public pure override returns (

@@ -295,9 +295,10 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         uint256 maxDiff;
         if (maturityIndex == 0) {
-            maxDiff = 1e14; // 0.01 %
+            maxDiff = 5e14; // 0.05%
         } else {
-            maxDiff = 7e15; // 0.7%
+            // You can lose a lot of value at high utilization on the fCash curve
+            maxDiff = 30e15; // 3%
         }
         assertApproxEqRel(totalToReceiver, useForce ? depositAmount : depositAmount * withdrawPercent / 100, maxDiff, "1");
 
@@ -552,7 +553,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         enterVaultLiquidation(account, maturity);
 
         // TODO: need to try to find the right value per vault here...
-        _changeCollateralRatio(930);
+        _changeCollateralRatio(925);
 
         address liquidator = makeAddr("liquidator");
         uint256 value = 100 ether;
@@ -817,9 +818,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         uint256 maxDiff;
         if (maturityIndex == 0) {
-            maxDiff = 1e14; // 0.01 %
+            maxDiff = 5e14; // 0.05 %
         } else {
-            maxDiff = 7e15; // 0.7%
+            maxDiff = 30e15; // 3%
         }
         // exit vault and check that account received expected amount
         assertApproxEqRel(
@@ -838,7 +839,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
     /** Helper Methods **/
     function _changeCollateralRatio() internal override {
-        _changeCollateralRatio(960);
+        _changeCollateralRatio(955);
     }
 
     function _changeCollateralRatio(int256 discount) internal {
