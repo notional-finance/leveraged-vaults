@@ -126,7 +126,7 @@ abstract contract BaseAcceptanceTest is Test {
         ITradingModule.TokenPermissions memory permissions
     ) internal {
         // mainnet trading module still didn't migrate to new NOTIONAL proxy address
-        if (FOUNDRY_PROFILE == keccak256('mainnet')) {
+        if (FOUNDRY_PROFILE == keccak256('mainnet') || Deployments.CHAIN_ID == 1) {
             vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
         } else {
             vm.prank(Deployments.NOTIONAL.owner());

@@ -104,8 +104,6 @@ interface ISingleSidedLPStrategyVault {
         uint256 totalVaultShares;
         uint256 maxPoolShare;
         uint256 oraclePriceDeviationLimitPercent;
-        uint256 numRewardTokens;
-        uint256 forceClaimAfter;
     }
 
     function initialize(InitParams calldata params) external;

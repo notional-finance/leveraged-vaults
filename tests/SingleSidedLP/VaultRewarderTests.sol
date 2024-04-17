@@ -33,7 +33,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         uint256 decimals;
     }
 
-    address constant NOTE = 0x019bE259BC299F3F653688c7655C87F998Bc7bC1;
+    address REWARD;
 
     AdditionalRewardToken[3] additionalRewardTokens;
     AccountsData[5] private accounts;
@@ -45,20 +45,27 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
     function setUp() public virtual override {
         super.setUp();
 
-        address DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
-        address USDC = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
-        additionalRewardTokens[0] = AdditionalRewardToken(NOTE, 1_000_000e8, uint32(block.timestamp + 30 days), 10 ** 8);
-        additionalRewardTokens[1] = AdditionalRewardToken(DAI, 1_000e18, uint32(block.timestamp + 10 days), 10 ** 18);
-        additionalRewardTokens[2] = AdditionalRewardToken(USDC, 100_000e6, uint32(block.timestamp + 200 days), 10 ** 6);
-
+        address REWARD_1;
+        address REWARD_2;
         maturity = maturities[0];
         if (Deployments.CHAIN_ID == 1) {
-            // NOTE: temporary code b/c owner has not changed yet
+            REWARD = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599; // WBTC on mainnet
+            REWARD_1 = 0x6B175474E89094C44Da98b954EedeAC495271d0F; // DAI
+            REWARD_2 = 0xdAC17F958D2ee523a2206206994597C13D831ec7; // Tether
+
             vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
         } else {
+            REWARD = 0x019bE259BC299F3F653688c7655C87F998Bc7bC1; // NOTE
+            REWARD_1 = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1; // DAI
+            REWARD_2 = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8; // USDC
+
             vm.prank(Deployments.NOTIONAL.owner());
         }
         Deployments.TRADING_MODULE.setMaxOracleFreshness(type(uint32).max);
+
+        additionalRewardTokens[0] = AdditionalRewardToken(REWARD, 1_000_000e8, uint32(block.timestamp + 30 days), 10 ** 8);
+        additionalRewardTokens[1] = AdditionalRewardToken(REWARD_1, 1_000e18, uint32(block.timestamp + 10 days), 10 ** 18);
+        additionalRewardTokens[2] = AdditionalRewardToken(REWARD_2, 100_000e6, uint32(block.timestamp + 200 days), 10 ** 6);
     }
 
     function _updateRewardToken(address rewardToken, uint256 index, uint256 emissionRatePerYear, uint256 endTime)
@@ -160,12 +167,14 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
     function _setForceClaimAfter(uint256 forceClaimAfter) public {
         ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory info =
             ISingleSidedLPStrategyVault(address(vault)).getStrategyVaultInfo();
+        (VaultRewardState[] memory r, /* */, /* */) = VaultRewarderLib(address(vault)).getRewardSettings();
+
         vm.prank(Deployments.NOTIONAL.owner());
         ISingleSidedLPStrategyVault(address(vault)).setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             maxPoolShare: uint16(info.maxPoolShare),
             oraclePriceDeviationLimitPercent: uint16(info.oraclePriceDeviationLimitPercent),
-            numRewardTokens: uint8(info.numRewardTokens),
+            numRewardTokens: uint8(r.length),
             forceClaimAfter: uint32(forceClaimAfter)
         }));
     }
@@ -351,7 +360,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         vm.expectRevert();
         VaultRewarderLib(address(vault)).updateRewardToken({
             index: 0,
-            rewardToken: NOTE,
+            rewardToken: REWARD,
             emissionRatePerYear: uint128(100_000e8),
             endTime: uint32(block.timestamp + 30 days)
         });
@@ -364,7 +373,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         vm.prank(Deployments.NOTIONAL.owner());
         VaultRewarderLib(address(vault)).updateRewardToken({
             index: 0,
-            rewardToken: NOTE,
+            rewardToken: REWARD,
             emissionRatePerYear: uint128(100_000e8),
             endTime: uint32(block.timestamp + 30 days)
         });
@@ -385,7 +394,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         vm.prank(Deployments.NOTIONAL.owner());
         _updateRewardToken({
             index: 0,
-            rewardToken: NOTE,
+            rewardToken: REWARD,
             emissionRatePerYear: 100_000e8,
             endTime: uint32(block.timestamp + 30 days)
         });
@@ -415,7 +424,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         _depositWithInitialAccounts();
         _updateRewardToken({
             index: 0,
-            rewardToken: NOTE,
+            rewardToken: REWARD,
             emissionRatePerYear: 100_000e8,
             endTime: block.timestamp + 30 days
         });
@@ -433,7 +442,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         timeToSkip = uint32(bound(timeToSkip, 1 hours, uint256(type(uint32).max / 10)));
         uint256 emissionRatePerYear = 1_000_000e8;
         uint256 endTime = block.timestamp + 30 days;
-        _updateRewardToken({index: 0, rewardToken: NOTE, emissionRatePerYear: emissionRatePerYear, endTime: endTime});
+        _updateRewardToken({index: 0, rewardToken: REWARD, emissionRatePerYear: emissionRatePerYear, endTime: endTime});
         uint40 starTime = uint40(block.timestamp);
         _depositWithInitialAccounts();
 
@@ -443,7 +452,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
             * Constants.INCENTIVE_ACCUMULATION_PRECISION / Constants.YEAR;
 
         for (uint256 i = 0; i < accounts.length; i++) {
-            assertEq(VaultRewarderLib(address(vault)).getRewardDebt(NOTE, accounts[i].account), 0, "Debt should be 0");
+            assertEq(VaultRewarderLib(address(vault)).getRewardDebt(REWARD, accounts[i].account), 0, "Debt should be 0");
             uint256 predictedReward = totalGeneratedIncentive * accounts[i].initialShare
                 / (Constants.INCENTIVE_ACCUMULATION_PRECISION * totalVaultSharesAllMaturities);
             uint256[] memory rewards =

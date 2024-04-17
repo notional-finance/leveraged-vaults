@@ -19,7 +19,9 @@ contract VaultRewarderLib is IVaultRewarder {
 
     /// @notice Returns the current reward claim method and reward state
     function getRewardSettings() public view override returns (
-        VaultRewardState[] memory v, StrategyVaultSettings memory s, RewardPoolStorage memory r
+        VaultRewardState[] memory v,
+        StrategyVaultSettings memory s,
+        RewardPoolStorage memory r
     ) {
         s = VaultStorage.getStrategyVaultSettings();
         r = VaultStorage.getRewardPoolStorage();
@@ -126,7 +128,7 @@ contract VaultRewarderLib is IVaultRewarder {
         }
 
         // Claim all vault rewards up to the current time
-        (VaultRewardState[] memory allStates, , RewardPoolStorage memory rewardPool) = getRewardSettings();
+        (VaultRewardState[] memory allStates, /* */, RewardPoolStorage memory rewardPool) = getRewardSettings();
         _claimVaultRewards(totalVaultSharesBefore, allStates, rewardPool);
         emit VaultRewardUpdate(rewardToken, emissionRatePerYear, endTime);
     }

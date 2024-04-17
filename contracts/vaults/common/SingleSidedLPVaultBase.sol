@@ -131,9 +131,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             totalLPTokens: state.totalPoolClaim,
             totalVaultShares: state.totalVaultSharesGlobal,
             maxPoolShare: settings.maxPoolShare,
-            oraclePriceDeviationLimitPercent: settings.oraclePriceDeviationLimitPercent,
-            numRewardTokens: settings.numRewardTokens,
-            forceClaimAfter: settings.forceClaimAfter
+            oraclePriceDeviationLimitPercent: settings.oraclePriceDeviationLimitPercent
         });
     }
 
