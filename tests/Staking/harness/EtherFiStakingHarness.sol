@@ -22,7 +22,7 @@ contract EtherFiStakingHarness is BaseStakingHarness {
     }
 
     function getVaultName() public override pure returns (string memory) {
-        return 'Staking:EtherFi';
+        return 'Staking:weETH:[ETH]';
     }
 
     function deployVaultImplementation() public override returns (

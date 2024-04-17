@@ -86,10 +86,12 @@ contract EthenaVault is BaseStakingVault {
 
     address public HOLDER_IMPLEMENTATION;
 
-    constructor(
-        NotionalProxy notional_,
-        ITradingModule tradingModule_
-    ) BaseStakingVault(notional_, tradingModule_, address(sUSDe), address(USDe)) { }
+    constructor() BaseStakingVault(
+        Deployments.NOTIONAL,
+        Deployments.TRADING_MODULE,
+        address(sUSDe),
+        address(USDe)
+    ) { }
 
     function initialize(
         string memory name,
