@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Convex_pyUSD_xUSDC is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Convex_pyUSD_xUSDC is VaultRewarderTests {
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Convex_pyUSD_xUSDC();
 

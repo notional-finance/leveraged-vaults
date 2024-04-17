@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Aura_rETH_weETH_xETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Aura_rETH_weETH_xETH is VaultRewarderTests {
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Aura_rETH_weETH_xETH();
 

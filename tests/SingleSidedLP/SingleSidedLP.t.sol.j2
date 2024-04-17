@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_{{ contractName }} is BaseSingleSidedLPVault {
+contract Test_{{ contractName }} is VaultRewarderTests {
     function setUp() public override {
         harness = new Harness_{{contractName}}();
 

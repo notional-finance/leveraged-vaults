@@ -10,6 +10,7 @@ import {
 } from "./ComposablePoolHarness.sol";
 import { DeployProxyVault} from "../../../scripts/deploy/DeployProxyVault.sol";
 import { BaseSingleSidedLPVault } from "../BaseSingleSidedLPVault.sol";
+import { VaultRewarderTests } from "../VaultRewarderTests.sol";
 import { Curve2TokenHarness, CurveInterface } from "./Curve2TokenHarness.sol";
 import { WeightedPoolHarness } from "./WeightedPoolHarness.sol";
 import { WrappedComposablePoolHarness } from "./WrappedComposablePoolHarness.sol";

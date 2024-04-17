@@ -52,7 +52,12 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         additionalRewardTokens[2] = AdditionalRewardToken(USDC, 100_000e6, uint32(block.timestamp + 200 days), 10 ** 6);
 
         maturity = maturities[0];
-        vm.prank(Deployments.NOTIONAL.owner());
+        if (Deployments.CHAIN_ID == 1) {
+            // NOTE: temporary code b/c owner has not changed yet
+            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+        } else {
+            vm.prank(Deployments.NOTIONAL.owner());
+        }
         Deployments.TRADING_MODULE.setMaxOracleFreshness(type(uint32).max);
     }
 
