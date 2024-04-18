@@ -24,6 +24,18 @@ contract EthenaStakingHarness is BaseStakingHarness {
         address impl, bytes memory _metadata
     ) {
         // TODO: need to list USDe as a borrow token here...
+        // vm.startPrank(Deployments.NOTIONAL.owner());
+        // Deployments.NOTIONAL.listCurrency(
+        //     TokenStorage({}),
+        //     ETHRateStorage({}),
+        //     InterestRateCurveSettings({}),
+        //     primeCashHoldingsOracle,
+        //     true,
+        //     72,
+        //     "USDe",
+        //     "USDe"
+        // );
+        // vm.stopPrank();
 
         impl = address(new EthenaVault());
         _metadata = metadata;
