@@ -234,11 +234,11 @@ arbitrum:
       maxRelExitValuation: 50
     config:
       feeRate5BPS: 20
-      minCollateralRatioBPS: 500
-      maxDeleverageCollateralRatioBPS: 800
+      minCollateralRatioBPS: 1_400
+      maxDeleverageCollateralRatioBPS: 2_700
       liquidationRate: 103
-      minAccountBorrowSize: 0.1e8
-      maxPrimaryBorrow: 1e8
+      minAccountBorrowSize: 2e8
+      maxPrimaryBorrow: 100e8
 mainnet:
   - vaultName: SingleSidedLP:Convex:[USDT]/crvUSD
     vaultType: Curve2Token
