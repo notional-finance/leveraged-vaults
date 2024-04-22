@@ -83,7 +83,11 @@ abstract contract BaseAcceptanceTest is Test {
         roundingPrecision = decimals > 8 ? 10 ** (decimals - 8) : 10 ** (8 - decimals);
 
         if (Deployments.CHAIN_ID == 1) {
-            vm.startPrank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            address tradingModule = address(new TradingModule(Deployments.NOTIONAL, Deployments.TRADING_MODULE));
+            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            // NOTE: fixes curve router
+            UUPSUpgradeable(address(Deployments.TRADING_MODULE)).upgradeTo(tradingModule);
+            vm.startPrank(Deployments.NOTIONAL.owner());
         } else {
             vm.startPrank(Deployments.NOTIONAL.owner());
         }

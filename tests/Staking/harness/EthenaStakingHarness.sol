@@ -11,11 +11,13 @@ contract EthenaStakingHarness is BaseStakingHarness {
     constructor() {
         setMetadata(StakingMetadata({
             primaryBorrowCurrency: 3,
-            primaryDexId: 8,
+            primaryDexId: 7,
             // USDC-USDe Curve Pool
-            exchangeData: abi.encode(CurveV2Adapter.CurveV2SingleData(
-                0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72
-            ))
+            exchangeData: abi.encode(CurveV2Adapter.CurveV2SingleData({
+                fromIndex: 1,
+                toIndex: 0,
+                pool: 0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72
+            }))
         }));
     }
 
@@ -52,8 +54,15 @@ contract EthenaStakingHarness is BaseStakingHarness {
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](0);
-        permissions = new ITradingModule.TokenPermissions[](0);
+        token = new address[](1);
+        permissions = new ITradingModule.TokenPermissions[](1);
+
+        // USDC
+        token[0] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        permissions[0] = ITradingModule.TokenPermissions(
+            // Curve, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 128, tradeTypeFlags: 1 }
+        );
     }
 
     function getDeploymentConfig() public view override returns (

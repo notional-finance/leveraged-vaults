@@ -47,7 +47,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function getDepositParams(
         uint256 /* depositAmount */,
         uint256 /* maturity */
-    ) internal pure override returns (bytes memory) {
+    ) internal view virtual override returns (bytes memory) {
         // TODO: need to update this for the boolean deposit params
         return abi.encode("");
     }
@@ -55,7 +55,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function getRedeemParams(
         uint256 /* vaultShares */,
         uint256 /* maturity */
-    ) internal view override returns (bytes memory) {
+    ) internal view virtual override returns (bytes memory) {
         RedeemParams memory r;
 
         StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();

@@ -66,7 +66,11 @@ contract TestTradingModule is Test {
                 limit: 0,
                 deadline: 0,
                 exchangeData: abi.encode(
-                    CurveV2Adapter.CurveV2SingleData({ pool: 0x6eB2dc694eB516B16Dc9FBc678C60052BbdD7d80 })
+                    CurveV2Adapter.CurveV2SingleData({
+                        fromIndex: 0,
+                        toIndex: 1,
+                        pool: 0x6eB2dc694eB516B16Dc9FBc678C60052BbdD7d80
+                    })
                 )
             }),
             false
@@ -82,7 +86,11 @@ contract TestTradingModule is Test {
                 limit: 0,
                 deadline: 0,
                 exchangeData: abi.encode(
-                    CurveV2Adapter.CurveV2SingleData({ pool: 0x6eB2dc694eB516B16Dc9FBc678C60052BbdD7d80 })
+                    CurveV2Adapter.CurveV2SingleData({ 
+                        fromIndex: 1,
+                        toIndex: 0,
+                        pool: 0x6eB2dc694eB516B16Dc9FBc678C60052BbdD7d80
+                    })
                 )
             }),
             false

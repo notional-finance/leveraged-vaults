@@ -5,6 +5,19 @@ import "../../Staking/harness/index.sol";
 import "@interfaces/ethena/IsUSDe.sol";
 
 contract Test_Staking_Ethena_xUSDC is BaseStakingTest {
+
+    function getDepositParams(
+        uint256 /* depositAmount */,
+        uint256 /* maturity */
+    ) internal view override returns (bytes memory) {
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        return abi.encode(DepositParams({
+            dexId: m.primaryDexId, // Curve
+            minPurchaseAmount: 0,
+            exchangeData: m.exchangeData
+        }));
+    }
+
     function setUp() public override {
         // MakerDAO PSM
         WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;

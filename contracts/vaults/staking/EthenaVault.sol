@@ -40,6 +40,7 @@ contract EthenaVault is BaseStakingVault {
     ) public override {
         super.initialize(name, borrowCurrencyId);
         HOLDER_IMPLEMENTATION = address(new EthenaCooldownHolder(address(this)));
+        USDe.approve(address(sUSDe), type(uint256).max);
     }
 
     function strategy() external override pure returns (bytes4) {
