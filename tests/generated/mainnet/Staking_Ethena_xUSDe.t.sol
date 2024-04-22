@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import "../../Staking/harness/index.sol";
+import "@interfaces/ethena/IsUSDe.sol";
 
 contract Test_Staking_Ethena_xUSDe is BaseStakingTest {
     function setUp() public override {

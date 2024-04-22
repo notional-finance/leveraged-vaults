@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 import {
     IERC20,
     TokenUtils
-} from "../../utils/TokenUtils.sol";
+} from "@contracts/utils/TokenUtils.sol";
 
 /**
  * @notice Used for withdraws where only one cooldown period can exist per address,
