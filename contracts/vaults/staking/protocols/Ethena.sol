@@ -97,13 +97,10 @@ library EthenaLib {
     }
 
     function _initiateWithdrawImpl(
-        address holderImplementation,
-        uint256 vaultSharesToRedeem,
-        uint256 stakingPrecision
+        uint256 balanceToTransfer,
+        address holderImplementation
     ) internal returns (uint256 requestId) {
         EthenaCooldownHolder holder = EthenaCooldownHolder(Clones.clone(holderImplementation));
-        uint256 balanceToTransfer = vaultSharesToRedeem * stakingPrecision /
-            uint256(Constants.INTERNAL_TOKEN_PRECISION);
         sUSDe.transfer(address(holder), balanceToTransfer);
         holder.startCooldown();
 

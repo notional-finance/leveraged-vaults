@@ -17,10 +17,8 @@ IWithdrawRequestNFT constant WithdrawRequestNFT = IWithdrawRequestNFT(0x7d5706f6
 
 library EtherFiLib {
     function _initiateWithdrawImpl(
-        uint256 vaultSharesToRedeem, uint256 borrowPrecision
+        uint256 weETHToUnwrap
     ) internal returns (uint256 requestId) {
-        uint256 weETHToUnwrap = vaultSharesToRedeem * borrowPrecision /
-            uint256(Constants.INTERNAL_TOKEN_PRECISION);
         uint256 eETHReceived = weETH.unwrap(weETHToUnwrap);
 
         eETH.approve(address(LiquidityPool), eETHReceived);

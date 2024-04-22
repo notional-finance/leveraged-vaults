@@ -90,9 +90,9 @@ contract EthenaVault is BaseStakingVault {
     function _initiateWithdrawImpl(
         address /* account */, uint256 vaultSharesToRedeem, bool /* isForced */
     ) internal override returns (uint256 requestId) {
-        return EthenaLib._initiateWithdrawImpl(
-            HOLDER_IMPLEMENTATION, vaultSharesToRedeem, STAKING_PRECISION
-        );
+        uint256 balanceToTransfer = vaultSharesToRedeem * STAKING_PRECISION /
+            uint256(Constants.INTERNAL_TOKEN_PRECISION);
+        return EthenaLib._initiateWithdrawImpl(balanceToTransfer, HOLDER_IMPLEMENTATION);
     }
 
     function _finalizeWithdrawImpl(
