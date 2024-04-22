@@ -14,6 +14,7 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
         Deployments.NOTIONAL,
         Deployments.TRADING_MODULE,
         address(weETH),
+        Constants.ETH_ADDRESS,
         Constants.ETH_ADDRESS
     ) {
         // Addresses in this vault are hardcoded to mainnet

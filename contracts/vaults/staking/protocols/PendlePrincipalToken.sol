@@ -53,12 +53,14 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         address borrowToken,
         uint32 twapDuration,
         bool useSyOracleRate,
-        address ptToken
+        address ptToken,
+        address redemptionToken
     ) BaseStakingVault(
         Deployments.NOTIONAL,
         Deployments.TRADING_MODULE,
         ptToken,
-        borrowToken
+        borrowToken,
+        redemptionToken
     ) {
         MARKET = IPMarket(market);
         (address sy, address pt, address yt) = MARKET.readTokens();
@@ -175,13 +177,11 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         address /* account */,
         uint256 vaultShares,
         uint256 /* maturity */,
-        bytes calldata data
+        RedeemParams memory params
     ) internal override returns (uint256 borrowedCurrencyAmount) {
         uint256 netTokenOut = _redeemPT(vaultShares);
 
         if (TOKEN_OUT_SY != BORROW_TOKEN) {
-            RedeemParams memory params = abi.decode(data, (RedeemParams));
-
             Trade memory trade = Trade({
                 tradeType: TradeType.EXACT_IN_SINGLE,
                 sellToken: TOKEN_OUT_SY,

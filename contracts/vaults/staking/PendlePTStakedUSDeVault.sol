@@ -21,7 +21,8 @@ contract PendlePTStakedUSDeVault is PendlePrincipalToken {
         address(USDe),
         1 hours,
         false,
-        address(0) // PT token address
+        address(0),             // PT token address
+        address(USDe)
     ) {
         // Addresses in this vault are hardcoded to mainnet
         require(block.chainid == Constants.CHAIN_ID_MAINNET);

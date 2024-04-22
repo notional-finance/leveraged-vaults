@@ -17,7 +17,8 @@ contract PendlePTEtherFiVault is PendlePrincipalToken {
         Constants.ETH_ADDRESS,
         1 hours,
         false,
-        address(0) // PT token address
+        address(0),             // PT token address
+        Constants.ETH_ADDRESS
     ) {
         // Addresses in this vault are hardcoded to mainnet
         require(block.chainid == Constants.CHAIN_ID_MAINNET);

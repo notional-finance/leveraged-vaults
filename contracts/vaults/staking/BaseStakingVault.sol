@@ -22,6 +22,7 @@ import {
 import { VaultAccountHealthFactors } from "@interfaces/notional/IVaultController.sol";
 
 struct RedeemParams {
+    bool redeemWithdrawRequest;
     uint8 dexId;
     uint256 minPurchaseAmount;
     bytes exchangeData;
@@ -39,6 +40,9 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     address public immutable STAKING_TOKEN;
     uint256 public immutable STAKING_PRECISION;
     address public immutable BORROW_TOKEN;
+    /// @notice Used in cases when redeeming the staking token results in a different
+    /// token then that is borrowed
+    address internal immutable REDEMPTION_TOKEN;
     uint256 immutable BORROW_PRECISION;
     uint256 internal constant EXCHANGE_RATE_PRECISION = 1e18;
 
@@ -46,12 +50,14 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         NotionalProxy notional_,
         ITradingModule tradingModule_,
         address stakingToken,
-        address borrowToken
+        address borrowToken,
+        address redemptionToken
     ) BaseStrategyVault(notional_, tradingModule_) {
         STAKING_TOKEN = stakingToken;
         STAKING_PRECISION = 10 ** TokenUtils.getDecimals(stakingToken);
         BORROW_TOKEN = borrowToken;
         BORROW_PRECISION = 10 ** TokenUtils.getDecimals(borrowToken);
+        REDEMPTION_TOKEN = redemptionToken;
     }
 
     function _initialize() internal virtual {
@@ -150,7 +156,8 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
             WithdrawRequest memory accountWithdraw
         ) = getWithdrawRequests(account);
 
-        if (data.length == 0) {
+        RedeemParams memory params = abi.decode(data, (RedeemParams));
+        if (params.redeemWithdrawRequest) {
             (uint256 vaultSharesRedeemed, uint256 tokensClaimed) = _redeemActiveWithdrawRequests(
                 account,
                 accountWithdraw,
@@ -159,6 +166,22 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
             // Once a withdraw request is initiated, the full amount must be redeemed
             // from the vault.
             require(vaultShares == vaultSharesRedeemed);
+
+            // Trades may be required here if the borrowed token is not the same as what is
+            // received when redeeming.
+            if (BORROW_TOKEN != REDEMPTION_TOKEN) {
+                Trade memory trade = Trade({
+                    tradeType: TradeType.EXACT_IN_SINGLE,
+                    sellToken: address(REDEMPTION_TOKEN),
+                    buyToken: address(BORROW_TOKEN),
+                    amount: tokensClaimed,
+                    limit: params.minPurchaseAmount,
+                    deadline: block.timestamp,
+                    exchangeData: params.exchangeData
+                });
+
+                (/* */, tokensClaimed) = _executeTrade(params.dexId, trade);
+            }
 
             return tokensClaimed;
         } else {
@@ -172,7 +195,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
                 require(vaultShares <= liquidVaultShares, "Insufficient Shares");
             }
 
-            return _executeInstantRedemption(account, vaultShares, maturity, data);
+            return _executeInstantRedemption(account, vaultShares, maturity, params);
         }
     }
 
@@ -180,11 +203,10 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         address /* account */,
         uint256 vaultShares,
         uint256 /* maturity */,
-        bytes calldata data
+        RedeemParams memory params
     ) internal virtual returns (uint256 borrowedCurrencyAmount) {
         uint256 sellAmount = vaultShares * uint256(STAKING_PRECISION) /
             uint256(Constants.INTERNAL_TOKEN_PRECISION);
-        RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         Trade memory trade = Trade({
             tradeType: TradeType.EXACT_IN_SINGLE,
