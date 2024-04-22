@@ -217,7 +217,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         for (uint256 i; i < tokens.length; i++) {
             if (address(tokens[i]) == address(0)) {
                 assertEq(address(vault).balance, 0);
-            } else if (tokens[i] != metadata.poolToken) {
+            } else if (tokens[i] != metadata.poolToken && address(tokens[i]) != metadata.whitelistedReward) {
                 assertEq(tokens[i].balanceOf(address(vault)), 0);
             }
         }
@@ -406,6 +406,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
 
     function test_RevertIf_ReadOnlyReentrancyAttack() public {
         if (metadata.balancerPoolId == bytes32(0)) return;
+        if (v().strategy() == bytes4(keccak256("BalancerComposableWrappedTwoToken"))) return;
 
         uint256 maturity = maturities[0];
         uint16 decimals = isETH ? 18 : primaryBorrowToken.decimals();

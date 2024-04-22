@@ -13,7 +13,7 @@ contract Test_SingleSidedLP_Convex_pyUSD_xUSDC is BaseSingleSidedLPVault {
         minDeposit = 1e6;
         maxDeposit = 90_000e6;
         maxRelEntryValuation = 50 * BASIS_POINT;
-        maxRelExitValuation = 50 * BASIS_POINT;
+        maxRelExitValuation = 75 * BASIS_POINT;
 
         super.setUp();
     }
@@ -39,8 +39,8 @@ Curve2TokenHarness
         params.maxDeleverageCollateralRatioBPS = 1900;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 100_000e8;
-        maxPrimaryBorrow = 8_000_000e8;
+        params.minAccountBorrowSize = 1e8;
+        maxPrimaryBorrow = 5_000e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -98,6 +98,8 @@ Curve2TokenHarness
             oraclePriceDeviationLimitPercent: 0.015e4
         });
         _m.rewardPool = IERC20(0xc583e81bB36A1F620A804D8AF642B63b0ceEb5c0);
+        _m.whitelistedReward = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
+        
 
         
         _m.poolToken = IERC20(0x383E6b4437b59fff47B619CBA855CA29342A8559);

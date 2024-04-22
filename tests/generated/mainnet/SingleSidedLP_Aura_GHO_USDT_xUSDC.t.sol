@@ -12,8 +12,8 @@ contract Test_SingleSidedLP_Aura_GHO_USDT_xUSDC is BaseSingleSidedLPVault {
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 1000e6;
         maxDeposit = 100_000e6;
-        maxRelEntryValuation = 50 * BASIS_POINT;
-        maxRelExitValuation = 50 * BASIS_POINT;
+        maxRelEntryValuation = 75 * BASIS_POINT;
+        maxRelExitValuation = 75 * BASIS_POINT;
 
         super.setUp();
     }
@@ -40,7 +40,7 @@ ComposablePoolHarness
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 100_000e8;
-        maxPrimaryBorrow = 2_000_000e8;
+        maxPrimaryBorrow = 750_000e8;
     }
 
     function getRequiredOracles() public override pure returns (

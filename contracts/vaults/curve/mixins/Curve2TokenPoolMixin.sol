@@ -87,11 +87,12 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
     }
 
     function _checkReentrancyContext() internal override {
-        // We need to set the LP token amount to 1 for Curve V2 pools to bypass
-        // the underflow check
         uint256[2] memory minAmounts;
-        if (CURVE_INTERFACE == CurveInterface.V1 || CURVE_INTERFACE == CurveInterface.StableSwapNG) {
+        if (CURVE_INTERFACE == CurveInterface.V1) {
             ICurve2TokenPoolV1(CURVE_POOL).remove_liquidity(0, minAmounts);
+        } else if (CURVE_INTERFACE == CurveInterface.StableSwapNG) {
+            // Total supply on stable swap has a non-reentrant lock
+            ICurveStableSwapNG(CURVE_POOL).totalSupply();
         } else if (CURVE_INTERFACE == CurveInterface.V2) {
             // Curve V2 does a `-1` on the liquidity amount so set the amount removed to 1 to
             // avoid an underflow.

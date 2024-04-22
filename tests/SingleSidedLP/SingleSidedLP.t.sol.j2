@@ -103,6 +103,9 @@ contract Harness_{{ contractName }} is
             oraclePriceDeviationLimitPercent: {{ settings.oraclePriceDeviationLimitPercent }}
         });
         _m.rewardPool = IERC20({{ rewardPool }});
+        {%- if whitelistedReward %}
+        _m.whitelistedReward = {{ whitelistedReward }};
+        {% endif %}
 
         {% if vaultType == "Curve2Token" %}
         _m.poolToken = IERC20({{ poolToken }});

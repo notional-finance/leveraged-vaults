@@ -3,14 +3,15 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Aura_xRDNT_WETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Convex_crvUSD_xUSDC is BaseSingleSidedLPVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_xRDNT_WETH();
+        harness = new Harness_SingleSidedLP_Convex_crvUSD_xUSDC();
 
+        WHALE = 0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D;
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
-        maxDeposit = 50e18;
+        minDeposit = 1e6;
+        maxDeposit = 90_000e6;
         maxRelEntryValuation = 75 * BASIS_POINT;
         maxRelExitValuation = 75 * BASIS_POINT;
 
@@ -18,28 +19,28 @@ contract Test_SingleSidedLP_Aura_xRDNT_WETH is BaseSingleSidedLPVault {
     }
 }
 
-contract Harness_SingleSidedLP_Aura_xRDNT_WETH is 
-WeightedPoolHarness
+contract Harness_SingleSidedLP_Convex_crvUSD_xUSDC is 
+Curve2TokenHarness
  {
     function getVaultName() public pure override returns (string memory) {
-        return 'SingleSidedLP:Aura:[RDNT]/WETH';
+        return 'SingleSidedLP:Convex:crvUSD/[USDC]';
     }
 
     function getDeploymentConfig() public view override returns (
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
         params = getTestVaultConfig();
-        params.feeRate5BPS = 10;
-        params.liquidationRate = 102;
+        params.feeRate5BPS = 20;
+        params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 500;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1500;
+        params.maxDeleverageCollateralRatioBPS = 800;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 1e8;
-        maxPrimaryBorrow = 100e8;
+        maxPrimaryBorrow = 5_000e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -48,12 +49,12 @@ WeightedPoolHarness
         token = new address[](2);
         oracle = new address[](2);
 
-        // RDNT
-        token[0] = 0x3082CC23568eA640225c2467653dB90e9250AaA0;
-        oracle[0] = 0x20d0Fcab0ECFD078B036b6CAf1FaC69A6453b352;
-        // ETH
-        token[1] = 0x0000000000000000000000000000000000000000;
-        oracle[1] = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
+        // USDC
+        token[0] = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+        oracle[0] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
+        // crvUSD
+        token[1] = 0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5;
+        oracle[1] = 0x0a32255dd4BB6177C994bAAc73E0606fDD568f66;
         
     }
 
@@ -63,14 +64,14 @@ WeightedPoolHarness
         token = new address[](2);
         permissions = new ITradingModule.TokenPermissions[](2);
 
-        // AURA
-        token[0] = 0x1509706a6c66CA549ff0cB464de88231DDBe213B;
+        // CRV
+        token[0] = 0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978;
         permissions[0] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
-        // BAL
-        token[1] = 0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8;
+        // ARB
+        token[1] = 0x912CE59144191C1204E64559FE8253a0e49E6548;
         permissions[1] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
@@ -81,31 +82,36 @@ WeightedPoolHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0x5c36a0DeaB3531d29d848E684E8bDf5F81cDB643;
         SingleSidedLPMetadata memory _m;
-        _m.primaryBorrowCurrency = 12;
+        _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 200
+            oraclePriceDeviationLimitPercent: 0.015e4
         });
-        _m.rewardPool = IERC20(0xa17492d89cB2D0bE1dDbd0008F8585EDc5B0ACf3);
+        _m.rewardPool = IERC20(0xBFEE9F3E015adC754066424AEd535313dc764116);
 
+        
+        _m.poolToken = IERC20(0xec090cf6DD891D2d014beA6edAda6e05E025D93d);
+        lpToken = 0xec090cf6DD891D2d014beA6edAda6e05E025D93d;
+        curveInterface = CurveInterface.StableSwapNG;
         
 
         _m.rewardTokens = new IERC20[](2);
-        // AURA
-        _m.rewardTokens[0] = IERC20(0x1509706a6c66CA549ff0cB464de88231DDBe213B);
-        // BAL
-        _m.rewardTokens[1] = IERC20(0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8);
+        // CRV
+        _m.rewardTokens[0] = IERC20(0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978);
+        // ARB
+        _m.rewardTokens[1] = IERC20(0x912CE59144191C1204E64559FE8253a0e49E6548);
         
         setMetadata(_m);
     }
 }
 
-contract Deploy_SingleSidedLP_Aura_xRDNT_WETH is Harness_SingleSidedLP_Aura_xRDNT_WETH, DeployProxyVault {
+contract Deploy_SingleSidedLP_Convex_crvUSD_xUSDC is Harness_SingleSidedLP_Convex_crvUSD_xUSDC, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_xRDNT_WETH();
+        harness = new Harness_SingleSidedLP_Convex_crvUSD_xUSDC();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {

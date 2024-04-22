@@ -37,7 +37,7 @@ contract BalancerComposableAuraVault is AuraStakingMixin {
     }
 
     /// @notice strategy identifier
-    function strategy() external override pure returns (bytes4) {
+    function strategy() external override virtual pure returns (bytes4) {
         return bytes4(keccak256("BalancerComposableAuraVault"));
     }
 

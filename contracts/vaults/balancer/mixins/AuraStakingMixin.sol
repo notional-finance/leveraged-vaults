@@ -27,7 +27,7 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
     IAuraRewardPool internal immutable AURA_REWARD_POOL;
     /// @notice Aura pool ID used for staking
     uint256 internal immutable AURA_POOL_ID;
-    address WHITELISTED_REWARD;
+    address immutable WHITELISTED_REWARD;
 
     constructor(NotionalProxy notional_, AuraVaultDeploymentParams memory params)
         BalancerPoolMixin(notional_, params.baseParams) {
