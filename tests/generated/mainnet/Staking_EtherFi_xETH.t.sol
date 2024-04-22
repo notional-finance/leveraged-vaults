@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import "../../Staking/harness/index.sol";
+import {WithdrawRequestNFT} from "@contracts/vaults/staking/protocols/EtherFi.sol";
 
 contract Test_Staking_EtherFi_xETH is BaseStakingTest {
     function setUp() public override {
@@ -19,11 +20,10 @@ contract Test_Staking_EtherFi_xETH is BaseStakingTest {
 
     function finalizeWithdrawRequest(address account) internal override {
         (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
-        IWithdrawRequestNFT withdrawRequestNFT = EtherFiVault(payable(address(vault))).WithdrawRequestNFT();
         uint256 maxRequestId = f.requestId > w.requestId ? f.requestId : w.requestId;
 
         vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
-        withdrawRequestNFT.finalizeRequests(maxRequestId);
+        WithdrawRequestNFT.finalizeRequests(maxRequestId);
     }
 }
 
