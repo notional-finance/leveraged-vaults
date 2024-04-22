@@ -188,11 +188,11 @@ arbitrum:
     config:
       feeRate5BPS: 20
       liquidationRate: 103
-      minCollateralRatioBPS: 500
+      minCollateralRatioBPS: 1_400
       maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 800
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5_000e8
+      maxDeleverageCollateralRatioBPS: 2_600
+      minAccountBorrowSize: 5_000e8
+      maxPrimaryBorrow: 500_000e8
   - vaultName: SingleSidedLP:Convex:crvUSD/[USDT]
     vaultType: Curve2Token
     primaryBorrowCurrency: USDT
@@ -213,11 +213,11 @@ arbitrum:
     config:
       feeRate5BPS: 20
       liquidationRate: 103
-      minCollateralRatioBPS: 500
+      minCollateralRatioBPS: 1_400
       maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 800
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5_000e8
+      maxDeleverageCollateralRatioBPS: 2_600
+      minAccountBorrowSize: 5_000e8
+      maxPrimaryBorrow: 500_000e8
   - vaultName: SingleSidedLP:Aura:ezETH/[wstETH]
     vaultType: ComposablePool
     primaryBorrowCurrency: wstETH
