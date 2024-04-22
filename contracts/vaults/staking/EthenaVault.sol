@@ -26,8 +26,8 @@ contract EthenaVault is BaseStakingVault {
         Deployments.NOTIONAL,
         Deployments.TRADING_MODULE,
         address(sUSDe),
-        // Using USDC temporarily
-        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+        // Using USDT temporarily
+        0xdAC17F958D2ee523a2206206994597C13D831ec7
         // address(USDe)
     ) {
         // Addresses in this vault are hardcoded to mainnet
@@ -79,7 +79,7 @@ contract EthenaVault is BaseStakingVault {
 
         uint256 sUSDeMinted = sUSDe.deposit(usdeAmount, address(this));
         vaultShares = sUSDeMinted * uint256(Constants.INTERNAL_TOKEN_PRECISION) /
-            uint256(BORROW_PRECISION);
+            uint256(STAKING_PRECISION);
     }
 
     /// @notice This vault will always borrow USDe so the value returned in this method will

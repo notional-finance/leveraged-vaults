@@ -2,7 +2,7 @@
 pragma solidity 0.8.24;
 
 import "./BaseStakingHarness.sol";
-import {CurveV2Adapter} from "@contracts/trading/adapters/CurveV2Adapter.sol";
+import {UniV3Adapter} from "@contracts/trading/adapters/UniV3Adapter.sol";
 import "@contracts/vaults/staking/EthenaVault.sol";
 import "@contracts/vaults/staking/BaseStakingVault.sol";
 
@@ -10,13 +10,11 @@ contract EthenaStakingHarness is BaseStakingHarness {
 
     constructor() {
         setMetadata(StakingMetadata({
-            primaryBorrowCurrency: 3,
-            primaryDexId: 7,
+            primaryBorrowCurrency: 8,
+            primaryDexId: 2, // UniV3
             // USDC-USDe Curve Pool
-            exchangeData: abi.encode(CurveV2Adapter.CurveV2SingleData({
-                fromIndex: 1,
-                toIndex: 0,
-                pool: 0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72
+            exchangeData: abi.encode(UniV3Adapter.UniV3SingleData({
+                fee: 100
             }))
         }));
     }
@@ -46,22 +44,29 @@ contract EthenaStakingHarness is BaseStakingHarness {
         token[1] = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
         oracle[1] = 0xb99D174ED06c83588Af997c8859F93E83dD4733f;
 
-        // USDC
-        token[2] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-        oracle[2] = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+        // USDT
+        token[2] = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+        oracle[2] = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
     }
 
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](1);
-        permissions = new ITradingModule.TokenPermissions[](1);
+        token = new address[](2);
+        permissions = new ITradingModule.TokenPermissions[](2);
 
-        // USDC
-        token[0] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        // USDT
+        token[0] = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
         permissions[0] = ITradingModule.TokenPermissions(
-            // Curve, EXACT_IN_SINGLE, EXACT_IN_BATCH
-            { allowSell: true, dexFlags: 128, tradeTypeFlags: 1 }
+            // UniV3, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 4, tradeTypeFlags: 1 }
+        );
+
+        // sUSDe
+        token[1] = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
+        permissions[1] = ITradingModule.TokenPermissions(
+            // UniV3, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 4, tradeTypeFlags: 1 }
         );
     }
 

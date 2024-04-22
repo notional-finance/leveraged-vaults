@@ -12,15 +12,30 @@ contract Test_Staking_Ethena_xUSDC is BaseStakingTest {
     ) internal view override returns (bytes memory) {
         StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
         return abi.encode(DepositParams({
-            dexId: m.primaryDexId, // Curve
+            dexId: m.primaryDexId,
             minPurchaseAmount: 0,
             exchangeData: m.exchangeData
         }));
     }
 
+    function getRedeemParams(
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal view override returns (bytes memory) {
+        RedeemParams memory r;
+
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        r.minPurchaseAmount = 0;
+        r.dexId = m.primaryDexId;
+        // sUSDe/USDT pool is 0.05% fee range
+        r.exchangeData = abi.encode(UniV3Adapter.UniV3SingleData({
+            fee: 500
+        }));
+
+        return abi.encode(r);
+    }
+
     function setUp() public override {
-        // MakerDAO PSM
-        WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
         harness = new Harness_Staking_Ethena_xUSDC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
