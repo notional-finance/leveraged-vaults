@@ -26,7 +26,9 @@ contract EthenaVault is BaseStakingVault {
         Deployments.NOTIONAL,
         Deployments.TRADING_MODULE,
         address(sUSDe),
-        address(USDe)
+        // Using USDC temporarily
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+        // address(USDe)
     ) {
         // Addresses in this vault are hardcoded to mainnet
         require(block.chainid == Constants.CHAIN_ID_MAINNET);

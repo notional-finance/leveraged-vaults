@@ -4,14 +4,16 @@ pragma solidity 0.8.24;
 import "../../Staking/harness/index.sol";
 import "@interfaces/ethena/IsUSDe.sol";
 
-contract Test_Staking_Ethena_xUSDe is BaseStakingTest {
+contract Test_Staking_Ethena_xUSDC is BaseStakingTest {
     function setUp() public override {
-        harness = new Harness_Staking_Ethena_xUSDe();
+        // MakerDAO PSM
+        WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
+        harness = new Harness_Staking_Ethena_xUSDC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.1e18;
-        maxDeposit = 10e18;
+        minDeposit = 1e6;
+        maxDeposit = 1_000e6;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
 
@@ -30,11 +32,11 @@ contract Test_Staking_Ethena_xUSDe is BaseStakingTest {
     }
 }
 
-contract Harness_Staking_Ethena_xUSDe is EthenaStakingHarness { }
+contract Harness_Staking_Ethena_xUSDC is EthenaStakingHarness { }
 
-contract Deploy_Staking_Ethena_xUSDe is Harness_Staking_Ethena_xUSDe, DeployProxyVault {
+contract Deploy_Staking_Ethena_xUSDC is Harness_Staking_Ethena_xUSDC, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_Staking_Ethena_xUSDe();
+        harness = new Harness_Staking_Ethena_xUSDC();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {
