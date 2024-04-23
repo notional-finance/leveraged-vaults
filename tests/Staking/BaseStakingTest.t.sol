@@ -62,6 +62,21 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         r.minPurchaseAmount = 0;
         r.dexId = m.primaryDexId;
         r.exchangeData = m.exchangeData;
+        r.redeemWithdrawRequest = false;
+
+        return abi.encode(r);
+    }
+
+    function getRedeemParams(
+        bool redeemWithdrawRequest
+    ) internal view virtual returns (bytes memory) {
+        RedeemParams memory r;
+
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        r.minPurchaseAmount = 0;
+        r.dexId = m.primaryDexId;
+        r.exchangeData = m.exchangeData;
+        r.redeemWithdrawRequest = redeemWithdrawRequest;
 
         return abi.encode(r);
     }
@@ -95,7 +110,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         assertEq(
             uint256(v().convertStrategyToUnderlying(account, vaultShares, maturity)),
-            vaultShares * uint256(rate) / uint256(Constants.INTERNAL_TOKEN_PRECISION)
+            (vaultShares * uint256(rate) * precision) / (uint256(Constants.INTERNAL_TOKEN_PRECISION) * 1e18)
         );
     }
 
@@ -257,9 +272,10 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         vm.prank(account);
         // should fail if withdraw is not initiated
+        bytes memory params = getRedeemParams(true);
         vm.expectRevert();
         Deployments.NOTIONAL.exitVault(
-            account, address(vault), account, vaultShares, lendAmount, 0, ""
+            account, address(vault), account, vaultShares, lendAmount, 0, params
         );
 
         vm.prank(account);
@@ -276,7 +292,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         // should fail if withdraw is not finalized
         vm.expectRevert();
         Deployments.NOTIONAL.exitVault(
-            account, address(vault), account, shareForRedeem, lendAmount, 0, ""
+            account, address(vault), account, shareForRedeem, lendAmount, 0, params
         );
 
         finalizeWithdrawRequest(account);
@@ -285,12 +301,12 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         vm.expectRevert();
         // should fail if exact amount of shares is not specified
         Deployments.NOTIONAL.exitVault(
-            account, address(vault), account, shareForRedeem - 1, lendAmount, 0, ""
+            account, address(vault), account, shareForRedeem - 1, lendAmount, 0, params
         );
 
         vm.prank(account);
         uint256 totalToReceiver = Deployments.NOTIONAL.exitVault(
-            account, address(vault), account, shareForRedeem, lendAmount, 0, ""
+            account, address(vault), account, shareForRedeem, lendAmount, 0, params
         );
 
         uint256 maxDiff;
@@ -374,7 +390,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(w.hasSplit, false);
 
         // Assert no change to valuation
-        assertApproxEqAbs(valueBefore, valueAfter, roundingPrecision, "Valuation Change");
+        assertApproxEqRel(valueBefore, valueAfter, 0.0001e18, "Valuation Change");
     }
 
     function test_RevertIf_accountWithdraw_hasExistingRequest(
@@ -450,7 +466,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         int256 valueAfter = v().convertStrategyToUnderlying(account, vaultShares, maturity);
         // Assert no change to valuation
-        assertApproxEqAbs(valueBefore, valueAfter, roundingPrecision, "Valuation Change");
+        assertApproxEqRel(valueBefore, valueAfter, 0.0001e18, "Valuation Change");
     }
 
     function test_RevertIf_forceWithdraw_accountInitiatesWithdraw(
@@ -507,7 +523,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         int256 valueAfter = v().convertStrategyToUnderlying(account, vaultShares, maturity);
 
         // Assert no change to valuation
-        assertApproxEqAbs(valueBefore, valueAfter, roundingPrecision, "Valuation Change");
+        assertApproxEqRel(valueBefore, valueAfter, 0.0001e18, "Valuation Change");
     }
 
     function test_RevertIf_forceWithdraw_secondForceWithdraw(
@@ -814,7 +830,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             assertGe(s.totalWithdraw, positionValue * withdrawPercent / 100, "8");
         }
 
-        vm.prank(account);
+        vm.startPrank(account);
 
         uint256 maxDiff;
         if (maturityIndex == 0) {
@@ -825,7 +841,10 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         // exit vault and check that account received expected amount
         assertApproxEqRel(
             Deployments.NOTIONAL.exitVault(
-                account, address(vault), account, useForce ? vaultShares :  vaultShares * withdrawPercent / 100, lendAmount, 0, ""
+                account, address(vault), account,
+                useForce ? vaultShares :  vaultShares * withdrawPercent / 100,
+                lendAmount, 0,
+                getRedeemParams(true)
             ),
             useForce ? depositAmount : depositAmount * withdrawPercent / 100,
             maxDiff,

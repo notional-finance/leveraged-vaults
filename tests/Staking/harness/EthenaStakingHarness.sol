@@ -52,8 +52,8 @@ contract EthenaStakingHarness is BaseStakingHarness {
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](2);
-        permissions = new ITradingModule.TokenPermissions[](2);
+        token = new address[](3);
+        permissions = new ITradingModule.TokenPermissions[](3);
 
         // USDT
         token[0] = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
@@ -65,6 +65,13 @@ contract EthenaStakingHarness is BaseStakingHarness {
         // sUSDe
         token[1] = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
         permissions[1] = ITradingModule.TokenPermissions(
+            // UniV3, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 4, tradeTypeFlags: 1 }
+        );
+
+        // USDe
+        token[2] = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+        permissions[2] = ITradingModule.TokenPermissions(
             // UniV3, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 4, tradeTypeFlags: 1 }
         );

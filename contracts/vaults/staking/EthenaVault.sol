@@ -82,12 +82,11 @@ contract EthenaVault is BaseStakingVault {
             uint256(STAKING_PRECISION);
     }
 
-    /// @notice This vault will always borrow USDe so the value returned in this method will
-    /// always be USDe.
+    /// @notice Returns the value of a withdraw request in terms of the borrowed token
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w,uint256 stakeAssetPrice
-    ) internal override view returns (uint256 usdEValue) {
-        return EthenaLib._getValueOfWithdrawRequest(w, stakeAssetPrice);
+        WithdrawRequest memory w, uint256 /* stakeAssetPrice */
+    ) internal override view returns (uint256) {
+        return EthenaLib._getValueOfWithdrawRequest(w, BORROW_TOKEN, BORROW_PRECISION);
     }
 
     function _initiateWithdrawImpl(

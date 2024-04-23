@@ -41,9 +41,9 @@ contract PendlePTStakedUSDeVault is PendlePrincipalToken {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 stakeAssetPrice
-    ) internal override view returns (uint256 usdEValue) {
-        return EthenaLib._getValueOfWithdrawRequest(w, stakeAssetPrice);
+        WithdrawRequest memory w, uint256 /* stakeAssetPrice */
+    ) internal override view returns (uint256) {
+        return EthenaLib._getValueOfWithdrawRequest(w, BORROW_TOKEN, BORROW_PRECISION);
     }
 
     function _initiateWithdrawImpl(

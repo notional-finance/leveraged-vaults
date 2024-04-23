@@ -2,8 +2,10 @@
 pragma solidity 0.8.24;
 
 import {Constants} from "@contracts/global/Constants.sol";
+import {Deployments} from "@deployments/Deployments.sol";
 import {IsUSDe} from "@interfaces/ethena/IsUSDe.sol";
 import {IERC20} from "@interfaces/IERC20.sol";
+import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {VaultStorage} from "@contracts/vaults/common/VaultStorage.sol";
 import {
     WithdrawRequest,
@@ -62,18 +64,31 @@ contract EthenaCooldownHolder is ClonedCoolDownHolder {
 }
 
 library EthenaLib {
+    using TypeConvert for int256;
+    uint256 internal constant USDE_PRECISION = 1e18;
 
     /// @notice This vault will always borrow USDe so the value returned in this method will
     /// always be USDe.
     function _getValueOfWithdrawRequest(
         WithdrawRequest memory w,
-        uint256 /* stakeAssetPrice */
-    ) internal view returns (uint256 usdEValue) {
+        address borrowToken,
+        uint256 borrowPrecision
+    ) internal view returns (uint256) {
+        if (w.requestId == 0) return 0;
+
+        (int256 _usdeToBorrowRate, int256 _ratePrecision) = Deployments.TRADING_MODULE.getOraclePrice(
+            address(USDe), borrowToken
+        );
+        uint256 usdeToBorrowRate = _usdeToBorrowRate.toUint();
+        uint256 exchangeRatePrecision = _ratePrecision.toUint();
+
         if (w.hasSplit) {
             SplitWithdrawRequest memory s = VaultStorage.getSplitWithdrawRequest()[w.requestId];
             if (s.finalized) {
-                // totalWithdraw is a USDe amount
-                return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
+                uint256 usdeWithdrawn = (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
+
+                return (usdeWithdrawn * usdeToBorrowRate * borrowPrecision) /
+                    (exchangeRatePrecision * USDE_PRECISION);
             }
         }
 
@@ -84,16 +99,8 @@ library EthenaLib {
         // cooldown has passed.
         IsUSDe.UserCooldown memory userCooldown = sUSDe.cooldowns(holder);
 
-        return userCooldown.underlyingAmount;
-        /*
-        // This is the current valuation of sUSDe at the current market price. If the cooldown
-        // time window is extended, the price of sUSDe may drop relative to the price of USDe
-        // which would reflect the current market expectation around redeeming sUSDe.
-        uint256 valuation = (w.vaultShares * stakeAssetPrice * STAKING_PRECISION) /
-            (uint256(Constants.INTERNAL_TOKEN_PRECISION) * 1e18);
-
-        return SafeUint256.min(userCooldown.underlyingAmount, valuation);
-        */
+        return (userCooldown.underlyingAmount * usdeToBorrowRate * borrowPrecision) /
+            (exchangeRatePrecision * USDE_PRECISION);
     }
 
     function _initiateWithdrawImpl(
