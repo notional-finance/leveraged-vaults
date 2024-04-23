@@ -44,6 +44,8 @@ contract Test_Staking_Ethena_xUSDC is BaseStakingTest {
         maxDeposit = 1_000e6;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
+        maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
+        maxRelExitValuation_WithdrawRequest_Variable = 0.01e18;
 
         super.setUp();
     }
@@ -56,6 +58,7 @@ contract Test_Staking_Ethena_xUSDC is BaseStakingTest {
         uint256 maxCooldown = fCooldown.cooldownEnd > wCooldown.cooldownEnd ?
             fCooldown.cooldownEnd : wCooldown.cooldownEnd;
 
+        setMaxOracleFreshness();
         vm.warp(maxCooldown);
     }
 }

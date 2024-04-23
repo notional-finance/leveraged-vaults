@@ -14,6 +14,8 @@ contract Test_Staking_EtherFi_xETH is BaseStakingTest {
         maxDeposit = 10e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
+        maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
+        maxRelExitValuation_WithdrawRequest_Variable = 0.005e18;
 
         super.setUp();
     }

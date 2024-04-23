@@ -10,6 +10,8 @@ import "@contracts/proxy/nProxy.sol";
 import "@interfaces/trading/ITradingModule.sol";
 
 abstract contract BaseStakingTest is BaseAcceptanceTest {
+    uint256 maxRelExitValuation_WithdrawRequest_Fixed;
+    uint256 maxRelExitValuation_WithdrawRequest_Variable;
 
     function deployTestVault() internal override returns (IStrategyVault) {
         (address impl, /* */) = harness.deployVaultImplementation();
@@ -268,7 +270,12 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         uint256 lendAmount = uint256(
             Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
         );
-        lendAmount = useForce ? lendAmount : lendAmount * withdrawPercent / 100;
+        if (useForce) {
+            // Use max uint on variable lending to clear the position
+            lendAmount = maturityIndex == 0 ? type(uint256).max : lendAmount;
+        } else {
+            lendAmount = lendAmount * withdrawPercent / 100;
+        }
 
         vm.prank(account);
         // should fail if withdraw is not initiated
@@ -311,10 +318,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         uint256 maxDiff;
         if (maturityIndex == 0) {
-            maxDiff = 5e14; // 0.05%
+            maxDiff = maxRelExitValuation_WithdrawRequest_Variable;
         } else {
-            // You can lose a lot of value at high utilization on the fCash curve
-            maxDiff = 30e15; // 3%
+            maxDiff = maxRelExitValuation_WithdrawRequest_Fixed;
         }
         assertApproxEqRel(totalToReceiver, useForce ? depositAmount : depositAmount * withdrawPercent / 100, maxDiff, "1");
 
@@ -793,7 +799,12 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         uint256 lendAmount = uint256(
             Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
         );
-        lendAmount = useForce ? lendAmount : lendAmount * withdrawPercent / 100;
+        if (useForce) {
+            // Use max uint on variable lending to clear the position
+            lendAmount = maturityIndex == 0 ? type(uint256).max : lendAmount;
+        } else {
+            lendAmount = lendAmount * withdrawPercent / 100;
+        }
 
         vm.prank(account);
         if (withdrawPercent > 0) {
@@ -834,9 +845,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         uint256 maxDiff;
         if (maturityIndex == 0) {
-            maxDiff = 5e14; // 0.05 %
+            maxDiff = maxRelExitValuation_WithdrawRequest_Variable;
         } else {
-            maxDiff = 30e15; // 3%
+            maxDiff = maxRelExitValuation_WithdrawRequest_Fixed;
         }
         // exit vault and check that account received expected amount
         assertApproxEqRel(

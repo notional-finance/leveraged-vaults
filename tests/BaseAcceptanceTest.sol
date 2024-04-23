@@ -112,6 +112,15 @@ abstract contract BaseAcceptanceTest is Test {
         liquidator = new AaveFlashLiquidator(Deployments.NOTIONAL, aave);
     }
 
+    function setMaxOracleFreshness() internal {
+        if (Deployments.CHAIN_ID == 1) {
+            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+        } else {
+            vm.prank(Deployments.NOTIONAL.owner());
+        }
+        TradingModule(address(Deployments.TRADING_MODULE)).setMaxOracleFreshness(type(uint32).max);
+    }
+
     function assertAbsDiff(uint256 a, uint256 b, uint256 diff, string memory m) internal {
         uint256 d = a > b ? a - b : b - a;
         assertLe(d, diff, m);
@@ -709,12 +718,7 @@ abstract contract BaseAcceptanceTest is Test {
         _changeCollateralRatio();
 
         skip(30 days);
-        if (Deployments.CHAIN_ID == 1) {
-            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
-        } else {
-            vm.prank(Deployments.NOTIONAL.owner());
-        }
-        TradingModule(address(Deployments.TRADING_MODULE)).setMaxOracleFreshness(type(uint32).max);
+        setMaxOracleFreshness();
 
         (
             FlashLiquidatorBase.LiquidationParams memory params,
