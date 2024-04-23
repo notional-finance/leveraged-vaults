@@ -84,10 +84,11 @@ abstract contract BaseAcceptanceTest is Test {
 
         if (Deployments.CHAIN_ID == 1) {
             vm.startPrank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
-            // address tradingModule = address(new TradingModule(Deployments.NOTIONAL, Deployments.TRADING_MODULE));
-            // // NOTE: fixes curve router
-            // UUPSUpgradeable(address(Deployments.TRADING_MODULE)).upgradeTo(tradingModule);
-            // vm.startPrank(Deployments.NOTIONAL.owner());
+            address tradingModule = address(new TradingModule(Deployments.NOTIONAL, Deployments.TRADING_MODULE));
+            // NOTE: fixes curve router
+            UUPSUpgradeable(address(Deployments.TRADING_MODULE)).upgradeTo(tradingModule);
+            vm.stopPrank();
+            vm.startPrank(Deployments.NOTIONAL.owner());
         } else {
             vm.startPrank(Deployments.NOTIONAL.owner());
         }
@@ -114,7 +115,8 @@ abstract contract BaseAcceptanceTest is Test {
 
     function setMaxOracleFreshness() internal {
         if (Deployments.CHAIN_ID == 1) {
-            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            // vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            vm.prank(Deployments.NOTIONAL.owner());
         } else {
             vm.prank(Deployments.NOTIONAL.owner());
         }

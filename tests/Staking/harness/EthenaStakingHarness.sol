@@ -12,7 +12,6 @@ contract EthenaStakingHarness is BaseStakingHarness {
         setMetadata(StakingMetadata({
             primaryBorrowCurrency: 8,
             primaryDexId: 2, // UniV3
-            // USDC-USDe Curve Pool
             exchangeData: abi.encode(UniV3Adapter.UniV3SingleData({
                 fee: 100
             }))
@@ -52,8 +51,8 @@ contract EthenaStakingHarness is BaseStakingHarness {
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](3);
-        permissions = new ITradingModule.TokenPermissions[](3);
+        token = new address[](4);
+        permissions = new ITradingModule.TokenPermissions[](4);
 
         // USDT
         token[0] = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
@@ -65,13 +64,20 @@ contract EthenaStakingHarness is BaseStakingHarness {
         // sUSDe
         token[1] = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
         permissions[1] = ITradingModule.TokenPermissions(
+            // CurveV2, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 128, tradeTypeFlags: 1 }
+        );
+
+        // DAI: required to exit sDAI pool
+        token[2] = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+        permissions[2] = ITradingModule.TokenPermissions(
             // UniV3, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 4, tradeTypeFlags: 1 }
         );
 
         // USDe
-        token[2] = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
-        permissions[2] = ITradingModule.TokenPermissions(
+        token[3] = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+        permissions[3] = ITradingModule.TokenPermissions(
             // UniV3, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 4, tradeTypeFlags: 1 }
         );

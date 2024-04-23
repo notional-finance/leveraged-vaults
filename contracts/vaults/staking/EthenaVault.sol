@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import { Constants } from "@contracts/global/Constants.sol";
 import { Deployments } from "@deployments/Deployments.sol";
-import { BaseStakingVault, DepositParams } from "./BaseStakingVault.sol";
+import { BaseStakingVault, DepositParams, RedeemParams } from "./BaseStakingVault.sol";
 import {
     sUSDe,
     USDe,
@@ -101,6 +101,26 @@ contract EthenaVault is BaseStakingVault {
         address /* account */, uint256 requestId
     ) internal override returns (uint256 tokensClaimed, bool finalized) {
         return EthenaLib._finalizeWithdrawImpl(requestId);
+    }
+
+    function _executeInstantRedemption(
+        address /* account */,
+        uint256 vaultShares,
+        uint256 /* maturity */,
+        RedeemParams memory params
+    ) internal override returns (uint256 borrowedCurrencyAmount) {
+        uint256 sUSDeToSell = vaultShares * uint256(STAKING_PRECISION) /
+            uint256(Constants.INTERNAL_TOKEN_PRECISION);
+
+        // Selling sUSDe requires special handling since most of the liquidity
+        // sits inside a sUSDe/sDAI pool on Curve.
+        return EthenaLib._sellStakedUSDe(
+            sUSDeToSell,
+            address(BORROW_TOKEN),
+            params.minPurchaseAmount,
+            params.exchangeData,
+            params.dexId
+        );
     }
 
     function _checkReentrancyContext() internal override {
