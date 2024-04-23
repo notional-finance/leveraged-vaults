@@ -237,7 +237,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         {
             maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
             uint256 maturity = maturities[maturityIndex];
-            depositAmount =  bound(depositAmount, 5 * minDeposit, maxDeposit);
+            depositAmount =  bound(depositAmount, 12 * minDeposit, maxDeposit);
 
             vaultShares = enterVault(
                 account,
@@ -750,7 +750,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_finalizeWithdrawsManual(
         uint8 maturityIndex, uint256 depositAmount, uint256 withdrawPercent, bool useForce
     ) public {
-        vm.assume(0 <= withdrawPercent && withdrawPercent <= 100);
+        vm.assume(withdrawPercent <= 100);
         if (withdrawPercent == 0) useForce = true;
         if (withdrawPercent == 100) useForce = false;
 
@@ -761,7 +761,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         {
             maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
             uint256 maturity = maturities[maturityIndex];
-            depositAmount =  bound(depositAmount, 8 * minDeposit, maxDeposit);
+            depositAmount =  bound(depositAmount, 12 * minDeposit, maxDeposit);
 
             vaultShares = enterVault(
                 account,

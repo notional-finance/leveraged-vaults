@@ -245,4 +245,10 @@ interface NotionalProxy is
         uint256[] calldata fCashMaturities,
         uint256[] calldata maxfCashLiquidateAmounts
     ) external returns (int256[] memory, int256);
+
+    function setMaxUnderlyingSupply(
+        uint16 currencyId,
+        uint256 maxUnderlyingSupply,
+        uint8 maxPrimeDebtUtilization
+    ) external;
 }

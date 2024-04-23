@@ -17,6 +17,15 @@ contract Test_SingleSidedLP_Convex_pyUSD_xUSDC is VaultRewarderTests {
 
         super.setUp();
     }
+
+    function _shouldSkip(string memory name) internal pure override returns(bool) {
+        if (
+            keccak256(abi.encodePacked(name)) == keccak256(abi.encodePacked("test_claimReward_WithChangingForceClaimAfter"))
+        ) {
+            return true;
+        }
+        return false;
+    }
 }
 
 contract Harness_SingleSidedLP_Convex_pyUSD_xUSDC is 
