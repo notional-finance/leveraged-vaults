@@ -186,7 +186,7 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
             accruedFeeInUnderlying
         ) = NOTIONAL.getVaultAccountWithFeeAccrual(account, vault);
 
-        if (vaultAccount.maturity < block.timestamp) {
+        if (vaultAccount.maturity != 0 && vaultAccount.maturity < block.timestamp) {
             NOTIONAL.settleVaultAccount(account, vault);
         }
     }

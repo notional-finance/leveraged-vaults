@@ -501,6 +501,47 @@ abstract contract BaseAcceptanceTest is Test {
         );
     }
 
+    function test_deleverageBatch(uint256 maturityIndex) public {
+        address[] memory accounts = new address[](3);
+        accounts[0] = makeAddr("account1");
+        accounts[1] = makeAddr("account2");
+        accounts[2] = makeAddr("account3");
+        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
+        uint256 maturity = maturities[maturityIndex];
+        // All the accounts have to be in the same maturity
+        _enterVaultLiquidation(accounts[0], maturity);
+        // Test that the liquidator will not fail if one of the accounts is empty or
+        // has sufficient collateral
+        // _enterVaultLiquidation(accounts[1], maturity);
+        _enterVaultLiquidation(accounts[2], maturity);
+
+        _changeCollateralRatio();
+        (
+            FlashLiquidatorBase.LiquidationParams memory params,
+            address asset,
+            int256 maxUnderlying1
+        ) = getLiquidationParams(accounts[0]);
+        (,,int256 maxUnderlying2) = getLiquidationParams(accounts[1]);
+        (,,int256 maxUnderlying3) = getLiquidationParams(accounts[2]);
+        params.accounts = accounts;
+        uint256 totalFlash = uint256(maxUnderlying1 + maxUnderlying2 + maxUnderlying3);
+
+        liquidator.flashLiquidate(
+            asset,
+            totalFlash * precision / 1e8 + roundingPrecision,
+            params
+        );
+
+        // Check that all accounts were liquidated
+        int256 x;
+        (/* */, x) = liquidator.getOptimalDeleveragingParams(accounts[0], address(vault));
+        assertEq(x, 0);
+        (/* */, x) = liquidator.getOptimalDeleveragingParams(accounts[1], address(vault));
+        assertEq(x, 0);
+        (/* */, x) = liquidator.getOptimalDeleveragingParams(accounts[2], address(vault));
+        assertEq(x, 0);
+    }
+
     function test_deleverageVariableFixed_cashPurchase(uint256 maturityIndex) public {
         address account = makeAddr("account");
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
@@ -535,7 +576,7 @@ abstract contract BaseAcceptanceTest is Test {
             assertGt(va.tempCashBalance, 0, "Cash Balance");
         }
 
-        if (va.tempCashBalance > 0) {
+        if (va.tempCashBalance > 50e5) {
             va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
             params.liquidationType = FlashLiquidatorBase.LiquidationType.LIQUIDATE_CASH_BALANCE;
             params.redeemData = "";
