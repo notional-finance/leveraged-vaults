@@ -12,6 +12,8 @@ import "@interfaces/trading/ITradingModule.sol";
 abstract contract BaseStakingTest is BaseAcceptanceTest {
     uint256 maxRelExitValuation_WithdrawRequest_Fixed;
     uint256 maxRelExitValuation_WithdrawRequest_Variable;
+    int256 deleverageCollateralDecreaseRatio;
+    int256 defaultLiquidationDiscount;
 
     function deployTestVault() internal override returns (IStrategyVault) {
         (address impl, /* */) = harness.deployVaultImplementation();
@@ -270,9 +272,14 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         uint256 lendAmount = uint256(
             Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
         );
-        if (useForce) {
+
+        if (useForce || 95 < withdrawPercent) {
             // Use max uint on variable lending to clear the position
             lendAmount = maturityIndex == 0 ? type(uint256).max : lendAmount;
+            // Need to bump this up at high withdraw percents or we get under collateralized
+            // or above max collateral issues.
+            shareForRedeem = vaultShares;
+            withdrawPercent = useForce == false ? 100 : withdrawPercent;
         } else {
             lendAmount = lendAmount * withdrawPercent / 100;
         }
@@ -555,17 +562,19 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         enterVaultLiquidation(account, maturity);
 
         _changeCollateralRatio(500);
-        (VaultAccountHealthFactors memory healthBefore, /* */, /* */) = Deployments.NOTIONAL.getVaultAccountHealthFactors(
-            account, address(vault)
-        );
+        (
+            VaultAccountHealthFactors memory healthBefore,
+            int256[3] memory maxDeposit,
+            /* */
+        ) = Deployments.NOTIONAL.getVaultAccountHealthFactors(account, address(vault));
         assertLt(healthBefore.collateralRatio, 0);
 
         address liquidator = makeAddr("liquidator");
-        uint256 value = 100 ether;
-        deal(liquidator, value);
+        dealTokensAndApproveNotional(uint256(maxDeposit[0] * 2), liquidator);
+        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ? uint256(maxDeposit[0] * 1e18 / 1e8) : 0;
         vm.prank(liquidator);
         vm.expectRevert("Insolvent");
-        v().deleverageAccount{value: value}(account, address(v()), liquidator, 0, int256(value / 1e10));
+        v().deleverageAccount{value: msgValue}(account, address(v()), liquidator, 0, maxDeposit[0]);
     }
 
     function test_RevertIf_deleverageAccount_collateralDecrease(uint8 maturityIndex) public {
@@ -574,15 +583,18 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         uint256 maturity = maturities[maturityIndex];
         enterVaultLiquidation(account, maturity);
 
-        // TODO: need to try to find the right value per vault here...
-        _changeCollateralRatio(925);
+        _changeCollateralRatio(deleverageCollateralDecreaseRatio);
 
+        (/* */, int256[3] memory maxDeposit, /* */) = Deployments.NOTIONAL.getVaultAccountHealthFactors(
+            account, address(vault)
+        );
         address liquidator = makeAddr("liquidator");
-        uint256 value = 100 ether;
-        deal(liquidator, value);
+
+        dealTokensAndApproveNotional(uint256(maxDeposit[0] * 2), liquidator);
+        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ?  uint256(maxDeposit[0] * 1e18 / 1e8) : 0;
         vm.prank(liquidator);
         vm.expectRevert("Collateral Decrease");
-        v().deleverageAccount{value: value}(account, address(v()), liquidator, 0, int256(value / 1e10));
+        v().deleverageAccount{value: msgValue}(account, address(v()), liquidator, 0, maxDeposit[0]);
     }
 
     function test_deleverageAccount_noWithdrawRequest(uint8 maturityIndex) public {
@@ -799,9 +811,14 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         uint256 lendAmount = uint256(
             Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
         );
-        if (useForce) {
+        uint256 shareForRedeem = useForce ? vaultShares :  vaultShares * withdrawPercent / 100;
+        if (useForce || 95 < withdrawPercent) {
             // Use max uint on variable lending to clear the position
             lendAmount = maturityIndex == 0 ? type(uint256).max : lendAmount;
+            // Need to bump this up at high withdraw percents or we get under collateralized
+            // or above max collateral issues.
+            shareForRedeem = vaultShares;
+            withdrawPercent = useForce == false ? 100 : withdrawPercent;
         } else {
             lendAmount = lendAmount * withdrawPercent / 100;
         }
@@ -853,7 +870,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertApproxEqRel(
             Deployments.NOTIONAL.exitVault(
                 account, address(vault), account,
-                useForce ? vaultShares :  vaultShares * withdrawPercent / 100,
+                shareForRedeem,
                 lendAmount, 0,
                 getRedeemParams(true)
             ),
@@ -869,13 +886,13 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
     /** Helper Methods **/
     function _changeCollateralRatio() internal override {
-        _changeCollateralRatio(955);
+        _changeCollateralRatio(defaultLiquidationDiscount);
     }
 
     function _changeCollateralRatio(int256 discount) internal {
         address token = v().STAKING_TOKEN();
         (AggregatorV2V3Interface oracle, /* */) = Deployments.TRADING_MODULE.priceOracles(token);
-        MockOracle mock = new MockOracle();
+        MockOracle mock = new MockOracle(oracle.decimals());
         mock.setAnswer(oracle.latestAnswer() * discount / 1000);
 
         setPriceOracle(token, address(mock));
@@ -884,11 +901,15 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function _liquidateAccount(address account) internal returns (address liquidator) {
         _changeCollateralRatio();
 
+        (/* */, int256[3] memory maxDeposit, /* */) = Deployments.NOTIONAL.getVaultAccountHealthFactors(
+            account, address(vault)
+        );
         liquidator = makeAddr("liquidator");
-        uint256 value = 100 ether;
-        deal(liquidator, value);
+
+        dealTokensAndApproveNotional(uint256(maxDeposit[0] * 2), liquidator);
+        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ?  uint256(maxDeposit[0] * 1e18 / 1e8) : 0;
         vm.prank(liquidator);
-        v().deleverageAccount{value: value}(account, address(v()), liquidator, 0, int256(value / 1e10));
+        v().deleverageAccount{value: msgValue}(account, address(v()), liquidator, 0, maxDeposit[0]);
     }
 
     function _assertWithdrawRequestIsEmpty(WithdrawRequest memory w) internal {

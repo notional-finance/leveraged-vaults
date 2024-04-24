@@ -46,6 +46,8 @@ contract Test_Staking_Ethena_xUSDC is BaseStakingTest {
         maxRelExitValuation = 50 * BASIS_POINT;
         maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
         maxRelExitValuation_WithdrawRequest_Variable = 0.01e18;
+        deleverageCollateralDecreaseRatio = 925;
+        defaultLiquidationDiscount = 955;
 
         super.setUp();
     }
