@@ -20,6 +20,7 @@ import {Deployments} from "@deployments/Deployments.sol";
 
 abstract contract FlashLiquidatorBase is BoringOwnable {
     using TokenUtils for IERC20;
+    uint16 internal constant ONLY_VAULT_DELEVERAGE           = 1 << 5;
 
     uint256 internal constant MAX_CURRENCIES = 3;
 
@@ -29,18 +30,17 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
     enum LiquidationType {
         UNKNOWN,
         DELEVERAGE_VAULT_ACCOUNT,
-        LIQUIDATE_CASH_BALANCE,
-        DELEVERAGE_VAULT_ACCOUNT_AND_LIQUIDATE_CASH
+        LIQUIDATE_CASH_BALANCE
     }
 
     struct LiquidationParams {
         LiquidationType liquidationType;
+        address vault;
+        address[] accounts;
+        bytes redeemData;
+        // NOTE: these two are only used for cash liquidation
         uint16 currencyId;
         uint16 currencyIndex;
-        address account;
-        address vault;
-        bool useVaultDeleverage;
-        bytes actionData;
     }
 
     error ErrInvalidCurrencyIndex(uint16 index);
@@ -62,6 +62,98 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         emit OwnershipTransferred(address(0), owner);
     }
 
+    /// @notice Used for profit estimation off chain
+    function estimateProfit(
+        address asset,
+        uint256 amount,
+        LiquidationParams calldata params
+    ) external onlyOwner returns (uint256) {
+        uint256 balance = IERC20(asset).balanceOf(address(this));
+        _flashLiquidate(asset, amount, false, params);
+        return IERC20(asset).balanceOf(address(this)) - balance;
+    }
+
+    /// @notice Primary entry point for the liquidation call
+    function flashLiquidate(
+        address asset,
+        uint256 amount,
+        LiquidationParams calldata params
+    ) external {
+        _flashLiquidate(asset, amount, true, params);
+    }
+
+    /// @notice Internal implementation that calls the flash lender in order to receive
+    /// a callback on this liquidator in the `handleLiquidation` method.
+    function _flashLiquidate(
+        address asset,
+        uint256 amount,
+        bool withdraw,
+        LiquidationParams calldata params
+    ) internal virtual;
+
+    /// @notice This is the primary entry point after the flash lender transfers the funds
+    function handleLiquidation(uint256 fee, bool repay, bytes memory data) internal {
+        require(msg.sender == address(FLASH_LENDER));
+
+        (
+            address asset,
+            uint256 amount,
+            bool withdraw,
+            LiquidationParams memory params
+        ) = abi.decode(data, (address, uint256, bool, LiquidationParams));
+        bool isWETH = asset == address(Deployments.WETH);
+        bool useVaultDeleverage = (
+            NOTIONAL.getVaultConfig(params.vault).flags & ONLY_VAULT_DELEVERAGE == ONLY_VAULT_DELEVERAGE
+        );
+
+        // Notional uses ETH internally but flash lenders may send WETH
+        if (isWETH) _unwrapETH(amount);
+
+        // Liquidator will liquidate the all the accounts in batch
+        uint256 vaultSharesFromLiquidation;
+        for (uint256 i; i < params.accounts.length; i++) {
+            address account = params.accounts[i];
+            (
+                VaultAccount memory vaultAccount,
+                int256 accruedFeeInUnderlying
+            ) = _settleAccountIfNeeded(account, params.vault);
+
+            if (params.liquidationType == LiquidationType.DELEVERAGE_VAULT_ACCOUNT) {
+                // Accrue the total vault shares received by deleveraging
+                vaultSharesFromLiquidation += _deleverageVaultAccount(
+                    account, params.vault, useVaultDeleverage, accruedFeeInUnderlying, isWETH
+                );
+            } else if (params.liquidationType == LiquidationType.LIQUIDATE_CASH_BALANCE) {
+                _liquidateCashBalance(vaultAccount, params, asset, useVaultDeleverage);
+            }
+        }
+
+        // Exit all the vault shares that we've accumulated during liquidation
+        if (0 < vaultSharesFromLiquidation) {
+            NOTIONAL.exitVault(
+                address(this),
+                params.vault,
+                address(this),
+                vaultSharesFromLiquidation,
+                0, 0, params.redeemData
+            );
+        }
+
+        // Rewrap ETH for repayment
+        if (isWETH) _wrapETH();
+
+        // Send profits back to the owner
+        if (withdraw) {
+            _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount - fee);
+        }
+
+        // Repay the flash lender
+        if (repay) {
+            IERC20(asset).transfer(msg.sender, amount + fee);
+        }
+    }
+
+    /// @notice Used to maintain approvals for various currencies, called initially in the constructor
     function enableCurrencies(uint16[] memory currencies) public onlyOwner {
         for (uint256 i; i < currencies.length; i++) {
             (/* Token memory assetToken */, Token memory underlyingToken) = NOTIONAL.getCurrency(currencies[i]);
@@ -74,7 +166,7 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         }
     }
 
-    /// NOTE: use .call from liquidation bot
+    /// @notice Used via static call on the liquidation bot to get parameters for liquidation
     function getOptimalDeleveragingParams(
         address account, address vault
     ) external returns (uint16 currencyIndex, int256 maxUnderlying) {
@@ -82,16 +174,25 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         return _getOptimalDeleveragingParams(account, vault, accruedFeeInUnderlying);
     }
 
+    /*** INTERNAL METHODS ***/
+
     function _settleAccountIfNeeded(
         address account, address vault
     ) private returns (VaultAccount memory vaultAccount, int256 accruedFeeInUnderlying) {
-        (vaultAccount, accruedFeeInUnderlying) = NOTIONAL.getVaultAccountWithFeeAccrual(account, vault);
+        (
+            vaultAccount,
+            accruedFeeInUnderlying
+        ) = NOTIONAL.getVaultAccountWithFeeAccrual(account, vault);
 
-        if (vaultAccount.maturity < block.timestamp) NOTIONAL.settleVaultAccount(account, vault);
+        if (vaultAccount.maturity < block.timestamp) {
+            NOTIONAL.settleVaultAccount(account, vault);
+        }
     }
 
     function _getOptimalDeleveragingParams(
-        address account, address vault, int256 accruedFeeInUnderlying
+        address account,
+        address vault,
+        int256 accruedFeeInUnderlying
     ) private view returns (uint16 currencyIndex, int256 maxUnderlying) {
         (
             /* VaultAccountHealthFactors memory h */,
@@ -109,72 +210,31 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         if (maxUnderlying > 0) maxUnderlying = maxUnderlying + accruedFeeInUnderlying;
     }
 
-    function estimateProfit(
-        address asset,
-        uint256 amount,
-        LiquidationParams calldata params
-    ) external onlyOwner returns (uint256) {
-        uint256 balance = IERC20(asset).balanceOf(address(this));
-        _flashLiquidate(asset, amount, false, params);
-        return IERC20(asset).balanceOf(address(this)) - balance;
-    }
-
-    function flashLiquidate(
-        address asset,
-        uint256 amount,
-        LiquidationParams calldata params
-    ) external {
-        _flashLiquidate(asset, amount, true, params);
-    }
-
-    function _flashLiquidate(
-        address asset,
-        uint256 amount,
-        bool withdraw,
-        LiquidationParams calldata params
-    ) internal virtual;
-
     function _deleverageVaultAccount(
-        LiquidationParams memory params,
-        int256 accruedFeeInUnderlying
-    ) private {
+        address account,
+        address vault,
+        bool useVaultDeleverage,
+        int256 accruedFeeInUnderlying,
+        bool isETH
+    ) private returns (uint256 vaultSharesFromLiquidation) {
         (uint16 currencyIndex, int256 maxUnderlying) = _getOptimalDeleveragingParams(
-            params.account, params.vault, accruedFeeInUnderlying
+            account, vault, accruedFeeInUnderlying
         );
-        require(maxUnderlying > 0);
+        // Short circuit accounts where no liquidation is necessary
+        if (maxUnderlying == 0) return 0;
 
-        uint256 vaultSharesFromLiquidation;
-        if (params.useVaultDeleverage) {
+        uint256 msgValue = isETH ? uint256(maxUnderlying * 1e10) : 0;
+        if (useVaultDeleverage) {
             (
-                vaultSharesFromLiquidation, /* */ 
-            ) = IStrategyVault(params.vault).deleverageAccount{value: address(this).balance}(
-                params.account,
-                params.vault,
-                address(this),
-                currencyIndex,
-                maxUnderlying
+                vaultSharesFromLiquidation, /* */
+            ) = IStrategyVault(vault).deleverageAccount{value: msgValue}(
+                account, vault, address(this), currencyIndex, maxUnderlying
             );
         } else {
             (
-                vaultSharesFromLiquidation, /* */ 
-            ) = NOTIONAL.deleverageAccount{value: address(this).balance}(
-                params.account,
-                params.vault,
-                address(this),
-                currencyIndex,
-                maxUnderlying
-            );
-        }
-
-        if (0 < vaultSharesFromLiquidation) {
-            NOTIONAL.exitVault(
-                address(this),
-                params.vault,
-                address(this),
-                vaultSharesFromLiquidation,
-                0,
-                0,
-                params.actionData
+                vaultSharesFromLiquidation, /* */
+            ) = NOTIONAL.deleverageAccount{value: msgValue}(
+                account, vault, address(this), currencyIndex, maxUnderlying
             );
         }
     }
@@ -182,7 +242,8 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
     function _liquidateCashBalance(
         VaultAccount memory vaultAccount,
         LiquidationParams memory params,
-        address asset
+        address asset,
+        bool useVaultDeleverage
     ) private {
         require(vaultAccount.maturity != Constants.PRIME_CASH_VAULT_MATURITY);
 
@@ -191,7 +252,7 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
             cashBalance = vaultAccount.tempCashBalance;
         } else if (params.currencyIndex < MAX_CURRENCIES) {
             (/* */, /* */, int256[2] memory accountSecondaryCashHeld) = 
-                NOTIONAL.getVaultAccountSecondaryDebt(params.account, params.vault);
+                NOTIONAL.getVaultAccountSecondaryDebt(vaultAccount.account, params.vault);
             cashBalance = accountSecondaryCashHeld[params.currencyIndex - 1];
         } else {
             revert ErrInvalidCurrencyIndex(params.currencyIndex);
@@ -203,73 +264,18 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
 
         _lend(params.currencyId, vaultAccount.maturity, uint256(fCashDeposit), 0, asset);
 
-        if (params.useVaultDeleverage) {
+        if (useVaultDeleverage) {
             IStrategyVault(params.vault).liquidateVaultCashBalance(
-                params.account,
-                params.vault,
-                address(this),
-                params.currencyIndex,
-                fCashDeposit
+                vaultAccount.account, params.vault, address(this), params.currencyIndex, fCashDeposit
             );
         } else {
             NOTIONAL.liquidateVaultCashBalance(
-                params.account,
-                params.vault,
-                address(this),
-                params.currencyIndex,
-                fCashDeposit
+                vaultAccount.account, params.vault, address(this), params.currencyIndex, fCashDeposit
             );
         }
 
         // Withdraw all cash held
         NOTIONAL.withdraw(params.currencyId, type(uint88).max, true);
-    }
-
-    function handleLiquidation(uint256 fee, bool repay, bytes memory data) internal {
-        require(msg.sender == address(FLASH_LENDER));
-
-        (
-            address asset,
-            uint256 amount,
-            bool withdraw,
-            LiquidationParams memory params
-        ) = abi.decode(data, (address, uint256, bool, LiquidationParams));
-
-        (
-            VaultAccount memory vaultAccount,
-            int256 accruedFeeInUnderlying
-        ) = _settleAccountIfNeeded(params.account, params.vault);
-
-        if (asset == address(Deployments.WETH)) _unwrapETH(amount);
-
-        if (
-            params.liquidationType == LiquidationType.DELEVERAGE_VAULT_ACCOUNT ||
-            params.liquidationType == LiquidationType.DELEVERAGE_VAULT_ACCOUNT_AND_LIQUIDATE_CASH
-        ) {
-            _deleverageVaultAccount(params, accruedFeeInUnderlying);
-        }
-
-        if (
-            vaultAccount.maturity != Constants.PRIME_CASH_VAULT_MATURITY &&
-            (params.liquidationType == LiquidationType.LIQUIDATE_CASH_BALANCE ||
-             params.liquidationType == LiquidationType.DELEVERAGE_VAULT_ACCOUNT_AND_LIQUIDATE_CASH)
-        ) {
-            // Need to re-fetch to get the temp cash balance after liquidation
-            vaultAccount = NOTIONAL.getVaultAccount(params.account, params.vault);
-            _liquidateCashBalance(vaultAccount, params, asset);
-        }
-
-        if (asset == address(Deployments.WETH)) {
-            _wrapETH();
-        }
-
-        if (withdraw) {
-            _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount - fee);
-        }
-
-        if (repay) {
-            IERC20(asset).transfer(msg.sender, amount + fee);
-        }
     }
 
     function _lend(

@@ -44,4 +44,5 @@ library Deployments {
 
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(0xFdB631F5EE196F0ed6FAa767959853A9F217697D);
+    address internal constant AAVE_LENDER = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
 }
