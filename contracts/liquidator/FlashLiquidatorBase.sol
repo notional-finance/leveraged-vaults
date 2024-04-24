@@ -124,6 +124,8 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
                     account, params.vault, useVaultDeleverage, accruedFeeInUnderlying, isWETH
                 );
             } else if (params.liquidationType == LiquidationType.LIQUIDATE_CASH_BALANCE) {
+                // NOTE: cannot do batch cash liquidations at this point
+                require(params.accounts.length == 1);
                 _liquidateCashBalance(vaultAccount, params, asset, useVaultDeleverage);
             }
         }
@@ -285,16 +287,16 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         uint32 minLendRate,
         address asset
     ) private {
+        // ETH prevents usage of BatchLend here. This also prevents batch cash liquidations
         BalanceActionWithTrades[] memory action = new BalanceActionWithTrades[](1);
         action[0].actionType = DepositActionType.DepositUnderlying;
-        // For simplicity just deposit everything at this point.
         action[0].depositActionAmount = currencyId == Constants.ETH_CURRENCY_ID ? 
             address(this).balance : 
             IERC20(asset).balanceOf(address(this));
         action[0].currencyId = currencyId;
         action[0].withdrawEntireCashBalance = true;
         action[0].redeemToUnderlying = true;
-        uint256 marketIndex = NOTIONAL.getMarketIndex(currencyId, maturity) + 1;
+        uint256 marketIndex = NOTIONAL.getMarketIndex(maturity, block.timestamp);
 
         action[0].trades = new bytes32[](1);
         action[0].trades[0] = bytes32(

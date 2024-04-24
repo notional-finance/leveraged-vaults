@@ -501,7 +501,7 @@ abstract contract BaseAcceptanceTest is Test {
         );
     }
 
-    function test_deleverageVariableFixed_noCashPurchase(uint256 maturityIndex) public {
+    function test_deleverageVariableFixed_cashPurchase(uint256 maturityIndex) public {
         address account = makeAddr("account");
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
@@ -533,6 +533,25 @@ abstract contract BaseAcceptanceTest is Test {
             assertEq(va.tempCashBalance, 0, "Cash Balance");
         } else {
             assertGt(va.tempCashBalance, 0, "Cash Balance");
+        }
+
+        if (va.tempCashBalance > 0) {
+            va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
+            params.liquidationType = FlashLiquidatorBase.LiquidationType.LIQUIDATE_CASH_BALANCE;
+            params.redeemData = "";
+
+            (int256 fCashDeposit, /* */) = Deployments.NOTIONAL.getfCashRequiredToLiquidateCash(
+                params.currencyId, va.maturity, va.tempCashBalance
+            );
+            liquidator.flashLiquidate(
+                asset,
+                uint256(fCashDeposit) * precision / 1e8 + roundingPrecision,
+                params
+            );
+
+            VaultAccount memory vaAfter = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
+            assertGt(vaAfter.accountDebtUnderlying, va.accountDebtUnderlying, "Debt Decrease");
+            assertLt(va.tempCashBalance, 50e5, "Cash Balance");
         }
     }
 
