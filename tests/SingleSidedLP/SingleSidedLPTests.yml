@@ -49,9 +49,9 @@ arbitrum:
       liquidationRate: 102
       reserveFeeShare: 80
       maxBorrowMarketIndex: 2
-      minCollateralRatioBPS: 500
+      minCollateralRatioBPS: 1400
       maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 800
+      maxDeleverageCollateralRatioBPS: 2600
       minAccountBorrowSize: 0.1e8
       maxPrimaryBorrow: 1e8
   - vaultName: SingleSidedLP:Aura:[USDC]/DAI/USDT/USDC.e
