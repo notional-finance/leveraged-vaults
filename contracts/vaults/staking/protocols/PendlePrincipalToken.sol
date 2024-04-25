@@ -36,10 +36,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
     using TokenUtils for IERC20;
     using TypeConvert for uint256;
 
-    IPOracle immutable ORACLE = IPOracle(0x66a1096C6366b2529274dF4f5D8247827fe4CEA8);
     IPRouter immutable ROUTER = IPRouter(0x00000000005BBB0EF59571E58418F9a4357b68A0);
-    // // TODO: can use this to get estimations for trading amounts and bypass their SDK
-    // IPStaticRouter immutable STATIC_ROUTER = IPStaticRouter(0x263833d47eA3fA4a30f269323aba6a107f9eB14C);
     address immutable TOKEN_IN_SY;
     address immutable TOKEN_OUT_SY;
     IStandardizedYield immutable SY;
@@ -47,16 +44,12 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
     IPYieldToken immutable YT;
     uint256 immutable PT_PRECISION;
     IPMarket immutable MARKET;
-    uint32 immutable TWAP_DURATION;
-    bool immutable USE_SY_ORACLE_RATE;
 
     constructor(
         address market,
         address tokenInSY,
         address tokenOutSY,
         address borrowToken,
-        uint32 twapDuration,
-        bool useSyOracleRate,
         address ptToken,
         address redemptionToken
     ) BaseStakingVault(
@@ -82,28 +75,6 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
 
         // PT decimals vary with the underlying SY precision
         PT_PRECISION = 10 ** PT.decimals();
-
-        TWAP_DURATION = twapDuration;
-        USE_SY_ORACLE_RATE = useSyOracleRate;
-        (
-            bool increaseCardinalityRequired,
-            /* */,
-            bool oldestObservationSatisfied
-        ) = ORACLE.getOracleState(market, twapDuration);
-        require(!increaseCardinalityRequired && oldestObservationSatisfied, "Oracle Init");
-    }
-
-    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
-        uint256 ptRate = USE_SY_ORACLE_RATE ? 
-            ORACLE.getPtToSyRate(address(MARKET), TWAP_DURATION) :
-            ORACLE.getPtToAssetRate(address(MARKET), TWAP_DURATION);
-
-        (int256 stakeAssetPrice, /* int256 rateDecimals */) = TRADING_MODULE.getOraclePrice(
-            TOKEN_OUT_SY, BORROW_TOKEN
-        );
-        require(stakeAssetPrice > 0);
-
-        return ptRate.toInt() * stakeAssetPrice / int256(EXCHANGE_RATE_PRECISION);
     }
 
     function _stakeTokens(

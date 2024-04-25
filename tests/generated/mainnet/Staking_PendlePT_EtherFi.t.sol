@@ -7,6 +7,8 @@ import {
     PendleDepositParams,
     IPRouter
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
+import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
+import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
     function setUp() public override {
@@ -37,7 +39,7 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
     function getDepositParams(
         uint256 depositAmount,
         uint256 maturity
-    ) internal view override returns (bytes memory) {
+    ) internal pure override returns (bytes memory) {
         PendleDepositParams memory d = PendleDepositParams({
             // No initial trading required for this vault
             dexId: 0,
@@ -60,19 +62,20 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
 }
 
 contract Harness_Staking_PendlePT_EtherFi is PendleStakingHarness {
+
     function getVaultName() public pure override returns (string memory) {
         return 'Pendle:PT ether.fi weETH 27JUN2024:[ETH]';
     }
 
-    function getRequiredOracles() public override pure returns (
+    function getRequiredOracles() public override view returns (
         address[] memory token, address[] memory oracle
     ) {
         token = new address[](2);
         oracle = new address[](2);
 
-        // weETH
-        token[0] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
-        oracle[0] = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
+        // Custom PT Oracle
+        token[0] = ptAddress;
+        oracle[0] = ptOracle;
 
         // ETH
         token[1] = 0x0000000000000000000000000000000000000000;
@@ -97,6 +100,7 @@ contract Harness_Staking_PendlePT_EtherFi is PendleStakingHarness {
         ptAddress = 0xc69Ad9baB1dEE23F4605a82b3354F8E40d1E5966;
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true; // returns the weETH price
+        baseToUSDOracle = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
     }
 
 }

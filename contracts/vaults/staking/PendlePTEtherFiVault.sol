@@ -14,16 +14,12 @@ contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
 
     constructor(
         address marketAddress,
-        address ptAddress,
-        uint32 twapDuration,
-        bool useSyOracleRate
+        address ptAddress
     ) PendlePrincipalToken(
         marketAddress,
         Constants.ETH_ADDRESS,
         address(weETH),
         Constants.ETH_ADDRESS,
-        twapDuration,
-        useSyOracleRate,
         ptAddress,
         Constants.ETH_ADDRESS
     ) {

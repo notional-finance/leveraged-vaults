@@ -19,8 +19,6 @@ contract PendlePTStakedUSDeVault is PendlePrincipalToken {
         address(USDe),
         address(sUSDe),
         address(USDe),
-        1 hours,
-        false,
         address(0),             // PT token address
         address(USDe)
     ) {
