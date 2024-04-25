@@ -561,7 +561,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         uint256 maturity = maturities[maturityIndex];
         enterVaultLiquidation(account, maturity);
 
-        _changeCollateralRatio(500);
+        _changeTokenPrice(500, v().STAKING_TOKEN());
         (
             VaultAccountHealthFactors memory healthBefore,
             int256[3] memory maxDeposit,
@@ -583,7 +583,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         uint256 maturity = maturities[maturityIndex];
         enterVaultLiquidation(account, maturity);
 
-        _changeCollateralRatio(deleverageCollateralDecreaseRatio);
+        _changeTokenPrice(deleverageCollateralDecreaseRatio, v().STAKING_TOKEN());
 
         (/* */, int256[3] memory maxDeposit, /* */) = Deployments.NOTIONAL.getVaultAccountHealthFactors(
             account, address(vault)
@@ -603,6 +603,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         uint256 maturity = maturities[maturityIndex];
         uint256 vaultShares = enterVaultLiquidation(account, maturity);
 
+        _changeCollateralRatio();
         address liquidator = _liquidateAccount(account);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
@@ -628,6 +629,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         vm.prank(account);
         v().initiateWithdraw(vaultSharesForWithdraw);
 
+        _changeCollateralRatio();
         address liquidator = _liquidateAccount(account);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
@@ -658,6 +660,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         vm.prank(account);
         v().initiateWithdraw(vaultSharesForWithdraw);
 
+        _changeTokenPrice(defaultLiquidationDiscount, v().REDEMPTION_TOKEN());
         address liquidator = _liquidateAccount(account);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
@@ -702,6 +705,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         _forceWithdraw(account);
 
+        _changeTokenPrice(defaultLiquidationDiscount, v().REDEMPTION_TOKEN());
         address liquidator = _liquidateAccount(account);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
@@ -748,6 +752,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         _forceWithdraw(account);
 
+        _changeTokenPrice(defaultLiquidationDiscount, v().REDEMPTION_TOKEN());
         address liquidator = _liquidateAccount(account);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
@@ -886,11 +891,11 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
     /** Helper Methods **/
     function _changeCollateralRatio() internal override {
-        _changeCollateralRatio(defaultLiquidationDiscount);
+        address token = v().STAKING_TOKEN();
+        _changeTokenPrice(defaultLiquidationDiscount, token);
     }
 
-    function _changeCollateralRatio(int256 discount) internal {
-        address token = v().STAKING_TOKEN();
+    function _changeTokenPrice(int256 discount, address token) internal {
         (AggregatorV2V3Interface oracle, /* */) = Deployments.TRADING_MODULE.priceOracles(token);
         MockOracle mock = new MockOracle(oracle.decimals());
         mock.setAnswer(oracle.latestAnswer() * discount / 1000);
@@ -899,8 +904,6 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     }
 
     function _liquidateAccount(address account) internal returns (address liquidator) {
-        _changeCollateralRatio();
-
         (/* */, int256[3] memory maxDeposit, /* */) = Deployments.NOTIONAL.getVaultAccountHealthFactors(
             account, address(vault)
         );

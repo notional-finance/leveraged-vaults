@@ -42,7 +42,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     address public immutable BORROW_TOKEN;
     /// @notice Used in cases when redeeming the staking token results in a different
     /// token then that is borrowed
-    address internal immutable REDEMPTION_TOKEN;
+    address public immutable REDEMPTION_TOKEN;
     uint256 immutable BORROW_PRECISION;
     uint256 internal constant EXCHANGE_RATE_PRECISION = 1e18;
 
