@@ -3,11 +3,13 @@ pragma solidity 0.8.24;
 
 import {Constants} from "@contracts/global/Constants.sol";
 import {Deployments} from "@deployments/Deployments.sol";
+import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import { 
     BaseStakingVault,
     WithdrawRequest,
     RedeemParams
 } from "../BaseStakingVault.sol";
+import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {
     ITradingModule,
     Trade,
@@ -22,16 +24,18 @@ import {
     IPPrincipalToken
 } from "@interfaces/pendle/IPendle.sol";
 
-struct DepositParams {
+struct PendleDepositParams {
     uint16 dexId;
     uint256 minPurchaseAmount;
-    uint32 deadline;
     bytes exchangeData;
     uint256 minPtOut;
     IPRouter.ApproxParams approxParams;
 }
 
 abstract contract PendlePrincipalToken is BaseStakingVault {
+    using TokenUtils for IERC20;
+    using TypeConvert for uint256;
+
     IPOracle immutable ORACLE = IPOracle(0x66a1096C6366b2529274dF4f5D8247827fe4CEA8);
     IPRouter immutable ROUTER = IPRouter(0x00000000005BBB0EF59571E58418F9a4357b68A0);
     // // TODO: can use this to get estimations for trading amounts and bypass their SDK
@@ -41,7 +45,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
     IStandardizedYield immutable SY;
     IPPrincipalToken immutable PT;
     IPYieldToken immutable YT;
-    uint256 PT_PRECISION;
+    uint256 immutable PT_PRECISION;
     IPMarket immutable MARKET;
     uint32 immutable TWAP_DURATION;
     bool immutable USE_SY_ORACLE_RATE;
@@ -89,17 +93,17 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         require(!increaseCardinalityRequired && oldestObservationSatisfied, "Oracle Init");
     }
 
-    function getExchangeRate(uint256 maturity) public view override returns (int256) {
+    function getExchangeRate(uint256 /* maturity */) public view override returns (int256) {
         uint256 ptRate = USE_SY_ORACLE_RATE ? 
             ORACLE.getPtToSyRate(address(MARKET), TWAP_DURATION) :
             ORACLE.getPtToAssetRate(address(MARKET), TWAP_DURATION);
 
-        // TODO: may need to also get the rate from the sy or asset token
-        // back to the borrowed currency....
-        int256 stakeAssetPrice = super.getExchangeRate(maturity);
+        (int256 stakeAssetPrice, /* int256 rateDecimals */) = TRADING_MODULE.getOraclePrice(
+            TOKEN_OUT_SY, BORROW_TOKEN
+        );
+        require(stakeAssetPrice > 0);
 
-        // TODO: add safeint here...
-        return int256(ptRate) * stakeAssetPrice / int256(EXCHANGE_RATE_PRECISION);
+        return ptRate.toInt() * stakeAssetPrice / int256(EXCHANGE_RATE_PRECISION);
     }
 
     function _stakeTokens(
@@ -110,7 +114,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
     ) internal override returns (uint256 vaultShares) {
         require(!PT.isExpired());
 
-        DepositParams memory params = abi.decode(data, (DepositParams));
+        PendleDepositParams memory params = abi.decode(data, (PendleDepositParams));
         uint256 tokenInAmount;
 
         if (TOKEN_IN_SY != BORROW_TOKEN) {
@@ -133,7 +137,10 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
 
         IPRouter.SwapData memory EMPTY_SWAP;
         IPRouter.LimitOrderData memory EMPTY_LIMIT;
-        (uint256 ptReceived, /* */, /* */) = ROUTER.swapExactTokenForPt(
+
+        IERC20(TOKEN_IN_SY).checkApprove(address(ROUTER), depositUnderlyingExternal);
+        uint256 msgValue = TOKEN_IN_SY == Constants.ETH_ADDRESS ? depositUnderlyingExternal : 0;
+        (uint256 ptReceived, /* */, /* */) = ROUTER.swapExactTokenForPt{value: msgValue}(
             address(this),
             address(MARKET),
             params.minPtOut,

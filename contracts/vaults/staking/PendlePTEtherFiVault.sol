@@ -8,8 +8,9 @@ import {
     WithdrawRequest
 } from "./protocols/PendlePrincipalToken.sol";
 import {EtherFiLib, weETH} from "./protocols/EtherFi.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract PendlePTEtherFiVault is PendlePrincipalToken {
+contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
 
     constructor(
         address marketAddress,
@@ -28,6 +29,14 @@ contract PendlePTEtherFiVault is PendlePrincipalToken {
     ) {
         // Addresses in this vault are hardcoded to mainnet
         require(block.chainid == Constants.CHAIN_ID_MAINNET);
+    }
+
+    /// @notice this method is needed in order to receive NFT from EtherFi after
+    /// withdraw is requested
+    function onERC721Received(
+        address /* operator */, address /* from */, uint256 /* tokenId */, bytes calldata /* data */
+    ) external override pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 
     function strategy() external override pure returns (bytes4) {

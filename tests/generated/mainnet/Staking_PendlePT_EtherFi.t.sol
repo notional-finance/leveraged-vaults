@@ -3,6 +3,10 @@ pragma solidity 0.8.24;
 
 import "../../Staking/harness/index.sol";
 import {WithdrawRequestNFT} from "@contracts/vaults/staking/protocols/EtherFi.sol";
+import {
+    PendleDepositParams,
+    IPRouter
+} from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 
 contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
     function setUp() public override {
@@ -29,6 +33,30 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
         vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
         WithdrawRequestNFT.finalizeRequests(maxRequestId);
     }
+
+    function getDepositParams(
+        uint256 depositAmount,
+        uint256 maturity
+    ) internal view override returns (bytes memory) {
+        PendleDepositParams memory d = PendleDepositParams({
+            // No initial trading required for this vault
+            dexId: 0,
+            minPurchaseAmount: 0,
+            exchangeData: "",
+            minPtOut: 0,
+            approxParams: IPRouter.ApproxParams({
+                guessMin: 0,
+                guessMax: type(uint256).max,
+                guessOffchain: 0,
+                maxIteration: 256,
+                eps: 1e15 // recommended setting (0.1%)
+            })
+        });
+
+        return abi.encode(d);
+    }
+
+    // TODO: need to test exit after expiration
 }
 
 contract Harness_Staking_PendlePT_EtherFi is PendleStakingHarness {
@@ -67,8 +95,8 @@ contract Harness_Staking_PendlePT_EtherFi is PendleStakingHarness {
     constructor() {
         marketAddress = 0xF32e58F92e60f4b0A37A69b95d642A471365EAe8;
         ptAddress = 0xc69Ad9baB1dEE23F4605a82b3354F8E40d1E5966;
-        twapDuration = 1 hours;
-        useSyOracleRate = false;
+        twapDuration = 15 minutes; // recommended 15 - 30 min
+        useSyOracleRate = true; // returns the weETH price
     }
 
 }
