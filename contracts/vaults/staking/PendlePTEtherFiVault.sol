@@ -10,14 +10,20 @@ import {
 import {EtherFiLib, weETH} from "./protocols/EtherFi.sol";
 
 contract PendlePTEtherFiVault is PendlePrincipalToken {
-    constructor() PendlePrincipalToken(
-        address(0), // market address
+
+    constructor(
+        address marketAddress,
+        address ptAddress,
+        uint32 twapDuration,
+        bool useSyOracleRate
+    ) PendlePrincipalToken(
+        marketAddress,
         Constants.ETH_ADDRESS,
         address(weETH),
         Constants.ETH_ADDRESS,
-        1 hours,
-        false,
-        address(0),             // PT token address
+        twapDuration,
+        useSyOracleRate,
+        ptAddress,
         Constants.ETH_ADDRESS
     ) {
         // Addresses in this vault are hardcoded to mainnet
