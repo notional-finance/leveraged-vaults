@@ -6,7 +6,7 @@ export RPC_URL=$MAINNET_RPC_URL
 export FORK_BLOCK=19675503
 export FOUNDRY_PROFILE=mainnet
 # forge test --mp "tests/generated/mainnet/**"
-forge test --mp "tests/generated/mainnet/Staking_PendlePT_EtherFi.t.sol" -vv
+forge test --mp "tests/generated/mainnet/Staking_*.t.sol"
 
 # export RPC_URL=$ARBITRUM_RPC_URL
 # export FORK_BLOCK=194820300
