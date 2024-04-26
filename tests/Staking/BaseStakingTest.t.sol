@@ -570,8 +570,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertLt(healthBefore.collateralRatio, 0);
 
         address liquidator = makeAddr("liquidator");
-        dealTokensAndApproveNotional(uint256(maxDeposit[0] * 2), liquidator);
-        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ? uint256(maxDeposit[0] * 1e18 / 1e8) : 0;
+        uint256 maxDepositExternal = uint256(maxDeposit[0]) * precision / 1e8;
+        dealTokensAndApproveNotional(maxDepositExternal * 2, liquidator);
+        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ? maxDepositExternal  : 0;
         vm.prank(liquidator);
         vm.expectRevert("Insolvent");
         v().deleverageAccount{value: msgValue}(account, address(v()), liquidator, 0, maxDeposit[0]);
@@ -590,8 +591,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         );
         address liquidator = makeAddr("liquidator");
 
-        dealTokensAndApproveNotional(uint256(maxDeposit[0] * 2), liquidator);
-        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ?  uint256(maxDeposit[0] * 1e18 / 1e8) : 0;
+        uint256 maxDepositExternal = uint256(maxDeposit[0]) * precision / 1e8;
+        dealTokensAndApproveNotional(maxDepositExternal * 2, liquidator);
+        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ? maxDepositExternal  : 0;
         vm.prank(liquidator);
         vm.expectRevert("Collateral Decrease");
         v().deleverageAccount{value: msgValue}(account, address(v()), liquidator, 0, maxDeposit[0]);
@@ -909,8 +911,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         );
         liquidator = makeAddr("liquidator");
 
-        dealTokensAndApproveNotional(uint256(maxDeposit[0] * 2), liquidator);
-        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ?  uint256(maxDeposit[0] * 1e18 / 1e8) : 0;
+        uint256 maxDepositExternal = uint256(maxDeposit[0]) * precision / 1e8;
+        dealTokensAndApproveNotional(maxDepositExternal * 2, liquidator);
+        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ? maxDepositExternal  : 0;
         vm.prank(liquidator);
         v().deleverageAccount{value: msgValue}(account, address(v()), liquidator, 0, maxDeposit[0]);
     }
