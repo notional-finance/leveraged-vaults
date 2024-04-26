@@ -55,6 +55,8 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
     function _initiateWithdrawImpl(
         address /* account */, uint256 vaultSharesToRedeem, bool /* isForced */
     ) internal override returns (uint256 requestId) {
+        // TODO: this assumes a constant exchange rate to weETH, but is that always the case if
+        // we do reinvestments?
         uint256 weETHToUnwrap = vaultSharesToRedeem * BORROW_PRECISION /
             uint256(Constants.INTERNAL_TOKEN_PRECISION);
         return EtherFiLib._initiateWithdrawImpl(weETHToUnwrap);
@@ -65,7 +67,7 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
         uint256 weETHPrice
     ) internal override view returns (uint256 ethValue) {
         return EtherFiLib._getValueOfWithdrawRequest(
-            w, weETHPrice, BORROW_PRECISION, EXCHANGE_RATE_PRECISION
+            w, weETHPrice, BORROW_TOKEN, BORROW_PRECISION
         );
     }
 

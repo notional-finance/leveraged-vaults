@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.24;
 
+import {Deployments} from "@deployments/Deployments.sol";
+import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {IweETH, IeETH, ILiquidityPool, IWithdrawRequestNFT} from "@interfaces/etherfi/IEtherFi.sol";
 import {IERC20} from "@interfaces/IERC20.sol";
@@ -16,6 +18,8 @@ ILiquidityPool constant LiquidityPool = ILiquidityPool(0x308861A430be4cce5502d0A
 IWithdrawRequestNFT constant WithdrawRequestNFT = IWithdrawRequestNFT(0x7d5706f6ef3F89B3951E23e557CDFBC3239D4E2c);
 
 library EtherFiLib {
+    using TypeConvert for int256;
+
     function _initiateWithdrawImpl(
         uint256 weETHToUnwrap
     ) internal returns (uint256 requestId) {
@@ -28,9 +32,9 @@ library EtherFiLib {
     function _getValueOfWithdrawRequest(
         WithdrawRequest memory w,
         uint256 weETHPrice,
-        uint256 borrowPrecision,
-        uint256 exchangeRatePrecision
-    ) internal view returns (uint256 ethValue) {
+        address borrowToken,
+        uint256 borrowPrecision
+    ) internal view returns (uint256) {
         if (w.requestId == 0) return 0;
 
         if (w.hasSplit) {
@@ -40,15 +44,25 @@ library EtherFiLib {
             // claimed with no discount b/c the ETH is already held in the
             // vault contract.
             if (WithdrawRequestNFT.ownerOf(w.requestId) == address(0)) {
-                return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
+                if (borrowToken == Constants.ETH_ADDRESS) {
+                    return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
+                } else {
+                    // If not borrowing ETH, convert to the borrowed token
+                    (int256 ethToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
+                        Constants.ETH_ADDRESS, borrowToken
+                    );
+
+                    return (s.totalWithdraw * ethToBorrowRate.toUint() * w.vaultShares) / 
+                        (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
+                }
             } else {
                 return (w.vaultShares * weETHPrice * borrowPrecision) /
-                    (s.totalVaultShares * exchangeRatePrecision);
+                    (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
             }
         }
 
         return (w.vaultShares * weETHPrice * borrowPrecision) /
-            (uint256(Constants.INTERNAL_TOKEN_PRECISION) * exchangeRatePrecision);
+            (uint256(Constants.INTERNAL_TOKEN_PRECISION) * Constants.EXCHANGE_RATE_PRECISION);
     }
 
     function _finalizeWithdrawImpl(
