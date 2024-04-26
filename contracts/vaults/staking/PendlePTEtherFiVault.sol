@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Constants} from "@contracts/global/Constants.sol";
+import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {
     PendlePrincipalToken,
@@ -11,6 +12,7 @@ import {EtherFiLib, weETH} from "./protocols/EtherFi.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
+    using TypeConvert for int256;
 
     constructor(
         address marketAddress,
@@ -40,10 +42,16 @@ contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 stakeAssetPrice
-    ) internal override view returns (uint256 usdEValue) {
+        WithdrawRequest memory w, uint256 /* stakeAssetPrice */
+    ) internal override view returns (uint256) {
+        // During a withdraw request, the asset held is the token we get out of the SY, not PT-weETH.
+        // Therefore, we need to pass the TOKEN_OUT_SY price here instead.
+        (int256 weETHPrice, /* int256 rateDecimals */) = TRADING_MODULE.getOraclePrice(
+            TOKEN_OUT_SY, BORROW_TOKEN
+        );
+
         return EtherFiLib._getValueOfWithdrawRequest(
-            w, stakeAssetPrice, BORROW_PRECISION, EXCHANGE_RATE_PRECISION
+            w, weETHPrice.toUint(), BORROW_PRECISION, EXCHANGE_RATE_PRECISION
         );
     }
 

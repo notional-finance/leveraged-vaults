@@ -49,4 +49,9 @@ abstract contract PendleStakingHarness is BaseStakingHarness {
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
     }
+
+    function withdrawToken(address vault) public view override returns (address) {
+        // During Pendle withdraws, the TOKEN_OUT_SY is what is being held by the vault.
+        return PendlePrincipalToken(payable(vault)).TOKEN_OUT_SY();
+    }
 }

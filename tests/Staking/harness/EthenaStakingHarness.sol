@@ -87,4 +87,10 @@ contract EthenaStakingHarness is BaseStakingHarness {
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
     }
+
+    function withdrawToken(address vault) public view override returns (address) {
+        // Due to the design of Ethena's withdraw mechanism, USDe is already held
+        // in escrow for the cooldown.
+        return BaseStakingVault(payable(vault)).REDEMPTION_TOKEN();
+    }
 }

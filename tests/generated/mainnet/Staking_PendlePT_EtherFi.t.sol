@@ -24,6 +24,7 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
         maxRelExitValuation_WithdrawRequest_Variable = 0.005e18;
         deleverageCollateralDecreaseRatio = 925;
         defaultLiquidationDiscount = 955;
+        withdrawLiquidationDiscount = 860;
 
         super.setUp();
     }

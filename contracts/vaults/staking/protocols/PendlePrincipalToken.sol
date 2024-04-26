@@ -38,7 +38,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
 
     IPRouter immutable ROUTER = IPRouter(0x00000000005BBB0EF59571E58418F9a4357b68A0);
     address immutable TOKEN_IN_SY;
-    address immutable TOKEN_OUT_SY;
+    address public immutable TOKEN_OUT_SY;
     IStandardizedYield immutable SY;
     IPPrincipalToken immutable PT;
     IPYieldToken immutable YT;

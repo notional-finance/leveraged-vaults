@@ -14,6 +14,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     uint256 maxRelExitValuation_WithdrawRequest_Variable;
     int256 deleverageCollateralDecreaseRatio;
     int256 defaultLiquidationDiscount;
+    int256 withdrawLiquidationDiscount;
 
     function deployTestVault() internal override returns (IStrategyVault) {
         (address impl, /* */) = harness.deployVaultImplementation();
@@ -662,7 +663,10 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         vm.prank(account);
         v().initiateWithdraw(vaultSharesForWithdraw);
 
-        _changeTokenPrice(defaultLiquidationDiscount, v().REDEMPTION_TOKEN());
+        _changeTokenPrice(
+            withdrawLiquidationDiscount,
+            BaseStakingHarness(address(harness)).withdrawToken(address(v()))
+        );
         address liquidator = _liquidateAccount(account);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
@@ -707,7 +711,10 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         _forceWithdraw(account);
 
-        _changeTokenPrice(defaultLiquidationDiscount, v().REDEMPTION_TOKEN());
+        _changeTokenPrice(
+            withdrawLiquidationDiscount,
+            BaseStakingHarness(address(harness)).withdrawToken(address(v()))
+        );
         address liquidator = _liquidateAccount(account);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
@@ -754,7 +761,10 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         _forceWithdraw(account);
 
-        _changeTokenPrice(defaultLiquidationDiscount, v().REDEMPTION_TOKEN());
+        _changeTokenPrice(
+            withdrawLiquidationDiscount,
+            BaseStakingHarness(address(harness)).withdrawToken(address(v()))
+        );
         address liquidator = _liquidateAccount(account);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
