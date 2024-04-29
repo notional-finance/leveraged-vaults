@@ -18,8 +18,10 @@ import {CurveV2Adapter} from "@contracts/trading/adapters/CurveV2Adapter.sol";
 import {ITradingModule, Trade, DexId, TradeType} from "@interfaces/trading/ITradingModule.sol";
 import {TradeHandler} from "@contracts/trading/TradeHandler.sol";
 
+// Mainnet Ethena contract addresses
 IsUSDe constant sUSDe = IsUSDe(0x9D39A5DE30e57443BfF2A8307A4256c8797A3497);
 IERC20 constant USDe = IERC20(0x4c9EDD5852cd905f086C759E8383e09bff1E68B3);
+// Dai and sDAI are required for trading out of sUSDe
 IERC20 constant DAI = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
 IERC4626 constant sDAI = IERC4626(0x83F20F44975D03b1b09e64809B757c47f942BEeA);
 
@@ -50,16 +52,13 @@ contract EthenaCooldownHolder is ClonedCoolDownHolder {
         IsUSDe.UserCooldown memory userCooldown = sUSDe.cooldowns(address(this));
 
         if (block.timestamp < userCooldown.cooldownEnd && 0 < duration) {
-            // Do not revert if the cooldown has not completed, will return a false
-            // for the finalized state.
+            // Cooldown has not completed, return a false for finalized
             return (0, false);
         }
 
         // If a cooldown has been initiated, need to call unstake to complete it. If
         // duration was set to zero then the USDe will be on this contract already.
-        if (0 < userCooldown.cooldownEnd) {
-            sUSDe.unstake(address(this));
-        }
+        if (0 < userCooldown.cooldownEnd) sUSDe.unstake(address(this));
 
         // USDe is immutable. It cannot have a transfer tax and it is ERC20 compliant
         // so we do not need to use the additional protections here.
@@ -75,8 +74,6 @@ library EthenaLib {
 
     uint256 internal constant USDE_PRECISION = 1e18;
 
-    /// @notice This vault will always borrow USDe so the value returned in this method will
-    /// always be USDe.
     function _getValueOfWithdrawRequest(
         WithdrawRequest memory w,
         address borrowToken,
@@ -84,19 +81,19 @@ library EthenaLib {
     ) internal view returns (uint256) {
         if (w.requestId == 0) return 0;
 
-        (int256 _usdeToBorrowRate, int256 _ratePrecision) = Deployments.TRADING_MODULE.getOraclePrice(
+        (int256 _usdeToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
             address(USDe), borrowToken
         );
         uint256 usdeToBorrowRate = _usdeToBorrowRate.toUint();
-        uint256 exchangeRatePrecision = _ratePrecision.toUint();
 
         if (w.hasSplit) {
             SplitWithdrawRequest memory s = VaultStorage.getSplitWithdrawRequest()[w.requestId];
             if (s.finalized) {
                 uint256 usdeWithdrawn = (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
 
+                // Converts the total amount of USDe withdrawn to the borrowed token
                 return (usdeWithdrawn * usdeToBorrowRate * borrowPrecision) /
-                    (exchangeRatePrecision * USDE_PRECISION);
+                    (Constants.EXCHANGE_RATE_PRECISION * USDE_PRECISION);
             }
         }
 
@@ -108,7 +105,7 @@ library EthenaLib {
         IsUSDe.UserCooldown memory userCooldown = sUSDe.cooldowns(holder);
 
         return (userCooldown.underlyingAmount * usdeToBorrowRate * borrowPrecision) /
-            (exchangeRatePrecision * USDE_PRECISION);
+            (Constants.EXCHANGE_RATE_PRECISION * USDE_PRECISION);
     }
 
     function _initiateWithdrawImpl(
@@ -175,6 +172,17 @@ library EthenaLib {
         } else {
             borrowedCurrencyAmount = daiAmount;
         }
+    }
+
+    function _canFinalizeWithdrawRequest(uint256 requestId) internal view returns (bool) {
+        uint24 duration = sUSDe.cooldownDuration();
+        address holder = address(uint160(requestId));
+        // This valuation is the amount of USDe the account will receive at cooldown, once
+        // a cooldown is initiated the account is no longer receiving sUSDe yield. This balance
+        // of USDe is transferred to a Silo contract and guaranteed to be available once the
+        // cooldown has passed.
+        IsUSDe.UserCooldown memory userCooldown = sUSDe.cooldowns(holder);
+        return (userCooldown.cooldownEnd < block.timestamp || 0 == duration);
     }
 
 }

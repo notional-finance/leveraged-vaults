@@ -8,15 +8,10 @@ import {WithdrawRequest} from "../common/WithdrawRequestBase.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {EtherFiLib, weETH, eETH, LiquidityPool} from "./protocols/EtherFi.sol";
 
+/** Borrows ETH or an LST and stakes the tokens in EtherFi */
 contract EtherFiVault is BaseStakingVault, IERC721Receiver {
 
-    constructor() BaseStakingVault(
-        Deployments.NOTIONAL,
-        Deployments.TRADING_MODULE,
-        address(weETH),
-        Constants.ETH_ADDRESS,
-        Constants.ETH_ADDRESS
-    ) {
+    constructor(address borrowToken) BaseStakingVault(address(weETH), borrowToken, Constants.ETH_ADDRESS) {
         // Addresses in this vault are hardcoded to mainnet
         require(block.chainid == Constants.CHAIN_ID_MAINNET);
     }
@@ -27,7 +22,7 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
     }
 
     function strategy() external override pure returns (bytes4) {
-        return bytes4(keccak256("Staking:EtherFi"));
+        return bytes4(keccak256("Staking:weETH"));
     }
 
     /// @notice this method is needed in order to receive NFT from EtherFi after
@@ -48,33 +43,24 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
         LiquidityPool.deposit{value: depositUnderlyingExternal}();
         uint256 eETHMinted = eETH.balanceOf(address(this)) - eEthBalBefore;
         uint256 weETHReceived = weETH.wrap(eETHMinted);
-        vaultShares = weETHReceived * uint256(Constants.INTERNAL_TOKEN_PRECISION) /
-            uint256(BORROW_PRECISION);
+        vaultShares = weETHReceived * uint256(Constants.INTERNAL_TOKEN_PRECISION) / STAKING_PRECISION;
     }
 
     function _initiateWithdrawImpl(
         address /* account */, uint256 vaultSharesToRedeem, bool /* isForced */
     ) internal override returns (uint256 requestId) {
-        // TODO: this assumes a constant exchange rate to weETH, but is that always the case if
-        // we do reinvestments?
-        uint256 weETHToUnwrap = vaultSharesToRedeem * BORROW_PRECISION /
-            uint256(Constants.INTERNAL_TOKEN_PRECISION);
+        uint256 weETHToUnwrap = getStakingTokensForVaultShare(vaultSharesToRedeem);
         return EtherFiLib._initiateWithdrawImpl(weETHToUnwrap);
     }
 
     function _getValueOfWithdrawRequest(
         WithdrawRequest memory w,
         uint256 weETHPrice
-    ) internal override view returns (uint256 ethValue) {
-        return EtherFiLib._getValueOfWithdrawRequest(
-            w, weETHPrice, BORROW_TOKEN, BORROW_PRECISION
-        );
+    ) internal override view returns (uint256) {
+        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_TOKEN, BORROW_PRECISION);
     }
 
-    function _finalizeWithdrawImpl(
-        address /* account */,
-        uint256 requestId
-    ) internal override returns (uint256 tokensClaimed, bool finalized) {
+    function _finalizeWithdrawImpl( address /* */, uint256 requestId) internal override returns (uint256, bool) {
         return EtherFiLib._finalizeWithdrawImpl(requestId);
     }
 

@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
-import {
-    IERC20,
-    TokenUtils
-} from "@contracts/utils/TokenUtils.sol";
+import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
 
 /**
  * @notice Used for withdraws where only one cooldown period can exist per address,
@@ -23,7 +20,7 @@ abstract contract ClonedCoolDownHolder {
     }
 
     /// @notice If anything ever goes wrong, allows the vault to recover lost tokens.
-    function rescueTokens(IERC20 token, address receiver, uint256 amount) external onlyVault { 
+    function rescueTokens(IERC20 token, address receiver, uint256 amount) external onlyVault {
        token.checkTransfer(receiver, amount);
     }
 

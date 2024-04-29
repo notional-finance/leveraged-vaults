@@ -4,17 +4,9 @@ pragma solidity 0.8.24;
 import {Constants} from "@contracts/global/Constants.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
-import { 
-    BaseStakingVault,
-    WithdrawRequest,
-    RedeemParams
-} from "../BaseStakingVault.sol";
+import {BaseStakingVault, WithdrawRequest, RedeemParams} from "../BaseStakingVault.sol";
 import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
-import {
-    ITradingModule,
-    Trade,
-    TradeType
-} from "@interfaces/trading/ITradingModule.sol";
+import { ITradingModule, Trade, TradeType } from "@interfaces/trading/ITradingModule.sol";
 import {
     IPOracle,
     IPRouter,
@@ -32,18 +24,19 @@ struct PendleDepositParams {
     IPRouter.ApproxParams approxParams;
 }
 
+/** Base implementation for Pendle PT vaults */
 abstract contract PendlePrincipalToken is BaseStakingVault {
     using TokenUtils for IERC20;
     using TypeConvert for uint256;
 
+    IPMarket public immutable MARKET;
+    address public immutable TOKEN_OUT_SY;
+
     IPRouter immutable ROUTER = IPRouter(0x00000000005BBB0EF59571E58418F9a4357b68A0);
     address immutable TOKEN_IN_SY;
-    address public immutable TOKEN_OUT_SY;
     IStandardizedYield immutable SY;
     IPPrincipalToken immutable PT;
     IPYieldToken immutable YT;
-    uint256 immutable PT_PRECISION;
-    IPMarket immutable MARKET;
 
     constructor(
         address market,
@@ -53,8 +46,6 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         address ptToken,
         address redemptionToken
     ) BaseStakingVault(
-        Deployments.NOTIONAL,
-        Deployments.TRADING_MODULE,
         ptToken,
         borrowToken,
         redemptionToken
@@ -72,9 +63,6 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
 
         TOKEN_IN_SY = tokenInSY;
         TOKEN_OUT_SY = tokenOutSY;
-
-        // PT decimals vary with the underlying SY precision
-        PT_PRECISION = 10 ** PT.decimals();
     }
 
     function _stakeTokens(
@@ -83,7 +71,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         uint256 /* maturity */,
         bytes calldata data
     ) internal override returns (uint256 vaultShares) {
-        require(!PT.isExpired());
+        require(!PT.isExpired(), "Expired");
 
         PendleDepositParams memory params = abi.decode(data, (PendleDepositParams));
         uint256 tokenInAmount;
@@ -129,23 +117,21 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
             EMPTY_LIMIT
         );
 
-        return ptReceived * uint256(Constants.INTERNAL_TOKEN_PRECISION) / PT_PRECISION;
+        return ptReceived * uint256(Constants.INTERNAL_TOKEN_PRECISION) / STAKING_PRECISION;
     }
 
+    /// @notice Handles PT redemption whether it is expired or not
     function _redeemPT(uint256 vaultShares) internal returns (uint256 netTokenOut) {
-        uint256 netPtIn = vaultShares * PT_PRECISION / uint256(Constants.INTERNAL_TOKEN_PRECISION);
+        uint256 netPtIn = getStakingTokensForVaultShare(vaultShares);
         uint256 netSyOut;
+
+        // PT tokens are known to be ERC20 compatible
         if (PT.isExpired()) {
             PT.transfer(address(YT), netPtIn);
             netSyOut = YT.redeemPY(address(SY));
         } else {
-            // safeTransfer not required
             PT.transfer(address(MARKET), netPtIn);
-            (netSyOut, ) = MARKET.swapExactPtForSy(
-                address(SY), // better gas optimization to transfer SY directly to itself and burn
-                netPtIn,
-                ""
-            );
+            (netSyOut, ) = MARKET.swapExactPtForSy(address(SY), netPtIn, "");
         }
 
         netTokenOut = SY.redeem(address(this), netSyOut, TOKEN_OUT_SY, 0, true);

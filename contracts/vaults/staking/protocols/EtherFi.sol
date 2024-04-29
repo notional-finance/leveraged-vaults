@@ -12,6 +12,7 @@ import {
     SplitWithdrawRequest
 } from "@contracts/vaults/common/WithdrawRequestBase.sol";
 
+// Mainnet Addresses
 IweETH constant weETH = IweETH(0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee);
 IeETH constant eETH = IeETH(0x35fA164735182de50811E8e2E824cFb9B6118ac2);
 ILiquidityPool constant LiquidityPool = ILiquidityPool(0x308861A430be4cce5502d0A12724771Fc6DaF216);
@@ -20,11 +21,8 @@ IWithdrawRequestNFT constant WithdrawRequestNFT = IWithdrawRequestNFT(0x7d5706f6
 library EtherFiLib {
     using TypeConvert for int256;
 
-    function _initiateWithdrawImpl(
-        uint256 weETHToUnwrap
-    ) internal returns (uint256 requestId) {
+    function _initiateWithdrawImpl(uint256 weETHToUnwrap) internal returns (uint256 requestId) {
         uint256 eETHReceived = weETH.unwrap(weETHToUnwrap);
-
         eETH.approve(address(LiquidityPool), eETHReceived);
         return LiquidityPool.requestWithdraw(address(this), eETHReceived);
     }
@@ -39,11 +37,9 @@ library EtherFiLib {
 
         if (w.hasSplit) {
             SplitWithdrawRequest memory s = VaultStorage.getSplitWithdrawRequest()[w.requestId];
-            // Check if the withdraw request has been claimed if the
-            // request has been split, the value is the share of the ETH
-            // claimed with no discount b/c the ETH is already held in the
-            // vault contract.
-            if (WithdrawRequestNFT.ownerOf(w.requestId) == address(0)) {
+            if (s.finalized) {
+                // If the request is finalized, then the vault is holding the ETH and totalWithdraw
+                // is stored in terms of ETH
                 if (borrowToken == Constants.ETH_ADDRESS) {
                     return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
                 } else {
@@ -56,6 +52,8 @@ library EtherFiLib {
                         (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
                 }
             } else {
+                // In this case the vault shares are in terms of weETH, so convert this
+                // using the current market weETH price to the borrowed token.
                 return (w.vaultShares * weETHPrice * borrowPrecision) /
                     (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
             }

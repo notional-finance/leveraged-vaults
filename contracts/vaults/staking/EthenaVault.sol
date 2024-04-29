@@ -18,33 +18,28 @@ import {
     TradeType
 } from "@interfaces/trading/ITradingModule.sol";
 
+/** Borrows a stablecoin and stakes it into sUSDe */
 contract EthenaVault is BaseStakingVault {
 
+    /// @notice sUSDe requires a separate contract to hold the tokens during cooldown, this is
+    /// the implementation address of the holder that will be cloned.
     address public HOLDER_IMPLEMENTATION;
 
-    constructor() BaseStakingVault(
-        Deployments.NOTIONAL,
-        Deployments.TRADING_MODULE,
-        address(sUSDe),
-        // Using USDT temporarily
-        0xdAC17F958D2ee523a2206206994597C13D831ec7,
-        address(USDe)
-    ) {
+    constructor(
+        address borrowToken
+    ) BaseStakingVault(address(sUSDe), borrowToken, address(USDe)) {
         // Addresses in this vault are hardcoded to mainnet
         require(block.chainid == Constants.CHAIN_ID_MAINNET);
     }
 
-    function initialize(
-        string memory name,
-        uint16 borrowCurrencyId
-    ) public override {
-        super.initialize(name, borrowCurrencyId);
+    /// @notice Deploys the holder with the address of the proxy
+    function _initialize() internal override {
         HOLDER_IMPLEMENTATION = address(new EthenaCooldownHolder(address(this)));
         USDe.approve(address(sUSDe), type(uint256).max);
     }
 
     function strategy() external override pure returns (bytes4) {
-        return bytes4(keccak256("Staking:Ethena"));
+        return bytes4(keccak256("Staking:sUSDe"));
     }
 
     function _stakeTokens(
@@ -53,10 +48,9 @@ contract EthenaVault is BaseStakingVault {
         uint256 /* maturity */,
         bytes calldata data
     ) internal override returns (uint256 vaultShares) {
-        address underlyingToken = address(_underlyingToken());
         uint256 usdeAmount;
 
-        if (underlyingToken == address(USDe)) {
+        if (BORROW_TOKEN == address(USDe)) {
             usdeAmount = depositUnderlyingExternal;
         } else {
             // If not borrowing USDe directly, then trade into the position
@@ -64,7 +58,7 @@ contract EthenaVault is BaseStakingVault {
 
             Trade memory trade = Trade({
                 tradeType: TradeType.EXACT_IN_SINGLE,
-                sellToken: underlyingToken,
+                sellToken: BORROW_TOKEN,
                 buyToken: address(USDe),
                 amount: depositUnderlyingExternal,
                 limit: params.minPurchaseAmount,
@@ -92,8 +86,7 @@ contract EthenaVault is BaseStakingVault {
     function _initiateWithdrawImpl(
         address /* account */, uint256 vaultSharesToRedeem, bool /* isForced */
     ) internal override returns (uint256 requestId) {
-        uint256 balanceToTransfer = vaultSharesToRedeem * STAKING_PRECISION /
-            uint256(Constants.INTERNAL_TOKEN_PRECISION);
+        uint256 balanceToTransfer = getStakingTokensForVaultShare(vaultSharesToRedeem);
         return EthenaLib._initiateWithdrawImpl(balanceToTransfer, HOLDER_IMPLEMENTATION);
     }
 
@@ -109,21 +102,18 @@ contract EthenaVault is BaseStakingVault {
         uint256 /* maturity */,
         RedeemParams memory params
     ) internal override returns (uint256 borrowedCurrencyAmount) {
-        uint256 sUSDeToSell = vaultShares * uint256(STAKING_PRECISION) /
-            uint256(Constants.INTERNAL_TOKEN_PRECISION);
+        uint256 sUSDeToSell = getStakingTokensForVaultShare(vaultShares);
 
         // Selling sUSDe requires special handling since most of the liquidity
         // sits inside a sUSDe/sDAI pool on Curve.
         return EthenaLib._sellStakedUSDe(
-            sUSDeToSell,
-            address(BORROW_TOKEN),
-            params.minPurchaseAmount,
-            params.exchangeData,
-            params.dexId
+            sUSDeToSell, BORROW_TOKEN, params.minPurchaseAmount, params.exchangeData, params.dexId
         );
     }
 
-    function _checkReentrancyContext() internal override {
-        // NO-OP
+    function canFinalizeWithdrawRequest(uint256 requestId) public override view returns (bool) {
+        return EthenaLib._canFinalizeWithdrawRequest(requestId);
     }
+
+    function _checkReentrancyContext() internal override { /* NO-OP */ }
 }
