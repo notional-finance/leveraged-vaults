@@ -283,6 +283,37 @@
             {
                 "indexed": true,
                 "internalType": "address",
+                "name": "sellToken",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "buyToken",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "sellAmount",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "buyAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "TradeExecuted",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
                 "name": "implementation",
                 "type": "address"
             }

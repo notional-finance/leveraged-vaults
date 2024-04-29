@@ -10,3 +10,4 @@ artifacts
 out/
 node_modules/
 hardhat.config.js
+cache_hardhat/
