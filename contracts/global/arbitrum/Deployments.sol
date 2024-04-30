@@ -36,6 +36,7 @@ library Deployments {
     ICurveMetaRegistry public constant CURVE_META_REGISTRY = ICurveMetaRegistry(address(0));
     address internal constant CURVE_V1_HANDLER = address(0);
     address internal constant CURVE_V2_HANDLER = address(0);
+    address internal constant CURVE_MINTER = 0xabC000d88f23Bb45525E447528DBF656A9D55bf5;
     ITradingModule internal constant TRADING_MODULE = ITradingModule(0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8);
     address internal constant TREASURY_MANAGER = 0x53144559C0d4a3304e2DD9dAfBD685247429216d;
     address internal constant EMERGENCY_EXIT_MANAGER = 0xbf778Fc19d0B55575711B6339A3680d07352B221;

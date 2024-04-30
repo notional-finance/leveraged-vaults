@@ -5,7 +5,7 @@ import {TokenUtils, IERC20} from "@contracts/utils/TokenUtils.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
-import {IConvexBooster} from "@interfaces/convex/IConvexBooster.sol";
+import {IConvexBooster, IConvexBoosterArbitrum} from "@interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardToken} from "@interfaces/convex/IConvexRewardToken.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "@interfaces/convex/IConvexRewardPool.sol";
 import {Curve2TokenPoolMixin, DeploymentParams} from "./Curve2TokenPoolMixin.sol";
@@ -54,6 +54,28 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
         // Allows one of the pool tokens to be whitelisted as a reward token to be re-entered
         // back into the pool to increase LP shares.
         WHITELISTED_REWARD = params.whitelistedReward;
+    }
+
+    function _stakeLpTokens(uint256 lpTokens) internal override {
+        // Method signatures are slightly different on mainnet and arbitrum
+        bool success;
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+            success = IConvexBooster(CONVEX_BOOSTER).deposit(CONVEX_POOL_ID, lpTokens, true);
+        } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
+            success = IConvexBoosterArbitrum(CONVEX_BOOSTER).deposit(CONVEX_POOL_ID, lpTokens);
+        }
+        require(success);
+    }
+
+    function _unstakeLpTokens(uint256 poolClaim) internal override {
+        bool success;
+        // Do not claim rewards when unstaking
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+            success = IConvexRewardPool(CONVEX_REWARD_POOL).withdrawAndUnwrap(poolClaim, false);
+        } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
+            success = IConvexRewardPoolArbitrum(CONVEX_REWARD_POOL).withdraw(poolClaim, false);
+        }
+        require(success);
     }
 
     function _initialApproveTokens() internal override {

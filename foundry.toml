@@ -11,10 +11,15 @@ remappings = [
     "@deployments/=contracts/global/arbitrum/"
 ]
 evm_version = "shanghai"
-fs_permissions = [{ access = "read-write", path = "./scripts/deploy"}]
+fs_permissions = [
+  { access = "read-write", path = "./scripts/deploy"},
+  { access = "read", path = "./out_arbitrum"},
+  { access = "read", path = "./out_mainnet"},
+]
 
 [profile.arbitrum]
 chain_id = 42161
+out = "out_arbitrum"
 remappings = [
     "@interfaces/=interfaces/",
     "@contracts/=contracts/",
@@ -26,6 +31,7 @@ libraries = [
 
 [profile.mainnet]
 chain_id = 1
+out = "out_mainnet"
 remappings = [
     "@interfaces/=interfaces/",
     "@contracts/=contracts/",

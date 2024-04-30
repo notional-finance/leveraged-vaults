@@ -375,7 +375,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
 
         for (uint256 i; i < metadata.rewardTokens.length; i++) {
             uint256 rewardBalance = metadata.rewardTokens[i].balanceOf(address(vault));
-            assertGe(rewardBalance - initialBalance[i], 0, "Reward Balance Decrease");
+            assertGt(rewardBalance - initialBalance[i], 0, "Reward Balance Decrease");
         }
     }
 
@@ -401,7 +401,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.prank(Deployments.NOTIONAL.owner());
         bytes memory init = harness.getInitializeData();
         vm.expectRevert("Initializable: contract is already initialized");
-        address(vault).call(init);
+        (address(vault).call(init));
     }
 
     function test_RevertIf_ReadOnlyReentrancyAttack() public {

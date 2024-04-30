@@ -3,9 +3,9 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Convex_xUSDC_crvUSD is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Curve_pyUSD_xUSDC is BaseSingleSidedLPVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Convex_xUSDC_crvUSD();
+        harness = new Harness_SingleSidedLP_Curve_pyUSD_xUSDC();
 
         WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -19,11 +19,11 @@ contract Test_SingleSidedLP_Convex_xUSDC_crvUSD is BaseSingleSidedLPVault {
     }
 }
 
-contract Harness_SingleSidedLP_Convex_xUSDC_crvUSD is 
-Curve2TokenConvexHarness
+contract Harness_SingleSidedLP_Curve_pyUSD_xUSDC is 
+Curve2TokenHarness
  {
     function getVaultName() public pure override returns (string memory) {
-        return 'SingleSidedLP:Convex:[USDC]/crvUSD';
+        return 'SingleSidedLP:Curve:pyUSD/[USDC]';
     }
 
     function getDeploymentConfig() public view override returns (
@@ -34,13 +34,13 @@ Curve2TokenConvexHarness
         params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 1400;
+        params.minCollateralRatioBPS = 1100;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 2600;
+        params.maxDeleverageCollateralRatioBPS = 1900;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 100_000e8;
-        maxPrimaryBorrow = 5_000_000e8;
+        params.minAccountBorrowSize = 1e8;
+        maxPrimaryBorrow = 5_000e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -52,27 +52,21 @@ Curve2TokenConvexHarness
         // USDC
         token[0] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
         oracle[0] = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
-        // crvUSD
-        token[1] = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;
-        oracle[1] = 0xEEf0C605546958c1f899b6fB336C20671f9cD49F;
+        // pyUSD
+        token[1] = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
+        oracle[1] = 0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1;
         
     }
 
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](2);
-        permissions = new ITradingModule.TokenPermissions[](2);
+        token = new address[](1);
+        permissions = new ITradingModule.TokenPermissions[](1);
 
         // CRV
         token[0] = 0xD533a949740bb3306d119CC777fa900bA034cd52;
         permissions[0] = ITradingModule.TokenPermissions(
-            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
-            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
-        );
-        // CVX
-        token[1] = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-        permissions[1] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
@@ -82,7 +76,6 @@ Curve2TokenConvexHarness
     }
 
     constructor() {
-        EXISTING_DEPLOYMENT = 0xba4eb30f7F2e378249cf94E08F581e704326e9c6;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({
@@ -91,27 +84,27 @@ Curve2TokenConvexHarness
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 0.015e4
         });
-        _m.rewardPool = IERC20(0x44D8FaB7CD8b7877D5F79974c2F501aF6E65AbBA);
-
-        
-        _m.poolToken = IERC20(0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E);
-        lpToken = 0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E;
-        curveInterface = CurveInterface.V1;
+        _m.rewardPool = IERC20(0x9da75997624C697444958aDeD6790bfCa96Af19A);
+        _m.whitelistedReward = 0x6c3ea9036406852006290770BEdFcAbA0e23A0e8;
         
 
-        _m.rewardTokens = new IERC20[](2);
+        
+        _m.poolToken = IERC20(0x383E6b4437b59fff47B619CBA855CA29342A8559);
+        lpToken = 0x383E6b4437b59fff47B619CBA855CA29342A8559;
+        curveInterface = CurveInterface.StableSwapNG;
+        
+
+        _m.rewardTokens = new IERC20[](1);
         // CRV
         _m.rewardTokens[0] = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
-        // CVX
-        _m.rewardTokens[1] = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
         
         setMetadata(_m);
     }
 }
 
-contract Deploy_SingleSidedLP_Convex_xUSDC_crvUSD is Harness_SingleSidedLP_Convex_xUSDC_crvUSD, DeployProxyVault {
+contract Deploy_SingleSidedLP_Curve_pyUSD_xUSDC is Harness_SingleSidedLP_Curve_pyUSD_xUSDC, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Convex_xUSDC_crvUSD();
+        harness = new Harness_SingleSidedLP_Curve_pyUSD_xUSDC();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {

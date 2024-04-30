@@ -19,7 +19,7 @@ contract Test_SingleSidedLP_Convex_xFRAX_USDC_e is BaseSingleSidedLPVault {
 }
 
 contract Harness_SingleSidedLP_Convex_xFRAX_USDC_e is 
-Curve2TokenHarness
+Curve2TokenConvexHarness
  {
     function getVaultName() public pure override returns (string memory) {
         return 'SingleSidedLP:Convex:[FRAX]/USDC.e';

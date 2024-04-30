@@ -3,63 +3,57 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Aura_USDC_xDAI_USDT_USDC_e is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Curve_osETH_xrETH is BaseSingleSidedLPVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_USDC_xDAI_USDT_USDC_e();
+        harness = new Harness_SingleSidedLP_Curve_osETH_xrETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
-        maxDeposit = 50e18;
-        maxRelEntryValuation = 50 * BASIS_POINT;
-        maxRelExitValuation = 15 * BASIS_POINT;
+        minDeposit = 1e18;
+        maxDeposit = 100e18;
+        maxRelEntryValuation = 75 * BASIS_POINT;
+        maxRelExitValuation = 50 * BASIS_POINT;
 
         super.setUp();
     }
 }
 
-contract Harness_SingleSidedLP_Aura_USDC_xDAI_USDT_USDC_e is 
-ComposablePoolHarness
+contract Harness_SingleSidedLP_Curve_osETH_xrETH is 
+Curve2TokenHarness
  {
     function getVaultName() public pure override returns (string memory) {
-        return 'SingleSidedLP:Aura:USDC/[DAI]/USDT/USDC.e';
+        return 'SingleSidedLP:Curve:osETH/[rETH]';
     }
 
     function getDeploymentConfig() public view override returns (
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
         params = getTestVaultConfig();
-        params.feeRate5BPS = 10;
-        params.liquidationRate = 102;
+        params.feeRate5BPS = 20;
+        params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 1100;
+        params.minCollateralRatioBPS = 1400;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1700;
+        params.maxDeleverageCollateralRatioBPS = 2600;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 1e8;
-        maxPrimaryBorrow = 100e8;
+        params.minAccountBorrowSize = 100_000e8;
+        maxPrimaryBorrow = 5_000_000e8;
     }
 
     function getRequiredOracles() public override pure returns (
         address[] memory token, address[] memory oracle
     ) {
-        token = new address[](4);
-        oracle = new address[](4);
+        token = new address[](2);
+        oracle = new address[](2);
 
-        // USDC
-        token[0] = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
-        oracle[0] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
-        // DAI
-        token[1] = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
-        oracle[1] = 0xc5C8E77B397E531B8EC06BFb0048328B30E9eCfB;
-        // USDT
-        token[2] = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
-        oracle[2] = 0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7;
-        // USDC_e
-        token[3] = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
-        oracle[3] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
+        // osETH
+        token[0] = 0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38;
+        oracle[0] = 0x3d3d7d124B0B80674730e0D31004790559209DEb;
+        // rETH
+        token[1] = 0xae78736Cd615f374D3085123A210448E74Fc6393;
+        oracle[1] = 0xA7D273951861CF07Df8B0A1C3c934FD41bA9E8Eb;
         
     }
 
@@ -69,14 +63,14 @@ ComposablePoolHarness
         token = new address[](2);
         permissions = new ITradingModule.TokenPermissions[](2);
 
-        // AURA
-        token[0] = 0x1509706a6c66CA549ff0cB464de88231DDBe213B;
+        // RPL
+        token[0] = 0xD33526068D116cE69F19A9ee46F0bd304F21A51f;
         permissions[0] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
-        // BAL
-        token[1] = 0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8;
+        // SWISE
+        token[1] = 0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2;
         permissions[1] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
@@ -88,30 +82,34 @@ ComposablePoolHarness
 
     constructor() {
         SingleSidedLPMetadata memory _m;
-        _m.primaryBorrowCurrency = 2;
+        _m.primaryBorrowCurrency = 7;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            oraclePriceDeviationLimitPercent: 0.015e4
         });
-        _m.rewardPool = IERC20(0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E);
+        _m.rewardPool = IERC20(0x63037a4e3305d25D48BAED2022b8462b2807351c);
 
+        
+        _m.poolToken = IERC20(0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d);
+        lpToken = 0xe080027Bd47353b5D1639772b4a75E9Ed3658A0d;
+        curveInterface = CurveInterface.StableSwapNG;
         
 
         _m.rewardTokens = new IERC20[](2);
-        // AURA
-        _m.rewardTokens[0] = IERC20(0x1509706a6c66CA549ff0cB464de88231DDBe213B);
-        // BAL
-        _m.rewardTokens[1] = IERC20(0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8);
+        // RPL
+        _m.rewardTokens[0] = IERC20(0xD33526068D116cE69F19A9ee46F0bd304F21A51f);
+        // SWISE
+        _m.rewardTokens[1] = IERC20(0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2);
         
         setMetadata(_m);
     }
 }
 
-contract Deploy_SingleSidedLP_Aura_USDC_xDAI_USDT_USDC_e is Harness_SingleSidedLP_Aura_USDC_xDAI_USDT_USDC_e, DeployProxyVault {
+contract Deploy_SingleSidedLP_Curve_osETH_xrETH is Harness_SingleSidedLP_Curve_osETH_xrETH, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Aura_USDC_xDAI_USDT_USDC_e();
+        harness = new Harness_SingleSidedLP_Curve_osETH_xrETH();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {

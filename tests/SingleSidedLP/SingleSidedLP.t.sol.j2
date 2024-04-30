@@ -28,6 +28,8 @@ contract Harness_{{ contractName }} is
     ComposablePoolHarness
 {% elif vaultType == "WrappedComposablePool" -%}
     WrappedComposablePoolHarness
+{% elif vaultType == "Curve2TokenConvex" -%}
+    Curve2TokenConvexHarness
 {% elif vaultType == "Curve2Token" -%}
     Curve2TokenHarness
 {% endif %} {
@@ -107,7 +109,7 @@ contract Harness_{{ contractName }} is
         _m.whitelistedReward = {{ whitelistedReward }};
         {% endif %}
 
-        {% if vaultType == "Curve2Token" %}
+        {% if vaultType == "Curve2Token" or vaultType == "Curve2TokenConvex" %}
         _m.poolToken = IERC20({{ poolToken }});
         lpToken = {{ lpToken }};
         curveInterface = CurveInterface.{{ curveInterface }};
