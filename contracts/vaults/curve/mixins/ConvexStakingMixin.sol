@@ -12,7 +12,6 @@ import {Curve2TokenPoolMixin, DeploymentParams} from "./Curve2TokenPoolMixin.sol
 
 struct ConvexVaultDeploymentParams {
     address rewardPool;
-    address whitelistedReward;
     DeploymentParams baseParams;
 }
 
@@ -24,8 +23,6 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
     /// @notice Convex reward pool contract used for unstaking and claiming reward tokens
     address internal immutable CONVEX_REWARD_POOL;
     uint256 internal immutable CONVEX_POOL_ID;
-
-    address immutable WHITELISTED_REWARD;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
         Curve2TokenPoolMixin(notional_, params.baseParams) {
@@ -51,9 +48,6 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
 
         CONVEX_POOL_ID = poolId;
         CONVEX_BOOSTER = convexBooster;
-        // Allows one of the pool tokens to be whitelisted as a reward token to be re-entered
-        // back into the pool to increase LP shares.
-        WHITELISTED_REWARD = params.whitelistedReward;
     }
 
     function _stakeLpTokens(uint256 lpTokens) internal override {

@@ -31,6 +31,7 @@ struct DeploymentParams {
     address poolToken;
     address gauge;
     CurveInterface curveInterface;
+    address whitelistedReward;
 }
 
 abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
@@ -51,6 +52,8 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
     uint8 internal immutable DECIMALS_2;
     uint8 internal immutable PRIMARY_DECIMALS;
     uint8 internal immutable SECONDARY_DECIMALS;
+
+    address immutable WHITELISTED_REWARD;
 
     function NUM_TOKENS() internal pure override returns (uint256) { return _NUM_TOKENS; }
     function PRIMARY_INDEX() internal view override returns (uint256) { return _PRIMARY_INDEX; }
@@ -90,6 +93,10 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         DECIMALS_2 = TokenUtils.getDecimals(TOKEN_2);
         PRIMARY_DECIMALS = _PRIMARY_INDEX == 0 ? DECIMALS_1 : DECIMALS_2;
         SECONDARY_DECIMALS = _PRIMARY_INDEX == 0 ? DECIMALS_2 : DECIMALS_1;
+
+        // Allows one of the pool tokens to be whitelisted as a reward token to be re-entered
+        // back into the pool to increase LP shares.
+        WHITELISTED_REWARD = params.whitelistedReward;
     }
 
     function _rewriteAltETH(address token) private pure returns (address) {
@@ -237,12 +244,13 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
     }
 
     function _isInvalidRewardToken(address token) internal override virtual view returns (bool) {
+        if (WHITELISTED_REWARD != address(0) && token == WHITELISTED_REWARD) return false;
+
         return (
             token == TOKEN_1 ||
             token == TOKEN_2 ||
             token == address(CURVE_GAUGE) ||
             token == address(CURVE_POOL_TOKEN) ||
-            token == address(CURVE_GAUGE) ||
             token == address(Deployments.ETH_ADDRESS) ||
             token == address(Deployments.WETH)
         );

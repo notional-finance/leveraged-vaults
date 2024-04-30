@@ -18,13 +18,13 @@ abstract contract Curve2TokenConvexHarness is SingleSidedLPHarness {
         impl = address(new Curve2TokenConvexVault(
             Deployments.NOTIONAL, ConvexVaultDeploymentParams({
                 rewardPool: address(_m.rewardPool),
-                whitelistedReward: _m.whitelistedReward,
                 baseParams: DeploymentParams({
                     primaryBorrowCurrencyId: _m.primaryBorrowCurrency,
                     pool: address(_m.poolToken),
                     tradingModule: Deployments.TRADING_MODULE,
                     poolToken: address(lpToken),
                     gauge: address(0),
+                    whitelistedReward: _m.whitelistedReward,
                     curveInterface: curveInterface
                 })
             })

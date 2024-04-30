@@ -22,6 +22,7 @@ abstract contract Curve2TokenHarness is SingleSidedLPHarness {
                     tradingModule: Deployments.TRADING_MODULE,
                     poolToken: address(lpToken),
                     gauge: address(_m.rewardPool),
+                    whitelistedReward: _m.whitelistedReward,
                     curveInterface: curveInterface
                 })
             )
