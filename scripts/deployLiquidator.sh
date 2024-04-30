@@ -7,6 +7,7 @@ export CHAIN_ID=42161
 export DEPLOYER=MAINNET_V2_DEPLOYER
 export DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
-forge build --force
+# forge build --force
 forge script scripts/deploy/DeployFlashLiquidator.s.sol:DeployFlashLiquidator \
-     -f $RPC_URL --sender $DEPLOYER_ADDRESS --account $DEPLOYER --verify --broadcast
+     -f $RPC_URL --sender $DEPLOYER_ADDRESS --account $DEPLOYER --verify --broadcast \
+     --verifier-url https://api.arbiscan.io/api --etherscan-api-key $ARBISCAN_API_KEY

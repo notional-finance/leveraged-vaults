@@ -74,6 +74,17 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
     }
 
     /// @notice Primary entry point for the liquidation call
+    function flashLiquidateBatch(
+        address[] calldata asset,
+        uint256[] calldata amount,
+        LiquidationParams[] calldata params
+    ) external {
+        for (uint256 i; i < asset.length; i++) {
+            _flashLiquidate(asset[i], amount[i], true, params[i]);
+        }
+    }
+
+    /// @notice Primary entry point for the liquidation call
     function flashLiquidate(
         address asset,
         uint256 amount,

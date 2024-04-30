@@ -12,5 +12,6 @@ contract DeployFlashLiquidator is Script {
         vm.startBroadcast();
         address impl = address(new AaveFlashLiquidator());
         vm.stopBroadcast();
+        console.log("New Liquidator", impl);
     }
 }
