@@ -321,7 +321,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 1
+            oraclePriceDeviationLimitPercent: 0
         }));
 
         // Oracle deviation checks only occur when we do valuation, so deposit

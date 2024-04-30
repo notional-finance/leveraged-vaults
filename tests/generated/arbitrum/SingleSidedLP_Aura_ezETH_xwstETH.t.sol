@@ -5,6 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Aura_ezETH_xwstETH is BaseSingleSidedLPVault {
     function setUp() public override {
+        FORK_BLOCK = 200100000;
         harness = new Harness_SingleSidedLP_Aura_ezETH_xwstETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues

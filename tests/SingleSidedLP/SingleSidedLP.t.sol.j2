@@ -5,6 +5,9 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_{{ contractName }} is BaseSingleSidedLPVault {
     function setUp() public override {
+        {% if forkBlock is defined -%}
+        FORK_BLOCK = {{ forkBlock }};
+        {% endif -%}
         harness = new Harness_{{contractName}}();
 
         {% if whale is defined -%}

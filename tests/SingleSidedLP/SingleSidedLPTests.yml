@@ -219,6 +219,7 @@ arbitrum:
       minAccountBorrowSize: 5_000e8
       maxPrimaryBorrow: 500_000e8
   - vaultName: SingleSidedLP:Aura:ezETH/[wstETH]
+    forkBlock: 200100000
     vaultType: ComposablePool
     primaryBorrowCurrency: wstETH
     rewardPool: "0xC3c454095A988013C4D1a9166C345f7280332E1A"
