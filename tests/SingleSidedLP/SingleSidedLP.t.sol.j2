@@ -19,6 +19,9 @@ contract Test_{{ contractName }} is VaultRewarderTests {
     {% endif -%}
 
     function setUp() public override {
+        {% if forkBlock is defined -%}
+        FORK_BLOCK = {{ forkBlock }};
+        {% endif -%}
         harness = new Harness_{{contractName}}();
 
         {% if whale is defined -%}

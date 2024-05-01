@@ -40,7 +40,7 @@ arbitrum:
       maxPoolShare: 3000
       oraclePriceDeviationLimitPercent: 0.01e4
     setUp:
-      minDeposit: 1000e8
+      minDeposit: 0.01e18
       maxDeposit: 1e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
@@ -96,6 +96,8 @@ arbitrum:
     rewards: [AURA, BAL, ARB]
     oracles: [USDC, DAI, USDT, USDC_e]
     setUp:
+      minDeposit: 0.01e18
+      maxDeposit: 50e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 15
     config:
@@ -113,7 +115,7 @@ arbitrum:
     settings:
       maxPoolShare: 3000
     setUp:
-      minDeposit: 1000e8
+      minDeposit: 0.01e18
       maxDeposit: 1e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
@@ -165,6 +167,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1900
   - vaultName: SingleSidedLP:Convex:crvUSD/[USDC]
+    forkBlock: 206791948
     vaultType: Curve2Token
     primaryBorrowCurrency: USDC
     rewardPool: "0xBFEE9F3E015adC754066424AEd535313dc764116"
@@ -172,7 +175,7 @@ arbitrum:
     lpToken: "0xec090cf6DD891D2d014beA6edAda6e05E025D93d"
     whale: "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
     curveInterface: StableSwapNG
-    rewards: [CRV, ARB]
+    rewards: [ARB]
     oracles: [USDC, crvUSD]
     settings:
       maxPoolShare: 2000
@@ -191,13 +194,14 @@ arbitrum:
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 5_000e8
   - vaultName: SingleSidedLP:Convex:crvUSD/[USDT]
+    forkBlock: 206791948
     vaultType: Curve2Token
     primaryBorrowCurrency: USDT
     rewardPool: "0xf74d4C9b0F49fb70D8Ff6706ddF39e3a16D61E67"
     poolToken: "0x73aF1150F265419Ef8a5DB41908B700C32D49135"
     lpToken: "0x73aF1150F265419Ef8a5DB41908B700C32D49135"
     curveInterface: StableSwapNG
-    rewards: [CRV, ARB]
+    rewards: [ARB]
     oracles: [USDT, crvUSD]
     settings:
       maxPoolShare: 2000
