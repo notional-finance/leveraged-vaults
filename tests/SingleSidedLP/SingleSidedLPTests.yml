@@ -530,3 +530,29 @@ mainnet:
       liquidationRate: 103
       minAccountBorrowSize: 100_000e8
       maxPrimaryBorrow: 5_000_000e8
+  - vaultName: SingleSidedLP:Curve:USDe/[USDC]
+    forkBlock: 19773001
+    vaultType: Curve2Token
+    primaryBorrowCurrency: USDC
+    rewardPool: "0x04E80Db3f84873e4132B221831af1045D27f140F"
+    poolToken: "0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72"
+    lpToken: "0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72"
+    whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
+    curveInterface: StableSwapNG
+    rewards: []
+    oracles: [USDe, USDC]
+    settings:
+      maxPoolShare: 2000
+      oraclePriceDeviationLimitPercent: 0.015e4
+    setUp:
+      minDeposit: 1e6
+      maxDeposit: 10_000e6
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 75
+    config:
+      feeRate5BPS: 20
+      minCollateralRatioBPS: 1100
+      maxDeleverageCollateralRatioBPS: 1900
+      liquidationRate: 103
+      minAccountBorrowSize: 1e8
+      maxPrimaryBorrow: 5_000e8

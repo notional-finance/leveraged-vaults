@@ -106,6 +106,15 @@ abstract contract BaseAcceptanceTest is Test {
         assertLe(r, rel, m);
     }
 
+    function _setOracleFreshness(uint32 freshness) internal {
+        if (Deployments.CHAIN_ID == 1) {
+            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+        } else {
+            vm.prank(Deployments.NOTIONAL.owner());
+        }
+        TradingModule(address(Deployments.TRADING_MODULE)).setMaxOracleFreshness(freshness);
+    }
+
     function setTokenPermissions(
         address vault_,
         address token,
@@ -606,13 +615,7 @@ abstract contract BaseAcceptanceTest is Test {
         _changeCollateralRatio();
 
         skip(30 days);
-        if (Deployments.CHAIN_ID == 1) {
-            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
-        } else {
-            vm.prank(Deployments.NOTIONAL.owner());
-        }
-        TradingModule(address(Deployments.TRADING_MODULE)).setMaxOracleFreshness(type(uint32).max);
-
+        _setOracleFreshness(type(uint32).max);
         (
             FlashLiquidatorBase.LiquidationParams memory params,
             address asset,

@@ -55,7 +55,7 @@ token = {
         'CVX': "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
         'SWISE': "0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2",
         'ezETH': "0xE1fFDC18BE251E76Fb0A1cBfA6d30692c374C5fc",
-        "USDe": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+        "USDe": "0x4c9EDD5852cd905f086C759E8383e09bff1E68B3",
         "RPL": "0xD33526068D116cE69F19A9ee46F0bd304F21A51f"
     },
     "arbitrum": {
@@ -109,6 +109,7 @@ oracle = {
         'osETH': "0x3d3d7d124B0B80674730e0D31004790559209DEb",
         'weETH': "0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136",
         'GHO': "0x3f12643D3f6f874d39C2a4c9f2Cd6f2DbAC877FC",
+        'USDe': "0xbC5FBcf58CeAEa19D523aBc76515b9AEFb5cfd58",
         'ezETH': "0xCa140AE5a361b7434A729dCadA0ea60a50e249dd"
     },
     "arbitrum": {
