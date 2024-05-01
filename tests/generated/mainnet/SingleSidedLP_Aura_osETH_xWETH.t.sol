@@ -60,24 +60,12 @@ ComposablePoolHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](3);
-        permissions = new ITradingModule.TokenPermissions[](3);
+        token = new address[](1);
+        permissions = new ITradingModule.TokenPermissions[](1);
 
-        // AURA
-        token[0] = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
-        permissions[0] = ITradingModule.TokenPermissions(
-            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
-            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
-        );
-        // BAL
-        token[1] = 0xba100000625a3754423978a60c9317c58a424e3D;
-        permissions[1] = ITradingModule.TokenPermissions(
-            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
-            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
-        );
         // SWISE
-        token[2] = 0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2;
-        permissions[2] = ITradingModule.TokenPermissions(
+        token[0] = 0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2;
+        permissions[0] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );

@@ -4,6 +4,17 @@ pragma solidity 0.8.24;
 import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Aura_ezETH_xWETH is VaultRewarderTests {
+    function _stringEqual(string memory a, string memory b) private pure returns(bool) {
+      return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
+    function _shouldSkip(string memory name) internal pure override returns(bool) {
+        if (_stringEqual(name, "test_claimReward_ShouldNotClaimMoreThanTotalIncentives")) return true;
+        if (_stringEqual(name, "test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission")) return true;
+        
+        return false;
+    }
+
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Aura_ezETH_xWETH();
 
@@ -15,17 +26,6 @@ contract Test_SingleSidedLP_Aura_ezETH_xWETH is VaultRewarderTests {
         maxRelExitValuation = 50 * BASIS_POINT;
 
         super.setUp();
-    }
-
-    function _shouldSkip(string memory name) internal pure override returns(bool) {
-        // skip reason: [FAIL. Reason: OraclePriceExpired()]
-        if (
-            keccak256(abi.encodePacked(name)) == keccak256(abi.encodePacked("test_claimReward_ShouldNotClaimMoreThanTotalIncentives")) ||
-            keccak256(abi.encodePacked(name)) == keccak256(abi.encodePacked("test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission"))
-        ) {
-            return true;
-        }
-        return false;
     }
 }
 

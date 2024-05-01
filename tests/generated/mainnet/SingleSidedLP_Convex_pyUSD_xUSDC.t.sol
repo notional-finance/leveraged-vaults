@@ -4,6 +4,16 @@ pragma solidity 0.8.24;
 import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Convex_pyUSD_xUSDC is VaultRewarderTests {
+    function _stringEqual(string memory a, string memory b) private pure returns(bool) {
+      return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
+    function _shouldSkip(string memory name) internal pure override returns(bool) {
+        if (_stringEqual(name, "test_claimReward_WithChangingForceClaimAfter")) return true;
+        
+        return false;
+    }
+
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Convex_pyUSD_xUSDC();
 
@@ -16,15 +26,6 @@ contract Test_SingleSidedLP_Convex_pyUSD_xUSDC is VaultRewarderTests {
         maxRelExitValuation = 75 * BASIS_POINT;
 
         super.setUp();
-    }
-
-    function _shouldSkip(string memory name) internal pure override returns(bool) {
-        if (
-            keccak256(abi.encodePacked(name)) == keccak256(abi.encodePacked("test_claimReward_WithChangingForceClaimAfter"))
-        ) {
-            return true;
-        }
-        return false;
     }
 }
 
