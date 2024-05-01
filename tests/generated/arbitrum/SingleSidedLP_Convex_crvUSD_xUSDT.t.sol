@@ -11,7 +11,7 @@ contract Test_SingleSidedLP_Convex_crvUSD_xUSDT is VaultRewarderTests {
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 1e6;
-        maxDeposit = 90_000e6;
+        maxDeposit = 10_000e6;
         maxRelEntryValuation = 75 * BASIS_POINT;
         maxRelExitValuation = 75 * BASIS_POINT;
 

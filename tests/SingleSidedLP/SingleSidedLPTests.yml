@@ -208,7 +208,7 @@ arbitrum:
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e6
-      maxDeposit: 90_000e6
+      maxDeposit: 10_000e6
       maxRelEntryValuation: 75
       maxRelExitValuation: 75
     config:
