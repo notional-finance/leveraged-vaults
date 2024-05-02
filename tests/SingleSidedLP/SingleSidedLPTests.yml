@@ -261,6 +261,27 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
       minAccountBorrowSize: 1e8
+  - vaultName: SingleSidedLP:Curve:[WBTC]/tBTC
+    vaultType: Curve2TokenConvex
+    primaryBorrowCurrency: WBTC
+    rewardPool: "0x6B7B84F6EC1c019aF08C7A2F34D3C10cCB8A8eA6"
+    poolToken: "0x755D6688AD74661Add2FB29212ef9153D40fcA46"
+    lpToken: "0x755D6688AD74661Add2FB29212ef9153D40fcA46"
+    curveInterface: V1
+    rewards: [CRV]
+    oracles: [WBTC, tBTC]
+    settings:
+      maxPoolShare: 2000
+    setUp:
+      minDeposit: 0.01e8
+      maxDeposit: 1e8
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      minCollateralRatioBPS: 1000
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 1700
+      minAccountBorrowSize: 0.01e8
 mainnet:
   - vaultName: SingleSidedLP:Convex:[USDT]/crvUSD
     vaultType: Curve2TokenConvex
