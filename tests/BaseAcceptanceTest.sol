@@ -635,35 +635,4 @@ abstract contract BaseAcceptanceTest is Test {
         assertEq(va.tempCashBalance, 0, "Cash Balance");
     }
 
-    // function test_deleverageFixedBorrow_cashPurchase() public {
-    //     if (maturities.length == 1) return;
-    //     address account = makeAddr("account");
-    //     _enterVaultLiquidation(account, maturities[1]);
-
-    //     // Increases the collateral ratio for liquidation
-    //     _changeCollateralRatio();
-
-    //     (
-    //         FlashLiquidatorBase.LiquidationParams memory params,
-    //         address asset,
-    //         int256 maxUnderlying
-    //     ) = getLiquidationParams(account);
-    //     assertGt(maxUnderlying, 0, "Not Under Collateralized");
-
-    //     liquidator.flashLiquidate(
-    //         asset,
-    //         uint256(maxUnderlying) * precision / 1e8 + roundingPrecision,
-    //         params
-    //     );
-    //     params.liquidationType = FlashLiquidatorBase.LiquidationType.DELEVERAGE_VAULT_ACCOUNT_AND_LIQUIDATE_CASH;
-    //     VaultAccount memory va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
-
-    //     // Assert liquidation was a success
-    //     (/* */, maxUnderlying) = liquidator.getOptimalDeleveragingParams(
-    //         account, address(vault)
-    //     );
-    //     assertEq(maxUnderlying, 0, "Zero Deposit");
-    //     // Allow a little dust
-    //     assertLt(va.tempCashBalance, 50e5, "Cash Balance");
-    // }
 }
