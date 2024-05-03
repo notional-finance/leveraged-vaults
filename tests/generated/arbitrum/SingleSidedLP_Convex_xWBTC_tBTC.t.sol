@@ -3,9 +3,9 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Curve_xWBTC_tBTC is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Convex_xWBTC_tBTC is BaseSingleSidedLPVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Curve_xWBTC_tBTC();
+        harness = new Harness_SingleSidedLP_Convex_xWBTC_tBTC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -18,28 +18,28 @@ contract Test_SingleSidedLP_Curve_xWBTC_tBTC is BaseSingleSidedLPVault {
     }
 }
 
-contract Harness_SingleSidedLP_Curve_xWBTC_tBTC is 
+contract Harness_SingleSidedLP_Convex_xWBTC_tBTC is 
 Curve2TokenConvexHarness
  {
     function getVaultName() public pure override returns (string memory) {
-        return 'SingleSidedLP:Curve:[WBTC]/tBTC';
+        return 'SingleSidedLP:Convex:[WBTC]/tBTC';
     }
 
     function getDeploymentConfig() public view override returns (
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
         params = getTestVaultConfig();
-        params.feeRate5BPS = 10;
-        params.liquidationRate = 102;
+        params.feeRate5BPS = 20;
+        params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 1000;
+        params.minCollateralRatioBPS = 500;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1700;
+        params.maxDeleverageCollateralRatioBPS = 800;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 0.01e8;
-        maxPrimaryBorrow = 100e8;
+        maxPrimaryBorrow = 0.1e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -81,7 +81,7 @@ Curve2TokenConvexHarness
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            oraclePriceDeviationLimitPercent: 150
         });
         _m.rewardPool = IERC20(0x6B7B84F6EC1c019aF08C7A2F34D3C10cCB8A8eA6);
 
@@ -99,9 +99,9 @@ Curve2TokenConvexHarness
     }
 }
 
-contract Deploy_SingleSidedLP_Curve_xWBTC_tBTC is Harness_SingleSidedLP_Curve_xWBTC_tBTC, DeployProxyVault {
+contract Deploy_SingleSidedLP_Convex_xWBTC_tBTC is Harness_SingleSidedLP_Convex_xWBTC_tBTC, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_SingleSidedLP_Curve_xWBTC_tBTC();
+        harness = new Harness_SingleSidedLP_Convex_xWBTC_tBTC();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {
