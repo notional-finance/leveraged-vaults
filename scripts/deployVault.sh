@@ -85,6 +85,10 @@ case "$PROTOCOL" in
         CONTRACT="BalancerComposableAuraVault"
         CONTRACT_PATH="vaults/balancer"
         ;;
+    "Curve")
+        CONTRACT="Curve2TokenVault"
+        CONTRACT_PATH="vaults/curve"
+        ;;
 esac
 
 CHAIN_ID=""
@@ -103,6 +107,7 @@ DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
 forge build --force
 FILE_NAME=SingleSidedLP_${PROTOCOL}_${POOL_NAME}
+# TODO: should be able to deploy and verify from inside this line
 forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
     -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
    --chain $CHAIN_ID --account $DEPLOYER -vvvv
