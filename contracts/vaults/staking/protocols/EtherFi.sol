@@ -66,10 +66,7 @@ library EtherFiLib {
     function _finalizeWithdrawImpl(
         uint256 requestId
     ) internal returns (uint256 tokensClaimed, bool finalized) {
-        finalized = (
-            WithdrawRequestNFT.isFinalized(requestId) &&
-            WithdrawRequestNFT.ownerOf(requestId) != address(0)
-        );
+        finalized = _canFinalizeWithdrawRequest(requestId);
 
         if (finalized) {
             uint256 balanceBefore = address(this).balance;
@@ -78,4 +75,10 @@ library EtherFiLib {
         }
     }
 
+    function _canFinalizeWithdrawRequest(uint256 requestId) internal view returns (bool) {
+        return (
+            WithdrawRequestNFT.isFinalized(requestId) &&
+            WithdrawRequestNFT.ownerOf(requestId) != address(0)
+        );
+    }
 }

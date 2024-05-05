@@ -42,16 +42,22 @@ contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 /* stakeAssetPrice */
+        WithdrawRequest memory w, uint256 stakeAssetPrice
     ) internal override view returns (uint256) {
-        // During a withdraw request, the asset held is the token we get out of the SY, not PT-weETH.
-        // Therefore, we need to pass the TOKEN_OUT_SY price here instead.
-        (int256 weETHPrice, /* int256 rateDecimals */) = TRADING_MODULE.getOraclePrice(
-            TOKEN_OUT_SY, BORROW_TOKEN
-        );
+        // TODO: the correct price here is the weETH amount held by the withdraw request
+        // but the vault share basis is in terms of PT. We need to figure out how much weETH is held
+        // in the withdraw requests instead....
+        // // During a withdraw request, the asset held is the token we get out of the SY, not PT-weETH.
+        // // Therefore, we need to pass the TOKEN_OUT_SY price here instead.
+        // (int256 weETHPrice, /* int256 rateDecimals */) = TRADING_MODULE.getOraclePrice(
+        //     TOKEN_OUT_SY, BORROW_TOKEN
+        // );
 
+        // return EtherFiLib._getValueOfWithdrawRequest(
+        //     w, weETHPrice.toUint(), BORROW_PRECISION, EXCHANGE_RATE_PRECISION
+        // );
         return EtherFiLib._getValueOfWithdrawRequest(
-            w, weETHPrice.toUint(), BORROW_PRECISION, EXCHANGE_RATE_PRECISION
+            w, stakeAssetPrice, BORROW_TOKEN, BORROW_PRECISION
         );
     }
 
@@ -66,5 +72,9 @@ contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
         address /* account */, uint256 requestId
     ) internal override returns (uint256 tokensClaimed, bool finalized) {
         return EtherFiLib._finalizeWithdrawImpl(requestId);
+    }
+
+    function canFinalizeWithdrawRequest(uint256 requestId) public override view returns (bool) {
+        return EtherFiLib._canFinalizeWithdrawRequest(requestId);
     }
 }

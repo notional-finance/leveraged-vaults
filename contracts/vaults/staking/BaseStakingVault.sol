@@ -94,10 +94,10 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     }
 
     /// @notice Converts vault shares into staking tokens
-    function getStakingTokensForVaultShare(uint256 vaultShares) public view returns (uint256) {
+    function getStakingTokensForVaultShare(uint256 vaultShares) public view virtual returns (uint256) {
         // NOTE: this calculation works as long as staking tokens do not rebase and we do not
         // do any reinvestment into the staking token.
-        return vaultShares * STAKING_PRECISION / Constants.INTERNAL_TOKEN_PRECISION;
+        return vaultShares * STAKING_PRECISION / uint256(Constants.INTERNAL_TOKEN_PRECISION);
     }
 
     /// @notice Required implementation to convert borrowed tokens into a staked token

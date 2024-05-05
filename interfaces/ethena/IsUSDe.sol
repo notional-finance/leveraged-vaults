@@ -10,7 +10,7 @@ interface IsUSDe is IERC4626, IERC20 {
         uint152 underlyingAmount;
     }
 
-    function cooldownDuration() external returns (uint24);
+    function cooldownDuration() external view returns (uint24);
     function cooldowns(address account) external view returns (UserCooldown memory);
     function cooldownShares(uint256 shares) external returns (uint256 assets);
     function unstake(address receiver) external;

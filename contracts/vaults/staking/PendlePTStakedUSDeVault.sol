@@ -56,4 +56,8 @@ contract PendlePTStakedUSDeVault is PendlePrincipalToken {
     ) internal override returns (uint256 tokensClaimed, bool finalized) {
         return EthenaLib._finalizeWithdrawImpl(requestId);
     }
+
+    function canFinalizeWithdrawRequest(uint256 requestId) public override view returns (bool) {
+        return EthenaLib._canFinalizeWithdrawRequest(requestId);
+    }
 }

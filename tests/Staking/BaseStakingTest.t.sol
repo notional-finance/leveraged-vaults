@@ -92,9 +92,10 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
     function checkInvariants() internal override {
         uint256 stakingTokens = IERC20(v().STAKING_TOKEN()).balanceOf(address(vault));
+        uint256 stakingPrecision = 10 ** IERC20(v().STAKING_TOKEN()).decimals();
         assertEq(
             totalVaultSharesAllMaturities,
-            stakingTokens * uint256(Constants.INTERNAL_TOKEN_PRECISION) / v().STAKING_PRECISION(),
+            stakingTokens * uint256(Constants.INTERNAL_TOKEN_PRECISION) / stakingPrecision,
             "Total Vault Shares"
         );
     }

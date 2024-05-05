@@ -25,7 +25,7 @@ contract EthenaStakingHarness is BaseStakingHarness {
     function deployVaultImplementation() public override returns (
         address impl, bytes memory _metadata
     ) {
-        impl = address(new EthenaVault());
+        impl = address(new EthenaVault(0xdAC17F958D2ee523a2206206994597C13D831ec7));
         _metadata = metadata;
     }
 

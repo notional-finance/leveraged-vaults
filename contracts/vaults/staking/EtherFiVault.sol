@@ -64,6 +64,10 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
         return EtherFiLib._finalizeWithdrawImpl(requestId);
     }
 
+    function canFinalizeWithdrawRequest(uint256 requestId) public override view returns (bool) {
+        return EtherFiLib._canFinalizeWithdrawRequest(requestId);
+    }
+
     function _checkReentrancyContext() internal override {
         // NO-OP
     }
