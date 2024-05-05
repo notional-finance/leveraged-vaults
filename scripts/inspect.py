@@ -34,8 +34,9 @@ def get_addresses():
         addresses = json.load(f)
 
     notional = Contract.from_abi("Notional", addresses["notional"], abi=interface.NotionalProxy.abi)
+    tradingModule = Contract.from_abi("TradingModule", addresses["tradingModule"], abi=interface.ITradingModule.abi)
 
-    return (addresses, notional, networkName)
+    return (addresses, notional, networkName, tradingModule)
 
 def main():
-    (addresses, notional, networkName) = get_addresses()
+    (addresses, notional, networkName, tradingModule) = get_addresses()
