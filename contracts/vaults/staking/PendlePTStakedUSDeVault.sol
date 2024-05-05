@@ -3,12 +3,9 @@ pragma solidity 0.8.24;
 
 import {Constants} from "@contracts/global/Constants.sol";
 import {Deployments} from "@deployments/Deployments.sol";
+import {PendlePrincipalToken, WithdrawRequest} from "./protocols/PendlePrincipalToken.sol";
 import {
-    PendlePrincipalToken,
-    WithdrawRequest
-} from "./protocols/PendlePrincipalToken.sol";
-import {
-    EthenaLib, EthenaCooldownHolder, sUSDe, USDe
+    EthenaLib, EthenaCooldownHolder, sUSDe, USDe, SplitWithdrawRequest
 } from "./protocols/Ethena.sol";
 
 contract PendlePTStakedUSDeVault is PendlePrincipalToken {
@@ -38,10 +35,23 @@ contract PendlePTStakedUSDeVault is PendlePrincipalToken {
         return bytes4(keccak256("Staking:PendlePT:sUSDe"));
     }
 
+    /// @notice Returns the value of a withdraw request in terms of the borrowed token
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 /* stakeAssetPrice */
+        WithdrawRequest memory w, uint256 /* */
     ) internal override view returns (uint256) {
         return EthenaLib._getValueOfWithdrawRequest(w, BORROW_TOKEN, BORROW_PRECISION);
+    }
+
+    function _getValueOfSplitWithdrawRequest(
+        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 /* */
+    ) internal override view returns (uint256) {
+        return EthenaLib._getValueOfSplitWithdrawRequest(w, s, BORROW_TOKEN, BORROW_PRECISION);
+    }
+
+    function _getValueOfSplitFinalizedWithdrawRequest(
+        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 /* */
+    ) internal override view returns (uint256) {
+        return EthenaLib._getValueOfSplitFinalizedWithdrawRequest(w, s, BORROW_TOKEN);
     }
 
     function _initiateWithdrawImpl(

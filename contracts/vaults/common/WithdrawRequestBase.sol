@@ -40,13 +40,6 @@ abstract contract WithdrawRequestBase {
         uint256 requestId
     ) internal virtual returns (uint256 tokensClaimed, bool finalized);
 
-    /// @notice Returns the value of a withdraw request in terms of the borrowed token. Used
-    /// to determine the collateral position of the vault.
-    function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w,
-        uint256 stakeAssetPrice
-    ) internal virtual view returns (uint256 borrowTokenValue);
-
     /// @notice Used to determine if a withdraw request can be finalized off chain
     function canFinalizeWithdrawRequest(uint256 requestId) public virtual view returns (bool);
 
@@ -65,6 +58,38 @@ abstract contract WithdrawRequestBase {
     ) {
         forcedWithdraw = VaultStorage.getForcedWithdrawRequest()[account];
         accountWithdraw = VaultStorage.getAccountWithdrawRequest()[account];
+    }
+
+    /// @notice Each of these methods represents one branch of the withdraw request valuation
+    // calculation
+    function _getValueOfSplitFinalizedWithdrawRequest(
+        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 stakeAssetPrice
+    ) internal virtual view returns (uint256);
+    function _getValueOfSplitWithdrawRequest(
+        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 stakeAssetPrice
+    ) internal virtual view returns (uint256);
+    function _getValueOfWithdrawRequest(
+        WithdrawRequest memory w, uint256 stakeAssetPrice
+    ) internal virtual view returns (uint256);
+
+    /// @notice Returns the value of a withdraw request in terms of the borrowed token. Used
+    /// to determine the collateral position of the vault.
+    function _calculateValueOfWithdrawRequest(
+        WithdrawRequest memory w,
+        uint256 stakeAssetPrice
+    ) internal view returns (uint256 borrowTokenValue) {
+        if (w.requestId == 0) return 0;
+
+        if (w.hasSplit) {
+            SplitWithdrawRequest memory s = VaultStorage.getSplitWithdrawRequest()[w.requestId];
+            if (s.finalized) {
+                return _getValueOfSplitFinalizedWithdrawRequest(w, s, stakeAssetPrice);
+            } else {
+                return _getValueOfSplitWithdrawRequest(w, s, stakeAssetPrice);
+            }
+        }
+
+        return _getValueOfWithdrawRequest(w, stakeAssetPrice);
     }
 
     /// @notice Initiates a withdraw request of the given vault shares

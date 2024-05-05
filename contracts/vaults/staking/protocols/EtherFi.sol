@@ -27,38 +27,31 @@ library EtherFiLib {
         return LiquidityPool.requestWithdraw(address(this), eETHReceived);
     }
 
+    function _getValueOfSplitFinalizedWithdrawRequest(
+        WithdrawRequest memory w,
+        SplitWithdrawRequest memory s,
+        address borrowToken
+    ) internal view returns (uint256) {
+        // If the request is finalized, then the vault is holding the ETH and totalWithdraw
+        // is stored in terms of ETH
+        if (borrowToken == Constants.ETH_ADDRESS) {
+            return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
+        } else {
+            // If not borrowing ETH, convert to the borrowed token
+            (int256 ethToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
+                Constants.ETH_ADDRESS, borrowToken
+            );
+
+            return (s.totalWithdraw * ethToBorrowRate.toUint() * w.vaultShares) / 
+                (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
+        }
+    }
+
     function _getValueOfWithdrawRequest(
         WithdrawRequest memory w,
         uint256 weETHPrice,
-        address borrowToken,
         uint256 borrowPrecision
-    ) internal view returns (uint256) {
-        if (w.requestId == 0) return 0;
-
-        if (w.hasSplit) {
-            SplitWithdrawRequest memory s = VaultStorage.getSplitWithdrawRequest()[w.requestId];
-            if (s.finalized) {
-                // If the request is finalized, then the vault is holding the ETH and totalWithdraw
-                // is stored in terms of ETH
-                if (borrowToken == Constants.ETH_ADDRESS) {
-                    return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
-                } else {
-                    // If not borrowing ETH, convert to the borrowed token
-                    (int256 ethToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
-                        Constants.ETH_ADDRESS, borrowToken
-                    );
-
-                    return (s.totalWithdraw * ethToBorrowRate.toUint() * w.vaultShares) / 
-                        (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
-                }
-            } else {
-                // In this case the vault shares are in terms of weETH, so convert this
-                // using the current market weETH price to the borrowed token.
-                return (w.vaultShares * weETHPrice * borrowPrecision) /
-                    (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
-            }
-        }
-
+    ) internal pure returns (uint256) {
         return (w.vaultShares * weETHPrice * borrowPrecision) /
             (uint256(Constants.INTERNAL_TOKEN_PRECISION) * Constants.EXCHANGE_RATE_PRECISION);
     }

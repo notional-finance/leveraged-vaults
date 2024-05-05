@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 import {Constants} from "@contracts/global/Constants.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {BaseStakingVault, RedeemParams} from "./BaseStakingVault.sol";
-import {WithdrawRequest} from "../common/WithdrawRequestBase.sol";
+import {WithdrawRequest, SplitWithdrawRequest} from "../common/WithdrawRequestBase.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {EtherFiLib, weETH, eETH, LiquidityPool} from "./protocols/EtherFi.sol";
 
@@ -54,10 +54,23 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w,
-        uint256 weETHPrice
+        WithdrawRequest memory w, uint256 weETHPrice
     ) internal override view returns (uint256) {
-        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_TOKEN, BORROW_PRECISION);
+        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_PRECISION);
+    }
+
+    /// @notice In a split request, the value is based on the w.vaultShares value so this method is the
+    /// same as _getValueOfWithdrawRequest
+    function _getValueOfSplitWithdrawRequest(
+        WithdrawRequest memory w, SplitWithdrawRequest memory, uint256 weETHPrice
+    ) internal override view returns (uint256) {
+        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_PRECISION);
+    }
+
+    function _getValueOfSplitFinalizedWithdrawRequest(
+        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256
+    ) internal override view returns (uint256) {
+        return EtherFiLib._getValueOfSplitFinalizedWithdrawRequest(w, s, BORROW_TOKEN);
     }
 
     function _finalizeWithdrawImpl( address /* */, uint256 requestId) internal override returns (uint256, bool) {

@@ -74,29 +74,42 @@ library EthenaLib {
 
     uint256 internal constant USDE_PRECISION = 1e18;
 
+    function _getValueOfSplitFinalizedWithdrawRequest(
+        WithdrawRequest memory w,
+        SplitWithdrawRequest memory s,
+        address borrowToken
+    ) internal view returns (uint256) {
+        // If borrowing USDe, then no exchange rate is required
+        if (borrowToken == address(USDe)) {
+            return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
+        } else {
+            // If not borrowing USDe, convert to the borrowed token
+            (int256 usdeToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
+                address(USDe), borrowToken
+            );
+
+            return (s.totalWithdraw * usdeToBorrowRate.toUint() * w.vaultShares) / 
+                (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
+        }
+    }
+
+    function _getValueOfSplitWithdrawRequest(
+        WithdrawRequest memory w,
+        SplitWithdrawRequest memory s,
+        address borrowToken,
+        uint256 borrowPrecision
+    ) internal view returns (uint256) {
+        // NOTE: since this value is not based on the vault shares, we have to scale
+        // the cooldown amount by the vault shares held in the withdraw request.
+        uint256 totalValue = _getValueOfWithdrawRequest(w, borrowToken, borrowPrecision);
+        return totalValue * w.vaultShares / s.totalVaultShares;
+    }
+
     function _getValueOfWithdrawRequest(
         WithdrawRequest memory w,
         address borrowToken,
         uint256 borrowPrecision
     ) internal view returns (uint256) {
-        if (w.requestId == 0) return 0;
-
-        (int256 _usdeToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
-            address(USDe), borrowToken
-        );
-        uint256 usdeToBorrowRate = _usdeToBorrowRate.toUint();
-
-        if (w.hasSplit) {
-            SplitWithdrawRequest memory s = VaultStorage.getSplitWithdrawRequest()[w.requestId];
-            if (s.finalized) {
-                uint256 usdeWithdrawn = (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
-
-                // Converts the total amount of USDe withdrawn to the borrowed token
-                return (usdeWithdrawn * usdeToBorrowRate * borrowPrecision) /
-                    (Constants.EXCHANGE_RATE_PRECISION * USDE_PRECISION);
-            }
-        }
-
         address holder = address(uint160(w.requestId));
         // This valuation is the amount of USDe the account will receive at cooldown, once
         // a cooldown is initiated the account is no longer receiving sUSDe yield. This balance
@@ -104,7 +117,17 @@ library EthenaLib {
         // cooldown has passed.
         IsUSDe.UserCooldown memory userCooldown = sUSDe.cooldowns(holder);
 
-        return (userCooldown.underlyingAmount * usdeToBorrowRate * borrowPrecision) /
+        int256 usdeToBorrowRate;
+        if (borrowToken == address(USDe)) {
+            usdeToBorrowRate = int256(Constants.EXCHANGE_RATE_PRECISION);
+        } else {
+            // If not borrowing USDe, convert to the borrowed token
+            (usdeToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
+                address(USDe), borrowToken
+            );
+        }
+
+        return (userCooldown.underlyingAmount * usdeToBorrowRate.toUint() * borrowPrecision) /
             (Constants.EXCHANGE_RATE_PRECISION * USDE_PRECISION);
     }
 

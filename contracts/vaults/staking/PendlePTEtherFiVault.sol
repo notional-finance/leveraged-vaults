@@ -8,7 +8,7 @@ import {
     PendlePrincipalToken,
     WithdrawRequest
 } from "./protocols/PendlePrincipalToken.sol";
-import {EtherFiLib, weETH} from "./protocols/EtherFi.sol";
+import {EtherFiLib, weETH, SplitWithdrawRequest} from "./protocols/EtherFi.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
@@ -42,23 +42,23 @@ contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 stakeAssetPrice
+        WithdrawRequest memory w, uint256 weETHPrice
     ) internal override view returns (uint256) {
-        // TODO: the correct price here is the weETH amount held by the withdraw request
-        // but the vault share basis is in terms of PT. We need to figure out how much weETH is held
-        // in the withdraw requests instead....
-        // // During a withdraw request, the asset held is the token we get out of the SY, not PT-weETH.
-        // // Therefore, we need to pass the TOKEN_OUT_SY price here instead.
-        // (int256 weETHPrice, /* int256 rateDecimals */) = TRADING_MODULE.getOraclePrice(
-        //     TOKEN_OUT_SY, BORROW_TOKEN
-        // );
+        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_PRECISION);
+    }
 
-        // return EtherFiLib._getValueOfWithdrawRequest(
-        //     w, weETHPrice.toUint(), BORROW_PRECISION, EXCHANGE_RATE_PRECISION
-        // );
-        return EtherFiLib._getValueOfWithdrawRequest(
-            w, stakeAssetPrice, BORROW_TOKEN, BORROW_PRECISION
-        );
+    /// @notice In a split request, the value is based on the w.vaultShares value so this method is the
+    /// same as _getValueOfWithdrawRequest
+    function _getValueOfSplitWithdrawRequest(
+        WithdrawRequest memory w, SplitWithdrawRequest memory, uint256 weETHPrice
+    ) internal override view returns (uint256) {
+        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_PRECISION);
+    }
+
+    function _getValueOfSplitFinalizedWithdrawRequest(
+        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256
+    ) internal override view returns (uint256) {
+        return EtherFiLib._getValueOfSplitFinalizedWithdrawRequest(w, s, BORROW_TOKEN);
     }
 
     function _initiateWithdrawImpl(

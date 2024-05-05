@@ -716,10 +716,20 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             withdrawLiquidationDiscount,
             BaseStakingHarness(address(harness)).withdrawToken(address(v()))
         );
+        int256 valueBefore = v().convertStrategyToUnderlying(account, vaultShares, maturity);
+        console.log("Vault Shares Before", vaultShares);
         address liquidator = _liquidateAccount(account);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
         (VaultAccount memory liquidatorAccount) = Deployments.NOTIONAL.getVaultAccount(liquidator, address(v()));
+        {
+            int256 valueAfter1 = v().convertStrategyToUnderlying(account, vaultAccount.vaultShares, maturity);
+            int256 valueAfter2 = v().convertStrategyToUnderlying(liquidator, liquidatorAccount.vaultShares, maturity);
+            console.log("account value", uint256(valueAfter1), vaultAccount.vaultShares);
+            console.log("liquidator value", uint256(valueAfter2), liquidatorAccount.vaultShares);
+            // Check no change to valuation post split request
+            assertApproxEqRel(valueBefore, valueAfter1 + valueAfter2, 0.0001e18, "Valuation Change");
+        }
 
         uint256 liquidatedAmount = vaultShares - vaultAccount.vaultShares;
         assertGt(liquidatedAmount, 0, "Liquidated amount should be larger than 0");
@@ -734,16 +744,16 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(f.vaultShares, vaultShares - vaultSharesForWithdraw, "5");
         assertEq(f.hasSplit, false, "6");
 
+        (SplitWithdrawRequest memory s) = v().getSplitWithdrawRequest(w.requestId);
+        assertEq(s.totalVaultShares, vaultSharesForWithdraw, "7");
+        assertEq(s.finalized, false, "8");
+
         (WithdrawRequest memory lf, WithdrawRequest memory lw) = v().getWithdrawRequests(liquidator);
 
         assertTrue(lw.requestId != 0, "11");
         assertEq(lw.vaultShares, liquidatedAmount, "22");
         assertEq(lw.hasSplit, true, "33");
         _assertWithdrawRequestIsEmpty(lf);
-
-        (SplitWithdrawRequest memory s) = v().getSplitWithdrawRequest(w.requestId);
-        assertEq(s.totalVaultShares, vaultSharesForWithdraw, "7");
-        assertEq(s.finalized, false, "8");
     }
 
     function test_deleverageAccount_splitForceWithdrawRequest(uint8 maturityIndex, uint256 withdrawPercent) public {
