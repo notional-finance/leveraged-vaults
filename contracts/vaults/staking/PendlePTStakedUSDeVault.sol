@@ -39,25 +39,14 @@ contract PendlePTStakedUSDeVault is PendlePrincipalToken {
     function _getValueOfWithdrawRequest(
         WithdrawRequest memory w, uint256 /* */
     ) internal override view returns (uint256) {
+        // NOTE: This withdraw valuation is not based on the vault shares value so we do not
+        // need to use the PendlePT metadata conversion.
         return EthenaLib._getValueOfWithdrawRequest(w, BORROW_TOKEN, BORROW_PRECISION);
     }
 
-    function _getValueOfSplitWithdrawRequest(
-        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 /* */
-    ) internal override view returns (uint256) {
-        return EthenaLib._getValueOfSplitWithdrawRequest(w, s, BORROW_TOKEN, BORROW_PRECISION);
-    }
-
-    function _getValueOfSplitFinalizedWithdrawRequest(
-        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 /* */
-    ) internal override view returns (uint256) {
-        return EthenaLib._getValueOfSplitFinalizedWithdrawRequest(w, s, BORROW_TOKEN);
-    }
-
-    function _initiateWithdrawImpl(
-        address /* account */, uint256 vaultSharesToRedeem, bool /* isForced */
+    function _initiateSYWithdraw(
+        address /* account */, uint256 sUSDeOut, bool /* isForced */
     ) internal override returns (uint256 requestId) {
-        uint256 sUSDeOut = _redeemPT(vaultSharesToRedeem);
         return EthenaLib._initiateWithdrawImpl(sUSDeOut, HOLDER_IMPLEMENTATION);
     }
 

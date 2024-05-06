@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
+import {Constants} from "@contracts/global/Constants.sol";
+import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {VaultStorage, WithdrawRequest, SplitWithdrawRequest} from "./VaultStorage.sol";
 
@@ -15,6 +17,8 @@ import {VaultStorage, WithdrawRequest, SplitWithdrawRequest} from "./VaultStorag
  * request can be liquidated.
  */
 abstract contract WithdrawRequestBase {
+    using TypeConvert for int256;
+
     event InitiateWithdrawRequest(
         address indexed account,
         bool indexed isForced,
@@ -60,30 +64,52 @@ abstract contract WithdrawRequestBase {
         accountWithdraw = VaultStorage.getAccountWithdrawRequest()[account];
     }
 
-    /// @notice Each of these methods represents one branch of the withdraw request valuation
-    // calculation
-    function _getValueOfSplitFinalizedWithdrawRequest(
-        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 stakeAssetPrice
-    ) internal virtual view returns (uint256);
-    function _getValueOfSplitWithdrawRequest(
-        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 stakeAssetPrice
-    ) internal virtual view returns (uint256);
     function _getValueOfWithdrawRequest(
         WithdrawRequest memory w, uint256 stakeAssetPrice
     ) internal virtual view returns (uint256);
+
+    function _getValueOfSplitFinalizedWithdrawRequest(
+        WithdrawRequest memory w,
+        SplitWithdrawRequest memory s,
+        address borrowToken,
+        address redeemToken
+    ) internal virtual view returns (uint256) {
+        // If the borrow token and the withdraw token match, then there is no need to apply
+        // an exchange rate at this point.
+        if (borrowToken == redeemToken) {
+            return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
+        } else {
+            // Otherwise, apply the proper exchange rate
+            (int256 rate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(redeemToken, borrowToken);
+
+            return (s.totalWithdraw * rate.toUint() * w.vaultShares) / 
+                (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
+        }
+    }
+
+    /// @notice By default when valuing a split withdraw request, it is a share of the total
+    /// value of the withdraw request based on vault shares.
+    function _getValueOfSplitWithdrawRequest(
+        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 stakeAssetPrice
+    ) internal virtual view returns (uint256) {
+        uint256 totalValue = _getValueOfWithdrawRequest(w, stakeAssetPrice);
+        return w.vaultShares * totalValue / s.totalVaultShares;
+    }
 
     /// @notice Returns the value of a withdraw request in terms of the borrowed token. Used
     /// to determine the collateral position of the vault.
     function _calculateValueOfWithdrawRequest(
         WithdrawRequest memory w,
-        uint256 stakeAssetPrice
+        uint256 stakeAssetPrice,
+        address borrowToken,
+        address redeemToken
     ) internal view returns (uint256 borrowTokenValue) {
         if (w.requestId == 0) return 0;
 
         if (w.hasSplit) {
             SplitWithdrawRequest memory s = VaultStorage.getSplitWithdrawRequest()[w.requestId];
             if (s.finalized) {
-                return _getValueOfSplitFinalizedWithdrawRequest(w, s, stakeAssetPrice);
+                return _getValueOfSplitFinalizedWithdrawRequest(w, s, borrowToken, redeemToken);
             } else {
                 return _getValueOfSplitWithdrawRequest(w, s, stakeAssetPrice);
             }

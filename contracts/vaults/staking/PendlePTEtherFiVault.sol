@@ -14,6 +14,8 @@ import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Recei
 contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
     using TypeConvert for int256;
 
+    uint256 internal constant WETH_PRECISION = 1e18;
+
     constructor(
         address marketAddress,
         address ptAddress
@@ -42,29 +44,18 @@ contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 weETHPrice
+        WithdrawRequest memory w, uint256 /* */
     ) internal override view returns (uint256) {
-        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_PRECISION);
+        uint256 tokenOutSY = getTokenOutSYForWithdrawRequest(w.requestId);
+        // NOTE: in this vault the tokenOutSy is known to be weETH.
+        (int256 weETHPrice, /* */) = TRADING_MODULE.getOraclePrice(TOKEN_OUT_SY, BORROW_TOKEN);
+        return (tokenOutSY * weETHPrice.toUint() * BORROW_PRECISION) /
+            (WETH_PRECISION * Constants.EXCHANGE_RATE_PRECISION);
     }
 
-    /// @notice In a split request, the value is based on the w.vaultShares value so this method is the
-    /// same as _getValueOfWithdrawRequest
-    function _getValueOfSplitWithdrawRequest(
-        WithdrawRequest memory w, SplitWithdrawRequest memory, uint256 weETHPrice
-    ) internal override view returns (uint256) {
-        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_PRECISION);
-    }
-
-    function _getValueOfSplitFinalizedWithdrawRequest(
-        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256
-    ) internal override view returns (uint256) {
-        return EtherFiLib._getValueOfSplitFinalizedWithdrawRequest(w, s, BORROW_TOKEN);
-    }
-
-    function _initiateWithdrawImpl(
-        address /* account */, uint256 vaultSharesToRedeem, bool /* isForced */
+    function _initiateSYWithdraw(
+        address /* account */, uint256 weETHOut, bool /* isForced */
     ) internal override returns (uint256 requestId) {
-        uint256 weETHOut = _redeemPT(vaultSharesToRedeem);
         return EtherFiLib._initiateWithdrawImpl(weETHOut);
     }
 

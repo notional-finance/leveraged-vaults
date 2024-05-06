@@ -27,6 +27,7 @@ contract PendlePTOracle is AggregatorV2V3Interface {
     int256 public immutable ptDecimals;
     bool public immutable invertBase;
     AggregatorV2V3Interface public immutable sequencerUptimeOracle;
+    uint256 public immutable expiry;
 
     constructor (
         address pendleMarket_,
@@ -62,6 +63,8 @@ contract PendlePTOracle is AggregatorV2V3Interface {
             bool oldestObservationSatisfied
         ) = ORACLE.getOracleState(pendleMarket, twapDuration);
         require(!increaseCardinalityRequired && oldestObservationSatisfied, "Oracle Init");
+
+        expiry = IPMarket(pendleMarket).expiry();
     }
 
     function _checkSequencer() private view {
@@ -107,7 +110,9 @@ contract PendlePTOracle is AggregatorV2V3Interface {
         // Overflow and div by zero not possible
         if (invertBase) baseToUSD = (baseToUSDDecimals * baseToUSDDecimals) / baseToUSD;
 
-        int256 ptRate = _getPTRate();
+        // Past expiration, hardcode the PT oracle price to 1. It is no longer tradable and
+        // is worth 1 unit of the underlying SY at expiration.
+        int256 ptRate = expiry <= block.timestamp ? ptDecimals : _getPTRate();
 
         answer = (ptRate * baseToUSD * rateDecimals) /
             (baseToUSDDecimals * ptDecimals);

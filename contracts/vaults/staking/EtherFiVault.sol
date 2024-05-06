@@ -60,17 +60,11 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
     }
 
     /// @notice In a split request, the value is based on the w.vaultShares value so this method is the
-    /// same as _getValueOfWithdrawRequest
+    /// same as _getValueOfWithdrawRequest. w.vaultShares is updated when the withdraw request is split
     function _getValueOfSplitWithdrawRequest(
-        WithdrawRequest memory w, SplitWithdrawRequest memory, uint256 weETHPrice
+         WithdrawRequest memory w, SplitWithdrawRequest memory /* s */, uint256 weETHPrice
     ) internal override view returns (uint256) {
         return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_PRECISION);
-    }
-
-    function _getValueOfSplitFinalizedWithdrawRequest(
-        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256
-    ) internal override view returns (uint256) {
-        return EtherFiLib._getValueOfSplitFinalizedWithdrawRequest(w, s, BORROW_TOKEN);
     }
 
     function _finalizeWithdrawImpl( address /* */, uint256 requestId) internal override returns (uint256, bool) {

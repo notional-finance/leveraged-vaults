@@ -77,8 +77,12 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
             WithdrawRequest memory f,
             WithdrawRequest memory w
         ) = getWithdrawRequests(account);
-        uint256 withdrawValue = _calculateValueOfWithdrawRequest(w, stakeAssetPrice);
-        uint256 forcedValue = _calculateValueOfWithdrawRequest(f, stakeAssetPrice);
+        uint256 withdrawValue = _calculateValueOfWithdrawRequest(
+            w, stakeAssetPrice, BORROW_TOKEN, REDEMPTION_TOKEN
+        );
+        uint256 forcedValue = _calculateValueOfWithdrawRequest(
+            f, stakeAssetPrice, BORROW_TOKEN, REDEMPTION_TOKEN
+        );
         uint256 vaultSharesNotInWithdrawQueue = (
             vaultShares - w.vaultShares - f.vaultShares
         );

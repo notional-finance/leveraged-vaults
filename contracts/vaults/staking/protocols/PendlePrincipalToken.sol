@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Constants} from "@contracts/global/Constants.sol";
+import {VaultStorage} from "@contracts/vaults/common/VaultStorage.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {BaseStakingVault, WithdrawRequest, RedeemParams} from "../BaseStakingVault.sol";
@@ -162,6 +163,27 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         } else {
             borrowedCurrencyAmount = netTokenOut;
         }
+    }
+
+    function _initiateSYWithdraw(
+        address account, uint256 vaultSharesToRedeem, bool isForced
+    ) internal virtual returns (uint256 requestId);
+
+    function _initiateWithdrawImpl(
+        address account, uint256 vaultSharesToRedeem, bool isForced
+    ) internal override returns (uint256 requestId) {
+        // When doing a direct withdraw for PTs, we first redeem or trade out of the PT
+        // and then initiate a withdraw on the TOKEN_OUT_SY. Since the vault shares are
+        // stored in PT terms, we pass tokenOutSy terms (i.e. weETH or sUSDe) to the withdraw
+        // implementation.
+        uint256 tokenOutSy = _redeemPT(vaultSharesToRedeem);
+        requestId = _initiateSYWithdraw(account, tokenOutSy, isForced);
+        // Store the tokenOutSy here for later when we do a valuation check against the position
+        VaultStorage.getWithdrawRequestData()[requestId] = abi.encode(tokenOutSy);
+    }
+
+    function getTokenOutSYForWithdrawRequest(uint256 requestId) public view returns (uint256) {
+        return abi.decode(VaultStorage.getWithdrawRequestData()[requestId], (uint256));
     }
 
     function _checkReentrancyContext() internal override {

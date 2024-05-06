@@ -27,26 +27,6 @@ library EtherFiLib {
         return LiquidityPool.requestWithdraw(address(this), eETHReceived);
     }
 
-    function _getValueOfSplitFinalizedWithdrawRequest(
-        WithdrawRequest memory w,
-        SplitWithdrawRequest memory s,
-        address borrowToken
-    ) internal view returns (uint256) {
-        // If the request is finalized, then the vault is holding the ETH and totalWithdraw
-        // is stored in terms of ETH
-        if (borrowToken == Constants.ETH_ADDRESS) {
-            return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
-        } else {
-            // If not borrowing ETH, convert to the borrowed token
-            (int256 ethToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
-                Constants.ETH_ADDRESS, borrowToken
-            );
-
-            return (s.totalWithdraw * ethToBorrowRate.toUint() * w.vaultShares) / 
-                (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION);
-        }
-    }
-
     function _getValueOfWithdrawRequest(
         WithdrawRequest memory w,
         uint256 weETHPrice,
