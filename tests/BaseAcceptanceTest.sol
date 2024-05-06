@@ -355,25 +355,6 @@ abstract contract BaseAcceptanceTest is Test {
         bytes memory data,
         bytes memory error
     ) internal virtual returns (uint256 totalToReceiver) {
-        return _exitVault(account, vaultShares, maturity, data, true, error);
-    }
-
-    function exitVault(
-        address account,
-        uint256 vaultShares,
-        uint256 maturity,
-        bytes memory data
-    ) internal virtual returns (uint256 totalToReceiver) {
-        return _exitVault(account, vaultShares, maturity, data, false, "");
-    }
-    function _exitVault(
-        address account,
-        uint256 vaultShares,
-        uint256 maturity,
-        bytes memory data,
-        bool expectRevert,
-        bytes memory error
-    ) private returns (uint256 totalToReceiver) {
         uint256 lendAmount;
         if (maturity == type(uint40).max) {
           lendAmount = type(uint256).max;
@@ -382,6 +363,45 @@ abstract contract BaseAcceptanceTest is Test {
             Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
           );
         }
+        return _exitVault(account, vaultShares, maturity, lendAmount, data, true, error);
+    }
+
+    function exitVault(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        bytes memory data
+    ) internal virtual returns (uint256 totalToReceiver) {
+        uint256 lendAmount;
+        if (maturity == type(uint40).max) {
+          lendAmount = type(uint256).max;
+        } else {
+          lendAmount = uint256(
+            Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
+          );
+        }
+        return _exitVault(account, vaultShares, maturity, lendAmount, data, false, "");
+    }
+
+    function exitVault(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        uint256 lendAmount,
+        bytes memory data
+    ) internal virtual returns (uint256 totalToReceiver) {
+        return _exitVault(account, vaultShares, maturity, lendAmount, data, false, "");
+    }
+
+    function _exitVault(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        uint256 lendAmount,
+        bytes memory data,
+        bool expectRevert,
+        bytes memory error
+    ) private returns (uint256 totalToReceiver) {
         if (expectRevert) vm.expectRevert(error);
         vm.prank(account);
         totalToReceiver = Deployments.NOTIONAL.exitVault(
@@ -393,8 +413,10 @@ abstract contract BaseAcceptanceTest is Test {
           0,
           data
         );
-        totalVaultShares[maturity] -= vaultShares;
-        totalVaultSharesAllMaturities -= vaultShares;
+        if (!expectRevert) {
+            totalVaultShares[maturity] -= vaultShares;
+            totalVaultSharesAllMaturities -= vaultShares;
+        }
     }
 
     function test_EnterVault(uint256 maturityIndex, uint256 depositAmount) public {

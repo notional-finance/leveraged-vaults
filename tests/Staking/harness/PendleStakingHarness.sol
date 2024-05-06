@@ -8,8 +8,8 @@ import "@contracts/vaults/staking/PendlePTEtherFiVault.sol";
 import "@contracts/vaults/staking/BaseStakingVault.sol";
 
 abstract contract PendleStakingHarness is BaseStakingHarness {
-    address marketAddress;
-    address ptAddress;
+    address public marketAddress;
+    address public ptAddress;
     uint32 twapDuration;
     bool useSyOracleRate;
     address ptOracle;

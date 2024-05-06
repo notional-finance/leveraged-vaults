@@ -5,12 +5,15 @@ import "../../Staking/harness/index.sol";
 import {WithdrawRequestNFT} from "@contracts/vaults/staking/protocols/EtherFi.sol";
 import {
     PendleDepositParams,
-    IPRouter
+    IPRouter,
+    IPMarket
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
+    uint256 expires;
+
     function setUp() public override {
         harness = new Harness_Staking_PendlePT_EtherFi();
 
@@ -27,6 +30,7 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
         withdrawLiquidationDiscount = 945;
 
         super.setUp();
+        expires = IPMarket(PendleStakingHarness(address(harness)).marketAddress()).expiry();
     }
 
     function finalizeWithdrawRequest(address account) internal override {
@@ -38,8 +42,8 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
     }
 
     function getDepositParams(
-        uint256 depositAmount,
-        uint256 maturity
+        uint256 /* depositAmount */,
+        uint256 /* maturity */
     ) internal pure override returns (bytes memory) {
         PendleDepositParams memory d = PendleDepositParams({
             // No initial trading required for this vault
@@ -59,7 +63,144 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
         return abi.encode(d);
     }
 
-    // TODO: need to test exit after expiration
+    function test_RevertIf_accountEntry_postExpiry(uint8 maturityIndex) public {
+        vm.warp(expires);
+        address account = makeAddr("account");
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        uint256 maturity = maturities[maturityIndex];
+        
+        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        if (maturity > block.timestamp) {
+            expectRevert_enterVault(
+                account, minDeposit, maturity, getDepositParams(minDeposit, maturity), "Expired"
+            );
+        }
+    }
+
+    function test_exitVault_postExpiry(uint8 maturityIndex, uint256 depositAmount) public {
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        vm.warp(expires + 3600);
+        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        if (maturity < block.timestamp) {
+            // Push the vault shares to prime
+            totalVaultShares[maturity] -= vaultShares;
+            maturity = maturities[0];
+            totalVaultShares[maturity] += vaultShares;
+        }
+
+        uint256 underlyingToReceiver = exitVault(
+            account,
+            vaultShares,
+            maturity < block.timestamp ? maturities[0] : maturity,
+            getRedeemParams(depositAmount, maturity)
+        );
+
+        assertRelDiff(
+            uint256(depositAmount),
+            underlyingToReceiver,
+            maxRelExitValuation,
+            "Valuation and Deposit"
+        );
+    }
+
+    function test_exitVault_useWithdrawRequest_postExpiry(
+        uint8 maturityIndex, uint256 depositAmount, bool useForce
+    ) public {
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        vm.warp(expires + 3600);
+        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        if (maturity < block.timestamp) {
+            // Push the vault shares to prime
+            totalVaultShares[maturity] -= vaultShares;
+            maturity = maturities[0];
+            totalVaultShares[maturity] += vaultShares;
+        }
+
+        if (useForce) {
+            _forceWithdraw(account);
+        } else {
+            vm.prank(account);
+            v().initiateWithdraw(vaultShares);
+        }
+        finalizeWithdrawRequest(account);
+
+        uint256 underlyingToReceiver = exitVault(
+            account, vaultShares, maturity, getRedeemParams(true)
+        );
+
+        assertRelDiff(
+            uint256(depositAmount),
+            underlyingToReceiver,
+            maxRelExitValuation,
+            "Valuation and Deposit"
+        );
+    }
+
+    function test_exitVault_hasWithdrawRequest_tradeShares_postExpiry(
+        uint8 maturityIndex, uint256 depositAmount
+    ) public {
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        setMaxOracleFreshness();
+        vm.warp(expires + 3600);
+        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        if (maturity < block.timestamp) {
+            // Push the vault shares to prime
+            totalVaultShares[maturity] -= vaultShares;
+            maturity = maturities[0];
+            totalVaultShares[maturity] += vaultShares;
+        }
+
+        vm.prank(account);
+        v().initiateWithdraw(vaultShares / 2);
+
+        expectRevert_exitVault(
+            account, vaultShares, maturity, getRedeemParams(depositAmount, maturity),
+            "Insufficient Shares"
+        );
+
+        uint256 lendAmount = uint256(
+            Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
+        ) * 40 / 100;
+
+        uint256 underlyingToReceiver = exitVault(
+            account,
+            vaultShares / 2, // Exits the other half of the shares
+            maturity,
+            lendAmount,
+            getRedeemParams(depositAmount, maturity)
+        );
+
+        assertRelDiff(
+            uint256(depositAmount),
+            underlyingToReceiver,
+            maxRelExitValuation,
+            "Valuation and Deposit"
+        );
+    }
 }
 
 contract Harness_Staking_PendlePT_EtherFi is PendleStakingHarness {
