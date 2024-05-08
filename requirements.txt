@@ -1,3 +1,5 @@
-eth-brownie>=1.20.1
+# NOTE: need to patch line 485 of brownie/project/compiler/solidity.py
+# add `and len(values) > 0` to the end of the if statement
+eth-brownie==1.20.4
 jinja2>=3.1.3
 pyyaml>=6.0.1

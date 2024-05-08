@@ -581,8 +581,8 @@ mainnet:
       liquidationRate: 103
       reserveFeeShare: 80
       maxBorrowMarketIndex: 2
-      minCollateralRatioBPS: 500
+      minCollateralRatioBPS: 1_500
       maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 800
+      maxDeleverageCollateralRatioBPS: 3_300
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 5000e8
