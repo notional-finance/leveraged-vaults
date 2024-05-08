@@ -52,7 +52,7 @@ Curve2TokenHarness
 
         // USDe
         token[0] = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
-        oracle[0] = 0xbC5FBcf58CeAEa19D523aBc76515b9AEFb5cfd58;
+        oracle[0] = 0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961;
         // USDC
         token[1] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
         oracle[1] = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
@@ -71,6 +71,7 @@ Curve2TokenHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0xD6AA58cf21A0EDB33375D6c0434b8Bb5b589F021;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({

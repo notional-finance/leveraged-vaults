@@ -33,9 +33,9 @@ Curve2TokenConvexHarness
         params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 500;
+        params.minCollateralRatioBPS = 1300;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 800;
+        params.maxDeleverageCollateralRatioBPS = 2300;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 0.01e8;
@@ -75,6 +75,7 @@ Curve2TokenConvexHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0xF95441f348eb2fd3D5D82f9B7B961137a734eEdD;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 4;
         _m.settings = StrategyVaultSettings({
