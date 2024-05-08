@@ -53,7 +53,7 @@ def get_addresses():
 
 # Are liquidations failing? Check these things:
 # Datadog Dashboard: https://app.datadoghq.com/dashboard/4kr-s7n-9nv/v3-risk-monitoring
-#  1. Are there sufficient funds on the relayer?
+#  1. Are there sufficient funds on the relayer? (0x745915418D8B70f39ce9e61A965cBB0C87f9f7Ed)
 #  2. Are any of the liquidator addresses above holding a position in the vault?
 #  3. Do you need to increase the gas limit?
 
@@ -73,7 +73,8 @@ def main():
     # accounts.load("<YOUR_WALLET_NAME>")
 
     # Choose a liquidator (any one will do) and decode the inputs:
-    # liquidators[0].decode_input("<CALLDATA_FROM_BATCHES>")
+    # liquidators[0].decode_input("<CALLDATA_FROM_BATCHES>")[1]
+    # Make sure you extract the array from the output and put quotes around the byte string
 
     # Copy these args and execute:
     # liquidators[0].flashLiquidate(<ARGS_FROM_OUTPUT>)
