@@ -53,7 +53,7 @@ def get_addresses():
 
 # Are liquidations failing? Check these things:
 # Datadog Dashboard: https://app.datadoghq.com/dashboard/4kr-s7n-9nv/v3-risk-monitoring
-#  1. Are there sufficient funds on the relayer? (0x745915418D8B70f39ce9e61A965cBB0C87f9f7Ed)
+#  1. Are there sufficient funds on the relayer? (https://etherscan.io/address/0xbcf0fa01ab57c6e8ab322518ad1b4b86778f08e1)
 #  2. Are any of the liquidator addresses above holding a position in the vault?
 #  3. Do you need to increase the gas limit?
 
