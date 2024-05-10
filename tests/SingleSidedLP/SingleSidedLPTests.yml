@@ -286,8 +286,8 @@ arbitrum:
       minCollateralRatioBPS: 1_300
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 2_300
-      minAccountBorrowSize: 0.01e8
-      maxPrimaryBorrow: 0.1e8
+      minAccountBorrowSize: 0.05e8
+      maxPrimaryBorrow: 6e8
 mainnet:
   - vaultName: SingleSidedLP:Convex:[USDT]/crvUSD
     vaultType: Curve2TokenConvex
@@ -584,5 +584,5 @@ mainnet:
       minCollateralRatioBPS: 1_500
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 3_300
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5000e8
+      minAccountBorrowSize: 60_000e8
+      maxPrimaryBorrow: 2_000_000e8
