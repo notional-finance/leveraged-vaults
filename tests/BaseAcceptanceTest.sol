@@ -9,7 +9,7 @@ import "@interfaces/notional/NotionalProxy.sol";
 import "@interfaces/notional/IStrategyVault.sol";
 import "@interfaces/trading/ITradingModule.sol";
 import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
-import "@contracts/liquidator/AaveFlashLiquidator.sol";
+import "@contracts/liquidator/FlashLiquidator.sol";
 import "@contracts/global/Constants.sol";
 import "@contracts/trading/TradingModule.sol";
 
@@ -50,7 +50,8 @@ abstract contract BaseAcceptanceTest is Test {
     // Used for transferring tokens when `deal` does not work, like for USDC.
     address WHALE;
 
-    AaveFlashLiquidator liquidator;
+    address nonDefaultFlashLender;
+    FlashLiquidator liquidator;
 
     function setUp() public virtual {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
@@ -91,7 +92,7 @@ abstract contract BaseAcceptanceTest is Test {
         }
         vm.stopPrank();
 
-        liquidator = new AaveFlashLiquidator();
+        liquidator = new FlashLiquidator();
     }
 
     function assertAbsDiff(uint256 a, uint256 b, uint256 diff, string memory m) internal {
@@ -406,7 +407,7 @@ abstract contract BaseAcceptanceTest is Test {
     /**** Liquidation Tests *****/
 
     function getLiquidationParams(address account) internal returns (
-        FlashLiquidatorBase.LiquidationParams memory params,
+        FlashLiquidator.LiquidationParams memory params,
         address asset,
         int256 maxUnderlying
     ) {
@@ -424,8 +425,8 @@ abstract contract BaseAcceptanceTest is Test {
         bytes memory redeem = getRedeemParams(vaultSharesToLiquidator[0], va.maturity);
         address[] memory accounts = new address[](1);
         accounts[0] = account;
-        params = FlashLiquidatorBase.LiquidationParams({
-            liquidationType: FlashLiquidatorBase.LiquidationType.DELEVERAGE_VAULT_ACCOUNT,
+        params = FlashLiquidator.LiquidationParams({
+            liquidationType: FlashLiquidator.LiquidationType.DELEVERAGE_VAULT_ACCOUNT,
             currencyId: config.borrowCurrencyId,
             currencyIndex: 0,
             accounts: accounts,
@@ -495,14 +496,14 @@ abstract contract BaseAcceptanceTest is Test {
 
         _enterVaultLiquidation(account, maturity);
         (
-            FlashLiquidatorBase.LiquidationParams memory params,
+            FlashLiquidator.LiquidationParams memory params,
             address asset,
             int256 maxUnderlying
         ) = getLiquidationParams(account);
         assertEq(maxUnderlying, 0, "Under Collateralized");
 
         vm.expectRevert();
-        liquidator.flashLiquidate(
+        _flashLiquidate(
             asset,
             // This number does not really matter
             uint256(100e8) * precision / 1e8 + roundingPrecision,
@@ -526,7 +527,7 @@ abstract contract BaseAcceptanceTest is Test {
 
         _changeCollateralRatio();
         (
-            FlashLiquidatorBase.LiquidationParams memory params,
+            FlashLiquidator.LiquidationParams memory params,
             address asset,
             int256 maxUnderlying1
         ) = getLiquidationParams(accounts[0]);
@@ -535,7 +536,7 @@ abstract contract BaseAcceptanceTest is Test {
         params.accounts = accounts;
         uint256 totalFlash = uint256(maxUnderlying1 + maxUnderlying2 + maxUnderlying3);
 
-        liquidator.flashLiquidate(
+        _flashLiquidate(
             asset,
             totalFlash * precision / 1e8 + roundingPrecision,
             params
@@ -561,13 +562,13 @@ abstract contract BaseAcceptanceTest is Test {
         _changeCollateralRatio();
 
         (
-            FlashLiquidatorBase.LiquidationParams memory params,
+            FlashLiquidator.LiquidationParams memory params,
             address asset,
             int256 maxUnderlying
         ) = getLiquidationParams(account);
         assertGt(maxUnderlying, 0, "Not Under Collateralized");
 
-        liquidator.flashLiquidate(
+        _flashLiquidate(
             asset,
             uint256(maxUnderlying) * precision / 1e8 + roundingPrecision,
             params
@@ -587,13 +588,13 @@ abstract contract BaseAcceptanceTest is Test {
 
         if (va.tempCashBalance > 50e5) {
             va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
-            params.liquidationType = FlashLiquidatorBase.LiquidationType.LIQUIDATE_CASH_BALANCE;
+            params.liquidationType = FlashLiquidator.LiquidationType.LIQUIDATE_CASH_BALANCE;
             params.redeemData = "";
 
             (int256 fCashDeposit, /* */) = Deployments.NOTIONAL.getfCashRequiredToLiquidateCash(
                 params.currencyId, va.maturity, va.tempCashBalance
             );
-            liquidator.flashLiquidate(
+            _flashLiquidate(
                 asset,
                 uint256(fCashDeposit) * precision / 1e8 + roundingPrecision,
                 params
@@ -603,6 +604,15 @@ abstract contract BaseAcceptanceTest is Test {
             assertGt(vaAfter.accountDebtUnderlying, va.accountDebtUnderlying, "Debt Decrease");
             assertLt(va.tempCashBalance, 50e5, "Cash Balance");
         }
+    }
+
+    function _flashLiquidate(address asset, uint256 amount, FlashLiquidator.LiquidationParams memory params) private {
+        liquidator.flashLiquidate(
+            nonDefaultFlashLender == address(0) ? Deployments.FLASH_LENDER_AAVE : nonDefaultFlashLender,
+            asset,
+            amount,
+            params
+        );
     }
 
     function test_deleverageVariableBorrow_accruedFees() public {
@@ -617,13 +627,13 @@ abstract contract BaseAcceptanceTest is Test {
         skip(30 days);
         _setOracleFreshness(type(uint32).max);
         (
-            FlashLiquidatorBase.LiquidationParams memory params,
+            FlashLiquidator.LiquidationParams memory params,
             address asset,
             int256 maxUnderlying
         ) = getLiquidationParams(account);
         assertGt(maxUnderlying, 0, "Not Under Collateralized");
 
-        liquidator.flashLiquidate(
+        _flashLiquidate(
             asset,
             uint256(maxUnderlying) * precision / 1e8 + roundingPrecision,
             params

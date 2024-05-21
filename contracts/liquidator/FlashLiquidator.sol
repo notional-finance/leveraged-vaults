@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
+import {console2} from "forge-std/console2.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {IStrategyVault} from "@interfaces/notional/IStrategyVault.sol";
+import {IERC7399} from "@interfaces/IERC7399.sol";
 import {WETH9} from "@interfaces/WETH9.sol";
 import {TokenUtils, IERC20} from "@contracts/utils/TokenUtils.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {
-    Token, 
-    VaultAccount, 
+    Token,
+    VaultAccount,
     BatchLend,
     BalanceActionWithTrades,
     TradeActionType,
@@ -18,14 +20,13 @@ import {
 import {BoringOwnable} from "./BoringOwnable.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 
-abstract contract FlashLiquidatorBase is BoringOwnable {
+contract FlashLiquidator is BoringOwnable {
     using TokenUtils for IERC20;
     uint16 internal constant ONLY_VAULT_DELEVERAGE           = 1 << 5;
 
     uint256 internal constant MAX_CURRENCIES = 3;
 
     NotionalProxy public immutable NOTIONAL;
-    address public immutable FLASH_LENDER;
 
     enum LiquidationType {
         UNKNOWN,
@@ -45,21 +46,32 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
 
     error ErrInvalidCurrencyIndex(uint16 index);
 
-    constructor(NotionalProxy notional_, address flashLender_) {
+    constructor() {
         // Make sure we are using the correct Deployments lib
         uint256 chainId;
         assembly { chainId := chainid() }
         require(Deployments.CHAIN_ID == chainId);
 
-        NOTIONAL = notional_;
-        FLASH_LENDER = flashLender_;
+        NOTIONAL = Deployments.NOTIONAL;
         owner = msg.sender;
-        uint16 maxCurrencyId = notional_.getMaxCurrencyId();
+        uint16 maxCurrencyId = Deployments.NOTIONAL.getMaxCurrencyId();
         uint16[] memory currencies = new uint16[](maxCurrencyId);
         for (uint16 i = 1; i <= maxCurrencyId; i++) currencies[i - 1] = i;
         enableCurrencies(currencies);
 
         emit OwnershipTransferred(address(0), owner);
+    }
+
+    function callback(
+        address /* initiator */,
+        address paymentReceiver,
+        address /* asset */,
+        uint256 /* amount */,
+        uint256 fee,
+        bytes calldata data
+    ) external returns (bytes memory) {
+        handleLiquidation(fee, paymentReceiver, data);
+        return abi.encode("hello");
     }
 
     /// @notice Used for profit estimation off chain
@@ -93,18 +105,33 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         _flashLiquidate(asset, amount, true, params);
     }
 
-    /// @notice Internal implementation that calls the flash lender in order to receive
-    /// a callback on this liquidator in the `handleLiquidation` method.
-    function _flashLiquidate(
+    function flashLiquidate(
+        address flashLenderWrapper,
         address asset,
         uint256 amount,
-        bool withdraw,
         LiquidationParams calldata params
-    ) internal virtual;
+    ) external {
+        _flashLiquidate(flashLenderWrapper, asset, amount, true, params);
+    }
+
+    function _flashLiquidate(address asset, uint256 amount, bool withdraw, LiquidationParams calldata params)
+        internal
+    {
+        _flashLiquidate(Deployments.FLASH_LENDER_AAVE, asset, amount, withdraw, params);
+    }
+
+    function _flashLiquidate(address flashLender, address asset, uint256 amount, bool withdraw, LiquidationParams calldata params)
+        internal
+    {
+        // _checkApprove(flashLender, asset);
+        IERC7399(flashLender).flash(
+            address(this), asset, amount, abi.encode(asset, amount, withdraw, params), this.callback
+        );
+    }
 
     /// @notice This is the primary entry point after the flash lender transfers the funds
-    function handleLiquidation(uint256 fee, bool repay, bytes memory data) internal {
-        require(msg.sender == address(FLASH_LENDER));
+    function handleLiquidation(uint256 fee, address paymentReceiver, bytes memory data) internal {
+        // require(msg.sender == address(FLASH_LENDER));
 
         (
             address asset,
@@ -161,24 +188,27 @@ abstract contract FlashLiquidatorBase is BoringOwnable {
         }
 
         // Repay the flash lender
-        if (repay) {
-            IERC20(asset).transfer(msg.sender, amount + fee);
-        }
+        // IERC20(asset).transfer(paymentReceiver, amount + fee);
+
+        IERC20(asset).checkTransfer(paymentReceiver, amount + fee);
     }
 
     /// @notice Used to maintain approvals for various currencies, called initially in the constructor
     function enableCurrencies(uint16[] memory currencies) public onlyOwner {
         for (uint256 i; i < currencies.length; i++) {
             (/* Token memory assetToken */, Token memory underlyingToken) = NOTIONAL.getCurrency(currencies[i]);
-            if (underlyingToken.tokenAddress == Constants.ETH_ADDRESS) {
-                IERC20(address(Deployments.WETH)).checkApprove(address(FLASH_LENDER), type(uint256).max);
-            } else {
-                IERC20(underlyingToken.tokenAddress).checkApprove(address(FLASH_LENDER), type(uint256).max);
-                IERC20(underlyingToken.tokenAddress).checkApprove(address(NOTIONAL), type(uint256).max);
-            }
+            IERC20(underlyingToken.tokenAddress).checkApprove(address(NOTIONAL), type(uint256).max);
         }
     }
 
+    function _checkApprove(address flashLender, address token) internal onlyOwner {
+        if (token == Constants.ETH_ADDRESS) {
+            IERC20(address(Deployments.WETH)).checkApprove(address(flashLender), type(uint256).max);
+        } else {
+            IERC20(token).checkApprove(address(flashLender), type(uint256).max);
+        }
+    }
+    //
     /// @notice Used via static call on the liquidation bot to get parameters for liquidation
     function getOptimalDeleveragingParams(
         address account, address vault
