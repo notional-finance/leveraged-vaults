@@ -20,6 +20,10 @@ contract Test_{{ contractName }} is BaseSingleSidedLPVault {
         maxRelEntryValuation = {{ setUp.maxRelEntryValuation }} * BASIS_POINT;
         maxRelExitValuation = {{ setUp.maxRelExitValuation }} * BASIS_POINT;
 
+        {% if setUp.flashLender is defined -%}
+        flashLender = {{ setUp.flashLender }};
+        {% endif -%}
+
         super.setUp();
     }
 }

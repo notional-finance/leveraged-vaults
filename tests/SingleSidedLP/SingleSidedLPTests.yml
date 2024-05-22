@@ -306,6 +306,7 @@ mainnet:
       maxDeposit: 90_000e6
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
+      flashLender: "0x9E092cb431e5F1aa70e47e052773711d2Ba4917E"
     config:
       feeRate5BPS: 20
       minCollateralRatioBPS: 1400
@@ -526,6 +527,7 @@ mainnet:
       maxDeposit: 10_000e6
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
+      flashLender: "0x9E092cb431e5F1aa70e47e052773711d2Ba4917E"
     config:
       feeRate5BPS: 20
       minCollateralRatioBPS: 1400
@@ -576,6 +578,64 @@ mainnet:
       maxDeposit: 10_000e6
       maxRelEntryValuation: 50
       maxRelExitValuation: 75
+    config:
+      feeRate5BPS: 20
+      liquidationRate: 103
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 2
+      minCollateralRatioBPS: 1_500
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 3_300
+      minAccountBorrowSize: 60_000e8
+      maxPrimaryBorrow: 2_000_000e8
+  - vaultName: SingleSidedLP:Convex:[GHO]/crvUSD
+    forkBlock: 19920313
+    vaultType: Curve2TokenConvex
+    primaryBorrowCurrency: GHO
+    rewardPool: "0x5eC758f79b96AE74e7F1Ba9583009aFB3fc8eACB"
+    poolToken: "0x635EF0056A597D13863B73825CcA297236578595"
+    lpToken: "0x635EF0056A597D13863B73825CcA297236578595"
+    curveInterface: StableSwapNG
+    rewards: [CRV]
+    oracles: [GHO, crvUSD]
+    settings:
+      maxPoolShare: 2000
+      oraclePriceDeviationLimitPercent: 0.015e4
+    setUp:
+      minDeposit: 1e18
+      maxDeposit: 100e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 75
+      flashLender: "0x9E092cb431e5F1aa70e47e052773711d2Ba4917E"
+    config:
+      feeRate5BPS: 20
+      liquidationRate: 103
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 2
+      minCollateralRatioBPS: 1_500
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 3_300
+      minAccountBorrowSize: 60_000e8
+      maxPrimaryBorrow: 2_000_000e8
+  - vaultName: SingleSidedLP:Curve:[GHO]/USDe
+    forkBlock: 19924489
+    vaultType: Curve2Token
+    primaryBorrowCurrency: GHO
+    rewardPool: "0x8eD00833BE7342608FaFDbF776a696afbFEaAe96"
+    poolToken: "0x670a72e6D22b0956C0D2573288F82DCc5d6E3a61"
+    lpToken: "0x670a72e6D22b0956C0D2573288F82DCc5d6E3a61"
+    curveInterface: StableSwapNG
+    rewards: []
+    oracles: [GHO, USDe]
+    settings:
+      maxPoolShare: 2000
+      oraclePriceDeviationLimitPercent: 0.015e4
+    setUp:
+      minDeposit: 1e18
+      maxDeposit: 100e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 75
+      flashLender: "0x9E092cb431e5F1aa70e47e052773711d2Ba4917E"
     config:
       feeRate5BPS: 20
       liquidationRate: 103

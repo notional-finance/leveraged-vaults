@@ -50,7 +50,7 @@ abstract contract BaseAcceptanceTest is Test {
     // Used for transferring tokens when `deal` does not work, like for USDC.
     address WHALE;
 
-    address nonDefaultFlashLender;
+    address flashLender;
     FlashLiquidator liquidator;
 
     function setUp() public virtual {
@@ -145,6 +145,8 @@ abstract contract BaseAcceptanceTest is Test {
     function checkInvariants() internal virtual;
 
     function dealTokens(address to, uint256 depositAmount) internal {
+        console.log("hello");
+        console.log("pbt", address(primaryBorrowToken));
         if (isETH) {
             deal(to, depositAmount);
         } else if (WHALE != address(0)) {
@@ -154,6 +156,7 @@ abstract contract BaseAcceptanceTest is Test {
         } else {
             deal(address(primaryBorrowToken), to, depositAmount, true);
         }
+        console.log("hello2");
     }
 
     function expectRevert_enterVaultBypass(
@@ -608,7 +611,7 @@ abstract contract BaseAcceptanceTest is Test {
 
     function _flashLiquidate(address asset, uint256 amount, FlashLiquidator.LiquidationParams memory params) private {
         liquidator.flashLiquidate(
-            nonDefaultFlashLender == address(0) ? Deployments.FLASH_LENDER_AAVE : nonDefaultFlashLender,
+            flashLender == address(0) ? Deployments.FLASH_LENDER_AAVE : flashLender,
             asset,
             amount,
             params

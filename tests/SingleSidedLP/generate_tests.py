@@ -14,7 +14,9 @@ currencyIds = {
         "FRAX": 6,
         "rETH": 7,
         "USDT": 8,
-        "sDAI": 9,
+        "CBETH": 9,
+        "sDAI": 10,
+        "GHO": 11,
     },
     "arbitrum": {
         "ETH": 1,
