@@ -122,7 +122,6 @@ contract FlashLiquidator is BoringOwnable {
     function _flashLiquidate(address flashLender, address asset, uint256 amount, bool withdraw, LiquidationParams calldata params)
         internal
     {
-        // _checkApprove(flashLender, asset);
         IERC7399(flashLender).flash(
             address(this), asset, amount, abi.encode(asset, amount, withdraw, params), this.callback
         );
@@ -130,8 +129,6 @@ contract FlashLiquidator is BoringOwnable {
 
     /// @notice This is the primary entry point after the flash lender transfers the funds
     function handleLiquidation(uint256 fee, address paymentReceiver, bytes memory data) internal {
-        // require(msg.sender == address(FLASH_LENDER));
-
         (
             address asset,
             uint256 amount,
@@ -191,8 +188,6 @@ contract FlashLiquidator is BoringOwnable {
         }
 
         // Repay the flash lender
-        // IERC20(asset).transfer(paymentReceiver, amount + fee);
-
         IERC20(asset).checkTransfer(paymentReceiver, amount + fee);
     }
 
@@ -204,14 +199,6 @@ contract FlashLiquidator is BoringOwnable {
         }
     }
 
-    function _checkApprove(address flashLender, address token) internal onlyOwner {
-        if (token == Constants.ETH_ADDRESS) {
-            IERC20(address(Deployments.WETH)).checkApprove(address(flashLender), type(uint256).max);
-        } else {
-            IERC20(token).checkApprove(address(flashLender), type(uint256).max);
-        }
-    }
-    //
     /// @notice Used via static call on the liquidation bot to get parameters for liquidation
     function getOptimalDeleveragingParams(
         address account, address vault
