@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
-import {console2} from "forge-std/console2.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {IStrategyVault} from "@interfaces/notional/IStrategyVault.sol";
 import {IERC7399} from "@interfaces/IERC7399.sol";
@@ -182,9 +181,13 @@ contract FlashLiquidator is BoringOwnable {
         // Rewrap ETH for repayment
         if (isWETH) _wrapETH();
 
+        uint256 currentBalance = IERC20(asset).balanceOf(address(this));
+        // force revert if there is no profit
+        require(currentBalance > amount);
+
         // Send profits back to the owner
         if (withdraw) {
-            _withdrawToOwner(asset, IERC20(asset).balanceOf(address(this)) - amount - fee);
+            _withdrawToOwner(asset, currentBalance - amount - fee);
         }
 
         // Repay the flash lender
