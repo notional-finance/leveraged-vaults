@@ -1,6 +1,6 @@
 # flake8: noqa
 import json
-from brownie import network, interface, AaveFlashLiquidator, accounts
+from brownie import network, interface, FlashLiquidator, accounts
 from brownie.network.contract import Contract
 
 def get_router_args(router):
@@ -35,15 +35,15 @@ def get_addresses():
 
     if networkName == "mainnet":
         liquidators = [
-            AaveFlashLiquidator.at('0x77B4507981607402aB9692A1628053c39eCf4fFb'),
-            AaveFlashLiquidator.at('0xA573bD9cAF777B354f46f635Ca339d074bD40A66'),
-            AaveFlashLiquidator.at('0x12AEC56DFc38413C5FEa5506041F49416b17BdA1')
+            FlashLiquidator.at('0x77B4507981607402aB9692A1628053c39eCf4fFb'),
+            FlashLiquidator.at('0xA573bD9cAF777B354f46f635Ca339d074bD40A66'),
+            FlashLiquidator.at('0x12AEC56DFc38413C5FEa5506041F49416b17BdA1')
         ]
     elif networkName == "arbitrum-one":
         liquidators = [
-            AaveFlashLiquidator.at('0xe8f28Cf944aBCFD98dACdcbA284AcFC56a6E929b'),
-            AaveFlashLiquidator.at('0x24B5FF402440aB10618F3798253d2cD5801E40F7'),
-            AaveFlashLiquidator.at('0xc91864Be1b097c9c85565cDB013Ba2307FFB492a')
+            FlashLiquidator.at('0xe8f28Cf944aBCFD98dACdcbA284AcFC56a6E929b'),
+            FlashLiquidator.at('0x24B5FF402440aB10618F3798253d2cD5801E40F7'),
+            FlashLiquidator.at('0xc91864Be1b097c9c85565cDB013Ba2307FFB492a')
         ]
 
     notional = Contract.from_abi("Notional", addresses["notional"], abi=interface.NotionalProxy.abi)
