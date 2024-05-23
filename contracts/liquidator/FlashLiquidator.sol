@@ -75,35 +75,28 @@ contract FlashLiquidator is BoringOwnable {
 
     /// @notice Used for profit estimation off chain
     function estimateProfit(
+        address flashLenderWrapper,
         address asset,
         uint256 amount,
         LiquidationParams calldata params
     ) external onlyOwner returns (uint256) {
         uint256 balance = IERC20(asset).balanceOf(address(this));
-        _flashLiquidate(asset, amount, false, params);
+        _flashLiquidate(flashLenderWrapper, asset, amount, false, params);
         return IERC20(asset).balanceOf(address(this)) - balance;
     }
 
-    /// @notice Primary entry point for the liquidation call
     function flashLiquidateBatch(
+        address[] calldata flashLenderWrapper,
         address[] calldata asset,
         uint256[] calldata amount,
         LiquidationParams[] calldata params
     ) external {
         for (uint256 i; i < asset.length; i++) {
-            _flashLiquidate(asset[i], amount[i], true, params[i]);
+            _flashLiquidate(flashLenderWrapper[i], asset[i], amount[i], true, params[i]);
         }
     }
 
     /// @notice Primary entry point for the liquidation call
-    function flashLiquidate(
-        address asset,
-        uint256 amount,
-        LiquidationParams calldata params
-    ) external {
-        _flashLiquidate(asset, amount, true, params);
-    }
-
     function flashLiquidate(
         address flashLenderWrapper,
         address asset,
@@ -111,12 +104,6 @@ contract FlashLiquidator is BoringOwnable {
         LiquidationParams calldata params
     ) external {
         _flashLiquidate(flashLenderWrapper, asset, amount, true, params);
-    }
-
-    function _flashLiquidate(address asset, uint256 amount, bool withdraw, LiquidationParams calldata params)
-        internal
-    {
-        _flashLiquidate(Deployments.FLASH_LENDER_AAVE, asset, amount, withdraw, params);
     }
 
     function _flashLiquidate(address flashLender, address asset, uint256 amount, bool withdraw, LiquidationParams calldata params)
