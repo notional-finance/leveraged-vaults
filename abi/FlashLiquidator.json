@@ -91,6 +91,11 @@
       "name": "estimateProfit",
       "inputs": [
         {
+          "name": "flashLenderWrapper",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
           "name": "asset",
           "type": "address",
           "internalType": "address"
@@ -209,63 +214,13 @@
     },
     {
       "type": "function",
-      "name": "flashLiquidate",
-      "inputs": [
-        {
-          "name": "asset",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "amount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "params",
-          "type": "tuple",
-          "internalType": "struct FlashLiquidator.LiquidationParams",
-          "components": [
-            {
-              "name": "liquidationType",
-              "type": "uint8",
-              "internalType": "enum FlashLiquidator.LiquidationType"
-            },
-            {
-              "name": "vault",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "accounts",
-              "type": "address[]",
-              "internalType": "address[]"
-            },
-            {
-              "name": "redeemData",
-              "type": "bytes",
-              "internalType": "bytes"
-            },
-            {
-              "name": "currencyId",
-              "type": "uint16",
-              "internalType": "uint16"
-            },
-            {
-              "name": "currencyIndex",
-              "type": "uint16",
-              "internalType": "uint16"
-            }
-          ]
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
       "name": "flashLiquidateBatch",
       "inputs": [
+        {
+          "name": "flashLenderWrapper",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
         {
           "name": "asset",
           "type": "address[]",
