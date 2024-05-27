@@ -70,7 +70,7 @@ contract FlashLiquidator is BoringOwnable {
         bytes calldata data
     ) external returns (bytes memory) {
         handleLiquidation(fee, paymentReceiver, data);
-        return abi.encode("hello");
+        return "";
     }
 
     /// @notice Used for profit estimation off chain
