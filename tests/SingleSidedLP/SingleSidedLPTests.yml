@@ -263,6 +263,7 @@ arbitrum:
       minAccountBorrowSize: 1e8
   - vaultName: SingleSidedLP:Convex:[WBTC]/tBTC
     vaultType: Curve2TokenConvex
+    forkBlock: 215828254
     primaryBorrowCurrency: WBTC
     rewardPool: "0x6B7B84F6EC1c019aF08C7A2F34D3C10cCB8A8eA6"
     poolToken: "0x755D6688AD74661Add2FB29212ef9153D40fcA46"
@@ -560,7 +561,7 @@ mainnet:
       minAccountBorrowSize: 100_000e8
       maxPrimaryBorrow: 5_000_000e8
   - vaultName: SingleSidedLP:Curve:USDe/[USDC]
-    forkBlock: 19773001
+    forkBlock: 19924489
     vaultType: Curve2Token
     primaryBorrowCurrency: USDC
     rewardPool: "0x04E80Db3f84873e4132B221831af1045D27f140F"
@@ -618,7 +619,7 @@ mainnet:
       minAccountBorrowSize: 60_000e8
       maxPrimaryBorrow: 2_000_000e8
   - vaultName: SingleSidedLP:Curve:[GHO]/USDe
-    forkBlock: 19924489
+    forkBlock: 19924000
     vaultType: Curve2Token
     primaryBorrowCurrency: GHO
     rewardPool: "0x8eD00833BE7342608FaFDbF776a696afbFEaAe96"

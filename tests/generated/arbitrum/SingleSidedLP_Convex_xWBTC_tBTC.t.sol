@@ -5,6 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Convex_xWBTC_tBTC is BaseSingleSidedLPVault {
     function setUp() public override {
+        FORK_BLOCK = 215828254;
         harness = new Harness_SingleSidedLP_Convex_xWBTC_tBTC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues

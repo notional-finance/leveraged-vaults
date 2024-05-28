@@ -258,6 +258,8 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
 
     function _claimRewardTokens() internal override virtual {
         ICurveGauge(CURVE_GAUGE).claim_rewards();
-        Minter(Deployments.CURVE_MINTER).mint(CURVE_GAUGE);
+        // wrapping in try/catch here since in cases when curve pool is relatively new and
+        // we had to manually deploy gauge, gauge will not be listed on Curve minter
+        try Minter(Deployments.CURVE_MINTER).mint(CURVE_GAUGE) {} catch {}
     }
 }

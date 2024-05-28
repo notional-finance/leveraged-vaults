@@ -21,7 +21,7 @@ import {Deployments} from "@deployments/Deployments.sol";
 
 contract FlashLiquidator is BoringOwnable {
     using TokenUtils for IERC20;
-    uint16 internal constant ONLY_VAULT_DELEVERAGE           = 1 << 5;
+    uint16 internal constant ONLY_VAULT_DELEVERAGE = 1 << 5;
 
     uint256 internal constant MAX_CURRENCIES = 3;
 

@@ -5,7 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Curve_USDe_xUSDC is BaseSingleSidedLPVault {
     function setUp() public override {
-        FORK_BLOCK = 19773001;
+        FORK_BLOCK = 19924489;
         harness = new Harness_SingleSidedLP_Curve_USDe_xUSDC();
 
         WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
