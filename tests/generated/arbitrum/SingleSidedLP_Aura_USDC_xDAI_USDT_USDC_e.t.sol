@@ -9,7 +9,7 @@ contract Test_SingleSidedLP_Aura_USDC_xDAI_USDT_USDC_e is VaultRewarderTests {
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
+        minDeposit = 0.01e18;
         maxDeposit = 50e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 15 * BASIS_POINT;

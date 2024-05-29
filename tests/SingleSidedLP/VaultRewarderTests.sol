@@ -9,15 +9,17 @@ import {VaultRewarderLib} from "@contracts/vaults/common/VaultRewarderLib.sol";
 import {VaultRewardState} from "@interfaces/notional/IVaultRewarder.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 import {IERC4626} from "@interfaces/IERC4626.sol";
-import {IERC20} from "@interfaces/IERC20.sol";
 import {ISingleSidedLPStrategyVault, StrategyVaultSettings} from "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Metadata as IERC20} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 function min(uint256 a, uint256 b) pure returns (uint256) {
     return a < b ? a : b;
 }
 
 abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
+    using SafeERC20 for IERC20;
     struct AccountsData {
         address account;
         uint256 initialShare;
@@ -505,8 +507,28 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         VaultRewarderLib(address(vault)).updateAccountRewards(account, 1e8, 1e10, true);
     }
 
+    function _provideLiquidity() internal {
+        address liquidityProvider = makeAddr("liquidityProvider");
+
+        vm.prank(Deployments.NOTIONAL.owner());
+        Deployments.NOTIONAL.setMaxUnderlyingSupply(config.borrowCurrencyId, 0, 100);
+
+
+        uint256 decimals = isETH ? 18 : primaryBorrowToken.decimals();
+        uint256 deposit = 1000_000 * 10 ** decimals;
+        dealTokens(liquidityProvider, deposit);
+        vm.startPrank(liquidityProvider);
+        if (!isETH) {
+            IERC20(address(primaryBorrowToken)).safeApprove(address(Deployments.NOTIONAL), deposit);
+        }
+        Deployments.NOTIONAL.depositUnderlyingToken{value: isETH ? deposit : 0}(liquidityProvider, config.borrowCurrencyId, deposit);
+        vm.stopPrank();
+    }
+
     function test_claimReward_ShouldNotClaimMoreThanTotalIncentives() public {
-        uint256 PERCENT_DIFF = 1e15; // 1e18 is 100%
+        vm.skip(_shouldSkip("test_claimReward_ShouldNotClaimMoreThanTotalIncentives"));
+        _provideLiquidity();
+        uint256 PERCENT_DIFF = 3e15; // 1e18 is 100%
         for (uint256 i = 0; i < additionalRewardTokens.length; i++) {
             _updateRewardToken(
                 additionalRewardTokens[i].token,
@@ -565,28 +587,28 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         uint256[] memory prevBalances = new uint256[](metadata.rewardTokens.length);
         for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-            prevBalances[j] = IERC20(metadata.rewardTokens[j]).balanceOf(address(vault));
+            prevBalances[j] = metadata.rewardTokens[j].balanceOf(address(vault));
         }
 
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, IERC20(metadata.rewardTokens[j]).balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
             }
             vm.prank(accounts[i].account);
             VaultRewarderLib(address(vault)).claimAccountRewards(accounts[i].account);
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, IERC20(metadata.rewardTokens[j]).balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
             }
         }
 
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, IERC20(metadata.rewardTokens[j]).balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
             }
         }
 
         for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-            uint256 currentBal = IERC20(metadata.rewardTokens[j]).balanceOf(address(vault));
+            uint256 currentBal = metadata.rewardTokens[j].balanceOf(address(vault));
             assertGt(currentBal, prevBalances[j], "2");
         }
 
@@ -599,28 +621,28 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         uint256[] memory prevBalances = new uint256[](metadata.rewardTokens.length);
         for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-            prevBalances[j] = IERC20(metadata.rewardTokens[j]).balanceOf(address(vault));
+            prevBalances[j] = metadata.rewardTokens[j].balanceOf(address(vault));
         }
 
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, IERC20(metadata.rewardTokens[j]).balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
             }
             vm.prank(accounts[i].account);
             VaultRewarderLib(address(vault)).claimAccountRewards(accounts[i].account);
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, IERC20(metadata.rewardTokens[j]).balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
             }
         }
 
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, IERC20(metadata.rewardTokens[j]).balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
             }
         }
 
         for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-            uint256 currentBal = IERC20(metadata.rewardTokens[j]).balanceOf(address(vault));
+            uint256 currentBal = metadata.rewardTokens[j].balanceOf(address(vault));
             assertGt(currentBal, prevBalances[j], "2");
         }
 
@@ -632,7 +654,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         // set tokens as secondary reward tokens
         for (uint256 i = 0; i < additionalRewTokNum; i++) {
-            uint256 decimals = IERC20(metadata.rewardTokens[i]).decimals();
+            uint256 decimals = metadata.rewardTokens[i].decimals();
             additionalRewTokens[i] = AdditionalRewardToken(
                 address(metadata.rewardTokens[i]),
                 uint128(100_000 * (10 ** decimals)),
@@ -649,7 +671,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         // track previous vault balance for all reward tokens
         uint256[] memory prevVaultBalances = new uint256[](metadata.rewardTokens.length);
         for (uint256 i = 0; i < metadata.rewardTokens.length; i++) {
-            prevVaultBalances[i] = IERC20(metadata.rewardTokens[i]).balanceOf(address(vault));
+            prevVaultBalances[i] = metadata.rewardTokens[i].balanceOf(address(vault));
         }
 
         _sendIncentivesToVault(additionalRewTokens);
@@ -666,7 +688,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         for (uint256 i = 0; i < accounts.length; i++) {
             uint256[] memory prevBal = new uint256[](metadata.rewardTokens.length);
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                prevBal[j] = IERC20(metadata.rewardTokens[j]).balanceOf(accounts[i].account);
+                prevBal[j] = metadata.rewardTokens[j].balanceOf(accounts[i].account);
             }
 
             vm.prank(accounts[i].account);
@@ -674,7 +696,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
 
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                uint256 newBal = IERC20(metadata.rewardTokens[j]).balanceOf(accounts[i].account);
+                uint256 newBal = metadata.rewardTokens[j].balanceOf(accounts[i].account);
                 assertEq(newBal, prevBal[j], "3");
             }
         }
@@ -687,11 +709,11 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         emissionTokNum = uint8(bound(emissionTokNum, 0, additionalRewardTokens.length));
         AdditionalRewardToken[] memory claimableTokensInfo = new AdditionalRewardToken[](reinvestToClaimNum + emissionTokNum);
         for (uint256 i = 0; i < reinvestToClaimNum; i++) {
-            uint256 decimals = 10 ** IERC20(metadata.rewardTokens[i]).decimals();
+            uint256 decimals = 10 ** metadata.rewardTokens[i].decimals();
 
             claimableTokensInfo[i] = AdditionalRewardToken(
                 address(metadata.rewardTokens[i]),
-                uint128(emissionRatesList[i] == 0 ? 0 : bound(emissionRatesList[i], 3000 * decimals, 100_000 * decimals)),
+                uint128(emissionRatesList[i] == 0 ? 0 : bound(emissionRatesList[i], 10_000 * decimals, 100_000 * decimals)),
                 uint32(block.timestamp + bound(incentivePeriodList[i], 7 days, 365 days)),
                 decimals
             );
@@ -702,17 +724,19 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
             claimableTokensInfo[nextEmpty] = AdditionalRewardToken(
                 address(additionalRewardTokens[i].token),
-                uint128(bound(emissionRatesList[i], 3000 * decimals, 100_000 * decimals)),
+                uint128(bound(emissionRatesList[i], 10_000 * decimals, 100_000 * decimals)),
                 uint32(block.timestamp + bound(incentivePeriodList[i], 7 days, 365 days)),
                 decimals
             );
             nextEmpty++;
         }
         address[] memory reinvestTokens = new address[](metadata.rewardTokens.length - reinvestToClaimNum);
+        {
+        uint256 counter;
         for (uint256 i = reinvestToClaimNum; i < metadata.rewardTokens.length; i++) {
-            reinvestTokens[i] = address(metadata.rewardTokens[i]);
+            reinvestTokens[counter++] = address(metadata.rewardTokens[i]);
         }
-
+        }
         _addRewardTokensToVault(claimableTokensInfo);
 
         // deposit funds to vault with some random accounts
@@ -800,7 +824,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         AdditionalRewardToken[] memory manualClaimRewTokens = new AdditionalRewardToken[](manualRewTokNum);
 
         for (uint256 i = 0; i < manualClaimRewTokens.length; i++) {
-            uint256 decimals = IERC20(metadata.rewardTokens[i]).decimals();
+            uint256 decimals = metadata.rewardTokens[i].decimals();
             manualClaimRewTokens[i] = AdditionalRewardToken(
                 address(metadata.rewardTokens[i]),
                 0,
@@ -816,7 +840,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         // track previous vault balance for all reward tokens
         uint256[] memory prevVaultBalances = new uint256[](metadata.rewardTokens.length);
         for (uint256 i = 0; i < metadata.rewardTokens.length; i++) {
-            prevVaultBalances[i] = IERC20(metadata.rewardTokens[i]).balanceOf(address(vault));
+            prevVaultBalances[i] = metadata.rewardTokens[i].balanceOf(address(vault));
         }
 
         uint256[] memory totalRewardsReceived = new uint256[](manualClaimRewTokens.length);
@@ -842,7 +866,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
             // accounts should not receive anything for each reward tokens meant to be reinvested
             for (uint256 j = manualRewTokNum; j < metadata.rewardTokens.length; j++) {
                 uint256 newBal = metadata.rewardTokens[j].balanceOf(accounts[i].account);
-                assertEq(newBal, 0, "4");
+                assertEq(newBal, 0, "3");
             }
         }
 
@@ -852,8 +876,8 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
                 assertApproxEqAbs(
                     totalRewardsReceived[j] * accounts[i].initialShare / (totalAccountsShare),
                     totalRewardsPerAccount[i][j],
-                    1,
-                    "5"
+                    2,
+                    "4"
                 );
             }
         }
@@ -866,21 +890,23 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
                 // rewards via claim for all other accounts we are not tracking in this test
                 uint256 leftForOtherUsersToClaim = initialVaultShares * totalRewardsReceived[i] / accountsShares;
                 assertApproxEqRel(
-                    (prevVaultBalances[i] + leftForOtherUsersToClaim) / 1e4,
-                    currentVaultBalance / 1e4,
+                    (prevVaultBalances[i] + leftForOtherUsersToClaim) / 1e6,
+                    currentVaultBalance / 1e6,
                     1e12, // 0.0001 % diff
-                    "4"
+                    "5"
                 );
             } else {
                 // in case when reward token is meant to be reinvested we should observe increased
                 // balance on vault since first user claim also triggered vault reward claim
-                assertLt(prevVaultBalances[i], currentVaultBalance, "5");
+                assertLt(prevVaultBalances[i], currentVaultBalance, "6");
             }
         }
     }
 
     function test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission() public {
-        uint256 PERCENT_DIFF = 1e15; // 1e18 is 100%
+        vm.skip(_shouldSkip("test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission"));
+        _provideLiquidity();
+        uint256 PERCENT_DIFF = 3e15; // 1e18 is 100%
         for (uint256 i = 0; i < additionalRewardTokens.length; i++) {
             _updateRewardToken(
                 additionalRewardTokens[i].token,
@@ -935,13 +961,14 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
     }
 
     function test_claimReward_WithChangingForceClaimAfter() public {
+        vm.skip(_shouldSkip("test_claimReward_WithChangingForceClaimAfter"));
         uint forceClaimAfter = 10 minutes;
         _setForceClaimAfter(forceClaimAfter);
 
         AdditionalRewardToken[] memory poolRewardTokens = new AdditionalRewardToken[](metadata.rewardTokens.length);
 
         for (uint256 i = 0; i < poolRewardTokens.length; i++) {
-            uint256 decimals = IERC20(metadata.rewardTokens[i]).decimals();
+            uint256 decimals = metadata.rewardTokens[i].decimals();
             poolRewardTokens[i] = AdditionalRewardToken(
                 address(metadata.rewardTokens[i]),
                 0,

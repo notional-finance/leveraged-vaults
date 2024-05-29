@@ -27,11 +27,12 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         metadata = abi.decode(_metadata, (SingleSidedLPMetadata));
         nProxy proxy;
 
-        if (harness.EXISTING_DEPLOYMENT() != address(0)) {
-            SingleSidedLPVaultBase b = SingleSidedLPVaultBase(payable(harness.EXISTING_DEPLOYMENT()));
+        address existingDeployment = harness.EXISTING_DEPLOYMENT();
+        if (existingDeployment != address(0)) {
+            SingleSidedLPVaultBase b = SingleSidedLPVaultBase(payable(existingDeployment));
             ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory beforeInfo = b.getStrategyVaultInfo();
-            
-            proxy = nProxy(payable(harness.EXISTING_DEPLOYMENT()));
+
+            proxy = nProxy(payable(existingDeployment));
             vm.prank(Deployments.NOTIONAL.owner());
             UUPSUpgradeable(address(proxy)).upgradeToAndCall(
                 impl,
@@ -394,10 +395,10 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     }
 
     function test_cannotReinitialize() public {
-        vm.prank(Deployments.NOTIONAL.owner());
         bytes memory init = harness.getInitializeData();
+        vm.prank(Deployments.NOTIONAL.owner());
         vm.expectRevert("Initializable: contract is already initialized");
-        address(vault).call(init);
+        (address(vault).call(init));
     }
 
     function test_RevertIf_ReadOnlyReentrancyAttack() public {
