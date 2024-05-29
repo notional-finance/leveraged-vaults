@@ -136,16 +136,19 @@ arbitrum:
     oracles: [FRAX, USDC_e]
     settings:
       maxPoolShare: 2000
+      oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 0.1e18
       maxDeposit: 100_000e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
     config:
-      minCollateralRatioBPS: 1000
+      minCollateralRatioBPS: 8_00
       maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 1700
+      maxDeleverageCollateralRatioBPS: 1_700
       minAccountBorrowSize: 1e8
+      minAccountBorrowSize: 1e8
+      maxPrimaryBorrow: 2000e8
   - vaultName: SingleSidedLP:Convex:USDC.e/[USDT]
     vaultType: Curve2TokenConvex
     primaryBorrowCurrency: USDT
@@ -600,7 +603,7 @@ mainnet:
     rewards: [CRV]
     oracles: [GHO, crvUSD]
     settings:
-      maxPoolShare: 2000
+      maxPoolShare: 2500
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e18
@@ -613,11 +616,11 @@ mainnet:
       liquidationRate: 103
       reserveFeeShare: 80
       maxBorrowMarketIndex: 2
-      minCollateralRatioBPS: 1_500
+      minCollateralRatioBPS: 800
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 3_300
-      minAccountBorrowSize: 60_000e8
-      maxPrimaryBorrow: 2_000_000e8
+      minAccountBorrowSize: 100e8
+      maxPrimaryBorrow: 2000e8
   - vaultName: SingleSidedLP:Curve:[GHO]/USDe
     forkBlock: 19924000
     vaultType: Curve2Token
@@ -629,7 +632,7 @@ mainnet:
     rewards: []
     oracles: [GHO, USDe]
     settings:
-      maxPoolShare: 2000
+      maxPoolShare: 2500
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e18
@@ -642,8 +645,8 @@ mainnet:
       liquidationRate: 103
       reserveFeeShare: 80
       maxBorrowMarketIndex: 2
-      minCollateralRatioBPS: 1_500
+      minCollateralRatioBPS: 800
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 3_300
-      minAccountBorrowSize: 60_000e8
-      maxPrimaryBorrow: 2_000_000e8
+      minAccountBorrowSize: 100e8
+      maxPrimaryBorrow: 2000e8

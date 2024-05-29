@@ -35,13 +35,13 @@ Curve2TokenConvexHarness
         params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 1500;
+        params.minCollateralRatioBPS = 800;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
         params.maxDeleverageCollateralRatioBPS = 3300;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 60_000e8;
-        maxPrimaryBorrow = 2_000_000e8;
+        params.minAccountBorrowSize = 100e8;
+        maxPrimaryBorrow = 2000e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -77,12 +77,13 @@ Curve2TokenConvexHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0x30fBa4a7ec8591f25B4D37fD79943a4bb6E553e2;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 11;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             deprecated_poolSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
+            maxPoolShare: 2500,
             oraclePriceDeviationLimitPercent: 0.015e4
         });
         _m.rewardPool = IERC20(0x5eC758f79b96AE74e7F1Ba9583009aFB3fc8eACB);
