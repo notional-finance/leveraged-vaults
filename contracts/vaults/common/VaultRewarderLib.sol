@@ -118,8 +118,6 @@ contract VaultRewarderLib is IVaultRewarder {
                 require(block.timestamp < endTime);
                 state.endTime = endTime;
                 state.lastAccumulatedTime = uint32(block.timestamp);
-
-                _accumulateSecondaryRewardViaEmissionRate(index, state, totalVaultSharesBefore);
             }
             VaultStorage.getVaultRewardState()[index] = state;
         } else {
