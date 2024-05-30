@@ -34,11 +34,10 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
     }
 
     function finalizeWithdrawRequest(address account) internal override {
-        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
-        uint256 maxRequestId = f.requestId > w.requestId ? f.requestId : w.requestId;
+        WithdrawRequest memory w = v().getWithdrawRequest(account);
 
         vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
-        WithdrawRequestNFT.finalizeRequests(maxRequestId);
+        WithdrawRequestNFT.finalizeRequests(w.requestId);
     }
 
     function getDepositParams(
@@ -136,62 +135,12 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
             _forceWithdraw(account);
         } else {
             vm.prank(account);
-            v().initiateWithdraw(vaultShares);
+            v().initiateWithdraw();
         }
         finalizeWithdrawRequest(account);
 
         uint256 underlyingToReceiver = exitVault(
-            account, vaultShares, maturity, getRedeemParams(true)
-        );
-
-        assertRelDiff(
-            uint256(depositAmount),
-            underlyingToReceiver,
-            maxRelExitValuation,
-            "Valuation and Deposit"
-        );
-    }
-
-    function test_exitVault_hasWithdrawRequest_tradeShares_postExpiry(
-        uint8 maturityIndex, uint256 depositAmount
-    ) public {
-        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
-        maturityIndex = uint8(bound(maturityIndex, 0, 2));
-        address account = makeAddr("account");
-        uint256 maturity = maturities[maturityIndex];
-
-        uint256 vaultShares = enterVault(
-            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
-        );
-
-        setMaxOracleFreshness();
-        vm.warp(expires + 3600);
-        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
-        if (maturity < block.timestamp) {
-            // Push the vault shares to prime
-            totalVaultShares[maturity] -= vaultShares;
-            maturity = maturities[0];
-            totalVaultShares[maturity] += vaultShares;
-        }
-
-        vm.prank(account);
-        v().initiateWithdraw(vaultShares / 2);
-
-        expectRevert_exitVault(
-            account, vaultShares, maturity, getRedeemParams(depositAmount, maturity),
-            "Insufficient Shares"
-        );
-
-        uint256 lendAmount = uint256(
-            Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
-        ) * 40 / 100;
-
-        uint256 underlyingToReceiver = exitVault(
-            account,
-            vaultShares / 2, // Exits the other half of the shares
-            maturity,
-            lendAmount,
-            getRedeemParams(depositAmount, maturity)
+            account, vaultShares, maturity, getRedeemParams(0, 0)
         );
 
         assertRelDiff(

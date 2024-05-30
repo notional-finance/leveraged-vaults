@@ -54,15 +54,11 @@ contract Test_Staking_Ethena_xUSDC is BaseStakingTest {
     }
 
     function finalizeWithdrawRequest(address account) internal override {
-        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
-        IsUSDe.UserCooldown memory fCooldown = sUSDe.cooldowns(address(uint160(f.requestId)));
+        WithdrawRequest memory w = v().getWithdrawRequest(account);
         IsUSDe.UserCooldown memory wCooldown = sUSDe.cooldowns(address(uint160(w.requestId)));
 
-        uint256 maxCooldown = fCooldown.cooldownEnd > wCooldown.cooldownEnd ?
-            fCooldown.cooldownEnd : wCooldown.cooldownEnd;
-
         setMaxOracleFreshness();
-        vm.warp(maxCooldown);
+        vm.warp(wCooldown.cooldownEnd);
     }
 }
 

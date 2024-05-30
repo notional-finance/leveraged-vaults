@@ -24,11 +24,10 @@ contract Test_Staking_EtherFi_xETH is BaseStakingTest {
     }
 
     function finalizeWithdrawRequest(address account) internal override {
-        (WithdrawRequest memory f, WithdrawRequest memory w) = v().getWithdrawRequests(account);
-        uint256 maxRequestId = f.requestId > w.requestId ? f.requestId : w.requestId;
+        WithdrawRequest memory w = v().getWithdrawRequest(account);
 
         vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
-        WithdrawRequestNFT.finalizeRequests(maxRequestId);
+        WithdrawRequestNFT.finalizeRequests(w.requestId);
     }
 }
 
