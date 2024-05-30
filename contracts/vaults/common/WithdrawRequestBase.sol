@@ -56,12 +56,8 @@ abstract contract WithdrawRequestBase {
     /// @return forcedWithdraw a forced withdraw can be activated during an emergency situation where
     /// an entire account's position is forced to exit
     /// @return accountWithdraw an account's self initiated withdraw
-    function getWithdrawRequests(address account) public view returns (
-        WithdrawRequest memory forcedWithdraw,
-        WithdrawRequest memory accountWithdraw
-    ) {
-        forcedWithdraw = VaultStorage.getForcedWithdrawRequest()[account];
-        accountWithdraw = VaultStorage.getAccountWithdrawRequest()[account];
+    function getWithdrawRequest(address account) public view returns (WithdrawRequest memory) {
+        return VaultStorage.getAccountWithdrawRequest()[account];
     }
 
     function _getValueOfWithdrawRequest(
@@ -123,34 +119,13 @@ abstract contract WithdrawRequestBase {
         uint256 vaultShares = Deployments.NOTIONAL.getVaultAccount(account, address(this)).vaultShares;
         require(0 < vaultShares);
 
-        (
-            WithdrawRequest memory forcedWithdraw,
-            WithdrawRequest memory accountWithdraw
-        ) = getWithdrawRequests(account);
+        WithdrawRequest storage accountWithdraw = VaultStorage.getAccountWithdrawRequest()[account];
+        require(accountWithdraw.requestId == 0, "Existing Request");
 
-        uint256 requestId;
-        if (isForced) {
-            require(forcedWithdraw.requestId == 0, "Existing Request");
-            requestId = _initiateWithdrawImpl(account, vaultShares, isForced);
-            forcedWithdraw.requestId = requestId;
-            forcedWithdraw.hasSplit = false;
-            forcedWithdraw.vaultShares = vaultShares;
-            // Stores the withdraw request
-            VaultStorage.getForcedWithdrawRequest()[account] = forcedWithdraw;
-        } else {
-            // Account cannot withdraw if there is an active forced withdraw
-            require(
-                accountWithdraw.requestId == 0 && forcedWithdraw.requestId == 0,
-                "Existing Request"
-            );
-
-            requestId = _initiateWithdrawImpl(account, vaultShares, isForced);
-            accountWithdraw.requestId = requestId;
-            accountWithdraw.hasSplit = false;
-            accountWithdraw.vaultShares = vaultShares;
-            // Stores the withdraw request
-            VaultStorage.getAccountWithdrawRequest()[account] = accountWithdraw;
-        }
+        uint256 requestId = _initiateWithdrawImpl(account, vaultShares, isForced);
+        accountWithdraw.requestId = requestId;
+        accountWithdraw.hasSplit = false;
+        accountWithdraw.vaultShares = vaultShares;
 
         emit InitiateWithdrawRequest(account, isForced, vaultShares, requestId);
     }
@@ -159,27 +134,17 @@ abstract contract WithdrawRequestBase {
     /// @return vaultSharesRedeemed amount of vault shares to burn as a result of finalizing withdraw
     /// requests
     /// @return tokensClaimed amount of tokens redeemed from the withdraw requests
-    function _redeemActiveWithdrawRequests(
+    function _redeemActiveWithdrawRequest(
         address account,
-        WithdrawRequest memory accountWithdraw,
-        WithdrawRequest memory forcedWithdraw
+        WithdrawRequest memory accountWithdraw
     ) internal returns (uint256 vaultSharesRedeemed, uint256 tokensClaimed) {
-        if (accountWithdraw.requestId != 0) {
-            (uint256 tokens, bool finalized) = _finalizeWithdraw(account, accountWithdraw);
-            if (finalized) {
-                vaultSharesRedeemed = accountWithdraw.vaultShares;
-                tokensClaimed = tokens;
-                delete VaultStorage.getAccountWithdrawRequest()[account];
-            }
-        }
+        if (accountWithdraw.requestId == 0) return;
 
-        if (forcedWithdraw.requestId != 0) {
-            (uint256 tokens, bool finalized) = _finalizeWithdraw(account, forcedWithdraw);
-            if (finalized) {
-                vaultSharesRedeemed = vaultSharesRedeemed + forcedWithdraw.vaultShares;
-                tokensClaimed = tokensClaimed + tokens;
-                delete VaultStorage.getForcedWithdrawRequest()[account];
-            }
+        (uint256 tokens, bool finalized) = _finalizeWithdraw(account, accountWithdraw);
+        if (finalized) {
+            vaultSharesRedeemed = accountWithdraw.vaultShares;
+            tokensClaimed = tokens;
+            delete VaultStorage.getAccountWithdrawRequest()[account];
         }
     }
 
@@ -222,42 +187,22 @@ abstract contract WithdrawRequestBase {
     /// could result in losses. The withdraw request is finalized and stored in a "split" withdraw request
     /// where the account has the full claim on the withdraw.
     function _finalizeWithdrawsManual(address account) internal {
-        (
-            WithdrawRequest memory forcedWithdraw,
-            WithdrawRequest memory accountWithdraw
-        ) = getWithdrawRequests(account);
+        WithdrawRequest storage accountWithdraw = VaultStorage.getAccountWithdrawRequest()[account];
+        if (accountWithdraw.requestId == 0) return;
 
-        if (accountWithdraw.requestId != 0) {
-            (uint256 tokens, bool finalized) = _finalizeWithdraw(account, accountWithdraw);
+        (uint256 tokens, bool finalized) = _finalizeWithdraw(account, accountWithdraw);
 
-            // If the account has not split, we store the total tokens withdrawn in the split withdraw
-            // request. When the account does exit, they will skip `_finalizeWithdrawImpl` and get the
-            // full share of totalWithdraw (unless they are liquidated after this withdraw has been finalized).
-            if (!accountWithdraw.hasSplit && finalized) {
-                VaultStorage.getSplitWithdrawRequest()[accountWithdraw.requestId] = SplitWithdrawRequest({
-                    totalVaultShares: accountWithdraw.vaultShares,
-                    totalWithdraw: tokens,
-                    finalized: true
-                });
+        // If the account has not split, we store the total tokens withdrawn in the split withdraw
+        // request. When the account does exit, they will skip `_finalizeWithdrawImpl` and get the
+        // full share of totalWithdraw (unless they are liquidated after this withdraw has been finalized).
+        if (!accountWithdraw.hasSplit && finalized) {
+            VaultStorage.getSplitWithdrawRequest()[accountWithdraw.requestId] = SplitWithdrawRequest({
+                totalVaultShares: accountWithdraw.vaultShares,
+                totalWithdraw: tokens,
+                finalized: true
+            });
 
-                accountWithdraw.hasSplit = true;
-                VaultStorage.getAccountWithdrawRequest()[account] = accountWithdraw;
-            }
-        }
-
-        if (forcedWithdraw.requestId != 0) {
-            (uint256 tokens, bool finalized) = _finalizeWithdraw(account, forcedWithdraw);
-
-            if (!forcedWithdraw.hasSplit && finalized) {
-                VaultStorage.getSplitWithdrawRequest()[forcedWithdraw.requestId] = SplitWithdrawRequest({
-                    totalVaultShares: forcedWithdraw.vaultShares,
-                    totalWithdraw: tokens,
-                    finalized: true
-                });
-
-                forcedWithdraw.hasSplit = true;
-                VaultStorage.getForcedWithdrawRequest()[account] = forcedWithdraw;
-            }
+            accountWithdraw.hasSplit = true;
         }
     }
 
@@ -265,54 +210,9 @@ abstract contract WithdrawRequestBase {
     /// claim on it during liquidation.
     /// @param _from the account that is being liquidated
     /// @param _to the liquidator
-    /// @param totalVaultSharesBefore the total vault shares the account has prior to liquidation (during
-    /// the deleverage call vault shares are transferred to the liquidator)
-    /// @param requiredVaultShares the vault shares that have been transferred to the liquidator
-    function _splitWithdrawRequest(
-        address _from,
-        address _to,
-        uint256 totalVaultSharesBefore,
-        uint256 requiredVaultShares
-    ) internal {
-        (
-            WithdrawRequest memory forcedWithdraw,
-            WithdrawRequest memory accountWithdraw
-        ) = getWithdrawRequests(_from);
-
-        // liquidVaultShares = total vault shares - f.vaultShares - a.vaultShares
-        // requiredVaultShares = min(requiredVaultShares - liquidVaultShares, 0)
-        uint256 liquidVaultShares = (
-            totalVaultSharesBefore - forcedWithdraw.vaultShares - accountWithdraw.vaultShares
-        );
-        // No additional withdraw request shares required
-        if (requiredVaultShares <= liquidVaultShares) return;
-
-        unchecked { requiredVaultShares = requiredVaultShares - liquidVaultShares; }
-
-        // The _to can only hold one withdraw request at a time, prefer the account withdraw
-        // request since it will necessarily come first (a forced withdraw will withdraw all
-        // vault shares and therefore an account withdraw is not possible afterwards). If it
-        // is not possible for a single liquidator to liquidate this account due to this restriction,
-        // multiple liquidators will be required to hold all the illiquid vault shares.
-        if (requiredVaultShares <= accountWithdraw.vaultShares) {
-            _split(_from, _to, requiredVaultShares, accountWithdraw, false);
-        } else if (requiredVaultShares <= forcedWithdraw.vaultShares) {
-            _split(_from, _to, requiredVaultShares, forcedWithdraw, true);
-        } else {
-            revert("Cannot Transfer Withdraw");
-        }
-    }
-
-    function _split(
-        address _from,
-        address _to,
-        uint256 vaultShares,
-        WithdrawRequest memory w,
-        bool forcedRequest
-    ) private {
-        mapping(address => WithdrawRequest) storage store = forcedRequest ?
-          VaultStorage.getForcedWithdrawRequest() :
-          VaultStorage.getAccountWithdrawRequest();
+    /// @param vaultShares the vault shares that have been transferred to the liquidator
+    function _splitWithdrawRequest(address _from, address _to, uint256 vaultShares) internal {
+        WithdrawRequest storage w = VaultStorage.getAccountWithdrawRequest()[_from];
 
         // Create a new split withdraw request
         if (!w.hasSplit) {
@@ -326,14 +226,11 @@ abstract contract WithdrawRequestBase {
         if (w.vaultShares == vaultShares) {
             // If the resulting vault shares is zero, then delete the request. The _from account's
             // withdraw request is fully transferred to _to
-            delete store[_from];
+            delete VaultStorage.getAccountWithdrawRequest()[_from];
         } else {
             // Otherwise deduct the vault shares
-            store[_from] = WithdrawRequest({
-                requestId: w.requestId,
-                vaultShares: w.vaultShares - vaultShares,
-                hasSplit: true
-            });
+            w.vaultShares = w.vaultShares - vaultShares;
+            w.hasSplit = true;
         }
 
         // Ensure that no withdraw request gets overridden, the _to account always receives their withdraw

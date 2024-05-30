@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {Constants} from "@contracts/global/Constants.sol";
+import {VaultConfig} from "@contracts/global/Types.sol";
 import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {WithdrawRequestBase, WithdrawRequest, SplitWithdrawRequest} from "../common/WithdrawRequestBase.sol";
@@ -11,7 +12,6 @@ import {ITradingModule, Trade, TradeType} from "@interfaces/trading/ITradingModu
 import {VaultAccountHealthFactors} from "@interfaces/notional/IVaultController.sol";
 
 struct RedeemParams {
-    bool redeemWithdrawRequest;
     uint8 dexId;
     uint256 minPurchaseAmount;
     bytes exchangeData;
@@ -73,23 +73,16 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     ) public virtual override view returns (int256 underlyingValue) {
         uint256 stakeAssetPrice = uint256(getExchangeRate(0));
 
-        (
-            WithdrawRequest memory f,
-            WithdrawRequest memory w
-        ) = getWithdrawRequests(account);
+        WithdrawRequest memory w = getWithdrawRequest(account);
         uint256 withdrawValue = _calculateValueOfWithdrawRequest(
             w, stakeAssetPrice, BORROW_TOKEN, REDEMPTION_TOKEN
         );
-        uint256 forcedValue = _calculateValueOfWithdrawRequest(
-            f, stakeAssetPrice, BORROW_TOKEN, REDEMPTION_TOKEN
-        );
-        uint256 vaultSharesNotInWithdrawQueue = (
-            vaultShares - w.vaultShares - f.vaultShares
-        );
+        // This should always be zero if there is a withdraw request.
+        uint256 vaultSharesNotInWithdrawQueue = (vaultShares - w.vaultShares);
 
         uint256 vaultSharesValue = (vaultSharesNotInWithdrawQueue * stakeAssetPrice * BORROW_PRECISION) /
             (uint256(Constants.INTERNAL_TOKEN_PRECISION) * Constants.EXCHANGE_RATE_PRECISION);
-        return (withdrawValue + forcedValue + vaultSharesValue).toInt();
+        return (withdrawValue + vaultSharesValue).toInt();
     }
 
     /// @notice Returns the exchange rate between the staking token and the borrowed token
@@ -132,14 +125,9 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         // Short circuit any zero deposit amounts
         if (depositUnderlyingExternal == 0) return 0;
 
-        (
-            WithdrawRequest memory forcedWithdraw,
-            WithdrawRequest memory accountWithdraw
-        ) = getWithdrawRequests(account);
-
         // Cannot deposit when the account has any withdraw requests
-        require(forcedWithdraw.requestId == 0);
-        require(accountVaultShares.requestId == 0);
+        WithdrawRequest memory accountWithdraw = getWithdrawRequest(account);
+        require(accountWithdraw.requestId == 0);
 
         return _stakeTokens(account, depositUnderlyingExternal, maturity, data);
     }
@@ -157,18 +145,16 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         // vault shares to avoid liquidation.
         if (vaultShares == 0) return 0;
 
-        (
-            WithdrawRequest memory forcedWithdraw,
-            WithdrawRequest memory accountWithdraw
-        ) = getWithdrawRequests(account);
+        WithdrawRequest memory accountWithdraw = getWithdrawRequest(account);
 
         RedeemParams memory params = abi.decode(data, (RedeemParams));
-        if (params.redeemWithdrawRequest) {
-            (uint256 vaultSharesRedeemed, uint256 tokensClaimed) = _redeemActiveWithdrawRequests(
-                account,
-                accountWithdraw,
-                forcedWithdraw
-            );
+        if (accountWithdraw.requestId == 0) {
+            return _executeInstantRedemption(account, vaultShares, maturity, params);
+        } else {
+            (
+                uint256 vaultSharesRedeemed,
+                uint256 tokensClaimed
+            ) = _redeemActiveWithdrawRequest(account, accountWithdraw);
             // Once a withdraw request is initiated, the full amount must be redeemed from the vault.
             require(vaultShares == vaultSharesRedeemed);
 
@@ -189,20 +175,6 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
             }
 
             return tokensClaimed;
-        } else {
-            // An account can still sell the vault shares that are not in withdraw queues, so check
-            // how many liquid vault shares they have at this point.
-            if (forcedWithdraw.requestId != 0 || accountWithdraw.requestId != 0) {
-                uint256 accountVaultShares = Deployments.NOTIONAL.getVaultAccount(
-                    account, address(this)
-                ).vaultShares;
-                uint256 liquidVaultShares = (
-                    accountVaultShares - forcedWithdraw.vaultShares - accountWithdraw.vaultShares
-                );
-                require(vaultShares <= liquidVaultShares, "Insufficient Shares");
-            }
-
-            return _executeInstantRedemption(account, vaultShares, maturity, params);
         }
     }
 
@@ -254,9 +226,6 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         );
         require(0 <= healthBefore.collateralRatio, "Insolvent");
 
-        // Required for the split withdraw request method
-        uint256 vaultSharesBefore = NOTIONAL.getVaultAccount(account, address(this)).vaultShares;
-
         // Executes the liquidation on Notional, vault shares are transferred from the account to the liquidator
         // inside this process.
         (vaultSharesFromLiquidation, depositAmountPrimeCash) = NOTIONAL.deleverageAccount{value: msg.value}(
@@ -265,7 +234,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
 
         // Splits any withdraw requests, if required. Will revert if the liquidator cannot absorb the withdraw
         // request because they have another active one.
-        _splitWithdrawRequest(account, liquidator, vaultSharesBefore, vaultSharesFromLiquidation);
+        _splitWithdrawRequest(account, liquidator, vaultSharesFromLiquidation);
 
         (VaultAccountHealthFactors memory healthAfter, /* */, /* */) = NOTIONAL.getVaultAccountHealthFactors(
             account, vault
@@ -277,21 +246,21 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     }
 
     /// @notice Allows an account to initiate a withdraw of their vault shares
-    function initiateWithdraw(uint256 vaultShares) external {
-        require(0 < vaultShares);
+    function initiateWithdraw() external {
         (VaultAccountHealthFactors memory health, /* */, /* */) = NOTIONAL.getVaultAccountHealthFactors(
-            account, vault
+            msg.sender, address(this)
         );
         VaultConfig memory config = NOTIONAL.getVaultConfig(address(this));
+        // Require that the account is collateralized
         require(config.minCollateralRatio <= health.collateralRatio);
 
-        _initiateWithdraw({account: msg.sender, vaultShares: vaultShares, isForced: false});
+        _initiateWithdraw({account: msg.sender, isForced: false});
     }
 
     /// @notice Allows the emergency exit role to force an account to withdraw all their vault shares
     function forceWithdraw(address account) external onlyRole(EMERGENCY_EXIT_ROLE) {
         // Forced withdraw will withdraw all vault shares
-        _initiateWithdraw({account: account, vaultShares: 0, isForced: true});
+        _initiateWithdraw({account: account, isForced: true});
     }
 
     /// @notice Finalizes withdraws manually
