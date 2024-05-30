@@ -118,15 +118,10 @@ abstract contract WithdrawRequestBase {
         return _getValueOfWithdrawRequest(w, stakeAssetPrice);
     }
 
-    /// @notice Initiates a withdraw request of the given vault shares
-    function _initiateWithdraw(
-        address account,
-        uint256 vaultShares,
-        bool isForced
-    ) internal {
-        uint256 totalShares = Deployments.NOTIONAL.getVaultAccount(account, address(this)).vaultShares;
-        // Ensures that we do not over-withdraw vault shares.
-        require(0 < totalShares && vaultShares <= totalShares);
+    /// @notice Initiates a withdraw request of all vault shares
+    function _initiateWithdraw(address account, bool isForced) internal {
+        uint256 vaultShares = Deployments.NOTIONAL.getVaultAccount(account, address(this)).vaultShares;
+        require(0 < vaultShares);
 
         (
             WithdrawRequest memory forcedWithdraw,
@@ -136,9 +131,6 @@ abstract contract WithdrawRequestBase {
         uint256 requestId;
         if (isForced) {
             require(forcedWithdraw.requestId == 0, "Existing Request");
-            // Forced requests withdraw all remaining vault shares
-            vaultShares = totalShares - accountWithdraw.vaultShares;
-
             requestId = _initiateWithdrawImpl(account, vaultShares, isForced);
             forcedWithdraw.requestId = requestId;
             forcedWithdraw.hasSplit = false;

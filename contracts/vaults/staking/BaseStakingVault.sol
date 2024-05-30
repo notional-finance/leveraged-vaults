@@ -137,28 +137,9 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
             WithdrawRequest memory accountWithdraw
         ) = getWithdrawRequests(account);
 
-        // Cannot deposit when the account has forced withdraw requests
+        // Cannot deposit when the account has any withdraw requests
         require(forcedWithdraw.requestId == 0);
-        if (accountWithdraw.requestId != 0) {
-            // TODO: do we want to support this feature? It would allow an account to put themselves
-            // into a position where we are forced to liquidated them.
-            // Allows an account to borrow against their withdraw request, subject to a
-            // collateral check. Allows liquidators to get more leverage against the
-            // withdraw requests when there is a lot of illiquidity in the staking token.
-            bool borrowAgainstWithdrawRequest = abi.decode(data, (bool));
-            if (borrowAgainstWithdrawRequest) {
-                if (_isUnderlyingETH()) {
-                    payable(account).transfer(depositUnderlyingExternal);
-                } else {
-                    IERC20(BORROW_TOKEN).checkTransfer(account, depositUnderlyingExternal);
-                }
-            } else {
-                revert();
-            }
-
-            // No vault shares returned as a result.
-            return 0;
-        }
+        require(accountVaultShares.requestId == 0);
 
         return _stakeTokens(account, depositUnderlyingExternal, maturity, data);
     }
@@ -298,6 +279,12 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     /// @notice Allows an account to initiate a withdraw of their vault shares
     function initiateWithdraw(uint256 vaultShares) external {
         require(0 < vaultShares);
+        (VaultAccountHealthFactors memory health, /* */, /* */) = NOTIONAL.getVaultAccountHealthFactors(
+            account, vault
+        );
+        VaultConfig memory config = NOTIONAL.getVaultConfig(address(this));
+        require(config.minCollateralRatio <= health.collateralRatio);
+
         _initiateWithdraw({account: msg.sender, vaultShares: vaultShares, isForced: false});
     }
 
