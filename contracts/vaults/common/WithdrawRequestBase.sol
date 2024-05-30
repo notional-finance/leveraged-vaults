@@ -53,8 +53,6 @@ abstract contract WithdrawRequestBase {
     }
 
     /// @notice Returns the open withdraw request for a given account
-    /// @return forcedWithdraw a forced withdraw can be activated during an emergency situation where
-    /// an entire account's position is forced to exit
     /// @return accountWithdraw an account's self initiated withdraw
     function getWithdrawRequest(address account) public view returns (WithdrawRequest memory) {
         return VaultStorage.getAccountWithdrawRequest()[account];
@@ -138,7 +136,7 @@ abstract contract WithdrawRequestBase {
         address account,
         WithdrawRequest memory accountWithdraw
     ) internal returns (uint256 vaultSharesRedeemed, uint256 tokensClaimed) {
-        if (accountWithdraw.requestId == 0) return;
+        if (accountWithdraw.requestId == 0) return (0, 0);
 
         (uint256 tokens, bool finalized) = _finalizeWithdraw(account, accountWithdraw);
         if (finalized) {
