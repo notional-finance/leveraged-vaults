@@ -143,12 +143,11 @@ arbitrum:
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
     config:
-      minCollateralRatioBPS: 8_00
+      minCollateralRatioBPS: 9_00
       maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 1_700
-      minAccountBorrowSize: 1e8
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 2000e8
+      maxDeleverageCollateralRatioBPS: 1_500
+      minAccountBorrowSize: 1_000e8
+      maxPrimaryBorrow: 200_000e8
   - vaultName: SingleSidedLP:Convex:USDC.e/[USDT]
     vaultType: Curve2TokenConvex
     primaryBorrowCurrency: USDT
