@@ -417,9 +417,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
         uint256 maturity = maturities[maturityIndex];
-        uint256 vaultShares = enterVault(
-            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
-        );
+        uint256 vaultShares = enterVaultLiquidation(account, maturity);
 
         _changeCollateralRatio();
         // attempt to account withdraw

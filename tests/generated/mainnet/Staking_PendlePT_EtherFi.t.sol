@@ -122,6 +122,7 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
             account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
         );
 
+        setMaxOracleFreshness();
         vm.warp(expires + 3600);
         Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
         if (maturity < block.timestamp) {
