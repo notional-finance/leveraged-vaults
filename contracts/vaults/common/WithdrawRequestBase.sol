@@ -211,6 +211,7 @@ abstract contract WithdrawRequestBase {
     /// @param vaultShares the vault shares that have been transferred to the liquidator
     function _splitWithdrawRequest(address _from, address _to, uint256 vaultShares) internal {
         WithdrawRequest storage w = VaultStorage.getAccountWithdrawRequest()[_from];
+        if (w.requestId == 0) return;
 
         // Create a new split withdraw request
         if (!w.hasSplit) {
