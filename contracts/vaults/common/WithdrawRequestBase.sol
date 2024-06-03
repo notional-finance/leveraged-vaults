@@ -81,15 +81,6 @@ abstract contract WithdrawRequestBase {
         }
     }
 
-    /// @notice By default when valuing a split withdraw request, it is a share of the total
-    /// value of the withdraw request based on vault shares.
-    function _getValueOfSplitWithdrawRequest(
-        WithdrawRequest memory w, SplitWithdrawRequest memory s, uint256 stakeAssetPrice
-    ) internal virtual view returns (uint256) {
-        uint256 totalValue = _getValueOfWithdrawRequest(w, stakeAssetPrice);
-        return w.vaultShares * totalValue / s.totalVaultShares;
-    }
-
     /// @notice Returns the value of a withdraw request in terms of the borrowed token. Used
     /// to determine the collateral position of the vault.
     function _calculateValueOfWithdrawRequest(
@@ -100,15 +91,17 @@ abstract contract WithdrawRequestBase {
     ) internal view returns (uint256 borrowTokenValue) {
         if (w.requestId == 0) return 0;
 
+        // If a withdraw request has split and is finalized, we know the fully realized value of
+        // the withdraw request as a share of the total realized value.
         if (w.hasSplit) {
             SplitWithdrawRequest memory s = VaultStorage.getSplitWithdrawRequest()[w.requestId];
             if (s.finalized) {
                 return _getValueOfSplitFinalizedWithdrawRequest(w, s, borrowToken, redeemToken);
-            } else {
-                return _getValueOfSplitWithdrawRequest(w, s, stakeAssetPrice);
             }
         }
 
+        // In every other case, including the case when the withdraw request has split, the vault shares
+        // in the withdraw request (`w`) are marked at the amount of vault shares the account holds.
         return _getValueOfWithdrawRequest(w, stakeAssetPrice);
     }
 
