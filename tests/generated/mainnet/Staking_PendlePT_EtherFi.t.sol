@@ -141,7 +141,7 @@ contract Test_Staking_PendlePT_EtherFi is BaseStakingTest {
         finalizeWithdrawRequest(account);
 
         uint256 underlyingToReceiver = exitVault(
-            account, vaultShares, maturity, getRedeemParams(0, 0)
+            account, vaultShares, maturity, getRedeemParamsWithdrawRequest(vaultShares, maturity)
         );
 
         assertRelDiff(

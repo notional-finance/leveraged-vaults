@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 import "../../Staking/harness/index.sol";
 import "@interfaces/ethena/IsUSDe.sol";
 
-contract Test_Staking_Ethena_xUSDC is BaseStakingTest {
+contract Test_Staking_Ethena_xUSDT is BaseStakingTest {
 
     function getDepositParams(
         uint256 /* depositAmount */,
@@ -16,6 +16,23 @@ contract Test_Staking_Ethena_xUSDC is BaseStakingTest {
             minPurchaseAmount: 0,
             exchangeData: m.exchangeData
         }));
+    }
+
+    function getRedeemParamsWithdrawRequest(
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal override view returns (bytes memory) {
+        RedeemParams memory r;
+
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        r.minPurchaseAmount = 0;
+        r.dexId = m.primaryDexId;
+        // USDe/USDT pool is 0.01% fee range
+        r.exchangeData = abi.encode(UniV3Adapter.UniV3SingleData({
+            fee: 100
+        }));
+
+        return abi.encode(r);
     }
 
     function getRedeemParams(

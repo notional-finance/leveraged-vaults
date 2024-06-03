@@ -70,6 +70,13 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         return abi.encode(r);
     }
 
+    function getRedeemParamsWithdrawRequest(
+        uint256 vaultShares,
+        uint256 maturity
+    ) internal view virtual returns (bytes memory) {
+        return getRedeemParams(vaultShares, maturity);
+    }
+
     function v() internal view returns (BaseStakingVault) {
         return BaseStakingVault(payable(address(vault)));
     }
@@ -170,9 +177,10 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         address account = makeAddr("account");
 
         uint256 vaultShares;
+        uint256 maturity;
         {
             maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
-            uint256 maturity = maturities[maturityIndex];
+            maturity = maturities[maturityIndex];
             depositAmount =  bound(depositAmount, 5 * minDeposit, maxDeposit);
 
             vaultShares = enterVault(
@@ -198,7 +206,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             v().initiateWithdraw();
         }
 
-        bytes memory params = getRedeemParams(0, 0);
+        bytes memory params = getRedeemParamsWithdrawRequest(vaultShares, maturity);
         vm.prank(account);
         // should fail if withdraw is not finalized
         vm.expectRevert();
@@ -540,9 +548,10 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         uint256 vaultShares;
         uint256 positionValue;
+        uint256 maturity;
         {
             maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
-            uint256 maturity = maturities[maturityIndex];
+            maturity = maturities[maturityIndex];
             depositAmount =  bound(depositAmount, 8 * minDeposit, maxDeposit);
 
             vaultShares = enterVault(
@@ -602,7 +611,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
                 account, address(vault), account,
                 vaultShares,
                 lendAmount, 0,
-                getRedeemParams(0, 0)
+                getRedeemParamsWithdrawRequest(vaultShares, maturity)
             ),
             depositAmount,
             maxDiff,

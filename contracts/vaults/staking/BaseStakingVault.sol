@@ -252,7 +252,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         );
         VaultConfig memory config = NOTIONAL.getVaultConfig(address(this));
         // Require that the account is collateralized
-        require(config.minCollateralRatio <= health.collateralRatio);
+        require(config.minCollateralRatio <= health.collateralRatio, "Insufficient Collateral");
 
         _initiateWithdraw({account: msg.sender, isForced: false});
     }
