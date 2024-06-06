@@ -11,6 +11,7 @@ import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 import {WithdrawManager, stETH, LidoWithdraw} from "@contracts/vaults/staking/protocols/Kelp.sol";
 import {PendlePTKelpVault} from "@contracts/vaults/staking/PendlePTKelpVault.sol";
+// import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 interface ILRTOracle {
     // methods
@@ -27,6 +28,13 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
 
     function setUp() public override {
         FORK_BLOCK = 20033103;
+
+        // list rsETH oracle
+        // vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+        // Deployments.TRADING_MODULE.setPriceOracle(0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7, AggregatorV2V3Interface(0x150aab1C3D63a1eD0560B95F23d7905CE6544cCB));
+        // (bool success, ) = 0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8.call(abi.encodeWithSignature("setPriceOracle(address,address)", [0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7, 0x150aab1C3D63a1eD0560B95F23d7905CE6544cCB]));
+        // require(success);
+
         harness = new Harness_Staking_PendlePT_Kelp();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues

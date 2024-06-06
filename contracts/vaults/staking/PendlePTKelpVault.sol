@@ -61,6 +61,10 @@ contract PendlePTKelpVault is PendlePrincipalToken {
         return KelpLib._canFinalizeWithdrawRequest(requestId);
     }
 
+    function canTriggerExtraStep(uint256 requestId) internal view returns (bool) {
+        return KelpLib._canTriggerExtraStep(requestId);
+    }
+
     function triggerExtraStep(uint256 requestId) public {
         KelpLib._triggerExtraStep(requestId);
     }

@@ -69,7 +69,8 @@ contract KelpCooldownHolder is ClonedCoolDownHolder {
     /// @notice this method need to be called once withdraw on Kelp is finalized
     /// to start withdraw process from Lido so we can unwrap stETH to ETH
     /// since we are not able to withdraw ETH directly from Kelp
-    function triggerExtraStep() public {
+    function triggerExtraStep() external {
+        require(!triggered);
         (/* */, /* */, /* */, uint256 userWithdrawalRequestNonce) = WithdrawManager.getUserWithdrawalRequest(stETH, address(this), 0);
         if (WithdrawManager.nextLockedNonce(stETH) <= userWithdrawalRequestNonce) {
             revert();
@@ -82,10 +83,15 @@ contract KelpCooldownHolder is ClonedCoolDownHolder {
         amounts[0] = tokensClaimed;
         IERC20(stETH).approve(address(LidoWithdraw), amounts[0]);
         LidoWithdraw.requestWithdrawals(amounts, address(this));
+
         triggered = true;
     }
 
     function _finalizeCooldown() internal override returns (uint256 tokensClaimed, bool finalized) {
+        if (!triggered) {
+            return (0, false);
+        }
+
         uint256[] memory requestIds = LidoWithdraw.getWithdrawalRequests(address(this));
         ILidoWithdraw.WithdrawalRequestStatus[] memory withdrawsStatus = LidoWithdraw.getWithdrawalStatus(requestIds);
 
@@ -153,6 +159,18 @@ library KelpLib {
 
     function _canFinalizeWithdrawRequest(uint256 requestId) internal view returns (bool) {
         address holder = address(uint160(requestId));
+        if (!KelpCooldownHolder(payable(holder)).triggered()) return false;
+
+        uint256[] memory requestIds = LidoWithdraw.getWithdrawalRequests(address(this));
+        ILidoWithdraw.WithdrawalRequestStatus[] memory withdrawsStatus = LidoWithdraw.getWithdrawalStatus(requestIds);
+
+        return withdrawsStatus[0].isFinalized;
+    }
+
+    function _canTriggerExtraStep(uint256 requestId) internal view returns (bool) {
+        address holder = address(uint160(requestId));
+        if (KelpCooldownHolder(payable(holder)).triggered()) return false;
+
         (/* */, /* */, /* */, uint256 userWithdrawalRequestNonce) = WithdrawManager.getUserWithdrawalRequest(stETH, holder, 0);
 
         return userWithdrawalRequestNonce < WithdrawManager.nextLockedNonce(stETH);
