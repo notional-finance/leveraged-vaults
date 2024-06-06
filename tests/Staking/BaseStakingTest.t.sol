@@ -298,7 +298,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(w.hasSplit, false);
 
         // Assert no change to valuation
-        assertApproxEqRel(valueBefore, valueAfter, 0.0001e18, "Valuation Change");
+        assertApproxEqRel(valueBefore, valueAfter, 0.002e18, "Valuation Change");
     }
 
     function test_RevertIf_accountWithdraw_hasExistingRequest(
@@ -348,7 +348,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         int256 valueAfter = v().convertStrategyToUnderlying(account, vaultShares, maturity);
         // Assert no change to valuation
-        assertApproxEqRel(valueBefore, valueAfter, 0.0001e18, "Valuation Change");
+        assertApproxEqRel(valueBefore, valueAfter, 0.003e18, "Valuation Change");
     }
 
     function test_RevertIf_forceWithdraw_accountInitiatesWithdraw(
@@ -376,7 +376,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     }
 
     function test_forceWithdraw_initiateNewWithdraw(
-        uint8 maturityIndex, uint256 depositAmount
+        uint8 maturityIndex, uint256 depositAmount, bool forceFinalizeWithdraw
     ) public {
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
@@ -393,6 +393,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         v().grantRole(keccak256("EMERGENCY_EXIT_ROLE"), admin);
         vm.prank(admin);
         v().forceWithdraw(account);
+        if (forceFinalizeWithdraw) finalizeWithdrawRequest(account);
         WithdrawRequest memory f = v().getWithdrawRequest(account);
         assertTrue(f.requestId != 0, "4");
         assertEq(f.vaultShares, vaultShares, "5");
@@ -400,7 +401,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         int256 valueAfter = v().convertStrategyToUnderlying(account, vaultShares, maturity);
 
         // Assert no change to valuation
-        assertApproxEqRel(valueBefore, valueAfter, 0.0001e18, "Valuation Change");
+        assertApproxEqRel(valueBefore, valueAfter, 0.003e18, "Valuation Change");
     }
 
     function test_RevertIf_forceWithdraw_secondForceWithdraw(

@@ -26,7 +26,7 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
     uint256 expires;
 
     function setUp() public override {
-        FORK_BLOCK = 20019099;
+        FORK_BLOCK = 20033103;
         harness = new Harness_Staking_PendlePT_Kelp();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -54,8 +54,8 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
         WithdrawManager.unlockQueue(
             address(stETH),
             type(uint256).max,
-            lrtOracle.getAssetPrice(address(stETH)),
-            lrtOracle.rsETHPrice()
+            lrtOracle.getAssetPrice(address(stETH)) / 2,
+            lrtOracle.rsETHPrice() / 2
         );
         vm.stopPrank();
         vm.roll(block.number + WithdrawManager.withdrawalDelayBlocks());
@@ -224,7 +224,7 @@ contract Harness_Staking_PendlePT_Kelp is PendleKelpHarness {
         ptAddress = 0xB05cABCd99cf9a73b19805edefC5f67CA5d1895E;
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
-        baseToUSDOracle = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
+        baseToUSDOracle = 0x150aab1C3D63a1eD0560B95F23d7905CE6544cCB;
     }
 
 }

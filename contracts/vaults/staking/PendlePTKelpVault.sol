@@ -2,11 +2,13 @@
 pragma solidity 0.8.24;
 
 import {Constants} from "@contracts/global/Constants.sol";
+import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {PendlePrincipalToken, WithdrawRequest} from "./protocols/PendlePrincipalToken.sol";
 import { KelpLib, KelpCooldownHolder, rsETH, stETH } from "./protocols/Kelp.sol";
 
 contract PendlePTKelpVault is PendlePrincipalToken {
+    using TypeConvert for int256;
     address public HOLDER_IMPLEMENTATION;
 
     constructor(

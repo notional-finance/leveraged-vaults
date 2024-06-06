@@ -50,6 +50,7 @@ address constant stETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 ILidoWithdraw constant LidoWithdraw = ILidoWithdraw(0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1);
 
 contract KelpCooldownHolder is ClonedCoolDownHolder {
+    bool public triggered = false; 
 
     constructor(address _vault) ClonedCoolDownHolder(_vault) { }
 
@@ -81,6 +82,7 @@ contract KelpCooldownHolder is ClonedCoolDownHolder {
         amounts[0] = tokensClaimed;
         IERC20(stETH).approve(address(LidoWithdraw), amounts[0]);
         LidoWithdraw.requestWithdrawals(amounts, address(this));
+        triggered = true;
     }
 
     function _finalizeCooldown() internal override returns (uint256 tokensClaimed, bool finalized) {
@@ -111,7 +113,17 @@ library KelpLib {
         uint256 borrowPrecision
     ) internal view returns (uint256) {
         address holder = address(uint160(w.requestId));
-        (/* */, uint256 expectedStETHAmount, /* */, /* */) = WithdrawManager.getUserWithdrawalRequest(stETH, holder, 0);
+
+        uint256 expectedStETHAmount;
+        if (KelpCooldownHolder(payable(holder)).triggered()) {
+            uint256[] memory requestIds = LidoWithdraw.getWithdrawalRequests(holder);
+            ILidoWithdraw.WithdrawalRequestStatus[] memory withdrawsStatus = LidoWithdraw.getWithdrawalStatus(requestIds);
+
+            expectedStETHAmount = withdrawsStatus[0].amountOfStETH;
+        } else {
+            (/* */, expectedStETHAmount, /* */, /* */) = WithdrawManager.getUserWithdrawalRequest(stETH, holder, 0);
+
+        }
 
         (int256 stETHToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
             address(stETH), borrowToken
