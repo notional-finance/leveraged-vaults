@@ -13,7 +13,7 @@ abstract contract PendleKelpHarness is BaseStakingHarness {
     uint32 twapDuration;
     bool useSyOracleRate;
     address ptOracle;
-    address baseToUSDOracle;
+    address public baseToUSDOracle;
 
     constructor() {
         UniV3Adapter.UniV3SingleData memory u;
@@ -50,8 +50,7 @@ abstract contract PendleKelpHarness is BaseStakingHarness {
     ) {
     }
 
-    function withdrawToken(address vault) public view override returns (address) {
-        // During Pendle withdraws, the TOKEN_OUT_SY is what is being held by the vault.
-        return PendlePrincipalToken(payable(vault)).TOKEN_OUT_SY();
+    function withdrawToken(address /* vault */) public pure override returns (address) {
+        return stETH;
     }
 }

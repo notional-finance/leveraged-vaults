@@ -508,7 +508,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
     function test_deleverageAccount_splitAccountWithdrawRequest(
         uint8 maturityIndex
-    ) public {
+    ) public virtual {
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
         uint256 maturity = maturities[maturityIndex];

@@ -9,7 +9,7 @@ import {
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
-import {WithdrawManager, stETH, LidoWithdraw} from "@contracts/vaults/staking/protocols/Kelp.sol";
+import {WithdrawManager, stETH, LidoWithdraw, rsETH} from "@contracts/vaults/staking/protocols/Kelp.sol";
 import {PendlePTKelpVault} from "@contracts/vaults/staking/PendlePTKelpVault.sol";
 
 interface ILRTOracle {
@@ -38,7 +38,7 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
         maxRelExitValuation = 50 * BASIS_POINT;
         maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
         maxRelExitValuation_WithdrawRequest_Variable = 0.005e18;
-        deleverageCollateralDecreaseRatio = 925;
+        deleverageCollateralDecreaseRatio = 930;
         defaultLiquidationDiscount = 955;
         withdrawLiquidationDiscount = 945;
 
@@ -101,6 +101,20 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
         });
 
         return abi.encode(d);
+    }
+
+    function test_deleverageAccount_splitAccountWithdrawRequest(
+        uint8 maturityIndex
+    ) public override {
+        // list oracle
+        vm.startPrank(0x02479BFC7Dce53A02e26fE7baea45a0852CB0909);
+        Deployments.TRADING_MODULE.setPriceOracle(
+            address(rsETH),
+            AggregatorV2V3Interface(Harness_Staking_PendlePT_Kelp(address(harness)).baseToUSDOracle())
+        );
+        vm.stopPrank();
+
+        super.test_deleverageAccount_splitAccountWithdrawRequest(maturityIndex);
     }
 
     function test_RevertIf_accountEntry_postExpiry(uint8 maturityIndex) public {
