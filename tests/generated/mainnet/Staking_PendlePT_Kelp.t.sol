@@ -11,7 +11,6 @@ import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 import {WithdrawManager, stETH, LidoWithdraw} from "@contracts/vaults/staking/protocols/Kelp.sol";
 import {PendlePTKelpVault} from "@contracts/vaults/staking/PendlePTKelpVault.sol";
-// import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 
 interface ILRTOracle {
     // methods
@@ -28,12 +27,6 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
 
     function setUp() public override {
         FORK_BLOCK = 20033103;
-
-        // list rsETH oracle
-        // vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
-        // Deployments.TRADING_MODULE.setPriceOracle(0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7, AggregatorV2V3Interface(0x150aab1C3D63a1eD0560B95F23d7905CE6544cCB));
-        // (bool success, ) = 0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8.call(abi.encodeWithSignature("setPriceOracle(address,address)", [0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7, 0x150aab1C3D63a1eD0560B95F23d7905CE6544cCB]));
-        // require(success);
 
         harness = new Harness_Staking_PendlePT_Kelp();
 
@@ -53,7 +46,7 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
         expires = IPMarket(PendleStakingHarness(address(harness)).marketAddress()).expiry();
     }
 
-    function finalizeWithdrawRequest(address account) internal override {
+    function _finalizeFirstStep() private {
         // finalize withdraw request on Kelp
         address stETHWhale = 0x804a7934bD8Cd166D35D8Fb5A1eb1035C8ee05ce;
         vm.prank(stETHWhale);
@@ -62,22 +55,30 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
         WithdrawManager.unlockQueue(
             address(stETH),
             type(uint256).max,
-            lrtOracle.getAssetPrice(address(stETH)) / 2,
-            lrtOracle.rsETHPrice() / 2
+            lrtOracle.getAssetPrice(address(stETH)),
+            lrtOracle.rsETHPrice()
         );
         vm.stopPrank();
         vm.roll(block.number + WithdrawManager.withdrawalDelayBlocks());
+    }
 
-        // trigger withdraw from Kelp nad unstake from LIDO
-        WithdrawRequest memory w = v().getWithdrawRequest(account);
-        PendlePTKelpVault(payable(address(vault))).triggerExtraStep(w.requestId);
-
+    function _finalizeSecondStep() private {
         // finalize withdraw request on LIDO
         address lidoAdmin = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
         deal(lidoAdmin, 1000e18);
         vm.startPrank(lidoAdmin);
         LidoWithdraw.finalize{value: 1000e18}(LidoWithdraw.getLastRequestId(), 1.1687147788880494e27);
         vm.stopPrank();
+    }
+
+    function finalizeWithdrawRequest(address account) internal override {
+        _finalizeFirstStep();
+
+        // trigger withdraw from Kelp nad unstake from LIDO
+        WithdrawRequest memory w = v().getWithdrawRequest(account);
+        PendlePTKelpVault(payable(address(vault))).triggerExtraStep(w.requestId);
+
+        _finalizeSecondStep();
     }
 
     function getDepositParams(
@@ -190,6 +191,55 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
             maxRelExitValuation,
             "Valuation and Deposit"
         );
+    }
+
+    function test_canTriggerExtraStep(
+        uint8 maturityIndex, uint256 depositAmount, bool useForce
+    ) public {
+        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+        maturityIndex = uint8(bound(maturityIndex, 0, 2));
+        address account = makeAddr("account");
+        uint256 maturity = maturities[maturityIndex];
+
+        uint256 vaultShares = enterVault(
+            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+        );
+
+        setMaxOracleFreshness();
+        vm.warp(expires + 3600);
+        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        if (maturity < block.timestamp) {
+            // Push the vault shares to prime
+            totalVaultShares[maturity] -= vaultShares;
+            maturity = maturities[0];
+            totalVaultShares[maturity] += vaultShares;
+        }
+
+        if (useForce) {
+            _forceWithdraw(account);
+        } else {
+            vm.prank(account);
+            v().initiateWithdraw();
+        }
+        WithdrawRequest memory w = v().getWithdrawRequest(account);
+
+        assertFalse(PendlePTKelpVault(payable(address(vault))).canTriggerExtraStep(w.requestId));
+        assertFalse(PendlePTKelpVault(payable(address(vault))).canFinalizeWithdrawRequest(w.requestId));
+
+        _finalizeFirstStep();
+
+        assertTrue(PendlePTKelpVault(payable(address(vault))).canTriggerExtraStep(w.requestId));
+        assertFalse(PendlePTKelpVault(payable(address(vault))).canFinalizeWithdrawRequest(w.requestId));
+
+        PendlePTKelpVault(payable(address(vault))).triggerExtraStep(w.requestId);
+
+        assertFalse(PendlePTKelpVault(payable(address(vault))).canTriggerExtraStep(w.requestId));
+        assertFalse(PendlePTKelpVault(payable(address(vault))).canFinalizeWithdrawRequest(w.requestId));
+
+        _finalizeSecondStep();
+
+        assertFalse(PendlePTKelpVault(payable(address(vault))).canTriggerExtraStep(w.requestId));
+        assertTrue(PendlePTKelpVault(payable(address(vault))).canFinalizeWithdrawRequest(w.requestId));
     }
 }
 

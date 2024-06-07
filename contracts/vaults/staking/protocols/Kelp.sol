@@ -50,7 +50,7 @@ address constant stETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 ILidoWithdraw constant LidoWithdraw = ILidoWithdraw(0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1);
 
 contract KelpCooldownHolder is ClonedCoolDownHolder {
-    bool public triggered = false; 
+    bool public triggered = false;
 
     constructor(address _vault) ClonedCoolDownHolder(_vault) { }
 
@@ -72,9 +72,7 @@ contract KelpCooldownHolder is ClonedCoolDownHolder {
     function triggerExtraStep() external {
         require(!triggered);
         (/* */, /* */, /* */, uint256 userWithdrawalRequestNonce) = WithdrawManager.getUserWithdrawalRequest(stETH, address(this), 0);
-        if (WithdrawManager.nextLockedNonce(stETH) <= userWithdrawalRequestNonce) {
-            revert();
-        }
+        require(userWithdrawalRequestNonce < WithdrawManager.nextLockedNonce(stETH));
 
         WithdrawManager.completeWithdrawal(stETH);
         uint256 tokensClaimed = IERC20(stETH).balanceOf(address(this));
@@ -161,7 +159,7 @@ library KelpLib {
         address holder = address(uint160(requestId));
         if (!KelpCooldownHolder(payable(holder)).triggered()) return false;
 
-        uint256[] memory requestIds = LidoWithdraw.getWithdrawalRequests(address(this));
+        uint256[] memory requestIds = LidoWithdraw.getWithdrawalRequests(holder);
         ILidoWithdraw.WithdrawalRequestStatus[] memory withdrawsStatus = LidoWithdraw.getWithdrawalStatus(requestIds);
 
         return withdrawsStatus[0].isFinalized;
