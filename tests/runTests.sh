@@ -1,5 +1,6 @@
 #!/bin/bash
 source .env
+source venv/bin/activate
 python tests/SingleSidedLP/generate_tests.py
 
 export RPC_URL=$MAINNET_RPC_URL

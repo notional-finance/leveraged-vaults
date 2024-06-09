@@ -62,16 +62,20 @@ contract BalancerComposableAuraVault is AuraStakingMixin {
 
         lpTokens = _joinPoolExactTokensIn(amounts, customData);
 
-        // Transfer token to Aura protocol for boosted staking
-        bool success = AURA_BOOSTER.deposit(AURA_POOL_ID, lpTokens, true);
-        require(success);
+        if (address(AURA_BOOSTER) != address(0)) {
+            // Transfer token to Aura protocol for boosted staking
+            bool success = AURA_BOOSTER.deposit(AURA_POOL_ID, lpTokens, true);
+            require(success);
+        }
     }
 
     function _unstakeAndExitPool(
         uint256 poolClaim, uint256[] memory minAmounts, bool isSingleSided
     ) internal override returns (uint256[] memory exitBalances) {
-        bool success = AURA_REWARD_POOL.withdrawAndUnwrap(poolClaim, false); // claimRewards = false
-        require(success);
+        if (address(AURA_REWARD_POOL) != address(0)) {
+            bool success = AURA_REWARD_POOL.withdrawAndUnwrap(poolClaim, false); // claimRewards = false
+            require(success);
+        }
 
         bytes memory customData;
         if (isSingleSided) {

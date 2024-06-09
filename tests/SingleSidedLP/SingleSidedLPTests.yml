@@ -649,3 +649,25 @@ mainnet:
       maxDeleverageCollateralRatioBPS: 3_300
       minAccountBorrowSize: 60_000e8
       maxPrimaryBorrow: 1_000_000e8
+  - vaultName: SingleSidedLP:Balancer:rsETH/[WETH]
+    forkBlock: 20056700
+    vaultType: ComposablePool
+    primaryBorrowCurrency: ETH
+    rewardPool: "0x0000000000000000000000000000000000000000"
+    rewards: []
+    oracles: [rsETH, ETH]
+    settings:
+      maxPoolShare: 3000
+      oraclePriceDeviationLimitPercent: 0.015e4
+    setUp:
+      minDeposit: 1e18
+      maxDeposit: 100e18
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 50
+    config:
+      feeRate5BPS: 20
+      minCollateralRatioBPS: 1_400
+      maxDeleverageCollateralRatioBPS: 2_700
+      liquidationRate: 103
+      minAccountBorrowSize: 30e8
+      maxPrimaryBorrow: 250e8
