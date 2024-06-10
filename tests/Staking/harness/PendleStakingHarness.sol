@@ -7,6 +7,7 @@ import {UniV3Adapter} from "@contracts/trading/adapters/UniV3Adapter.sol";
 import "@contracts/vaults/staking/PendlePTEtherFiVault.sol";
 import "@contracts/vaults/staking/BaseStakingVault.sol";
 
+// TODO: there are custom pendle tests
 abstract contract PendleStakingHarness is BaseStakingHarness {
     address public marketAddress;
     address public ptAddress;
@@ -22,12 +23,14 @@ abstract contract PendleStakingHarness is BaseStakingHarness {
         uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
 
         setMetadata(StakingMetadata({
+            // TODO: this us custom per pendle vault
             primaryBorrowCurrency: 1,
             primaryDexId: primaryDexId,
             exchangeData: exchangeData
         }));
     }
 
+    // TODO: this is custom per pendle vault
     function deployVaultImplementation() public override returns (
         address impl, bytes memory _metadata
     ) {

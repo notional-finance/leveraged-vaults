@@ -8,6 +8,7 @@ struct StakingMetadata {
     uint16 primaryBorrowCurrency;
     uint8 primaryDexId;
     bytes exchangeData;
+    bool hasWithdrawRequests;
 }
 
 abstract contract BaseStakingHarness is StrategyVaultHarness {
