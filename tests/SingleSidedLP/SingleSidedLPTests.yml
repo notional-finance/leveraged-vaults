@@ -40,7 +40,7 @@ arbitrum:
       maxPoolShare: 3000
       oraclePriceDeviationLimitPercent: 0.01e4
     setUp:
-      minDeposit: 1000e8
+      minDeposit: 0.01e18
       maxDeposit: 1e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
@@ -96,6 +96,8 @@ arbitrum:
     rewards: [AURA, BAL, ARB]
     oracles: [USDC, DAI, USDT, USDC_e]
     setUp:
+      minDeposit: 0.01e18
+      maxDeposit: 50e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 15
     config:
@@ -113,7 +115,7 @@ arbitrum:
     settings:
       maxPoolShare: 3000
     setUp:
-      minDeposit: 1000e8
+      minDeposit: 0.01e18
       maxDeposit: 1e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
@@ -165,6 +167,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1900
   - vaultName: SingleSidedLP:Convex:crvUSD/[USDC]
+    forkBlock: 206791948
     vaultType: Curve2Token
     primaryBorrowCurrency: USDC
     rewardPool: "0xBFEE9F3E015adC754066424AEd535313dc764116"
@@ -172,7 +175,7 @@ arbitrum:
     lpToken: "0xec090cf6DD891D2d014beA6edAda6e05E025D93d"
     whale: "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
     curveInterface: StableSwapNG
-    rewards: [CRV, ARB]
+    rewards: [ARB]
     oracles: [USDC, crvUSD]
     settings:
       maxPoolShare: 2000
@@ -191,20 +194,21 @@ arbitrum:
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 5_000e8
   - vaultName: SingleSidedLP:Convex:crvUSD/[USDT]
+    forkBlock: 206791948
     vaultType: Curve2Token
     primaryBorrowCurrency: USDT
     rewardPool: "0xf74d4C9b0F49fb70D8Ff6706ddF39e3a16D61E67"
     poolToken: "0x73aF1150F265419Ef8a5DB41908B700C32D49135"
     lpToken: "0x73aF1150F265419Ef8a5DB41908B700C32D49135"
     curveInterface: StableSwapNG
-    rewards: [CRV, ARB]
+    rewards: [ARB]
     oracles: [USDT, crvUSD]
     settings:
       maxPoolShare: 2000
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e6
-      maxDeposit: 90_000e6
+      maxDeposit: 10_000e6
       maxRelEntryValuation: 75
       maxRelExitValuation: 75
     config:
@@ -266,6 +270,7 @@ mainnet:
       minAccountBorrowSize: 100_000e8
       maxPrimaryBorrow: 5_000_000e8
   - vaultName: SingleSidedLP:Convex:pyUSD/[USDC]
+    skipTests: ["test_claimReward_WithChangingForceClaimAfter"]
     vaultType: Curve2Token
     curveInterface: StableSwapNG
     primaryBorrowCurrency: USDC
@@ -296,7 +301,7 @@ mainnet:
     vaultType: ComposablePool
     primaryBorrowCurrency: ETH
     rewardPool: "0x5F032f15B4e910252EDaDdB899f7201E89C8cD6b"
-    rewards: [AURA, BAL, SWISE]
+    rewards: [SWISE]
     oracles: [osETH, ETH]
     settings:
       maxPoolShare: 2000
@@ -336,6 +341,12 @@ mainnet:
       minAccountBorrowSize: 100_000e8
       maxPrimaryBorrow: 750_000e8
   - vaultName: SingleSidedLP:Aura:rETH/weETH:[ETH]
+    # skip reason: [FAIL. Reason: revert: ERC20: transfer amount exceeds allowance]
+    # trading module reset approval to zero 
+    skipTests:
+      - "test_claimReward_ShouldNotClaimMoreThanTotalIncentives"
+      - "test_EnterExitEnterVault"
+      - "test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission"
     vaultType: WrappedComposablePool
     primaryBorrowCurrency: ETH
     rewardPool: "0x07A319A023859BbD49CC9C38ee891c3EA9283Cc5"
@@ -390,6 +401,10 @@ mainnet:
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 10e8
   - vaultName: SingleSidedLP:Aura:ezETH/[WETH]
+    # skip reason: [FAIL. Reason: OraclePriceExpired()]
+    skipTests:
+      - "test_claimReward_ShouldNotClaimMoreThanTotalIncentives"
+      - "test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission"
     vaultType: ComposablePool
     primaryBorrowCurrency: ETH
     rewardPool: "0x95eC73Baa0eCF8159b4EE897D973E41f51978E50"

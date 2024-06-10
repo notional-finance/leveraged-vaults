@@ -5,6 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Convex_crvUSD_xUSDC is VaultRewarderTests {
     function setUp() public override {
+        FORK_BLOCK = 206791948;
         harness = new Harness_SingleSidedLP_Convex_crvUSD_xUSDC();
 
         WHALE = 0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D;
@@ -61,18 +62,12 @@ Curve2TokenHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](2);
-        permissions = new ITradingModule.TokenPermissions[](2);
+        token = new address[](1);
+        permissions = new ITradingModule.TokenPermissions[](1);
 
-        // CRV
-        token[0] = 0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978;
-        permissions[0] = ITradingModule.TokenPermissions(
-            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
-            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
-        );
         // ARB
-        token[1] = 0x912CE59144191C1204E64559FE8253a0e49E6548;
-        permissions[1] = ITradingModule.TokenPermissions(
+        token[0] = 0x912CE59144191C1204E64559FE8253a0e49E6548;
+        permissions[0] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
@@ -100,11 +95,9 @@ Curve2TokenHarness
         curveInterface = CurveInterface.StableSwapNG;
         
 
-        _m.rewardTokens = new IERC20[](2);
-        // CRV
-        _m.rewardTokens[0] = IERC20(0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978);
+        _m.rewardTokens = new IERC20[](1);
         // ARB
-        _m.rewardTokens[1] = IERC20(0x912CE59144191C1204E64559FE8253a0e49E6548);
+        _m.rewardTokens[0] = IERC20(0x912CE59144191C1204E64559FE8253a0e49E6548);
         
         setMetadata(_m);
     }

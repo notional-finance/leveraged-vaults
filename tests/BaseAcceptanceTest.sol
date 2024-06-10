@@ -208,6 +208,10 @@ abstract contract BaseAcceptanceTest is Test {
         }
     }
 
+    function _shouldSkip(string memory /* name */) internal virtual returns(bool) {
+        return false;
+    }
+
     function expectRevert_enterVaultBypass(
         address account,
         uint256 depositAmount,
@@ -481,6 +485,42 @@ abstract contract BaseAcceptanceTest is Test {
         );
 
         checkInvariants();
+    }
+
+    function test_EnterExitEnterVault(uint256 maturityIndex, uint256 depositAmount) public {
+        vm.skip(_shouldSkip("test_EnterExitEnterVault"));
+        address account = makeAddr("account");
+        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
+        uint256 maturity = maturities[maturityIndex];
+        depositAmount = boundDepositAmount(depositAmount);
+
+        hook_beforeEnterVault(account, maturity, depositAmount);
+        uint256 vaultShares = enterVault(
+            account,
+            depositAmount,
+            maturity,
+            getDepositParams(depositAmount, maturity)
+        );
+
+        vm.warp(block.timestamp + 3600);
+
+        exitVault(
+            account,
+            vaultShares,
+            maturity,
+            getRedeemParams(depositAmount, maturity)
+        );
+
+
+        vm.warp(block.timestamp + 3600);
+
+        hook_beforeEnterVault(account, maturity, depositAmount);
+        enterVault(
+            account,
+            depositAmount,
+            maturity,
+            getDepositParams(depositAmount, maturity)
+        );
     }
 
     function test_SettleVault() public {

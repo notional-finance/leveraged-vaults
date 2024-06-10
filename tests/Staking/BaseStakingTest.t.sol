@@ -20,10 +20,11 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         (address impl, /* */) = harness.deployVaultImplementation();
         nProxy proxy;
 
-        if (harness.EXISTING_DEPLOYMENT() != address(0)) {
-            proxy = nProxy(payable(harness.EXISTING_DEPLOYMENT()));
+        address existingDeployment = harness.EXISTING_DEPLOYMENT();
+        if (existingDeployment != address(0)) {
+            proxy = nProxy(payable(existingDeployment));
             vm.prank(Deployments.NOTIONAL.owner());
-            UUPSUpgradeable(harness.EXISTING_DEPLOYMENT()).upgradeTo(impl);
+            UUPSUpgradeable(existingDeployment).upgradeTo(impl);
         } else {
             bytes memory initData = harness.getInitializeData();
 
