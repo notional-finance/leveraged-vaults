@@ -36,10 +36,10 @@ library VaultStorage {
 
     /// @notice account initiated WithdrawRequest
     uint256 private constant ACCOUNT_WITHDRAW_SLOT        = 1000008;
-    /// @notice forced WithdrawRequest
-    uint256 private constant FORCED_WITHDRAW_SLOT         = 1000009;
     /// @notice Storage slot for split withdraw requests
-    uint256 private constant SPLIT_WITHDRAW_SLOT          = 1000010;
+    uint256 private constant SPLIT_WITHDRAW_SLOT          = 1000009;
+    /// @notice Storage slot for withdraw request metadata
+    uint256 private constant WITHDRAW_REQUEST_DATA_SLOT   = 1000010;
     /// @notice Append only
 
     /// @notice returns the storage slot that contains the vault settings
@@ -125,11 +125,11 @@ library VaultStorage {
         assembly { store.slot := ACCOUNT_WITHDRAW_SLOT }
     }
 
-    function getForcedWithdrawRequest() internal pure returns (mapping(address => WithdrawRequest) storage store) {
-        assembly { store.slot := FORCED_WITHDRAW_SLOT }
-    }
-
     function getSplitWithdrawRequest() internal pure returns (mapping(uint256 => SplitWithdrawRequest) storage store) {
         assembly { store.slot := SPLIT_WITHDRAW_SLOT }
+    }
+
+    function getWithdrawRequestData() internal pure returns (mapping(uint256 => bytes) storage store) {
+        assembly { store.slot := WITHDRAW_REQUEST_DATA_SLOT }
     }
 }

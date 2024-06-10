@@ -123,4 +123,7 @@ library Constants {
 
     uint256 internal constant CHAIN_ID_MAINNET = 1;
     uint256 internal constant CHAIN_ID_ARBITRUM = 42161;
+    
+    // All trading module exchange rates are normalized to 18 decimals
+    uint256 internal constant EXCHANGE_RATE_PRECISION = 1e18;
 }

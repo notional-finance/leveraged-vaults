@@ -45,4 +45,8 @@ abstract contract BaseStakingHarness is StrategyVaultHarness {
         p.maxRequiredAccountCollateralRatioBPS = 10000;
         p.excessCashLiquidationBonus = 100;
     }
+
+    function withdrawToken(address vault) public view virtual returns (address) {
+        return BaseStakingVault(payable(vault)).STAKING_TOKEN();
+    }
 }

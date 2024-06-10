@@ -31,7 +31,7 @@ library Deployments {
 
     address internal constant ALT_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
-    ICurveRouterV2 public constant CURVE_ROUTER_V2 = ICurveRouterV2(0x99a58482BD75cbab83b27EC03CA68fF489b5788f);
+    ICurveRouterV2 public constant CURVE_ROUTER_V2 = ICurveRouterV2(0xF0d4c12A5768D806021F80a262B4d39d26C58b8D);
     ICurveMetaRegistry public constant CURVE_META_REGISTRY = ICurveMetaRegistry(0xF98B45FA17DE75FB1aD0e7aFD971b0ca00e379fC);
     address internal constant CURVE_V1_HANDLER = 0x46a8a9CF4Fc8e99EC3A14558ACABC1D93A27de68;
     address internal constant CURVE_V2_HANDLER = 0xC4F389020002396143B863F6325aA6ae481D19CE;

@@ -61,6 +61,13 @@ abstract contract BaseAcceptanceTest is Test {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
         // NOTE: everything needs to run after create select fork
         deployCodeTo("VaultRewarderLib.sol", Deployments.VAULT_REWARDER_LIB);
+        if (Deployments.CHAIN_ID == 1) {
+            vm.startPrank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            address tradingModule = address(new TradingModule(Deployments.NOTIONAL, Deployments.TRADING_MODULE));
+            // NOTE: fixes curve router
+            UUPSUpgradeable(address(Deployments.TRADING_MODULE)).upgradeTo(tradingModule);
+            vm.stopPrank();
+        }
 
         config = harness.getTestVaultConfig();
         MarketParameters[] memory m = Deployments.NOTIONAL.getActiveMarkets(config.borrowCurrencyId);
@@ -83,7 +90,7 @@ abstract contract BaseAcceptanceTest is Test {
         roundingPrecision = decimals > 8 ? 10 ** (decimals - 8) : 10 ** (8 - decimals);
 
         if (Deployments.CHAIN_ID == 1) {
-            vm.startPrank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            vm.startPrank(Deployments.NOTIONAL.owner());
         } else {
             vm.startPrank(Deployments.NOTIONAL.owner());
         }
@@ -108,6 +115,15 @@ abstract contract BaseAcceptanceTest is Test {
         liquidator = new AaveFlashLiquidator(Deployments.NOTIONAL, aave);
     }
 
+    function setMaxOracleFreshness() internal {
+        if (Deployments.CHAIN_ID == 1) {
+            vm.prank(Deployments.NOTIONAL.owner());
+        } else {
+            vm.prank(Deployments.NOTIONAL.owner());
+        }
+        TradingModule(address(Deployments.TRADING_MODULE)).setMaxOracleFreshness(type(uint32).max);
+    }
+
     function assertAbsDiff(uint256 a, uint256 b, uint256 diff, string memory m) internal {
         uint256 d = a > b ? a - b : b - a;
         assertLe(d, diff, m);
@@ -127,7 +143,7 @@ abstract contract BaseAcceptanceTest is Test {
     ) internal {
         // mainnet trading module still didn't migrate to new NOTIONAL proxy address
         if (FOUNDRY_PROFILE == keccak256('mainnet') || Deployments.CHAIN_ID == 1) {
-            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            vm.prank(Deployments.NOTIONAL.owner());
         } else {
             vm.prank(Deployments.NOTIONAL.owner());
         }
@@ -155,8 +171,7 @@ abstract contract BaseAcceptanceTest is Test {
 
     function setPriceOracle(address token, address oracle) public {
         if (Deployments.CHAIN_ID == 1) {
-            // NOTE: temporary code b/c owner has not changed yet
-            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            vm.prank(Deployments.NOTIONAL.owner());
         } else {
             vm.prank(Deployments.NOTIONAL.owner());
         }
@@ -344,25 +359,6 @@ abstract contract BaseAcceptanceTest is Test {
         bytes memory data,
         bytes memory error
     ) internal virtual returns (uint256 totalToReceiver) {
-        return _exitVault(account, vaultShares, maturity, data, true, error);
-    }
-
-    function exitVault(
-        address account,
-        uint256 vaultShares,
-        uint256 maturity,
-        bytes memory data
-    ) internal virtual returns (uint256 totalToReceiver) {
-        return _exitVault(account, vaultShares, maturity, data, false, "");
-    }
-    function _exitVault(
-        address account,
-        uint256 vaultShares,
-        uint256 maturity,
-        bytes memory data,
-        bool expectRevert,
-        bytes memory error
-    ) private returns (uint256 totalToReceiver) {
         uint256 lendAmount;
         if (maturity == type(uint40).max) {
           lendAmount = type(uint256).max;
@@ -371,6 +367,45 @@ abstract contract BaseAcceptanceTest is Test {
             Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
           );
         }
+        return _exitVault(account, vaultShares, maturity, lendAmount, data, true, error);
+    }
+
+    function exitVault(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        bytes memory data
+    ) internal virtual returns (uint256 totalToReceiver) {
+        uint256 lendAmount;
+        if (maturity == type(uint40).max) {
+          lendAmount = type(uint256).max;
+        } else {
+          lendAmount = uint256(
+            Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
+          );
+        }
+        return _exitVault(account, vaultShares, maturity, lendAmount, data, false, "");
+    }
+
+    function exitVault(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        uint256 lendAmount,
+        bytes memory data
+    ) internal virtual returns (uint256 totalToReceiver) {
+        return _exitVault(account, vaultShares, maturity, lendAmount, data, false, "");
+    }
+
+    function _exitVault(
+        address account,
+        uint256 vaultShares,
+        uint256 maturity,
+        uint256 lendAmount,
+        bytes memory data,
+        bool expectRevert,
+        bytes memory error
+    ) private returns (uint256 totalToReceiver) {
         if (expectRevert) vm.expectRevert(error);
         vm.prank(account);
         totalToReceiver = Deployments.NOTIONAL.exitVault(
@@ -382,8 +417,10 @@ abstract contract BaseAcceptanceTest is Test {
           0,
           data
         );
-        totalVaultShares[maturity] -= vaultShares;
-        totalVaultSharesAllMaturities -= vaultShares;
+        if (!expectRevert) {
+            totalVaultShares[maturity] -= vaultShares;
+            totalVaultSharesAllMaturities -= vaultShares;
+        }
     }
 
     function test_EnterVault(uint256 maturityIndex, uint256 depositAmount) public {
@@ -745,12 +782,7 @@ abstract contract BaseAcceptanceTest is Test {
         _changeCollateralRatio();
 
         skip(30 days);
-        if (Deployments.CHAIN_ID == 1) {
-            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
-        } else {
-            vm.prank(Deployments.NOTIONAL.owner());
-        }
-        TradingModule(address(Deployments.TRADING_MODULE)).setMaxOracleFreshness(type(uint32).max);
+        setMaxOracleFreshness();
 
         (
             FlashLiquidatorBase.LiquidationParams memory params,

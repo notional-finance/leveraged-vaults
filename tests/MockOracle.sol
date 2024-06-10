@@ -4,8 +4,11 @@ pragma solidity 0.8.24;
 contract MockOracle {
     int256 _answer;
     uint256 _updatedAt;
+    uint8 immutable _decimals;
 
-    function decimals() public pure returns (uint8) { return 18; }
+    constructor(uint8 d) { _decimals = d; }
+
+    function decimals() public view returns (uint8) { return _decimals; }
     function setAnswer(int256 answer_) public { _answer = answer_; }
     function setUpdatedAt(uint256 updatedAt_) public { _updatedAt = updatedAt_; }
 

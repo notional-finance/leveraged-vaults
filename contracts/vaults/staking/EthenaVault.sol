@@ -1,106 +1,45 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
-import { Constants } from "../../global/Constants.sol";
+import { Constants } from "@contracts/global/Constants.sol";
 import { Deployments } from "@deployments/Deployments.sol";
-import { BaseStakingVault, DepositParams } from "./BaseStakingVault.sol";
-import { ClonedCoolDownHolder } from "./ClonedCoolDownHolder.sol";
-import { 
-    WithdrawRequest,
-    SplitWithdrawRequest
-} from "../common/WithdrawRequestBase.sol";
-import { 
-    IERC20,
-    NotionalProxy
-} from "../common/BaseStrategyVault.sol";
+import { BaseStakingVault, DepositParams, RedeemParams } from "./BaseStakingVault.sol";
+import {
+    sUSDe,
+    USDe,
+    EthenaCooldownHolder,
+    EthenaLib
+} from "./protocols/Ethena.sol";
+import {WithdrawRequest, SplitWithdrawRequest} from "../common/WithdrawRequestBase.sol";
+import {NotionalProxy} from "../common/BaseStrategyVault.sol";
 import {
     ITradingModule,
     Trade,
     TradeType
 } from "@interfaces/trading/ITradingModule.sol";
-import { IERC4626 } from "@interfaces/IERC4626.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-interface IsUSDe is IERC4626, IERC20 {
-    struct UserCooldown {
-        uint104 cooldownEnd;
-        uint152 underlyingAmount;
-    }
-
-    function cooldownDuration() external returns (uint24);
-    function cooldowns(address account) external view returns (UserCooldown memory);
-    function cooldownShares(uint256 shares) external returns (uint256 assets);
-    function unstake(address receiver) external;
-}
-
-IsUSDe constant sUSDe = IsUSDe(0x9D39A5DE30e57443BfF2A8307A4256c8797A3497);
-IERC20 constant USDe = IERC20(0x4c9EDD5852cd905f086C759E8383e09bff1E68B3);
-
-contract EthenaCooldownHolder is ClonedCoolDownHolder {
-
-    constructor(address _vault) ClonedCoolDownHolder(_vault) { }
-
-    /// @notice There is no way to stop a cool down
-    function _stopCooldown() internal pure override { revert(); }
-
-    function _startCooldown() internal override {
-        uint24 duration = sUSDe.cooldownDuration();
-        uint256 balance = sUSDe.balanceOf(address(this));
-        if (duration == 0) {
-            // If the cooldown duration is set to zero, can redeem immediately
-            sUSDe.redeem(balance, address(this), address(this));
-        } else {
-            // If we execute a second cooldown while one exists, the cooldown end
-            // will be pushed further out. This holder should only ever have one
-            // cooldown ever.
-            require(sUSDe.cooldowns(address(this)).cooldownEnd == 0);
-            sUSDe.cooldownShares(balance);
-        }
-    }
-
-    function _finalizeCooldown() internal override returns (uint256 tokensClaimed, bool finalized) {
-        uint24 duration = sUSDe.cooldownDuration();
-        IsUSDe.UserCooldown memory userCooldown = sUSDe.cooldowns(address(this));
-
-        if (block.timestamp < userCooldown.cooldownEnd && 0 < duration) {
-            // Do not revert if the cooldown has not completed, will return a false
-            // for the finalized state.
-            return (0, false);
-        }
-
-        // If a cooldown has been initiated, need to call unstake to complete it. If
-        // duration was set to zero then the USDe will be on this contract already.
-        if (0 < userCooldown.cooldownEnd) {
-            sUSDe.unstake(address(this));
-        }
-
-        // USDe is immutable. It cannot have a transfer tax and it is ERC20 compliant
-        // so we do not need to use the additional protections here.
-        tokensClaimed = USDe.balanceOf(address(this));
-        USDe.transfer(vault, tokensClaimed);
-        finalized = true;
-    }
-}
-
+/** Borrows a stablecoin and stakes it into sUSDe */
 contract EthenaVault is BaseStakingVault {
 
+    /// @notice sUSDe requires a separate contract to hold the tokens during cooldown, this is
+    /// the implementation address of the holder that will be cloned.
     address public HOLDER_IMPLEMENTATION;
 
     constructor(
-        NotionalProxy notional_,
-        ITradingModule tradingModule_
-    ) BaseStakingVault(notional_, tradingModule_, address(sUSDe), address(USDe)) { }
+        address borrowToken
+    ) BaseStakingVault(address(sUSDe), borrowToken, address(USDe)) {
+        // Addresses in this vault are hardcoded to mainnet
+        require(block.chainid == Constants.CHAIN_ID_MAINNET);
+    }
 
-    function initialize(
-        string memory name,
-        uint16 borrowCurrencyId
-    ) public override {
-        super.initialize(name, borrowCurrencyId);
+    /// @notice Deploys the holder with the address of the proxy
+    function _initialize() internal override {
         HOLDER_IMPLEMENTATION = address(new EthenaCooldownHolder(address(this)));
+        USDe.approve(address(sUSDe), type(uint256).max);
     }
 
     function strategy() external override pure returns (bytes4) {
-        return bytes4(keccak256("Staking:Ethena"));
+        return bytes4(keccak256("Staking:sUSDe"));
     }
 
     function _stakeTokens(
@@ -109,10 +48,9 @@ contract EthenaVault is BaseStakingVault {
         uint256 /* maturity */,
         bytes calldata data
     ) internal override returns (uint256 vaultShares) {
-        address underlyingToken = address(_underlyingToken());
         uint256 usdeAmount;
 
-        if (underlyingToken == address(USDe)) {
+        if (BORROW_TOKEN == address(USDe)) {
             usdeAmount = depositUnderlyingExternal;
         } else {
             // If not borrowing USDe directly, then trade into the position
@@ -120,7 +58,7 @@ contract EthenaVault is BaseStakingVault {
 
             Trade memory trade = Trade({
                 tradeType: TradeType.EXACT_IN_SINGLE,
-                sellToken: underlyingToken,
+                sellToken: BORROW_TOKEN,
                 buyToken: address(USDe),
                 amount: depositUnderlyingExternal,
                 limit: params.minPurchaseAmount,
@@ -135,62 +73,47 @@ contract EthenaVault is BaseStakingVault {
 
         uint256 sUSDeMinted = sUSDe.deposit(usdeAmount, address(this));
         vaultShares = sUSDeMinted * uint256(Constants.INTERNAL_TOKEN_PRECISION) /
-            uint256(BORROW_PRECISION);
+            uint256(STAKING_PRECISION);
     }
 
-    /// @notice This vault will always borrow USDe so the value returned in this method will
-    /// always be USDe.
+    /// @notice Returns the value of a withdraw request in terms of the borrowed token
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w,
-        uint256 /* stakeAssetPrice */
-    ) internal override view returns (uint256 usdEValue) {
-        if (w.hasSplit) {
-            SplitWithdrawRequest memory s = getSplitWithdrawRequest(w.requestId);
-            if (s.finalized) {
-                // totalWithdraw is a USDe amount
-                return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
-            }
-        }
-
-        address holder = address(uint160(w.requestId));
-        // This valuation is the amount of USDe the account will receive at cooldown, once
-        // a cooldown is initiated the account is no longer receiving sUSDe yield. This balance
-        // of USDe is transferred to a Silo contract and guaranteed to be available once the
-        // cooldown has passed.
-        IsUSDe.UserCooldown memory userCooldown = sUSDe.cooldowns(holder);
-
-        return userCooldown.underlyingAmount;
-        /*
-        // This is the current valuation of sUSDe at the current market price. If the cooldown
-        // time window is extended, the price of sUSDe may drop relative to the price of USDe
-        // which would reflect the current market expectation around redeeming sUSDe.
-        uint256 valuation = (w.vaultShares * stakeAssetPrice * STAKING_PRECISION) /
-            (uint256(Constants.INTERNAL_TOKEN_PRECISION) * 1e18);
-
-        return SafeUint256.min(userCooldown.underlyingAmount, valuation);
-        */
+        WithdrawRequest memory w, uint256 /* */
+    ) internal override view returns (uint256) {
+        return EthenaLib._getValueOfWithdrawRequest(w, BORROW_TOKEN, BORROW_PRECISION);
     }
 
     function _initiateWithdrawImpl(
         address /* account */, uint256 vaultSharesToRedeem, bool /* isForced */
     ) internal override returns (uint256 requestId) {
-        EthenaCooldownHolder holder = EthenaCooldownHolder(Clones.clone(HOLDER_IMPLEMENTATION));
-        uint256 balanceToTransfer = vaultSharesToRedeem * STAKING_PRECISION / uint256(Constants.INTERNAL_TOKEN_PRECISION);
-        sUSDe.transfer(address(holder), balanceToTransfer);
-        holder.startCooldown();
-
-        return uint256(uint160(address(holder)));
+        uint256 balanceToTransfer = getStakingTokensForVaultShare(vaultSharesToRedeem);
+        return EthenaLib._initiateWithdrawImpl(balanceToTransfer, HOLDER_IMPLEMENTATION);
     }
 
     function _finalizeWithdrawImpl(
-        address /* account */,
-        uint256 requestId
+        address /* account */, uint256 requestId
     ) internal override returns (uint256 tokensClaimed, bool finalized) {
-        EthenaCooldownHolder holder = EthenaCooldownHolder(address(uint160(requestId)));
-        (tokensClaimed, finalized) = holder.finalizeCooldown();
+        return EthenaLib._finalizeWithdrawImpl(requestId);
     }
 
-    function _checkReentrancyContext() internal override {
-        // NO-OP
+    function _executeInstantRedemption(
+        address /* account */,
+        uint256 vaultShares,
+        uint256 /* maturity */,
+        RedeemParams memory params
+    ) internal override returns (uint256 borrowedCurrencyAmount) {
+        uint256 sUSDeToSell = getStakingTokensForVaultShare(vaultShares);
+
+        // Selling sUSDe requires special handling since most of the liquidity
+        // sits inside a sUSDe/sDAI pool on Curve.
+        return EthenaLib._sellStakedUSDe(
+            sUSDeToSell, BORROW_TOKEN, params.minPurchaseAmount, params.exchangeData, params.dexId
+        );
     }
+
+    function canFinalizeWithdrawRequest(uint256 requestId) public override view returns (bool) {
+        return EthenaLib._canFinalizeWithdrawRequest(requestId);
+    }
+
+    function _checkReentrancyContext() internal override { /* NO-OP */ }
 }

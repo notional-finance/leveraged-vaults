@@ -1,60 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
-import { Constants } from "../../global/Constants.sol";
-import { Deployments } from "@deployments/Deployments.sol";
-import { 
-    BaseStakingVault,
-    RedeemParams
-} from "./BaseStakingVault.sol";
-import { 
-    WithdrawRequest,
-    SplitWithdrawRequest
-} from "../common/WithdrawRequestBase.sol";
-import { 
-    IERC20,
-    NotionalProxy
-} from "../common/BaseStrategyVault.sol";
-import {
-    ITradingModule,
-    Trade,
-    TradeType
-} from "../../../interfaces/trading/ITradingModule.sol";
+import {Constants} from "@contracts/global/Constants.sol";
+import {Deployments} from "@deployments/Deployments.sol";
+import {BaseStakingVault, RedeemParams} from "./BaseStakingVault.sol";
+import {WithdrawRequest, SplitWithdrawRequest} from "../common/WithdrawRequestBase.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {EtherFiLib, weETH, eETH, LiquidityPool} from "./protocols/EtherFi.sol";
 
-interface IeETH is IERC20 { }
-
-interface IweETH is IERC20 {
-    function wrap(uint256 eETHDeposit) external returns (uint256 weETHMinted);
-    function unwrap(uint256 weETHDeposit) external returns (uint256 eETHMinted);
-}
-
-interface ILiquidityPool {
-    function deposit() external payable returns (uint256 eETHMinted);
-    function requestWithdraw(address requester, uint256 eETHAmount) external returns (uint256 requestId);
-}
-
-interface IWithdrawRequestNFT {
-    function ownerOf(uint256 requestId) external view returns (address);
-    function isFinalized(uint256 requestId) external view returns (bool);
-    function getClaimableAmount(uint256 requestId) external view returns (uint256);
-    function claimWithdraw(uint256 requestId) external;
-    function finalizeRequests(uint256 requestId) external;
-}
-
+/** Borrows ETH or an LST and stakes the tokens in EtherFi */
 contract EtherFiVault is BaseStakingVault, IERC721Receiver {
-    IweETH public constant weETH = IweETH(0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee);
-    IeETH internal constant eETH = IeETH(0x35fA164735182de50811E8e2E824cFb9B6118ac2);
-    ILiquidityPool internal constant LiquidityPool = ILiquidityPool(0x308861A430be4cce5502d0A12724771Fc6DaF216);
-    IWithdrawRequestNFT public constant WithdrawRequestNFT =
-        IWithdrawRequestNFT(0x7d5706f6ef3F89B3951E23e557CDFBC3239D4E2c);
 
-    constructor() BaseStakingVault(
-        Deployments.NOTIONAL,
-        Deployments.TRADING_MODULE,
-        address(weETH),
-        Constants.ETH_ADDRESS
-    ) {
+    constructor(address borrowToken) BaseStakingVault(address(weETH), borrowToken, Constants.ETH_ADDRESS) {
         // Addresses in this vault are hardcoded to mainnet
         require(block.chainid == Constants.CHAIN_ID_MAINNET);
     }
@@ -65,7 +22,7 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
     }
 
     function strategy() external override pure returns (bytes4) {
-        return bytes4(keccak256("Staking:EtherFi"));
+        return bytes4(keccak256("Staking:weETH"));
     }
 
     /// @notice this method is needed in order to receive NFT from EtherFi after
@@ -86,59 +43,28 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
         LiquidityPool.deposit{value: depositUnderlyingExternal}();
         uint256 eETHMinted = eETH.balanceOf(address(this)) - eEthBalBefore;
         uint256 weETHReceived = weETH.wrap(eETHMinted);
-        vaultShares = weETHReceived * uint256(Constants.INTERNAL_TOKEN_PRECISION) /
-            uint256(BORROW_PRECISION);
+        vaultShares = weETHReceived * uint256(Constants.INTERNAL_TOKEN_PRECISION) / STAKING_PRECISION;
     }
 
     function _initiateWithdrawImpl(
         address /* account */, uint256 vaultSharesToRedeem, bool /* isForced */
     ) internal override returns (uint256 requestId) {
-        uint256 weETHToUnwrap = vaultSharesToRedeem * BORROW_PRECISION /
-            uint256(Constants.INTERNAL_TOKEN_PRECISION);
-        uint256 eETHReceived = weETH.unwrap(weETHToUnwrap);
-
-        eETH.approve(address(LiquidityPool), eETHReceived);
-        return LiquidityPool.requestWithdraw(address(this), eETHReceived);
+        uint256 weETHToUnwrap = getStakingTokensForVaultShare(vaultSharesToRedeem);
+        return EtherFiLib._initiateWithdrawImpl(weETHToUnwrap);
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w,
-        uint256 weETHPrice
-    ) internal override view returns (uint256 ethValue) {
-        if (w.requestId == 0) return 0;
-
-        if (w.hasSplit) {
-            SplitWithdrawRequest memory s = getSplitWithdrawRequest(w.requestId);
-            // Check if the withdraw request has been claimed if the
-            // request has been split, the value is the share of the ETH
-            // claimed with no discount b/c the ETH is already held in the
-            // vault contract.
-            if (WithdrawRequestNFT.ownerOf(w.requestId) == address(0)) {
-                return (s.totalWithdraw * w.vaultShares) / s.totalVaultShares;
-            } else {
-                return (w.vaultShares * weETHPrice * BORROW_PRECISION) /
-                    (s.totalVaultShares * EXCHANGE_RATE_PRECISION);
-            }
-        }
-
-        return (w.vaultShares * weETHPrice * BORROW_PRECISION) /
-            (uint256(Constants.INTERNAL_TOKEN_PRECISION) * EXCHANGE_RATE_PRECISION);
+        WithdrawRequest memory w, uint256 weETHPrice
+    ) internal override view returns (uint256) {
+        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_PRECISION);
     }
 
-    function _finalizeWithdrawImpl(
-        address /* account */,
-        uint256 requestId
-    ) internal override returns (uint256 tokensClaimed, bool finalized) {
-        finalized = (
-            WithdrawRequestNFT.isFinalized(requestId) &&
-            WithdrawRequestNFT.ownerOf(requestId) != address(0)
-        );
+    function _finalizeWithdrawImpl( address /* */, uint256 requestId) internal override returns (uint256, bool) {
+        return EtherFiLib._finalizeWithdrawImpl(requestId);
+    }
 
-        if (finalized) {
-            uint256 balanceBefore = address(this).balance;
-            WithdrawRequestNFT.claimWithdraw(requestId);
-            tokensClaimed = address(this).balance - balanceBefore;
-        }
+    function canFinalizeWithdrawRequest(uint256 requestId) public override view returns (bool) {
+        return EtherFiLib._canFinalizeWithdrawRequest(requestId);
     }
 
     function _checkReentrancyContext() internal override {
