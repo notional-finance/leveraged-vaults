@@ -14,7 +14,9 @@ currencyIds = {
         "FRAX": 6,
         "rETH": 7,
         "USDT": 8,
-        "sDAI": 9,
+        "CBETH": 9,
+        "sDAI": 10,
+        "GHO": 11,
     },
     "arbitrum": {
         "ETH": 1,
@@ -50,11 +52,13 @@ token = {
         "crvUSD": "0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E",
         "pyUSD": "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8",
         "osETH": "0xf1C9acDc66974dFB6dEcB12aA385b9cD01190E38",
-        "weETH": "0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee",
+        "weETH": "0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE",
         "GHO": "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f",
         'CVX': "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
         'SWISE': "0x48C3399719B582dD63eB5AADf12A40B4C3f52FA2",
-        'ezETH': "0xbf5495Efe5DB9ce00f80364C8B423567e58d2110"
+        'ezETH': "0xE1fFDC18BE251E76Fb0A1cBfA6d30692c374C5fc",
+        "USDe": "0x4c9EDD5852cd905f086C759E8383e09bff1E68B3",
+        "RPL": "0xD33526068D116cE69F19A9ee46F0bd304F21A51f"
     },
     "arbitrum": {
         "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -74,7 +78,11 @@ token = {
         "BAL": "0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8",
         "AURA": "0x1509706a6c66CA549ff0cB464de88231DDBe213B",
         "CRV": "0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978",
-        "crvUSD": "0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5"
+        "crvUSD": "0x498Bf2B1e120FeD3ad3D42EA2165E9b73f99C1e5",
+        "ezETH": "0x2416092f143378750bb29b79eD961ab195CcEea5",
+        "weETH": "0x35751007a407ca6FEFfE80b3cB397736D2cf4dbe",
+        "WBTC": "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f",
+        "tBTC": "0x6c84a8f1c29108F47a79964b5Fe888D4f4D0dE40",
     }
 }
 
@@ -103,9 +111,10 @@ oracle = {
         'crvUSD': "0xEEf0C605546958c1f899b6fB336C20671f9cD49F",
         'pyUSD': "0x8f1dF6D7F2db73eECE86a18b4381F4707b918FB1",
         'osETH': "0x3d3d7d124B0B80674730e0D31004790559209DEb",
-        'weETH': "0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE",
+        'weETH': "0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136",
         'GHO': "0x3f12643D3f6f874d39C2a4c9f2Cd6f2DbAC877FC",
-        'ezETH': "0xE1fFDC18BE251E76Fb0A1cBfA6d30692c374C5fc"
+        'USDe': "0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961",
+        'ezETH': "0xCa140AE5a361b7434A729dCadA0ea60a50e249dd"
     },
     "arbitrum": {
         "WETH": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
@@ -113,14 +122,17 @@ oracle = {
         "DAI": "0xc5C8E77B397E531B8EC06BFb0048328B30E9eCfB",
         "USDC": "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3",
         "USDC_e": "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3",
-        "WBTC": "0x6ce185860a4963106506C203335A2910413708e9",
+        "WBTC": "0xd0C7101eACbB49F3deCcCc166d238410D6D46d57",
         "wstETH": "0x29aFB1043eD699A89ca0F0942ED6F6f65E794A3d",
         "FRAX": "0x0809E3d38d1B4214958faf06D8b1B1a2b73f2ab8",
         "rETH": "0x40cf45dBD4813be545CF3E103eF7ef531eac7283",
         "USDT": "0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7",
         "cbETH": "0x4763672dEa3bF087929d5537B6BAfeB8e6938F46",
         "RDNT": "0x20d0Fcab0ECFD078B036b6CAf1FaC69A6453b352",
-        "crvUSD": "0x0a32255dd4BB6177C994bAAc73E0606fDD568f66"
+        "crvUSD": "0x0a32255dd4BB6177C994bAAc73E0606fDD568f66",
+        "ezETH": "0x58784379C844a00d4f572917D43f991c971F96ca",
+        "weETH": "0x9414609789C179e1295E9a0559d629bF832b3c04",
+        "tBTC": "0xE808488e8627F6531bA79a13A9E0271B39abEb1C"
     }
 }
 
@@ -151,14 +163,6 @@ def render_template(template, data):
     template = Template(template)
     return template.render(data)
 
-def remove_files_except_prefix(folder_path, prefix):
-    for filename in os.listdir(folder_path):
-        if filename.startswith(prefix):
-            continue  # Skip files starting with the prefix
-        file_path = os.path.join(folder_path, filename)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
-
 def generate_files(network, yaml_file, template_file):
     output_dir = f"./tests/generated/{network}"
     with open(yaml_file, 'r') as f:
@@ -174,7 +178,8 @@ def generate_files(network, yaml_file, template_file):
     defaults = tests['defaults']
 
     # Remove all files in the directory
-    remove_files_except_prefix(output_dir, "Staking")
+    shutil.rmtree(output_dir, ignore_errors=True)
+    os.makedirs(output_dir)
 
     for test in tests[network]:
         test['settings'] = { **defaults['settings'], **test['settings'] } if 'settings' in test else defaults['settings']
