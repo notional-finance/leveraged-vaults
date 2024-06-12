@@ -55,7 +55,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
             REWARD_1 = 0x6B175474E89094C44Da98b954EedeAC495271d0F; // DAI
             REWARD_2 = 0xdAC17F958D2ee523a2206206994597C13D831ec7; // Tether
 
-            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            vm.prank(Deployments.NOTIONAL.owner());
         } else {
             REWARD = 0x019bE259BC299F3F653688c7655C87F998Bc7bC1; // NOTE
             REWARD_1 = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1; // DAI
