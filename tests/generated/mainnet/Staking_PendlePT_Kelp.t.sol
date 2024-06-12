@@ -257,7 +257,7 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
     }
 }
 
-contract Harness_Staking_PendlePT_Kelp is PendleKelpHarness {
+contract Harness_Staking_PendlePT_Kelp is PendleStakingHarness {
     function getVaultName() public pure override returns (string memory) {
         return 'Pendle:PT Kelp rsETH 27JUN2024:[ETH]';
     }
@@ -289,6 +289,14 @@ contract Harness_Staking_PendlePT_Kelp is PendleKelpHarness {
             // UniswapV3, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 4, tradeTypeFlags: 5 }
         );
+    }
+
+    function deployImplementation() internal override returns (address impl) {
+        return address(new PendlePTKelpVault(marketAddress, ptAddress));
+    }
+
+    function withdrawToken(address /* vault */) public pure override returns (address) {
+        return stETH;
     }
 
     constructor() {

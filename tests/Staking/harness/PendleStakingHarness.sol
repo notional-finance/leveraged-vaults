@@ -7,34 +7,24 @@ import {UniV3Adapter} from "@contracts/trading/adapters/UniV3Adapter.sol";
 import "@contracts/vaults/staking/PendlePTEtherFiVault.sol";
 import "@contracts/vaults/staking/BaseStakingVault.sol";
 
-// TODO: there are custom pendle tests
 abstract contract PendleStakingHarness is BaseStakingHarness {
     address public marketAddress;
     address public ptAddress;
     uint32 twapDuration;
     bool useSyOracleRate;
     address ptOracle;
-    address baseToUSDOracle;
+    address public baseToUSDOracle;
+    address tokenInSy;
+    address tokenOutSy;
+    address borrowToken;
+    address redemptionToken;
 
-    constructor() {
-        UniV3Adapter.UniV3SingleData memory u;
-        u.fee = 500; // 0.05 %
-        bytes memory exchangeData = abi.encode(u);
-        uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
+    function deployImplementation() internal virtual returns (address);
 
-        setMetadata(StakingMetadata({
-            // TODO: this us custom per pendle vault
-            primaryBorrowCurrency: 1,
-            primaryDexId: primaryDexId,
-            exchangeData: exchangeData
-        }));
-    }
-
-    // TODO: this is custom per pendle vault
     function deployVaultImplementation() public override returns (
         address impl, bytes memory _metadata
     ) {
-        impl = address(new PendlePTEtherFiVault(marketAddress, ptAddress));
+        impl = deployImplementation();
 
         ptOracle = address(new PendlePTOracle(
             marketAddress,
@@ -53,7 +43,7 @@ abstract contract PendleStakingHarness is BaseStakingHarness {
     ) {
     }
 
-    function withdrawToken(address vault) public view override returns (address) {
+    function withdrawToken(address vault) public view override virtual returns (address) {
         // During Pendle withdraws, the TOKEN_OUT_SY is what is being held by the vault.
         return PendlePrincipalToken(payable(vault)).TOKEN_OUT_SY();
     }
