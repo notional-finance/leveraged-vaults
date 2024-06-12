@@ -15,6 +15,7 @@ import {ICurveRouterV2} from "@interfaces/curve/ICurveRouterV2.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 import {IWrappedfCashFactory} from "@interfaces/notional/IWrappedfCashFactory.sol";
 import {AggregatorV2V3Interface} from "@interfaces/chainlink/AggregatorV2V3Interface.sol";
+import {IPMarket, IPOracle} from "@interfaces/pendle/IPendle.sol";
 
 library Deployments {
     uint256 internal constant CHAIN_ID = Constants.CHAIN_ID_ARBITRUM;
@@ -46,4 +47,7 @@ library Deployments {
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(0xFdB631F5EE196F0ed6FAa767959853A9F217697D);
     // TODO: update this deployment
     address internal constant VAULT_REWARDER_LIB = 0x0000dEb798bB3E4dFA0139dfa1b3D433CC23b72F;
+
+    // Pendle Oracle
+    IPOracle internal constant PENDLE_ORACLE = IPOracle(0x9a9Fa8338dd5E5B2188006f1Cd2Ef26d921650C2);
 }

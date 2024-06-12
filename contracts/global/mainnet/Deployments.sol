@@ -15,6 +15,7 @@ import {ICurveRouterV2} from "@interfaces/curve/ICurveRouterV2.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 import {IWrappedfCashFactory} from "@interfaces/notional/IWrappedfCashFactory.sol";
 import {AggregatorV2V3Interface} from "@interfaces/chainlink/AggregatorV2V3Interface.sol";
+import {IPMarket, IPOracle} from "@interfaces/pendle/IPendle.sol";
 
 /// @title Hardcoded Deployment Addresses for Mainnet
 library Deployments {
@@ -48,4 +49,7 @@ library Deployments {
 
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(address(0));
+
+    // Pendle Oracle
+    IPOracle internal constant PENDLE_ORACLE = IPOracle(0x66a1096C6366b2529274dF4f5D8247827fe4CEA8);
 }

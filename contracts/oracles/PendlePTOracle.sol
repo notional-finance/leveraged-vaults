@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSUL-1.1
 pragma solidity 0.8.24;
 
+import {Deployments} from "@deployments/Deployments.sol";
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {IPMarket, IPOracle} from "@interfaces/pendle/IPendle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
@@ -9,7 +10,6 @@ import "@interfaces/IERC20.sol";
 contract PendlePTOracle is AggregatorV2V3Interface {
     using TypeConvert for uint256;
 
-    IPOracle immutable ORACLE = IPOracle(0x66a1096C6366b2529274dF4f5D8247827fe4CEA8);
     address public immutable pendleMarket;
     uint32 public immutable twapDuration;
     bool public immutable useSyOracleRate;
@@ -61,7 +61,7 @@ contract PendlePTOracle is AggregatorV2V3Interface {
             bool increaseCardinalityRequired,
             /* */,
             bool oldestObservationSatisfied
-        ) = ORACLE.getOracleState(pendleMarket, twapDuration);
+        ) = Deployments.PENDLE_ORACLE.getOracleState(pendleMarket, twapDuration);
         require(!increaseCardinalityRequired && oldestObservationSatisfied, "Oracle Init");
 
         expiry = IPMarket(pendleMarket).expiry();
@@ -84,8 +84,8 @@ contract PendlePTOracle is AggregatorV2V3Interface {
 
     function _getPTRate() internal view returns (int256) {
         uint256 ptRate = useSyOracleRate ? 
-            ORACLE.getPtToSyRate(pendleMarket, twapDuration) :
-            ORACLE.getPtToAssetRate(pendleMarket, twapDuration);
+            Deployments.PENDLE_ORACLE.getPtToSyRate(pendleMarket, twapDuration) :
+            Deployments.PENDLE_ORACLE.getPtToAssetRate(pendleMarket, twapDuration);
         return ptRate.toInt();
     }
 
