@@ -14,7 +14,8 @@ contract EthenaStakingHarness is BaseStakingHarness {
             primaryDexId: 2, // UniV3
             exchangeData: abi.encode(UniV3Adapter.UniV3SingleData({
                 fee: 100
-            }))
+            })),
+            hasWithdrawRequests: true
         }));
     }
 

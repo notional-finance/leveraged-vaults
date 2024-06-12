@@ -17,7 +17,8 @@ contract EtherFiStakingHarness is BaseStakingHarness {
         setMetadata(StakingMetadata({
             primaryBorrowCurrency: 1,
             primaryDexId: primaryDexId,
-            exchangeData: exchangeData
+            exchangeData: exchangeData,
+            hasWithdrawRequests: true
         }));
     }
 
