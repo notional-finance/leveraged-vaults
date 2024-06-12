@@ -177,10 +177,6 @@ def generate_files(network, yaml_file, template_file):
     # Get defaults
     defaults = tests['defaults']
 
-    # Remove all files in the directory
-    shutil.rmtree(output_dir, ignore_errors=True)
-    os.makedirs(output_dir)
-
     for test in tests[network]:
         test['settings'] = { **defaults['settings'], **test['settings'] } if 'settings' in test else defaults['settings']
         test['setUp'] = { **defaults['setUp'], **test['setUp'] } if 'setUp' in test else defaults['setUp']

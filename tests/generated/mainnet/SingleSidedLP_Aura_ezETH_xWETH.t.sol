@@ -60,8 +60,8 @@ ComposablePoolHarness
         oracle = new address[](2);
 
         // ezETH
-        token[0] = 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110;
-        oracle[0] = 0xE1fFDC18BE251E76Fb0A1cBfA6d30692c374C5fc;
+        token[0] = 0xE1fFDC18BE251E76Fb0A1cBfA6d30692c374C5fc;
+        oracle[0] = 0xCa140AE5a361b7434A729dCadA0ea60a50e249dd;
         // ETH
         token[1] = 0x0000000000000000000000000000000000000000;
         oracle[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
