@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import { PendlePrincipalToken, WithdrawRequest } from "./protocols/PendlePrincipalToken.sol";
 
-contract PendlePTVault is PendlePrincipalToken {
+contract PendlePTGeneric is PendlePrincipalToken {
 
     constructor(
         address market,

@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
+
+import "../../Staking/harness/index.sol";
+import {WithdrawRequestNFT} from "@contracts/vaults/staking/protocols/EtherFi.sol";
+import {
+    PendleDepositParams,
+    IPRouter,
+    IPMarket
+} from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
+import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
+import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
+import { {{contractName}} } from "@contracts/vaults/staking/{{contractName}}.sol";
+
+contract Harness_Staking_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is PendleStakingHarness {
+
+    function getVaultName() public pure override returns (string memory) {
+        return 'Pendle:PT {{stakeSymbol}} {{expiry}}:[{{primaryBorrowCurrency}}]';
+    }
+
+    function getRequiredOracles() public override view returns (
+        address[] memory token, address[] memory oracle
+    ) {
+        {%- set oracleLength = oracles | length + 1 %}
+        token = new address[]({{ oracleLength }});
+        oracle = new address[]({{ oracleLength }});
+
+        // Custom PT Oracle
+        token[0] = ptAddress;
+        oracle[0] = ptOracle;
+
+        {% for oracle in oracles -%}
+        // {{ oracle.symbol }}
+        token[{{ loop.index }}] = {{ oracle.tokenAddress }};
+        oracle[{{ loop.index }}] = {{ oracle.oracleAddress }};
+        {% endfor %}
+    }
+
+    function getTradingPermissions() public pure override returns (
+        address[] memory token, ITradingModule.TokenPermissions[] memory permissions
+    ) {
+        {%- set tokenLength = rewards | length + (permissions | default([]) | length) %}
+        token = new address[]({{ tokenLength }});
+        permissions = new ITradingModule.TokenPermissions[]({{ tokenLength }});
+
+        {% for reward in rewards -%}
+        // {{ reward.symbol }}
+        token[{{ loop.index - 1}}] = {{ reward.tokenAddress}};
+        permissions[{{ loop.index - 1}}] = ITradingModule.TokenPermissions(
+            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
+        );
+        {% endfor %}
+
+        {% for p in (permissions | default([])) -%}
+        token[{{ rewards | length + loop.index - 1 }}] = {{ p.tokenAddress }};
+        permissions[{{ rewards | length + loop.index - 1 }}] = ITradingModule.TokenPermissions(
+            { allowSell: true, dexFlags: 1 << {{ p.dexId }}, tradeTypeFlags: {{ p.tradeTypeFlags }} }
+        );
+        {% endfor %}
+    }
+
+    function deployImplementation() internal override returns (address impl) {
+        {% if contractName == "PendlePTGeneric" %}
+        return address(new PendlePTGeneric(
+            marketAddress, tokenInSy, tokenOutSy, borrowToken, ptAddress, redemptionToken
+        ));
+        {% else %}
+        return address(new {{contractName}}(marketAddress, ptAddress));
+        {% endif %}
+    }
+
+    constructor() {
+        marketAddress = {{ marketAddress }};
+        ptAddress = {{ ptAddress }};
+        twapDuration = 15 minutes; // recommended 15 - 30 min
+        useSyOracleRate = {{ useSyOracleRate }};
+        baseToUSDOracle = {{ baseToUSDOracle }};
+        {% if contractName == "PendlePTGeneric" %}
+        tokenInSy = {{ stakeToken }};
+        borrowToken = {{ borrowToken }};
+        tokenOutSy = {{ stakeToken }};
+        redemptionToken = {{ stakeToken }};
+        {% endif %}
+
+        UniV3Adapter.UniV3SingleData memory u;
+        u.fee = 500; // 0.05 %
+        bytes memory exchangeData = abi.encode(u);
+        uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
+
+        setMetadata(StakingMetadata({{ borrowCurrencyId }}, primaryDexId, exchangeData, {{ 'false' if contractName == "PendlePTGeneric" else 'true' }}));
+    }
+
+}
