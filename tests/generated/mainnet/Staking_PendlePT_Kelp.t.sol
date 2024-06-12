@@ -22,9 +22,7 @@ interface ILRTOracle {
 ILRTOracle constant lrtOracle = ILRTOracle(0x349A73444b1a310BAe67ef67973022020d70020d);
 address constant unstakingVault = 0xc66830E2667bc740c0BED9A71F18B14B8c8184bA;
 
-contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
-    uint256 expires;
-
+contract Test_Staking_PendlePT_Kelp is BasePendleTest {
     function setUp() public override {
         FORK_BLOCK = 20033103;
 
@@ -43,7 +41,6 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
         withdrawLiquidationDiscount = 945;
 
         super.setUp();
-        expires = IPMarket(PendleStakingHarness(address(harness)).marketAddress()).expiry();
     }
 
     function _finalizeFirstStep() private {
@@ -117,57 +114,57 @@ contract Test_Staking_PendlePT_Kelp is BaseStakingTest {
         super.test_deleverageAccount_splitAccountWithdrawRequest(maturityIndex);
     }
 
-    function test_RevertIf_accountEntry_postExpiry(uint8 maturityIndex) public {
-        vm.warp(expires);
-        address account = makeAddr("account");
-        maturityIndex = uint8(bound(maturityIndex, 0, 2));
-        uint256 maturity = maturities[maturityIndex];
+    // function test_RevertIf_accountEntry_postExpiry(uint8 maturityIndex) public {
+    //     vm.warp(expires);
+    //     address account = makeAddr("account");
+    //     maturityIndex = uint8(bound(maturityIndex, 0, 2));
+    //     uint256 maturity = maturities[maturityIndex];
         
-        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
-        if (maturity > block.timestamp) {
-            expectRevert_enterVault(
-                account, minDeposit, maturity, getDepositParams(minDeposit, maturity), "Expired"
-            );
-        }
-    }
+    //     Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+    //     if (maturity > block.timestamp) {
+    //         expectRevert_enterVault(
+    //             account, minDeposit, maturity, getDepositParams(minDeposit, maturity), "Expired"
+    //         );
+    //     }
+    // }
 
-    function test_exitVault_postExpiry(uint8 maturityIndex, uint256 depositAmount) public {
-        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
-        maturityIndex = uint8(bound(maturityIndex, 0, 2));
-        address account = makeAddr("account");
-        uint256 maturity = maturities[maturityIndex];
+    // function test_exitVault_postExpiry(uint8 maturityIndex, uint256 depositAmount) public {
+    //     depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
+    //     maturityIndex = uint8(bound(maturityIndex, 0, 2));
+    //     address account = makeAddr("account");
+    //     uint256 maturity = maturities[maturityIndex];
 
-        uint256 vaultShares = enterVault(
-            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
-        );
+    //     uint256 vaultShares = enterVault(
+    //         account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
+    //     );
 
-        vm.warp(expires + 3600);
-        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
-        if (maturity < block.timestamp) {
-            // Push the vault shares to prime
-            totalVaultShares[maturity] -= vaultShares;
-            maturity = maturities[0];
-            totalVaultShares[maturity] += vaultShares;
-        }
+    //     vm.warp(expires + 3600);
+    //     Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+    //     if (maturity < block.timestamp) {
+    //         // Push the vault shares to prime
+    //         totalVaultShares[maturity] -= vaultShares;
+    //         maturity = maturities[0];
+    //         totalVaultShares[maturity] += vaultShares;
+    //     }
 
-        uint256 underlyingToReceiver = exitVault(
-            account,
-            vaultShares,
-            maturity < block.timestamp ? maturities[0] : maturity,
-            getRedeemParams(depositAmount, maturity)
-        );
+    //     uint256 underlyingToReceiver = exitVault(
+    //         account,
+    //         vaultShares,
+    //         maturity < block.timestamp ? maturities[0] : maturity,
+    //         getRedeemParams(depositAmount, maturity)
+    //     );
 
-        assertRelDiff(
-            uint256(depositAmount),
-            underlyingToReceiver,
-            maxRelExitValuation,
-            "Valuation and Deposit"
-        );
-    }
+    //     assertRelDiff(
+    //         uint256(depositAmount),
+    //         underlyingToReceiver,
+    //         maxRelExitValuation,
+    //         "Valuation and Deposit"
+    //     );
+    // }
 
     function test_exitVault_useWithdrawRequest_postExpiry(
         uint8 maturityIndex, uint256 depositAmount, bool useForce
-    ) public {
+    ) public override {
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
@@ -305,6 +302,13 @@ contract Harness_Staking_PendlePT_Kelp is PendleStakingHarness {
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
         baseToUSDOracle = 0x150aab1C3D63a1eD0560B95F23d7905CE6544cCB;
+
+        UniV3Adapter.UniV3SingleData memory u;
+        u.fee = 500; // 0.05 %
+        bytes memory exchangeData = abi.encode(u);
+        uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
+
+        setMetadata(StakingMetadata(1, primaryDexId, exchangeData, false));
     }
 
 }
