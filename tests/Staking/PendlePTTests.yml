@@ -2,8 +2,14 @@ defaults:
   setUp:
     minDeposit: 0.001e18
     maxDeposit: 50e18
-    maxRelEntryValuation: 75
-    maxRelExitValuation: 75
+    maxRelEntryValuation: 50
+    maxRelExitValuation: 50
+    maxRelExitValuation_WithdrawRequest_Fixed: 0.03
+    maxRelExitValuation_WithdrawRequest_Variable: 0.005
+    deleverageCollateralDecreaseRatio: 925
+    defaultLiquidationDiscount: 955
+    withdrawLiquidationDiscount: 945
+    
   settings:
     maxPoolShare: 2000
     oraclePriceDeviationLimitPercent: 100
@@ -45,3 +51,6 @@ mainnet:
       - token: weETH
         dexId: 2
         tradeTypeFlags: 5
+    setUp:
+      minDeposit: 0.1e18
+      maxDeposit: 10e18

@@ -64,8 +64,8 @@ WrappedComposablePoolHarness
         token[0] = 0xae78736Cd615f374D3085123A210448E74Fc6393;
         oracle[0] = 0xA7D273951861CF07Df8B0A1C3c934FD41bA9E8Eb;
         // weETH
-        token[1] = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
-        oracle[1] = 0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136;
+        token[1] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
+        oracle[1] = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
         // ETH
         token[2] = 0x0000000000000000000000000000000000000000;
         oracle[2] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;

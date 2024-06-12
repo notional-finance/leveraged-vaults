@@ -12,7 +12,54 @@ import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
-contract Harness_Staking_PendlePT_ezETH_ETH is PendleStakingHarness {
+contract Test_PendlePT_ezETH_ETH is BasePendleTest {
+    function setUp() public override {
+        harness = new Harness_PendlePT_ezETH_ETH();
+
+        // NOTE: need to enforce some minimum deposit here b/c of rounding issues
+        // on the DEX side, even though we short circuit 0 deposits
+        minDeposit = 0.001e18;
+        maxDeposit = 50e18;
+        maxRelEntryValuation = 50 * BASIS_POINT;
+        maxRelExitValuation = 50 * BASIS_POINT;
+        maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
+        maxRelExitValuation_WithdrawRequest_Variable = 0.005e18;
+        deleverageCollateralDecreaseRatio = 925;
+        defaultLiquidationDiscount = 955;
+        withdrawLiquidationDiscount = 945;
+
+        super.setUp();
+    }
+
+    
+    function finalizeWithdrawRequest(address account) internal override {}
+    
+
+    function getDepositParams(
+        uint256 /* depositAmount */,
+        uint256 /* maturity */
+    ) internal pure override returns (bytes memory) {
+        PendleDepositParams memory d = PendleDepositParams({
+            // No initial trading required for this vault
+            dexId: 0,
+            minPurchaseAmount: 0,
+            exchangeData: "",
+            minPtOut: 0,
+            approxParams: IPRouter.ApproxParams({
+                guessMin: 0,
+                guessMax: type(uint256).max,
+                guessOffchain: 0,
+                maxIteration: 256,
+                eps: 1e15 // recommended setting (0.1%)
+            })
+        });
+
+        return abi.encode(d);
+    }
+}
+
+
+contract Harness_PendlePT_ezETH_ETH is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
         return 'Pendle:PT ezETH 27JUN2024:[ETH]';

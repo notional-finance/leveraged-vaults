@@ -12,6 +12,8 @@ import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 import {WithdrawManager, stETH, LidoWithdraw, rsETH} from "@contracts/vaults/staking/protocols/Kelp.sol";
 import {PendlePTKelpVault} from "@contracts/vaults/staking/PendlePTKelpVault.sol";
 
+/**** NOTE: this file is not auto-generated because there is lots of custom withdraw logic *****/
+
 interface ILRTOracle {
     // methods
     function getAssetPrice(address asset) external view returns (uint256);
@@ -22,11 +24,11 @@ interface ILRTOracle {
 ILRTOracle constant lrtOracle = ILRTOracle(0x349A73444b1a310BAe67ef67973022020d70020d);
 address constant unstakingVault = 0xc66830E2667bc740c0BED9A71F18B14B8c8184bA;
 
-contract Test_Staking_PendlePT_Kelp is BasePendleTest {
+contract Test_PendlePT_rsETH_ETH is BasePendleTest {
     function setUp() public override {
         FORK_BLOCK = 20033103;
 
-        harness = new Harness_Staking_PendlePT_Kelp();
+        harness = new Harness_PendlePT_rsETH_ETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -107,60 +109,12 @@ contract Test_Staking_PendlePT_Kelp is BasePendleTest {
         vm.startPrank(0x02479BFC7Dce53A02e26fE7baea45a0852CB0909);
         Deployments.TRADING_MODULE.setPriceOracle(
             address(rsETH),
-            AggregatorV2V3Interface(Harness_Staking_PendlePT_Kelp(address(harness)).baseToUSDOracle())
+            AggregatorV2V3Interface(Harness_PendlePT_rsETH_ETH(address(harness)).baseToUSDOracle())
         );
         vm.stopPrank();
 
         super.test_deleverageAccount_splitAccountWithdrawRequest(maturityIndex);
     }
-
-    // function test_RevertIf_accountEntry_postExpiry(uint8 maturityIndex) public {
-    //     vm.warp(expires);
-    //     address account = makeAddr("account");
-    //     maturityIndex = uint8(bound(maturityIndex, 0, 2));
-    //     uint256 maturity = maturities[maturityIndex];
-        
-    //     Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
-    //     if (maturity > block.timestamp) {
-    //         expectRevert_enterVault(
-    //             account, minDeposit, maturity, getDepositParams(minDeposit, maturity), "Expired"
-    //         );
-    //     }
-    // }
-
-    // function test_exitVault_postExpiry(uint8 maturityIndex, uint256 depositAmount) public {
-    //     depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
-    //     maturityIndex = uint8(bound(maturityIndex, 0, 2));
-    //     address account = makeAddr("account");
-    //     uint256 maturity = maturities[maturityIndex];
-
-    //     uint256 vaultShares = enterVault(
-    //         account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
-    //     );
-
-    //     vm.warp(expires + 3600);
-    //     Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
-    //     if (maturity < block.timestamp) {
-    //         // Push the vault shares to prime
-    //         totalVaultShares[maturity] -= vaultShares;
-    //         maturity = maturities[0];
-    //         totalVaultShares[maturity] += vaultShares;
-    //     }
-
-    //     uint256 underlyingToReceiver = exitVault(
-    //         account,
-    //         vaultShares,
-    //         maturity < block.timestamp ? maturities[0] : maturity,
-    //         getRedeemParams(depositAmount, maturity)
-    //     );
-
-    //     assertRelDiff(
-    //         uint256(depositAmount),
-    //         underlyingToReceiver,
-    //         maxRelExitValuation,
-    //         "Valuation and Deposit"
-    //     );
-    // }
 
     function test_exitVault_useWithdrawRequest_postExpiry(
         uint8 maturityIndex, uint256 depositAmount, bool useForce
@@ -254,9 +208,9 @@ contract Test_Staking_PendlePT_Kelp is BasePendleTest {
     }
 }
 
-contract Harness_Staking_PendlePT_Kelp is PendleStakingHarness {
+contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
     function getVaultName() public pure override returns (string memory) {
-        return 'Pendle:PT Kelp rsETH 27JUN2024:[ETH]';
+        return 'Pendle:PT rsETH 27JUN2024:[ETH]';
     }
 
     function getRequiredOracles() public override view returns (
