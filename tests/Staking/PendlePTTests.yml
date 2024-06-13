@@ -1,6 +1,6 @@
 defaults:
   setUp:
-    minDeposit: 0.001e18
+    minDeposit: 0.01e18
     maxDeposit: 50e18
     maxRelEntryValuation: 50
     maxRelExitValuation: 50
@@ -25,17 +25,40 @@ defaults:
     maxPrimaryBorrow: 100e8
 
 arbitrum:
-  - stakeSymbol: ezETH
+  # - stakeSymbol: rsETH
+  #   forkBlock: 221089505
+  #   expiry: 25SEP2024
+  #   primaryBorrowCurrency: ETH
+  #   contractName: PendlePTGeneric
+  #   oracles: [ETH]
+  #   marketAddress: "0xED99fC8bdB8E9e7B8240f62f69609a125A0Fbf14"
+  #   ptAddress: "0x30c98c0139b62290e26ac2a2158ac341dcaf1333"
+  #   useSyOracleRate: 'true'
+  #   permissions:
+  #     - token: rsETH
+  #       dexId: 2
+  #       tradeTypeFlags: 5
+  #     - token: ETH
+  #       dexId: 2
+  #       tradeTypeFlags: 5
+  - stakeSymbol: weETH
+    forkBlock: 221089505
     expiry: 27JUN2024
     primaryBorrowCurrency: ETH
     contractName: PendlePTGeneric
     oracles: [ETH]
-    marketAddress: "0x5E03C94Fc5Fb2E21882000A96Df0b63d2c4312e2"
-    ptAddress: "0x8EA5040d423410f1fdc363379Af88e1DB5eA1C34"
+    marketAddress: "0x952083cde7aaa11AB8449057F7de23A970AA8472"
+    ptAddress: "0x1c27Ad8a19Ba026ADaBD615F6Bc77158130cfBE4"
     useSyOracleRate: 'true'
-    tokenInSy: 
+    tradeOnEntry: true
+    primaryDexId: 2
+    exchangeData:
+      feeTier: 100
     permissions:
-      - token: ezETH
+      - token: weETH
+        dexId: 2
+        tradeTypeFlags: 5
+      - token: ETH
         dexId: 2
         tradeTypeFlags: 5
 mainnet:
@@ -47,6 +70,9 @@ mainnet:
     marketAddress: "0xF32e58F92e60f4b0A37A69b95d642A471365EAe8"
     ptAddress: "0xc69Ad9baB1dEE23F4605a82b3354F8E40d1E5966"
     useSyOracleRate: 'true'
+    primaryDexId: 2
+    exchangeData:
+      feeTier: 500
     permissions:
       - token: weETH
         dexId: 2

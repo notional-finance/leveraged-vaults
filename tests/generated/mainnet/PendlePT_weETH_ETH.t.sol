@@ -43,9 +43,10 @@ contract Test_PendlePT_weETH_ETH is BasePendleTest {
     function getDepositParams(
         uint256 /* depositAmount */,
         uint256 /* maturity */
-    ) internal pure override returns (bytes memory) {
+    ) internal view override returns (bytes memory) {
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+
         PendleDepositParams memory d = PendleDepositParams({
-            // No initial trading required for this vault
             dexId: 0,
             minPurchaseAmount: 0,
             exchangeData: "",
@@ -116,9 +117,9 @@ contract Harness_PendlePT_weETH_ETH is PendleStakingHarness {
         
 
         UniV3Adapter.UniV3SingleData memory u;
-        u.fee = 500; // 0.05 %
+        u.fee = 500;
         bytes memory exchangeData = abi.encode(u);
-        uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
+        uint8 primaryDexId = 2;
 
         setMetadata(StakingMetadata(1, primaryDexId, exchangeData, true));
     }

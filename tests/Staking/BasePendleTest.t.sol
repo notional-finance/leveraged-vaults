@@ -63,6 +63,7 @@ abstract contract BasePendleTest is BaseStakingTest {
     function test_exitVault_useWithdrawRequest_postExpiry(
         uint8 maturityIndex, uint256 depositAmount, bool useForce
     ) public virtual {
+        vm.skip(!hasWithdrawRequests());
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");

@@ -12,13 +12,14 @@ import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
-contract Test_PendlePT_ezETH_ETH is BasePendleTest {
+contract Test_PendlePT_weETH_ETH is BasePendleTest {
     function setUp() public override {
-        harness = new Harness_PendlePT_ezETH_ETH();
+        FORK_BLOCK = 221089505;
+        harness = new Harness_PendlePT_weETH_ETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.001e18;
+        minDeposit = 0.01e18;
         maxDeposit = 50e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
@@ -38,12 +39,13 @@ contract Test_PendlePT_ezETH_ETH is BasePendleTest {
     function getDepositParams(
         uint256 /* depositAmount */,
         uint256 /* maturity */
-    ) internal pure override returns (bytes memory) {
+    ) internal view override returns (bytes memory) {
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+
         PendleDepositParams memory d = PendleDepositParams({
-            // No initial trading required for this vault
-            dexId: 0,
+            dexId: m.primaryDexId,
             minPurchaseAmount: 0,
-            exchangeData: "",
+            exchangeData: m.exchangeData,
             minPtOut: 0,
             approxParams: IPRouter.ApproxParams({
                 guessMin: 0,
@@ -59,10 +61,10 @@ contract Test_PendlePT_ezETH_ETH is BasePendleTest {
 }
 
 
-contract Harness_PendlePT_ezETH_ETH is PendleStakingHarness {
+contract Harness_PendlePT_weETH_ETH is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
-        return 'Pendle:PT ezETH 27JUN2024:[ETH]';
+        return 'Pendle:PT weETH 27JUN2024:[ETH]';
     }
 
     function getRequiredOracles() public override view returns (
@@ -84,13 +86,17 @@ contract Harness_PendlePT_ezETH_ETH is PendleStakingHarness {
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](1);
-        permissions = new ITradingModule.TokenPermissions[](1);
+        token = new address[](2);
+        permissions = new ITradingModule.TokenPermissions[](2);
 
         
 
-        token[0] = 0x2416092f143378750bb29b79eD961ab195CcEea5;
+        token[0] = 0x35751007a407ca6FEFfE80b3cB397736D2cf4dbe;
         permissions[0] = ITradingModule.TokenPermissions(
+            { allowSell: true, dexFlags: 1 << 2, tradeTypeFlags: 5 }
+        );
+        token[1] = 0x0000000000000000000000000000000000000000;
+        permissions[1] = ITradingModule.TokenPermissions(
             { allowSell: true, dexFlags: 1 << 2, tradeTypeFlags: 5 }
         );
         
@@ -105,22 +111,22 @@ contract Harness_PendlePT_ezETH_ETH is PendleStakingHarness {
     }
 
     constructor() {
-        marketAddress = 0x5E03C94Fc5Fb2E21882000A96Df0b63d2c4312e2;
-        ptAddress = 0x8EA5040d423410f1fdc363379Af88e1DB5eA1C34;
+        marketAddress = 0x952083cde7aaa11AB8449057F7de23A970AA8472;
+        ptAddress = 0x1c27Ad8a19Ba026ADaBD615F6Bc77158130cfBE4;
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
-        baseToUSDOracle = 0x58784379C844a00d4f572917D43f991c971F96ca;
+        baseToUSDOracle = 0x9414609789C179e1295E9a0559d629bF832b3c04;
         
-        tokenInSy = 0x2416092f143378750bb29b79eD961ab195CcEea5;
+        tokenInSy = 0x35751007a407ca6FEFfE80b3cB397736D2cf4dbe;
         borrowToken = 0x0000000000000000000000000000000000000000;
-        tokenOutSy = 0x2416092f143378750bb29b79eD961ab195CcEea5;
-        redemptionToken = 0x2416092f143378750bb29b79eD961ab195CcEea5;
+        tokenOutSy = 0x35751007a407ca6FEFfE80b3cB397736D2cf4dbe;
+        redemptionToken = 0x35751007a407ca6FEFfE80b3cB397736D2cf4dbe;
         
 
         UniV3Adapter.UniV3SingleData memory u;
-        u.fee = 500; // 0.05 %
+        u.fee = 100;
         bytes memory exchangeData = abi.encode(u);
-        uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
+        uint8 primaryDexId = 2;
 
         setMetadata(StakingMetadata(1, primaryDexId, exchangeData, false));
     }

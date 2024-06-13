@@ -71,6 +71,11 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         return abi.encode(r);
     }
 
+    function hasWithdrawRequests() internal view returns (bool) {
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        return m.hasWithdrawRequests;
+    }
+
     function getRedeemParamsWithdrawRequest(
         uint256 vaultShares,
         uint256 maturity
@@ -121,6 +126,8 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     }
 
     function test_RevertIf_accountEntry_hasWithdraw(uint8 maturityIndex, bool useForce) public {
+        vm.skip(!hasWithdrawRequests());
+
         address account = makeAddr("account");
         maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
         uint256 maturity = maturities[maturityIndex];
@@ -175,6 +182,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_exitVault_useWithdrawRequest(
         uint8 maturityIndex, uint256 depositAmount, bool useForce
     ) public {
+        vm.skip(!hasWithdrawRequests());
         address account = makeAddr("account");
 
         uint256 vaultShares;
@@ -242,6 +250,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
     /** Withdraw Tests **/
     function test_RevertIf_accountWithdraw_insufficientShares() public {
+        vm.skip(!hasWithdrawRequests());
         address account = makeAddr("account");
 
         uint256 maturity = maturities[1];
@@ -260,6 +269,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     }
 
     function test_RevertIf_accountWithdraw_unauthorizedAccount() public {
+        vm.skip(!hasWithdrawRequests());
         address account = makeAddr("account");
 
         uint256 maturity = maturities[1];
@@ -274,6 +284,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_accountWithdraw(
         uint8 maturityIndex, uint256 depositAmount, uint8 withdrawPercent
     ) public {
+        vm.skip(!hasWithdrawRequests());
         withdrawPercent = uint8(bound(withdrawPercent, 1, 100));
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
@@ -305,6 +316,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_RevertIf_accountWithdraw_hasExistingRequest(
         uint8 maturityIndex, uint256 depositAmount
     ) public {
+        vm.skip(!hasWithdrawRequests());
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
@@ -323,6 +335,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_forceWithdraw(
         uint8 maturityIndex, uint256 depositAmount
     ) public {
+        vm.skip(!hasWithdrawRequests());
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
@@ -355,6 +368,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_RevertIf_forceWithdraw_accountInitiatesWithdraw(
         uint8 maturityIndex, uint256 depositAmount
     ) public {
+        vm.skip(!hasWithdrawRequests());
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         uint256 maturity = maturities[maturityIndex];
@@ -379,6 +393,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_forceWithdraw_initiateNewWithdraw(
         uint8 maturityIndex, uint256 depositAmount, bool forceFinalizeWithdraw
     ) public {
+        vm.skip(!hasWithdrawRequests());
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
@@ -408,6 +423,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_RevertIf_forceWithdraw_secondForceWithdraw(
         uint8 maturityIndex, uint256 depositAmount
     ) public {
+        vm.skip(!hasWithdrawRequests());
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
@@ -423,6 +439,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_RevertIf_accountWithdraw_insufficientCollateral(
         uint8 maturityIndex, uint256 depositAmount
     ) public {
+        vm.skip(!hasWithdrawRequests());
         depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
@@ -510,6 +527,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_deleverageAccount_splitAccountWithdrawRequest(
         uint8 maturityIndex
     ) public virtual {
+        vm.skip(!hasWithdrawRequests());
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
         uint256 maturity = maturities[maturityIndex];
@@ -546,6 +564,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     function test_finalizeWithdrawsManual(
         uint8 maturityIndex, uint256 depositAmount, bool useForce
     ) public {
+        vm.skip(!hasWithdrawRequests());
         address account = makeAddr("account");
 
         uint256 vaultShares;
