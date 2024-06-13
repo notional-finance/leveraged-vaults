@@ -61,6 +61,8 @@ arbitrum:
       - token: ETH
         dexId: 2
         tradeTypeFlags: 5
+    setUp:
+      defaultLiquidationDiscount: 950
 mainnet:
   - stakeSymbol: weETH
     expiry: 27JUN2024
