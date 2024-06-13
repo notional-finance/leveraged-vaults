@@ -4,15 +4,16 @@ pragma solidity >=0.7.6;
 import "../chainlink/AggregatorV2V3Interface.sol";
 
 enum DexId {
-    _UNUSED,        // flag = 1
-    UNISWAP_V2,     // flag = 2
-    UNISWAP_V3,     // flag = 4
-    ZERO_EX,        // flag = 8
-    BALANCER_V2,    // flag = 16
+    _UNUSED,        // flag = 1,  enum = 0
+    UNISWAP_V2,     // flag = 2,  enum = 1
+    UNISWAP_V3,     // flag = 4,  enum = 2
+    ZERO_EX,        // flag = 8,  enum = 3
+    BALANCER_V2,    // flag = 16, enum = 4
     // NOTE: this id is unused in the TradingModule
-    CURVE,          // flag = 32 
-    NOTIONAL_VAULT, // flag = 64
-    CURVE_V2        // flag = 128
+    CURVE,          // flag = 32, enum = 5
+    NOTIONAL_VAULT, // flag = 64, enum = 6
+    CURVE_V2,       // flag = 128, enum = 7
+    CAMELOT_V3      // flag = 256, enum = 8
 }
 
 enum TradeType {

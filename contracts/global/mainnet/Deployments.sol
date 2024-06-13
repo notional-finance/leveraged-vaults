@@ -27,6 +27,7 @@ library Deployments {
         IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     UniV3ISwapRouter internal constant UNIV3_ROUTER = UniV3ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+    UniV3ISwapRouter internal constant CAMELOT_V3_ROUTER = UniV3ISwapRouter(address(0));
     address internal constant ZERO_EX = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
     IUniV2Router2 internal constant UNIV2_ROUTER = IUniV2Router2(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 

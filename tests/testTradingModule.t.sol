@@ -128,6 +128,23 @@ contract TestTradingModule is Test {
             }),
             false
         ));
+
+        /****** Camelot V3 Trades *****/
+        tradeParams.push(Params(
+            DexId.CAMELOT_V3,
+            Trade({
+                tradeType: TradeType.EXACT_IN_SINGLE,
+                sellToken: ETH,
+                buyToken: USDC,
+                amount: 1e18,
+                limit: 0,
+                deadline: block.timestamp,
+                exchangeData: abi.encode(
+                    UniV3Adapter.UniV3SingleData({ fee: 1516 })
+                )
+            }),
+            false
+        ));
     }
 
     function assertRelDiff(uint256 a, uint256 b, uint256 rel, uint256 precision, string memory m) internal {
@@ -203,7 +220,7 @@ contract TestTradingModule is Test {
         uint32 dexFlags,
         uint32 tradeTypeFlags
     ) public {
-        dexFlags = uint32(bound(dexFlags, 1 << (uint8(DexId.CURVE_V2) + 1), type(uint32).max));
+        dexFlags = uint32(bound(dexFlags, 1 << (uint8(DexId.CAMELOT_V3) + 1), type(uint32).max));
         tradeTypeFlags = uint32(bound(tradeTypeFlags, 1 << (uint8(TradeType.EXACT_OUT_BATCH) + 1), type(uint32).max));
 
         vm.prank(NOTIONAL.owner());
@@ -297,7 +314,7 @@ contract TestTradingModule is Test {
         address buyToken = p.t.buyToken;
 
         if (sellToken == ETH) {
-            deal(address(this), p.t.amount);
+            deal(address(this), p.t.amount * 2);
         } else {
             deal(sellToken, address(this), p.t.amount, true);
         }

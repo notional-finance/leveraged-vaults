@@ -86,7 +86,7 @@ library UniV3Adapter {
         return abi.encodeWithSelector(ISwapRouter.exactOutput.selector, params);
     }
 
-    function getExecutionData(address from, Trade memory trade)
+    function getExecutionData(address from, Trade memory trade, address router)
         internal pure returns (
             address spender,
             address target,
@@ -94,8 +94,8 @@ library UniV3Adapter {
             bytes memory executionCallData
         )
     {
-        spender = address(Deployments.UNIV3_ROUTER);
-        target = address(Deployments.UNIV3_ROUTER);
+        spender = router;
+        target = router;
         // msgValue is always zero for uniswap
         msgValue = 0;
 

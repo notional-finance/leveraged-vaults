@@ -85,7 +85,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         /// @dev update these if we are adding new DEXes or types
         // Validates that the permissions being set do not exceed the max values set
         // by the token.
-        for (uint32 i = uint32(DexId.CURVE_V2) + 1; i < 32; i++) {
+        for (uint32 i = uint32(DexId.CAMELOT_V3) + 1; i < 32; i++) {
             require(!_hasPermission(permissions.dexFlags, uint32(1 << i)));
         }
         for (uint32 i = uint32(TradeType.EXACT_OUT_BATCH) + 1; i < 32; i++) {
@@ -214,7 +214,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         if (trade.buyToken == trade.sellToken) revert SellTokenEqualsBuyToken();
 
         if (DexId(dexId) == DexId.UNISWAP_V3) {
-            return UniV3Adapter.getExecutionData(from, trade);
+            return UniV3Adapter.getExecutionData(from, trade, address(Deployments.UNIV3_ROUTER));
         } else if (DexId(dexId) == DexId.BALANCER_V2) {
             return BalancerV2Adapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.ZERO_EX) {
@@ -226,6 +226,10 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
             if (DexId(dexId) == DexId.UNISWAP_V2) {
                 return UniV2Adapter.getExecutionData(from, trade);
+            }
+        } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
+            if (DexId(dexId) == DexId.CAMELOT_V3) {
+                return UniV3Adapter.getExecutionData(from, trade, address(Deployments.CAMELOT_V3_ROUTER));
             }
         }
 
