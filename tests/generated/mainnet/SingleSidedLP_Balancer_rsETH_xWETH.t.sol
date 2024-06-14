@@ -34,13 +34,13 @@ ComposablePoolHarness
         params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 1400;
+        params.minCollateralRatioBPS = 800;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
         params.maxDeleverageCollateralRatioBPS = 2700;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 30e8;
-        maxPrimaryBorrow = 250e8;
+        params.minAccountBorrowSize = 1e8;
+        maxPrimaryBorrow = 5e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -70,6 +70,7 @@ ComposablePoolHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0xF94507F3dECE4CC4c73B6cf228912b85Eadc9CFB;
         balancerPoolId = 0x58aadfb1afac0ad7fca1148f3cde6aedf5236b6d00000000000000000000067f;
         balancerPool = 0x58AAdFB1Afac0ad7fca1148f3cdE6aEDF5236B6D;
         SingleSidedLPMetadata memory _m;

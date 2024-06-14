@@ -31,6 +31,9 @@
     "Curve": {
       "[USDC]:USDe_xUSDC": "0xD6AA58cf21A0EDB33375D6c0434b8Bb5b589F021",
       "[GHO]:xGHO_USDe": "0xB1113cf888A019693b254da3d90f841072D85172"
+    },
+    "Balancer": {
+      "[ETH]:rsETH_xWETH": "0xF94507F3dECE4CC4c73B6cf228912b85Eadc9CFB"
     }
   }
 }

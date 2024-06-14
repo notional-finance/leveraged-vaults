@@ -85,6 +85,10 @@ case "$PROTOCOL" in
         CONTRACT="BalancerComposableAuraVault"
         CONTRACT_PATH="vaults/balancer"
         ;;
+    "Balancer")
+        CONTRACT="BalancerComposableAuraVault"
+        CONTRACT_PATH="vaults/balancer"
+        ;;
     "Curve")
         CONTRACT="Curve2TokenVault"
         CONTRACT_PATH="vaults/curve"
