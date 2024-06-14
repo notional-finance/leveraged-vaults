@@ -131,3 +131,33 @@ oracle = {
 }
 
 networks = ['arbitrum', 'mainnet']
+
+DexIds = {
+   "UniswapV2": 1,
+   "UniswapV3": 2,
+   "0x": 3,
+   "BalancerV2": 4,
+   "CurveV2": 7,
+   "CamelotV3": 8,
+}
+
+def get_exchange_data(dex, data):
+    if dex == "UniswapV3":
+        return f"""
+        UniV3Adapter.UniV3SingleData memory d;
+        d.fee = {data['feeTier']};
+        """.strip()
+    elif dex == "CamelotV3":
+        return f"""
+        bytes memory d = "";
+        """.strip()
+    elif dex == "CurveV2":
+        return f"""
+        UniV2Adapter.CurveV2SingleData memory d;
+        d.pool = {data['pool']};
+        d.fromIndex = {data['fromIndex']};
+        d.toIndex = {data['toIndex']};""".strip()
+    else:
+        return f"""
+        bytes memory d = "";
+        """.strip()

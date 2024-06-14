@@ -51,15 +51,15 @@ arbitrum:
     ptAddress: "0x1c27Ad8a19Ba026ADaBD615F6Bc77158130cfBE4"
     useSyOracleRate: 'true'
     tradeOnEntry: true
-    primaryDexId: 2
+    primaryDex: UniswapV3
     exchangeData:
       feeTier: 100
     permissions:
       - token: weETH
-        dexId: 2
+        dex: UniswapV3
         tradeTypeFlags: 5
       - token: ETH
-        dexId: 2
+        dex: UniswapV3
         tradeTypeFlags: 5
     setUp:
       defaultLiquidationDiscount: 950
@@ -98,12 +98,12 @@ mainnet:
     marketAddress: "0xF32e58F92e60f4b0A37A69b95d642A471365EAe8"
     ptAddress: "0xc69Ad9baB1dEE23F4605a82b3354F8E40d1E5966"
     useSyOracleRate: 'true'
-    primaryDexId: 2
+    primaryDex: UniswapV3
     exchangeData:
       feeTier: 500
     permissions:
       - token: weETH
-        dexId: 2
+        dex: UniswapV3
         tradeTypeFlags: 5
     setUp:
       minDeposit: 0.1e18

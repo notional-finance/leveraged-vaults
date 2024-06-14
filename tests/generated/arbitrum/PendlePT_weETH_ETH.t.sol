@@ -123,9 +123,9 @@ contract Harness_PendlePT_weETH_ETH is PendleStakingHarness {
         redemptionToken = 0x35751007a407ca6FEFfE80b3cB397736D2cf4dbe;
         
 
-        UniV3Adapter.UniV3SingleData memory u;
-        u.fee = 100;
-        bytes memory exchangeData = abi.encode(u);
+        UniV3Adapter.UniV3SingleData memory d;
+        d.fee = 100;
+        bytes memory exchangeData = abi.encode(d);
         uint8 primaryDexId = 2;
 
         setMetadata(StakingMetadata(1, primaryDexId, exchangeData, false));

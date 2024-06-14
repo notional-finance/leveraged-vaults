@@ -116,9 +116,9 @@ contract Harness_PendlePT_weETH_ETH is PendleStakingHarness {
         baseToUSDOracle = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
         
 
-        UniV3Adapter.UniV3SingleData memory u;
-        u.fee = 500;
-        bytes memory exchangeData = abi.encode(u);
+        UniV3Adapter.UniV3SingleData memory d;
+        d.fee = 500;
+        bytes memory exchangeData = abi.encode(d);
         uint8 primaryDexId = 2;
 
         setMetadata(StakingMetadata(1, primaryDexId, exchangeData, true));

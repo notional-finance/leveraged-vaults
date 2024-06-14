@@ -22,7 +22,7 @@ def get_oracles(network, oracles):
 
 def get_token_permissions(network, tokens):
     return [{
-        "dexId": t['dexId'],
+        "dexId": DexIds[t['dex']],
         "tradeTypeFlags": t['tradeTypeFlags'],
         "tokenAddress": token[network][t['token']],
     } for t in tokens]
@@ -58,6 +58,8 @@ def generate_files(network, yaml_file, template_file):
         #     test['existingDeployment'] = vaults[network][protocol][poolName]
         # except:
         #     pass
+        test['primaryDexId'] = DexIds[test['primaryDex']]
+        test['exchangeData'] = get_exchange_data(test['primaryDex'], test['exchangeData'])
         test['oracles'] = get_oracles(network, test['oracles'])
         test['rewards'] = get_tokens(network, test['rewards']) if 'rewards' in test else []
         test['permissions'] = get_token_permissions(network, test['permissions']) if 'permissions' in test else []

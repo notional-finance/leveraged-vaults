@@ -141,9 +141,8 @@ contract Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is Pendl
         redemptionToken = {{ stakeToken }};
         {% endif %}
 
-        UniV3Adapter.UniV3SingleData memory u;
-        u.fee = {{ exchangeData.feeTier }};
-        bytes memory exchangeData = abi.encode(u);
+        {{ exchangeData }}
+        bytes memory exchangeData = abi.encode(d);
         uint8 primaryDexId = {{ primaryDexId }};
 
         setMetadata(StakingMetadata({{ borrowCurrencyId }}, primaryDexId, exchangeData, {{ 'false' if contractName == "PendlePTGeneric" else 'true' }}));
