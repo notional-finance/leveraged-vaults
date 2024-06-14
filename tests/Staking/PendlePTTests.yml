@@ -63,8 +63,34 @@ arbitrum:
         tradeTypeFlags: 5
     setUp:
       defaultLiquidationDiscount: 950
+  # TODO: USDe needs to trade via camelot
+  # - stakeSymbol: USDe
+  #   forkBlock: 221089505
+  #   expiry: 24JUL2024
+  #   primaryBorrowCurrency: USDC
+  #   contractName: PendlePTGeneric
+  #   oracles: [USDC]
+  #   marketAddress: "0x2Dfaf9a5E4F293BceedE49f2dBa29aACDD88E0C4"
+  #   ptAddress: "0xad853EB4fB3Fe4a66CdFCD7b75922a0494955292"
+  #   useSyOracleRate: 'true'
+  #   primaryDexId: 7
+  #   exchangeData:
+  #     pool: 0x02950460e2b9529d0e00284a5fa2d7bdf3fa4d72
+  #     fromIndex: 0
+  #     toIndex: 1
+  #   permissions:
+  #     - token: USDC
+  #       dexId: 7
+  #       tradeTypeFlags: 5
+  #     - token: USDe
+  #       dexId: 7
+  #       tradeTypeFlags: 5
+  #   setUp:
+  #     minDeposit: 0.1e6
+  #     maxDeposit: 100_000e6
 mainnet:
   - stakeSymbol: weETH
+    forkBlock: 20092864
     expiry: 27JUN2024
     primaryBorrowCurrency: ETH
     contractName: PendlePTEtherFiVault
@@ -82,3 +108,27 @@ mainnet:
     setUp:
       minDeposit: 0.1e18
       maxDeposit: 10e18
+  - stakeSymbol: USDe
+    forkBlock: 20092864
+    expiry: 24JUL2024
+    primaryBorrowCurrency: USDC
+    contractName: PendlePTGeneric
+    oracles: [USDC]
+    marketAddress: "0x19588F29f9402Bb508007FeADd415c875Ee3f19F"
+    ptAddress: "0xa0021ef8970104c2d008f38d92f115ad56a9b8e1"
+    useSyOracleRate: 'true'
+    primaryDexId: 7
+    exchangeData:
+      pool: 0x02950460e2b9529d0e00284a5fa2d7bdf3fa4d72
+      fromIndex: 0
+      toIndex: 1
+    permissions:
+      - token: USDC
+        dexId: 7
+        tradeTypeFlags: 5
+      - token: USDe
+        dexId: 7
+        tradeTypeFlags: 5
+    setUp:
+      minDeposit: 0.1e6
+      maxDeposit: 100_000e6

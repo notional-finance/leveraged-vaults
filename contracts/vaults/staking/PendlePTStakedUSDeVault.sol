@@ -11,12 +11,15 @@ import {
 contract PendlePTStakedUSDeVault is PendlePrincipalToken {
     address public HOLDER_IMPLEMENTATION;
 
-    constructor() PendlePrincipalToken(
-        address(0), // market address
+    constructor(
+        address marketAddress,
+        address ptAddress
+    ) PendlePrincipalToken(
+        marketAddress,
         address(USDe),
         address(sUSDe),
         address(USDe),
-        address(0),             // PT token address
+        ptAddress,
         address(USDe)
     ) {
         // Addresses in this vault are hardcoded to mainnet
