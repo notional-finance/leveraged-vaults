@@ -4,13 +4,11 @@ pragma solidity 0.8.24;
 import {Deployments} from "@deployments/Deployments.sol";
 import {TradeHandler} from "../TradeHandler.sol";
 import "@interfaces/trading/ITradingModule.sol";
-import "@interfaces/uniswap/v3/ISwapRouter.sol";
+import "@interfaces/camelot/ISwapRouter.sol";
 
-library UniV3Adapter {
+library CamelotV3Adapter {
 
-    struct UniV3SingleData { uint24 fee; }
-
-    struct UniV3BatchData { bytes path; }
+    struct CamelotV3BatchData { bytes path; }
 
     function _toAddress(bytes memory _bytes, uint256 _start) private pure returns (address) {
         // _bytes.length checked by the caller
@@ -33,31 +31,27 @@ library UniV3Adapter {
     function _exactInSingle(address from, Trade memory trade)
         private pure returns (bytes memory)
     {
-        UniV3SingleData memory data = abi.decode(trade.exchangeData, (UniV3SingleData));
-
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(
-            _getTokenAddress(trade.sellToken), 
-            _getTokenAddress(trade.buyToken), 
-            data.fee, from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
+            _getTokenAddress(trade.sellToken),
+            _getTokenAddress(trade.buyToken),
+            from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
         );
 
         return abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector, params);
     }
 
     function _exactOutSingle(address from, Trade memory trade) private pure returns (bytes memory) {
-        UniV3SingleData memory data = abi.decode(trade.exchangeData, (UniV3SingleData));
-
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams(
-            _getTokenAddress(trade.sellToken), 
-            _getTokenAddress(trade.buyToken), 
-            data.fee, from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
+            _getTokenAddress(trade.sellToken),
+            _getTokenAddress(trade.buyToken),
+            from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
         );
 
         return abi.encodeWithSelector(ISwapRouter.exactOutputSingle.selector, params);
     }
 
     function _exactInBatch(address from, Trade memory trade) private pure returns (bytes memory) {
-        UniV3BatchData memory data = abi.decode(trade.exchangeData, (UniV3BatchData));
+        CamelotV3BatchData memory data = abi.decode(trade.exchangeData, (CamelotV3BatchData));
 
         // Validate path EXACT_IN = [sellToken, fee, ... buyToken]
         require(32 <= data.path.length);
@@ -72,7 +66,7 @@ library UniV3Adapter {
     }
 
     function _exactOutBatch(address from, Trade memory trade) private pure returns (bytes memory) {
-        UniV3BatchData memory data = abi.decode(trade.exchangeData, (UniV3BatchData));
+        CamelotV3BatchData memory data = abi.decode(trade.exchangeData, (CamelotV3BatchData));
 
         // Validate path EXACT_OUT = [buyToken, fee, ... sellToken]
         require(32 <= data.path.length);
@@ -94,8 +88,8 @@ library UniV3Adapter {
             bytes memory executionCallData
         )
     {
-        spender = address(Deployments.UNIV3_ROUTER);
-        target = address(Deployments.UNIV3_ROUTER);
+        spender = address(Deployments.CAMELOT_V3_ROUTER);
+        target = address(Deployments.CAMELOT_V3_ROUTER);
         // msgValue is always zero for uniswap
         msgValue = 0;
 

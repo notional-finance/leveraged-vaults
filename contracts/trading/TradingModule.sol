@@ -11,6 +11,7 @@ import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
 import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
 import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
 import {CurveV2Adapter} from "./adapters/CurveV2Adapter.sol";
+import {CamelotV3Adapter} from "./adapters/CamelotV3Adapter.sol";
 import {TradingUtils} from "./TradingUtils.sol";
 
 import {IERC20} from "@contracts/utils/TokenUtils.sol";
@@ -214,7 +215,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         if (trade.buyToken == trade.sellToken) revert SellTokenEqualsBuyToken();
 
         if (DexId(dexId) == DexId.UNISWAP_V3) {
-            return UniV3Adapter.getExecutionData(from, trade, address(Deployments.UNIV3_ROUTER));
+            return UniV3Adapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.BALANCER_V2) {
             return BalancerV2Adapter.getExecutionData(from, trade);
         } else if (DexId(dexId) == DexId.ZERO_EX) {
@@ -229,7 +230,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
             }
         } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
             if (DexId(dexId) == DexId.CAMELOT_V3) {
-                return UniV3Adapter.getExecutionData(from, trade, address(Deployments.CAMELOT_V3_ROUTER));
+                return CamelotV3Adapter.getExecutionData(from, trade);
             }
         }
 

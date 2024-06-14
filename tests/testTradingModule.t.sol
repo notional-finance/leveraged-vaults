@@ -139,9 +139,7 @@ contract TestTradingModule is Test {
                 amount: 1e18,
                 limit: 0,
                 deadline: block.timestamp,
-                exchangeData: abi.encode(
-                    UniV3Adapter.UniV3SingleData({ fee: 1516 })
-                )
+                exchangeData: ""
             }),
             false
         ));
