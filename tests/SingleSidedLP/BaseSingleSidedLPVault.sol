@@ -211,7 +211,11 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(EMERGENCY_EXIT_ROLE, exit);
 
-        initialBalance = metadata.rewardPool.balanceOf(address(vault));
+        if (address(metadata.rewardPool) != address(0)) {
+            initialBalance = metadata.rewardPool.balanceOf(address(vault));
+        } else {
+            initialBalance = metadata.poolToken.balanceOf(address(vault));
+        }
         assertGt(initialBalance, 0);
         (IERC20[] memory tokens, /* */) = v().TOKENS();
         for (uint256 i; i < tokens.length; i++) {
@@ -242,7 +246,9 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         uint256 maturity = maturities[0];
         (uint256[] memory exitBalances, address exit, /* */) = setup_EmergencyExit();
 
-        assertEq(metadata.rewardPool.balanceOf(address(vault)), 0);
+        if (address(metadata.rewardPool) != address(0)) {
+            assertEq(metadata.rewardPool.balanceOf(address(vault)), 0);
+        }
         assertEq(metadata.poolToken.balanceOf(address(vault)), 0);
         assertEq(v().isLocked(), true);
 
@@ -295,7 +301,13 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
                 assertEq(tokens[i].balanceOf(address(vault)), 0, "token balance");
             }
         }
-        uint256 postRestore = metadata.rewardPool.balanceOf(address(vault));
+
+        uint256 postRestore;
+        if (address(metadata.rewardPool) != address(0)) {
+            postRestore = metadata.rewardPool.balanceOf(address(vault));
+        } else {
+            postRestore = metadata.poolToken.balanceOf(address(vault));
+        }
         assertRelDiff(initialBalance, postRestore, 0.0001e9, "Restore Balance");
         assertEq(v().isLocked(), false);
 

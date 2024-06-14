@@ -70,6 +70,8 @@ ComposablePoolHarness
     }
 
     constructor() {
+        balancerPoolId = 0x58aadfb1afac0ad7fca1148f3cde6aedf5236b6d00000000000000000000067f;
+        balancerPool = 0x58AAdFB1Afac0ad7fca1148f3cdE6aEDF5236B6D;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({

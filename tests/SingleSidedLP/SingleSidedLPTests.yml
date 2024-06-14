@@ -592,7 +592,7 @@ mainnet:
       minAccountBorrowSize: 60_000e8
       maxPrimaryBorrow: 2_000_000e8
   - vaultName: SingleSidedLP:Convex:[GHO]/crvUSD
-    forkBlock: 19920313
+    forkBlock: 19983013
     vaultType: Curve2TokenConvex
     primaryBorrowCurrency: GHO
     rewardPool: "0x5eC758f79b96AE74e7F1Ba9583009aFB3fc8eACB"
@@ -621,7 +621,7 @@ mainnet:
       minAccountBorrowSize: 60_000e8
       maxPrimaryBorrow: 1_000_000e8
   - vaultName: SingleSidedLP:Curve:[GHO]/USDe
-    forkBlock: 19924000
+    forkBlock: 19983100
     vaultType: Curve2Token
     primaryBorrowCurrency: GHO
     rewardPool: "0x8eD00833BE7342608FaFDbF776a696afbFEaAe96"
@@ -653,6 +653,8 @@ mainnet:
     forkBlock: 20056700
     vaultType: ComposablePool
     primaryBorrowCurrency: ETH
+    balancerPoolId: "0x58aadfb1afac0ad7fca1148f3cde6aedf5236b6d00000000000000000000067f"
+    balancerPool: "0x58AAdFB1Afac0ad7fca1148f3cdE6aEDF5236B6D"
     rewardPool: "0x0000000000000000000000000000000000000000"
     rewards: []
     oracles: [rsETH, ETH]

@@ -5,7 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Convex_xGHO_crvUSD is BaseSingleSidedLPVault {
     function setUp() public override {
-        FORK_BLOCK = 19920313;
+        FORK_BLOCK = 19983013;
         harness = new Harness_SingleSidedLP_Convex_xGHO_crvUSD();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues

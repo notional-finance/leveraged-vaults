@@ -103,6 +103,11 @@ contract Harness_{{ contractName }} is
         EXISTING_DEPLOYMENT = {{ existingDeployment }};
         {% endif -%}
 
+        {% if balancerPoolId is defined -%}
+        balancerPoolId = {{ balancerPoolId }};
+        balancerPool = {{ balancerPool }};
+        {% endif -%}
+
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = {{ primaryBorrowCurrency }};
         _m.settings = StrategyVaultSettings({
