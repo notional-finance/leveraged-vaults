@@ -19,7 +19,7 @@ contract Test_PendlePT_weETH_ETH is BasePendleTest {
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.01e18;
+        minDeposit = 1e18;
         maxDeposit = 50e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
@@ -58,7 +58,8 @@ contract Test_PendlePT_weETH_ETH is BasePendleTest {
 
         return abi.encode(d);
     }
-}
+
+    }
 
 
 contract Harness_PendlePT_weETH_ETH is PendleStakingHarness {

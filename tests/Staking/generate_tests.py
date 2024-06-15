@@ -59,7 +59,7 @@ def generate_files(network, yaml_file, template_file):
         # except:
         #     pass
         test['primaryDexId'] = DexIds[test['primaryDex']]
-        test['exchangeData'] = get_exchange_data(test['primaryDex'], test['exchangeData'])
+        test['exchangeCode'] = get_exchange_data(test['primaryDex'], test['exchangeData'])
         test['oracles'] = get_oracles(network, test['oracles'])
         test['rewards'] = get_tokens(network, test['rewards']) if 'rewards' in test else []
         test['permissions'] = get_token_permissions(network, test['permissions']) if 'permissions' in test else []

@@ -25,7 +25,7 @@ contract Test_PendlePT_weETH_ETH is BasePendleTest {
         maxRelExitValuation = 50 * BASIS_POINT;
         maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
         maxRelExitValuation_WithdrawRequest_Variable = 0.005e18;
-        deleverageCollateralDecreaseRatio = 925;
+        deleverageCollateralDecreaseRatio = 920;
         defaultLiquidationDiscount = 955;
         withdrawLiquidationDiscount = 945;
 
@@ -63,7 +63,8 @@ contract Test_PendlePT_weETH_ETH is BasePendleTest {
 
         return abi.encode(d);
     }
-}
+
+    }
 
 
 contract Harness_PendlePT_weETH_ETH is PendleStakingHarness {

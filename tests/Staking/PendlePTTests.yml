@@ -66,6 +66,7 @@ arbitrum:
         dex: UniswapV3
         tradeTypeFlags: 5
     setUp:
+      minDeposit: 1e18
       defaultLiquidationDiscount: 950
   - stakeSymbol: USDe
     forkBlock: 221930694
@@ -110,11 +111,13 @@ mainnet:
     setUp:
       minDeposit: 0.1e18
       maxDeposit: 10e18
+      deleverageCollateralDecreaseRatio: 920
   - stakeSymbol: USDe
     forkBlock: 20092864
     expiry: 24JUL2024
     primaryBorrowCurrency: USDC
     contractName: PendlePTGeneric
+    tradeOnEntry: true
     oracles: [USDC]
     whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
     marketAddress: "0x19588F29f9402Bb508007FeADd415c875Ee3f19F"
@@ -123,8 +126,8 @@ mainnet:
     primaryDex: CurveV2
     exchangeData:
       pool: "0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72"
-      fromIndex: 0
-      toIndex: 1
+      fromIndex: 1 # USDC
+      toIndex: 0   # USDe
     permissions:
       - token: USDC
         dex: CurveV2

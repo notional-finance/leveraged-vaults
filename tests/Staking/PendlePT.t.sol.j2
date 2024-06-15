@@ -70,6 +70,27 @@ contract Test_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is BasePend
 
         return abi.encode(d);
     }
+
+    {% if primaryDex == "CurveV2" %}
+    function getRedeemParams(
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal view virtual override returns (bytes memory) {
+        RedeemParams memory r;
+
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        r.minPurchaseAmount = 0;
+        r.dexId = m.primaryDexId;
+        // For CurveV2 we need to swap the in and out indexes on exit
+        CurveV2Adapter.CurveV2SingleData memory d;
+        d.pool = {{exchangeData.pool}};
+        d.fromIndex = {{exchangeData.toIndex}};
+        d.toIndex = {{exchangeData.fromIndex}};
+        r.exchangeData = abi.encode(d);
+
+        return abi.encode(r);
+    }
+    {% endif -%}
 }
 
 
@@ -144,7 +165,7 @@ contract Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is Pendl
         redemptionToken = {{ stakeToken }};
         {% endif %}
 
-        {{ exchangeData }}
+        {{ exchangeCode }}
         bytes memory exchangeData = abi.encode(d);
         uint8 primaryDexId = {{ primaryDexId }};
 

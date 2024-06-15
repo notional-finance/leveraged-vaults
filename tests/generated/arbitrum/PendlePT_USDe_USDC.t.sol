@@ -38,7 +38,7 @@ contract Test_PendlePT_USDe_USDC is BasePendleTest {
     
 
     function getDepositParams(
-        uint256 depositAmount,
+        uint256 /* depositAmount */,
         uint256 /* maturity */
     ) internal view override returns (bytes memory) {
         StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
@@ -49,8 +49,8 @@ contract Test_PendlePT_USDe_USDC is BasePendleTest {
             exchangeData: m.exchangeData,
             minPtOut: 0,
             approxParams: IPRouter.ApproxParams({
-                guessMin: depositAmount * 0.5e12,
-                guessMax: depositAmount * 2e16,
+                guessMin: 0,
+                guessMax: type(uint256).max,
                 guessOffchain: 0,
                 maxIteration: 256,
                 eps: 1e15 // recommended setting (0.1%)
@@ -59,7 +59,8 @@ contract Test_PendlePT_USDe_USDC is BasePendleTest {
 
         return abi.encode(d);
     }
-}
+
+    }
 
 
 contract Harness_PendlePT_USDe_USDC is PendleStakingHarness {

@@ -44,9 +44,9 @@ contract Test_PendlePT_USDe_USDC is BasePendleTest {
         StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
 
         PendleDepositParams memory d = PendleDepositParams({
-            dexId: 0,
+            dexId: m.primaryDexId,
             minPurchaseAmount: 0,
-            exchangeData: "",
+            exchangeData: m.exchangeData,
             minPtOut: 0,
             approxParams: IPRouter.ApproxParams({
                 guessMin: 0,
@@ -59,7 +59,27 @@ contract Test_PendlePT_USDe_USDC is BasePendleTest {
 
         return abi.encode(d);
     }
-}
+
+    
+    function getRedeemParams(
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal view virtual override returns (bytes memory) {
+        RedeemParams memory r;
+
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        r.minPurchaseAmount = 0;
+        r.dexId = m.primaryDexId;
+        // For CurveV2 we need to swap the in and out indexes on exit
+        CurveV2Adapter.CurveV2SingleData memory d;
+        d.pool = 0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72;
+        d.fromIndex = 0;
+        d.toIndex = 1;
+        r.exchangeData = abi.encode(d);
+
+        return abi.encode(r);
+    }
+    }
 
 
 contract Harness_PendlePT_USDe_USDC is PendleStakingHarness {
@@ -126,8 +146,8 @@ contract Harness_PendlePT_USDe_USDC is PendleStakingHarness {
 
         CurveV2Adapter.CurveV2SingleData memory d;
         d.pool = 0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72;
-        d.fromIndex = 0;
-        d.toIndex = 1;
+        d.fromIndex = 1;
+        d.toIndex = 0;
         bytes memory exchangeData = abi.encode(d);
         uint8 primaryDexId = 7;
 
