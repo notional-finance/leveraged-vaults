@@ -43,9 +43,9 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
         StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
 
         PendleDepositParams memory d = PendleDepositParams({
-            dexId: 0,
+            dexId: m.primaryDexId,
             minPurchaseAmount: 0,
-            exchangeData: "",
+            exchangeData: m.exchangeData,
             minPtOut: 0,
             approxParams: IPRouter.ApproxParams({
                 guessMin: 0,

@@ -67,6 +67,12 @@ abstract contract BaseAcceptanceTest is Test {
             // NOTE: fixes curve router
             UUPSUpgradeable(address(Deployments.TRADING_MODULE)).upgradeTo(tradingModule);
             vm.stopPrank();
+        } else if (Deployments.CHAIN_ID == 42161) {
+            vm.startPrank(Deployments.NOTIONAL.owner());
+            address tradingModule = address(new TradingModule(Deployments.NOTIONAL, Deployments.TRADING_MODULE));
+            // NOTE: fixes curve router
+            UUPSUpgradeable(address(Deployments.TRADING_MODULE)).upgradeTo(tradingModule);
+            vm.stopPrank();
         }
 
         config = harness.getTestVaultConfig();

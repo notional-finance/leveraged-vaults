@@ -17,6 +17,9 @@ contract Test_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is BasePend
         {% if forkBlock is defined -%}
         FORK_BLOCK = {{ forkBlock }};
         {% endif -%}
+        {% if whale is defined -%}
+        WHALE = {{ whale }};
+        {% endif -%}
         harness = new Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }}();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues

@@ -15,6 +15,7 @@ import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 contract Test_PendlePT_USDe_USDC is BasePendleTest {
     function setUp() public override {
         FORK_BLOCK = 20092864;
+        WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
         harness = new Harness_PendlePT_USDe_USDC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues

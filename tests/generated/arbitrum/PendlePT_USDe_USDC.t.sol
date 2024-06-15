@@ -14,7 +14,8 @@ import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 contract Test_PendlePT_USDe_USDC is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 221089505;
+        FORK_BLOCK = 221930694;
+        WHALE = 0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D;
         harness = new Harness_PendlePT_USDe_USDC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -37,19 +38,19 @@ contract Test_PendlePT_USDe_USDC is BasePendleTest {
     
 
     function getDepositParams(
-        uint256 /* depositAmount */,
+        uint256 depositAmount,
         uint256 /* maturity */
     ) internal view override returns (bytes memory) {
         StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
 
         PendleDepositParams memory d = PendleDepositParams({
-            dexId: 0,
+            dexId: m.primaryDexId,
             minPurchaseAmount: 0,
-            exchangeData: "",
+            exchangeData: m.exchangeData,
             minPtOut: 0,
             approxParams: IPRouter.ApproxParams({
-                guessMin: 0,
-                guessMax: type(uint256).max,
+                guessMin: depositAmount * 0.5e12,
+                guessMax: depositAmount * 2e16,
                 guessOffchain: 0,
                 maxIteration: 256,
                 eps: 1e15 // recommended setting (0.1%)

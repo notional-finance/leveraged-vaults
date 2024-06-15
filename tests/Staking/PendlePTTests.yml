@@ -34,6 +34,7 @@ arbitrum:
     marketAddress: "0xED99fC8bdB8E9e7B8240f62f69609a125A0Fbf14"
     ptAddress: "0x30c98c0139B62290E26aC2a2158AC341Dcaf1333"
     useSyOracleRate: 'true'
+    tradeOnEntry: true
     primaryDex: UniswapV3
     exchangeData:
       feeTier: 100
@@ -67,14 +68,16 @@ arbitrum:
     setUp:
       defaultLiquidationDiscount: 950
   - stakeSymbol: USDe
-    forkBlock: 221089505
+    forkBlock: 221930694
     expiry: 24JUL2024
     primaryBorrowCurrency: USDC
     contractName: PendlePTGeneric
     oracles: [USDC]
+    whale: "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
     marketAddress: "0x2Dfaf9a5E4F293BceedE49f2dBa29aACDD88E0C4"
     ptAddress: "0xad853EB4fB3Fe4a66CdFCD7b75922a0494955292"
     useSyOracleRate: 'true'
+    tradeOnEntry: true
     primaryDex: CamelotV3
     exchangeData:
     permissions:
@@ -113,6 +116,7 @@ mainnet:
     primaryBorrowCurrency: USDC
     contractName: PendlePTGeneric
     oracles: [USDC]
+    whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
     marketAddress: "0x19588F29f9402Bb508007FeADd415c875Ee3f19F"
     ptAddress: "0xa0021EF8970104c2d008F38D92f115ad56a9B8e1"
     useSyOracleRate: 'true'
