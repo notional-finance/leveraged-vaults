@@ -10,17 +10,17 @@ import {
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
-import { PendlePTEtherFiVault } from "@contracts/vaults/staking/PendlePTEtherFiVault.sol";
+import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
-contract Test_PendlePT_weETH_ETH is BasePendleTest {
+contract Test_PendlePT_USDe_USDC is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 20092864;
-        harness = new Harness_PendlePT_weETH_ETH();
+        FORK_BLOCK = 221089505;
+        harness = new Harness_PendlePT_USDe_USDC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.1e18;
-        maxDeposit = 10e18;
+        minDeposit = 0.1e6;
+        maxDeposit = 100_000e6;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
         maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
@@ -33,12 +33,7 @@ contract Test_PendlePT_weETH_ETH is BasePendleTest {
     }
 
     
-    function finalizeWithdrawRequest(address account) internal override {
-        WithdrawRequest memory w = v().getWithdrawRequest(account);
-
-        vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
-        WithdrawRequestNFT.finalizeRequests(w.requestId);
-    }
+    function finalizeWithdrawRequest(address account) internal override {}
     
 
     function getDepositParams(
@@ -66,10 +61,10 @@ contract Test_PendlePT_weETH_ETH is BasePendleTest {
 }
 
 
-contract Harness_PendlePT_weETH_ETH is PendleStakingHarness {
+contract Harness_PendlePT_USDe_USDC is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
-        return 'Pendle:PT weETH 27JUN2024:[ETH]';
+        return 'Pendle:PT USDe 24JUL2024:[USDC]';
     }
 
     function getRequiredOracles() public override view returns (
@@ -82,47 +77,57 @@ contract Harness_PendlePT_weETH_ETH is PendleStakingHarness {
         token[0] = ptAddress;
         oracle[0] = ptOracle;
 
-        // ETH
-        token[1] = 0x0000000000000000000000000000000000000000;
-        oracle[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+        // USDC
+        token[1] = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+        oracle[1] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
         
     }
 
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](1);
-        permissions = new ITradingModule.TokenPermissions[](1);
+        token = new address[](2);
+        permissions = new ITradingModule.TokenPermissions[](2);
 
         
 
-        token[0] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
+        token[0] = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         permissions[0] = ITradingModule.TokenPermissions(
-            { allowSell: true, dexFlags: 1 << 2, tradeTypeFlags: 5 }
+            { allowSell: true, dexFlags: 1 << 8, tradeTypeFlags: 5 }
+        );
+        token[1] = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
+        permissions[1] = ITradingModule.TokenPermissions(
+            { allowSell: true, dexFlags: 1 << 8, tradeTypeFlags: 5 }
         );
         
     }
 
     function deployImplementation() internal override returns (address impl) {
         
-        return address(new PendlePTEtherFiVault(marketAddress, ptAddress));
+        return address(new PendlePTGeneric(
+            marketAddress, tokenInSy, tokenOutSy, borrowToken, ptAddress, redemptionToken
+        ));
         
     }
 
     constructor() {
-        marketAddress = 0xF32e58F92e60f4b0A37A69b95d642A471365EAe8;
-        ptAddress = 0xc69Ad9baB1dEE23F4605a82b3354F8E40d1E5966;
+        marketAddress = 0x2Dfaf9a5E4F293BceedE49f2dBa29aACDD88E0C4;
+        ptAddress = 0xad853EB4fB3Fe4a66CdFCD7b75922a0494955292;
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
-        baseToUSDOracle = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
+        baseToUSDOracle = 0x88AC7Bca36567525A866138F03a6F6844868E0Bc;
+        
+        tokenInSy = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
+        borrowToken = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+        tokenOutSy = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
+        redemptionToken = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
         
 
-        UniV3Adapter.UniV3SingleData memory d;
-        d.fee = 500;
+        bytes memory d = "";
         bytes memory exchangeData = abi.encode(d);
-        uint8 primaryDexId = 2;
+        uint8 primaryDexId = 8;
 
-        setMetadata(StakingMetadata(1, primaryDexId, exchangeData, true));
+        setMetadata(StakingMetadata(3, primaryDexId, exchangeData, false));
     }
 
 }

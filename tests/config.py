@@ -77,6 +77,8 @@ token = {
         "weETH": "0x35751007a407ca6FEFfE80b3cB397736D2cf4dbe",
         "WBTC": "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f",
         "tBTC": "0x6c84a8f1c29108F47a79964b5Fe888D4f4D0dE40",
+        "rsETH": "0x4186BFC76E2E237523CBC30FD220FE055156b41F",
+        "USDe": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
     }
 }
 
@@ -126,7 +128,9 @@ oracle = {
         "crvUSD": "0x0a32255dd4BB6177C994bAAc73E0606fDD568f66",
         "ezETH": "0x58784379C844a00d4f572917D43f991c971F96ca",
         "weETH": "0x9414609789C179e1295E9a0559d629bF832b3c04",
-        "tBTC": "0xE808488e8627F6531bA79a13A9E0271B39abEb1C"
+        "tBTC": "0xE808488e8627F6531bA79a13A9E0271B39abEb1C",
+        "rsETH": "0x02551ded3F5B25f60Ea67f258D907eD051E042b2",
+        "USDe": "0x88AC7Bca36567525A866138F03a6F6844868E0Bc",
     }
 }
 
@@ -153,7 +157,7 @@ def get_exchange_data(dex, data):
         """.strip()
     elif dex == "CurveV2":
         return f"""
-        UniV2Adapter.CurveV2SingleData memory d;
+        CurveV2Adapter.CurveV2SingleData memory d;
         d.pool = {data['pool']};
         d.fromIndex = {data['fromIndex']};
         d.toIndex = {data['toIndex']};""".strip()
