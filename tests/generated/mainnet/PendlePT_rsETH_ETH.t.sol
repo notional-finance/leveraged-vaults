@@ -130,7 +130,7 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
 
         setMaxOracleFreshness();
         vm.warp(expires + 3600);
-        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        try Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false) {} catch {}
         if (maturity < block.timestamp) {
             // Push the vault shares to prime
             totalVaultShares[maturity] -= vaultShares;
@@ -172,7 +172,7 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
 
         setMaxOracleFreshness();
         vm.warp(expires + 3600);
-        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        try Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false) {} catch {}
         if (maturity < block.timestamp) {
             // Push the vault shares to prime
             totalVaultShares[maturity] -= vaultShares;

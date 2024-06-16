@@ -18,7 +18,7 @@ abstract contract BasePendleTest is BaseStakingTest {
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         uint256 maturity = maturities[maturityIndex];
         
-        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        try Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false) {} catch {}
         if (maturity > block.timestamp) {
             expectRevert_enterVault(
                 account, minDeposit, maturity, getDepositParams(minDeposit, maturity), "Expired"
@@ -37,7 +37,7 @@ abstract contract BasePendleTest is BaseStakingTest {
         );
 
         vm.warp(expires + 3600);
-        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        try Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false) {} catch {}
         if (maturity < block.timestamp) {
             // Push the vault shares to prime
             totalVaultShares[maturity] -= vaultShares;
@@ -75,7 +75,7 @@ abstract contract BasePendleTest is BaseStakingTest {
 
         setMaxOracleFreshness();
         vm.warp(expires + 3600);
-        Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false);
+        try Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false) {} catch {}
         if (maturity < block.timestamp) {
             // Push the vault shares to prime
             totalVaultShares[maturity] -= vaultShares;

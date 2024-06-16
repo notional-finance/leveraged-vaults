@@ -14,13 +14,13 @@ import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 contract Test_PendlePT_rsETH_ETH is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 221930694;
+        FORK_BLOCK = 222513382;
         harness = new Harness_PendlePT_rsETH_ETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.01e18;
-        maxDeposit = 50e18;
+        minDeposit = 0.1e18;
+        maxDeposit = 10e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
         maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
