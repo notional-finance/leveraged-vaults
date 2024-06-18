@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import "./BaseStakingTest.t.sol";
 import "./harness/PendleStakingHarness.sol";
+import {IPMarket} from "@interfaces/pendle/IPendle.sol";
 
 abstract contract BasePendleTest is BaseStakingTest {
     uint256 expires;

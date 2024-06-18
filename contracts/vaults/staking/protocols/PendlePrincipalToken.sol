@@ -33,8 +33,6 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
     IPMarket public immutable MARKET;
     address public immutable TOKEN_OUT_SY;
 
-    // IPRouter immutable ROUTER = IPRouter(0x00000000005BBB0EF59571E58418F9a4357b68A0);
-    IPRouter immutable ROUTER = IPRouter(0x888888888889758F76e7103c6CbF23ABbF58F946);
     address immutable TOKEN_IN_SY;
     IStandardizedYield immutable SY;
     IPPrincipalToken immutable PT;
@@ -99,9 +97,9 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         IPRouter.SwapData memory EMPTY_SWAP;
         IPRouter.LimitOrderData memory EMPTY_LIMIT;
 
-        IERC20(TOKEN_IN_SY).checkApprove(address(ROUTER), tokenInAmount);
+        IERC20(TOKEN_IN_SY).checkApprove(address(Deployments.PENDLE_ROUTER), tokenInAmount);
         uint256 msgValue = TOKEN_IN_SY == Constants.ETH_ADDRESS ? tokenInAmount : 0;
-        (uint256 ptReceived, /* */, /* */) = ROUTER.swapExactTokenForPt{value: msgValue}(
+        (uint256 ptReceived, /* */, /* */) = Deployments.PENDLE_ROUTER.swapExactTokenForPt{value: msgValue}(
             address(this),
             address(MARKET),
             params.minPtOut,

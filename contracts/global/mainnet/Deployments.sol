@@ -15,7 +15,7 @@ import {ICurveRouterV2} from "@interfaces/curve/ICurveRouterV2.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 import {IWrappedfCashFactory} from "@interfaces/notional/IWrappedfCashFactory.sol";
 import {AggregatorV2V3Interface} from "@interfaces/chainlink/AggregatorV2V3Interface.sol";
-import {IPMarket, IPOracle} from "@interfaces/pendle/IPendle.sol";
+import {IPRouter, IPOracle} from "@interfaces/pendle/IPendle.sol";
 
 /// @title Hardcoded Deployment Addresses for Mainnet
 library Deployments {
@@ -27,7 +27,7 @@ library Deployments {
         IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     UniV3ISwapRouter internal constant UNIV3_ROUTER = UniV3ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-    UniV3ISwapRouter internal constant CAMELOT_V3_ROUTER = UniV3ISwapRouter(address(0));
+    address internal constant CAMELOT_V3_ROUTER = address(0);
     address internal constant ZERO_EX = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
     IUniV2Router2 internal constant UNIV2_ROUTER = IUniV2Router2(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
@@ -53,4 +53,5 @@ library Deployments {
 
     // Pendle Oracle
     IPOracle internal constant PENDLE_ORACLE = IPOracle(0x66a1096C6366b2529274dF4f5D8247827fe4CEA8);
+    IPRouter internal constant PENDLE_ROUTER = IPRouter(0x00000000005BBB0EF59571E58418F9a4357b68A0);
 }

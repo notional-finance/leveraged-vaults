@@ -15,7 +15,7 @@ import {ICurveRouterV2} from "@interfaces/curve/ICurveRouterV2.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 import {IWrappedfCashFactory} from "@interfaces/notional/IWrappedfCashFactory.sol";
 import {AggregatorV2V3Interface} from "@interfaces/chainlink/AggregatorV2V3Interface.sol";
-import {IPMarket, IPOracle} from "@interfaces/pendle/IPendle.sol";
+import {IPOracle, IPRouter} from "@interfaces/pendle/IPendle.sol";
 
 library Deployments {
     uint256 internal constant CHAIN_ID = Constants.CHAIN_ID_ARBITRUM;
@@ -27,15 +27,15 @@ library Deployments {
         IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     UniV3ISwapRouter internal constant UNIV3_ROUTER = UniV3ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-    UniV3ISwapRouter internal constant CAMELOT_V3_ROUTER = UniV3ISwapRouter(0x1F721E2E82F6676FCE4eA07A5958cF098D339e18);
+    address internal constant CAMELOT_V3_ROUTER = 0x1F721E2E82F6676FCE4eA07A5958cF098D339e18;
     address internal constant ZERO_EX = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
     IUniV2Router2 internal constant UNIV2_ROUTER = IUniV2Router2(address(0));
-
-    address internal constant ALT_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-
     ICurveRouterV2 public constant CURVE_ROUTER_V2 = ICurveRouterV2(0x4c2Af2Df2a7E567B5155879720619EA06C5BB15D);
     // Curve meta registry is not deployed on arbitrum
     ICurveMetaRegistry public constant CURVE_META_REGISTRY = ICurveMetaRegistry(address(0));
+
+    address internal constant ALT_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     address internal constant CURVE_V1_HANDLER = address(0);
     address internal constant CURVE_V2_HANDLER = address(0);
     ITradingModule internal constant TRADING_MODULE = ITradingModule(0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8);
@@ -49,6 +49,6 @@ library Deployments {
     // TODO: update this deployment
     address internal constant VAULT_REWARDER_LIB = 0x0000dEb798bB3E4dFA0139dfa1b3D433CC23b72F;
 
-    // Pendle Oracle
     IPOracle internal constant PENDLE_ORACLE = IPOracle(0x9a9Fa8338dd5E5B2188006f1Cd2Ef26d921650C2);
+    IPRouter internal constant PENDLE_ROUTER = IPRouter(0x888888888889758F76e7103c6CbF23ABbF58F946);
 }
