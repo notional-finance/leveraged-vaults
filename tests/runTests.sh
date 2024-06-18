@@ -1,4 +1,7 @@
 #!/bin/bash
+# Exits immediately if a test fails
+set -e
+
 source .env
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 python tests/SingleSidedLP/generate_tests.py
