@@ -132,51 +132,103 @@ contract TestTradingModule is Test {
         ));
 
         /****** Balancer V2 Batch Trades *****/
-        IBalancerVault.BatchSwapStep[] memory swaps = new IBalancerVault.BatchSwapStep[](2);
-        swaps[0] = IBalancerVault.BatchSwapStep({
-            // cbETH, wstETH, rETH
-            poolId: 0x2d6ced12420a9af5a83765a8c48be2afcd1a8feb000000000000000000000500,
-            assetInIndex: 0, // Refers to the assets array
-            assetOutIndex: 1,
-            // Amount will be filled in by the trade data
-            amount: 0,
-            userData: ""
-        });
-        swaps[1] = IBalancerVault.BatchSwapStep({
-            // WETH, rETH
-            poolId: 0xd0ec47c54ca5e20aaae4616c25c825c7f48d40690000000000000000000004ef,
-            assetInIndex: 1,
-            assetOutIndex: 2,
-            amount: 0,
-            userData: ""
-        });
-        IAsset[] memory assets = new IAsset[](3);
-        assets[0] = IAsset(cbETH);
-        assets[1] = IAsset(rETH);
-        assets[2] = IAsset(WETH);
-        int256[] memory limits = new int256[](3);
-        // Specify the max amount into the vault...
-        limits[0] = 1e18;
+        {
+            IBalancerVault.BatchSwapStep[] memory swaps = new IBalancerVault.BatchSwapStep[](2);
+            swaps[0] = IBalancerVault.BatchSwapStep({
+                // cbETH, wstETH, rETH
+                poolId: 0x2d6ced12420a9af5a83765a8c48be2afcd1a8feb000000000000000000000500,
+                assetInIndex: 0, // Refers to the assets array
+                assetOutIndex: 1,
+                // Amount will be filled in by the trade data
+                amount: 0,
+                userData: ""
+            });
+            swaps[1] = IBalancerVault.BatchSwapStep({
+                // WETH, rETH
+                poolId: 0xd0ec47c54ca5e20aaae4616c25c825c7f48d40690000000000000000000004ef,
+                assetInIndex: 1,
+                assetOutIndex: 2,
+                amount: 0,
+                userData: ""
+            });
+            IAsset[] memory assets = new IAsset[](3);
+            assets[0] = IAsset(cbETH);
+            assets[1] = IAsset(rETH);
+            assets[2] = IAsset(WETH);
+            int256[] memory limits = new int256[](3);
+            // Specify the max amount into the vault...
+            limits[0] = 1e18;
 
-        tradeParams.push(Params(
-            DexId.BALANCER_V2,
-            Trade({
-                tradeType: TradeType.EXACT_IN_BATCH,
-                sellToken: cbETH,
-                buyToken: WETH,
+            tradeParams.push(Params(
+                DexId.BALANCER_V2,
+                Trade({
+                    tradeType: TradeType.EXACT_IN_BATCH,
+                    sellToken: cbETH,
+                    buyToken: WETH,
+                    amount: 1e18,
+                    limit: 0,
+                    deadline: block.timestamp,
+                    exchangeData: abi.encode(
+                        BalancerV2Adapter.BatchSwapData({
+                            swaps: swaps,
+                            assets: assets,
+                            limits: limits
+                        })
+                    )
+                }),
+                false
+            ));
+        }
+
+        // Batch Given Out
+        {
+            IBalancerVault.BatchSwapStep[] memory swaps = new IBalancerVault.BatchSwapStep[](2);
+            swaps[0] = IBalancerVault.BatchSwapStep({
+                // cbETH, wstETH, rETH
+                poolId: 0x2d6ced12420a9af5a83765a8c48be2afcd1a8feb000000000000000000000500,
+                assetInIndex: 0, // Refers to the assets array
+                assetOutIndex: 1,
+                // Refers to the amount out in rETH
                 amount: 1e18,
-                limit: 0,
-                deadline: block.timestamp,
-                exchangeData: abi.encode(
-                    BalancerV2Adapter.BatchSwapData({
-                        swaps: swaps,
-                        assets: assets,
-                        limits: limits
-                    })
-                )
-            }),
-            false
-        ));
+                userData: ""
+            });
+            swaps[1] = IBalancerVault.BatchSwapStep({
+                // WETH, rETH
+                poolId: 0xd0ec47c54ca5e20aaae4616c25c825c7f48d40690000000000000000000004ef,
+                assetInIndex: 1,
+                assetOutIndex: 2,
+                amount: 0,
+                userData: ""
+            });
+            IAsset[] memory assets = new IAsset[](3);
+            assets[0] = IAsset(cbETH);
+            assets[1] = IAsset(rETH);
+            assets[2] = IAsset(WETH);
+            int256[] memory limits = new int256[](3);
+            // Specify the max amount into the vault...
+            limits[0] = 2e18;
+            limits[2] = -1e18;
+
+            tradeParams.push(Params(
+                DexId.BALANCER_V2,
+                Trade({
+                    tradeType: TradeType.EXACT_OUT_BATCH,
+                    sellToken: cbETH,
+                    buyToken: WETH,
+                    amount: 1e18,
+                    limit: 2e18,
+                    deadline: block.timestamp,
+                    exchangeData: abi.encode(
+                        BalancerV2Adapter.BatchSwapData({
+                            swaps: swaps,
+                            assets: assets,
+                            limits: limits
+                        })
+                    )
+                }),
+                false
+            ));
+        }
 
         /****** Camelot V3 Trades *****/
         tradeParams.push(Params(
@@ -365,7 +417,7 @@ contract TestTradingModule is Test {
         if (sellToken == ETH) {
             deal(address(this), p.t.amount * 2);
         } else {
-            deal(sellToken, address(this), p.t.amount, true);
+            deal(sellToken, address(this), p.t.amount * 2, true);
         }
 
         (address spender, /* */, /* */, /* */) = TRADING_MODULE.getExecutionData(
