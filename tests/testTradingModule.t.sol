@@ -9,6 +9,7 @@ import "@interfaces/WETH9.sol";
 import "@interfaces/notional/NotionalProxy.sol";
 import "@interfaces/notional/IStrategyVault.sol";
 import "@interfaces/trading/ITradingModule.sol";
+import "@contracts/trading/adapters/BalancerV2Adapter.sol";
 import {IERC20} from "@contracts/utils/TokenUtils.sol";
 
 contract TestTradingModule is Test {
@@ -27,8 +28,7 @@ contract TestTradingModule is Test {
     address internal constant rETH = address(0xEC70Dcb4A1EFa46b8F2D97C310C9c4790ba5ffA8);
 
     string RPC_URL = vm.envString("RPC_URL");
-    uint256 FORK_BLOCK = 137439907;
-    address owner = 0xE6FB62c2218fd9e3c948f0549A2959B509a293C8;
+    uint256 FORK_BLOCK = 223168067;
     mapping(uint256 => address) tokenIndex;
     uint256 maxTokenIndex;
 
@@ -41,10 +41,10 @@ contract TestTradingModule is Test {
 
     function setUp() public {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
-        // TEMP: changes to allow for auth revert msg
+        // NOTE: always test the latest version
         TradingModule impl = new TradingModule(NOTIONAL, TRADING_MODULE);
 
-        vm.prank(owner);
+        vm.prank(NOTIONAL.owner());
         TRADING_MODULE.upgradeTo(address(impl));
         tokenIndex[1] = ETH;
         tokenIndex[2] = DAI;
@@ -55,7 +55,7 @@ contract TestTradingModule is Test {
 
         maxTokenIndex = 6;
 
-        /****** CURVE V2 Trades *****/
+        /****** Curve V2 Trades *****/
         tradeParams.push(Params(
             DexId.CURVE_V2,
             Trade({
@@ -96,6 +96,8 @@ contract TestTradingModule is Test {
             false
         ));
 
+        /****** Curve V2 Batch Trades *****/
+
         /****** Balancer V2 Trades *****/
         tradeParams.push(Params(
             DexId.BALANCER_V2,
@@ -129,6 +131,53 @@ contract TestTradingModule is Test {
             false
         ));
 
+        /****** Balancer V2 Batch Trades *****/
+        IBalancerVault.BatchSwapStep[] memory swaps = new IBalancerVault.BatchSwapStep[](2);
+        swaps[0] = IBalancerVault.BatchSwapStep({
+            // cbETH, wstETH, rETH
+            poolId: 0x2d6ced12420a9af5a83765a8c48be2afcd1a8feb000000000000000000000500,
+            assetInIndex: 0, // Refers to the assets array
+            assetOutIndex: 1,
+            // Amount will be filled in by the trade data
+            amount: 0,
+            userData: ""
+        });
+        swaps[1] = IBalancerVault.BatchSwapStep({
+            // WETH, rETH
+            poolId: 0xd0ec47c54ca5e20aaae4616c25c825c7f48d40690000000000000000000004ef,
+            assetInIndex: 1,
+            assetOutIndex: 2,
+            amount: 0,
+            userData: ""
+        });
+        IAsset[] memory assets = new IAsset[](3);
+        assets[0] = IAsset(cbETH);
+        assets[1] = IAsset(rETH);
+        assets[2] = IAsset(WETH);
+        int256[] memory limits = new int256[](3);
+        // Specify the max amount into the vault...
+        limits[0] = 1e18;
+
+        tradeParams.push(Params(
+            DexId.BALANCER_V2,
+            Trade({
+                tradeType: TradeType.EXACT_IN_BATCH,
+                sellToken: cbETH,
+                buyToken: WETH,
+                amount: 1e18,
+                limit: 0,
+                deadline: block.timestamp,
+                exchangeData: abi.encode(
+                    BalancerV2Adapter.BatchSwapData({
+                        swaps: swaps,
+                        assets: assets,
+                        limits: limits
+                    })
+                )
+            }),
+            false
+        ));
+
         /****** Camelot V3 Trades *****/
         tradeParams.push(Params(
             DexId.CAMELOT_V3,
@@ -143,6 +192,8 @@ contract TestTradingModule is Test {
             }),
             false
         ));
+
+        /****** Uni V3 Trades *****/
     }
 
     function assertRelDiff(uint256 a, uint256 b, uint256 rel, uint256 precision, string memory m) internal {
@@ -171,7 +222,7 @@ contract TestTradingModule is Test {
             nProxy(payable(address(TRADING_MODULE))).getImplementation()
         );
 
-        vm.prank(owner);
+        vm.prank(NOTIONAL.owner());
         vm.expectRevert();
         impl.initialize(100);
     }
