@@ -1,4 +1,5 @@
 source .env
+source venv/bin/activate
 python tests/SingleSidedLP/generate_tests.py
 
 # Check if exactly two arguments are provided

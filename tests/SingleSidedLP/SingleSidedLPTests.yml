@@ -668,8 +668,8 @@ mainnet:
       maxRelExitValuation: 50
     config:
       feeRate5BPS: 20
-      minCollateralRatioBPS: 800
+      minCollateralRatioBPS: 1_400
       maxDeleverageCollateralRatioBPS: 2_700
       liquidationRate: 103
-      minAccountBorrowSize: 1e8
+      minAccountBorrowSize: 30e8
       maxPrimaryBorrow: 5e8

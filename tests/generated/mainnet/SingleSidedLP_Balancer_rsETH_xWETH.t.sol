@@ -34,12 +34,12 @@ ComposablePoolHarness
         params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 1400;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
         params.maxDeleverageCollateralRatioBPS = 2700;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 1e8;
+        params.minAccountBorrowSize = 30e8;
         maxPrimaryBorrow = 5e8;
     }
 
