@@ -48,12 +48,6 @@ library BalancerV2Adapter {
         require(address(data.assets[data.swaps[0].assetInIndex]) == trade.sellToken);
         require(address(data.assets[data.swaps[data.swaps.length - 1].assetOutIndex]) == trade.buyToken);
 
-        if (kind == IBalancerVault.SwapKind.GIVEN_IN) {
-            data.swaps[0].amount = trade.amount;
-        } else {
-            data.swaps[data.swaps.length - 1].amount = trade.amount;
-        }
-
         return abi.encodeWithSelector(
             IBalancerVault.batchSwap.selector,
             kind, // swapKind

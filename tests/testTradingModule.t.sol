@@ -139,8 +139,7 @@ contract TestTradingModule is Test {
                 poolId: 0x2d6ced12420a9af5a83765a8c48be2afcd1a8feb000000000000000000000500,
                 assetInIndex: 0, // Refers to the assets array
                 assetOutIndex: 1,
-                // Amount will be filled in by the trade data
-                amount: 0,
+                amount: 1e18,
                 userData: ""
             });
             swaps[1] = IBalancerVault.BatchSwapStep({
@@ -197,7 +196,8 @@ contract TestTradingModule is Test {
                 poolId: 0xd0ec47c54ca5e20aaae4616c25c825c7f48d40690000000000000000000004ef,
                 assetInIndex: 1,
                 assetOutIndex: 2,
-                amount: 0,
+                // Refers to the amount out in WETH
+                amount: 1e18,
                 userData: ""
             });
             IAsset[] memory assets = new IAsset[](3);
