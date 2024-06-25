@@ -40,7 +40,7 @@ library Deployments {
     ITradingModule internal constant TRADING_MODULE = ITradingModule(0x594734c7e06C3D483466ADBCe401C6Bd269746C8);
     address internal constant TREASURY_MANAGER = 0x53144559C0d4a3304e2DD9dAfBD685247429216d;
     // Notional Inc
-    address internal constant EMERGENCY_EXIT_MANAGER = 0x02479BFC7Dce53A02e26fE7baea45a0852CB0909;
+    address internal constant EMERGENCY_EXIT_MANAGER = 0xD9D5a9dc6a952b7aD6B05a983b399537B7c0Ee88;
     address internal constant BALANCER_SPOT_PRICE = 0xA153B3E85833F8a323E60Dcdc08F6286eae28728;
     IWrappedfCashFactory internal constant WRAPPED_FCASH_FACTORY = IWrappedfCashFactory(address(0));
 

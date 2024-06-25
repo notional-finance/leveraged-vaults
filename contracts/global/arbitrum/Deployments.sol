@@ -39,7 +39,7 @@ library Deployments {
     address internal constant CURVE_MINTER = 0xabC000d88f23Bb45525E447528DBF656A9D55bf5;
     ITradingModule internal constant TRADING_MODULE = ITradingModule(0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8);
     address internal constant TREASURY_MANAGER = 0x53144559C0d4a3304e2DD9dAfBD685247429216d;
-    address internal constant EMERGENCY_EXIT_MANAGER = 0xbf778Fc19d0B55575711B6339A3680d07352B221;
+    address internal constant EMERGENCY_EXIT_MANAGER = 0x4FfAe2085c2f5Ff70532A1BDe1bcfF1CF11755Fe;
     address internal constant BALANCER_SPOT_PRICE = 0x904d881ceC1b8bc3f3Ff32cCf9533c1843706E9e;
     IWrappedfCashFactory internal constant WRAPPED_FCASH_FACTORY = IWrappedfCashFactory(0x5D051DeB5db151C2172dCdCCD42e6A2953E27261);
 
