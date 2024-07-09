@@ -133,8 +133,8 @@ library EthenaLib {
             sellToken: address(sUSDe),
             buyToken: address(sDAI),
             amount: sUSDeAmount,
-            limit: 0, // NOTE: no slippage guard is set here, it is enforced in the second leg
-                      // of the trade.
+            // NOTE: when borrowToken is not DAI slippage is enforced in the second leg of the trade.
+            limit: borrowToken == address(DAI) ? minPurchaseAmount : 0,
             deadline: block.timestamp,
             exchangeData: abi.encode(CurveV2Adapter.CurveV2SingleData({
                 pool: 0x167478921b907422F8E88B43C4Af2B8BEa278d3A,
