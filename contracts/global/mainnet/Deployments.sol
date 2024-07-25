@@ -26,7 +26,7 @@ library Deployments {
         IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     UniV3ISwapRouter internal constant UNIV3_ROUTER = UniV3ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-    address internal constant ZERO_EX = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
+    address internal constant ZERO_EX = 0x0000000000001fF3684f28c67538d4D072C22734;
     IUniV2Router2 internal constant UNIV2_ROUTER = IUniV2Router2(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
     address internal constant ALT_ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
