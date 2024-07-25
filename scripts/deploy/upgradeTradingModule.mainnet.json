@@ -1,0 +1,21 @@
+{
+  "chainId": 1,
+  "createdAt": 1721920163000,
+  "meta": {
+    "name": "Transactions Batch",
+    "txBuilderVersion": "1.16.1"
+  },
+  "transactions": [
+    {
+      "contractMethod": {
+        "inputs": [],
+        "name": "fallback",
+        "payable": true
+      },
+      "data": "0x3659cfe600000000000000000000000086bece3dce75dde030e0c9c2e955f8f0fb3908b0",
+      "to": "0x594734c7e06C3D483466ADBCe401C6Bd269746C8",
+      "value": 0
+    }
+  ],
+  "version": 1.0
+}
