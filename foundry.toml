@@ -10,7 +10,7 @@ remappings = [
     "@contracts/=contracts/",
     "@deployments/=contracts/global/arbitrum/"
 ]
-evm_version = "shanghai"
+evm_version = "cancun"
 fs_permissions = [
   { access = "read-write", path = "./scripts/deploy"},
   { access = "read", path = "./out_arbitrum"},
