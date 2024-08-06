@@ -12,6 +12,8 @@ contract MockOracle {
     function setAnswer(int256 answer_) public { _answer = answer_; }
     function setUpdatedAt(uint256 updatedAt_) public { _updatedAt = updatedAt_; }
 
+    function latestAnswer() external view returns (int256) { return _answer; }
+
     function latestRoundData() external view returns (
       uint80 roundId,
       int256 answer,
