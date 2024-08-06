@@ -220,9 +220,11 @@ abstract contract WithdrawRequestBase {
             VaultStorage.getSplitWithdrawRequest()[w.requestId].totalVaultShares = w.vaultShares;
         }
 
-        if (w.vaultShares == vaultShares) {
+        if (w.vaultShares <= vaultShares) {
             // If the resulting vault shares is zero, then delete the request. The _from account's
-            // withdraw request is fully transferred to _to
+            // withdraw request is fully transferred to _to. If vaultShares is greater than w.vaultShares
+            // then the withdraw request is fully transferred and excess vault shares are taken from the
+            // account's liquid vault shares (the state for this resides in the main Notional contract).
             delete VaultStorage.getAccountWithdrawRequest()[_from];
         } else {
             // Otherwise deduct the vault shares
