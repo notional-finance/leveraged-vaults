@@ -642,6 +642,13 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             BaseStakingHarness(address(harness)).withdrawToken(address(v()))
         );
         _liquidateAccount(liquidator, liquidator2);
+
+        // The liquidator's entire withdraw request should be transferred to the liquidator2
+        _assertWithdrawRequestIsEmpty(v().getWithdrawRequest(liquidator));
+        WithdrawRequest memory w2 = v().getWithdrawRequest(liquidator2);
+        assertEq(w2.requestId, w.requestId, "Liquidator2 withdraw request ID should match liquidator's withdraw request ID");
+        assertEq(w2.vaultShares, w.vaultShares, "Liquidator2 withdraw request vault shares should match liquidator's withdraw request vault shares");
+        assertEq(w2.hasSplit, w.hasSplit, "Liquidator2 withdraw request hasSplit should match liquidator's withdraw request hasSplit");
     }
 
     function test_finalizeWithdrawsManual(
