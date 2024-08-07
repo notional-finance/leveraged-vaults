@@ -542,10 +542,17 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             withdrawLiquidationDiscount,
             BaseStakingHarness(address(harness)).withdrawToken(address(v()))
         );
+        int256 vaultShareValueBefore = v().convertStrategyToUnderlying(account, vaultShares, maturity);
         _liquidateAccount(account, liquidator);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
         (VaultAccount memory liquidatorAccount) = Deployments.NOTIONAL.getVaultAccount(liquidator, address(v()));
+
+        // Check that the total value of the vault shares is approximately the same as before after the request has
+        // been split
+        int256 accountVaultShareValueAfter = v().convertStrategyToUnderlying(account, vaultAccount.vaultShares, maturity);
+        int256 liquidatorVaultShareValueAfter = v().convertStrategyToUnderlying(liquidator, liquidatorAccount.vaultShares, maturity);
+        assertApproxEqRel(liquidatorVaultShareValueAfter + accountVaultShareValueAfter, vaultShareValueBefore, 0.0001e18, "Vault share value after split");
 
         uint256 liquidatedAmount = vaultShares - vaultAccount.vaultShares;
         assertGt(liquidatedAmount, 0, "Liquidated amount should be larger than 0");

@@ -262,7 +262,7 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
         bytes memory exchangeData = abi.encode(u);
         uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
 
-        setMetadata(StakingMetadata(1, primaryDexId, exchangeData, false));
+        setMetadata(StakingMetadata(1, primaryDexId, exchangeData, true));
     }
 
 }
