@@ -227,6 +227,10 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
         token[1] = 0x0000000000000000000000000000000000000000;
         oracle[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
 
+        // TODO: required in order to support withdraw requests
+        // rsETH
+        // token[2] = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
+        // oracle[2] = 0x150aab1C3D63a1eD0560B95F23d7905CE6544cCB;
     }
 
     function getTradingPermissions() public pure override returns (
@@ -262,7 +266,7 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
         bytes memory exchangeData = abi.encode(u);
         uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
 
-        setMetadata(StakingMetadata(1, primaryDexId, exchangeData, true));
+        setMetadata(StakingMetadata(1, primaryDexId, exchangeData, false));
     }
 
 }

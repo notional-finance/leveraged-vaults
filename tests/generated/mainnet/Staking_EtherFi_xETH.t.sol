@@ -19,6 +19,7 @@ contract Test_Staking_EtherFi_xETH is BaseStakingTest {
         deleverageCollateralDecreaseRatio = 925;
         defaultLiquidationDiscount = 955;
         withdrawLiquidationDiscount = 955;
+        splitWithdrawPriceDecrease = 500;
 
         super.setUp();
     }

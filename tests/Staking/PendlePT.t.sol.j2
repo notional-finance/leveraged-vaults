@@ -33,6 +33,8 @@ contract Test_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is BasePend
         deleverageCollateralDecreaseRatio = {{ setUp.deleverageCollateralDecreaseRatio }};
         defaultLiquidationDiscount = {{ setUp.defaultLiquidationDiscount }};
         withdrawLiquidationDiscount = {{ setUp.withdrawLiquidationDiscount }};
+        borrowTokenPriceIncrease = {{ setUp.borrowTokenPriceIncrease }};
+        splitWithdrawPriceDecrease = {{ setUp.splitWithdrawPriceDecrease }};
 
         super.setUp();
     }

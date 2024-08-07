@@ -9,6 +9,8 @@ defaults:
     deleverageCollateralDecreaseRatio: 925
     defaultLiquidationDiscount: 955
     withdrawLiquidationDiscount: 945
+    splitWithdrawPriceDecrease: 500
+    borrowTokenPriceIncrease: 0
     
   settings:
     maxPoolShare: 2000
@@ -115,6 +117,8 @@ mainnet:
       minDeposit: 0.1e18
       maxDeposit: 10e18
       deleverageCollateralDecreaseRatio: 920
+      splitWithdrawPriceDecrease: 450
+      borrowTokenPriceIncrease: 1500
   - stakeSymbol: USDe
     forkBlock: 20092864
     expiry: 24JUL2024

@@ -15,6 +15,8 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
     int256 deleverageCollateralDecreaseRatio;
     int256 defaultLiquidationDiscount;
     int256 withdrawLiquidationDiscount;
+    int256 borrowTokenPriceIncrease;
+    int256 splitWithdrawPriceDecrease;
 
     function deployTestVault() internal override returns (IStrategyVault) {
         (address impl, /* */) = harness.deployVaultImplementation();
@@ -630,9 +632,16 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         // Reduce the token price further to force liquidation of the liquidator, this
         // price change is relative to the initial price change.
         _changeTokenPrice(
-            500,
+            splitWithdrawPriceDecrease,
             BaseStakingHarness(address(harness)).withdrawToken(address(v()))
         );
+        if (borrowTokenPriceIncrease != 0) {
+            // NOTE: there is an area where as we get closer to insolvency this reverts with min borrow
+            _changeTokenPrice(
+                borrowTokenPriceIncrease,
+                v().BORROW_TOKEN()
+            );
+        }
         _liquidateAccount(liquidator, liquidator2);
 
         // The liquidator's entire withdraw request should be transferred to the liquidator2
