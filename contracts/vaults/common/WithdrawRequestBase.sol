@@ -61,7 +61,7 @@ abstract contract WithdrawRequestBase {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 stakeAssetPrice
+        uint256 requestId, uint256 totalVaultShares, uint256 stakeAssetPrice
     ) internal virtual view returns (uint256);
 
     function _getValueOfSplitFinalizedWithdrawRequest(
@@ -102,12 +102,14 @@ abstract contract WithdrawRequestBase {
             SplitWithdrawRequest memory s = VaultStorage.getSplitWithdrawRequest()[w.requestId];
             if (s.finalized) {
                 return _getValueOfSplitFinalizedWithdrawRequest(w, s, borrowToken, redeemToken);
+            } else {
+                uint256 totalValue = _getValueOfWithdrawRequest(w.requestId, s.totalVaultShares, stakeAssetPrice);
+                // Scale the total value of the withdraw request to the account's share of the request
+                return totalValue * w.vaultShares / s.totalVaultShares;
             }
         }
 
-        // In every other case, including the case when the withdraw request has split, the vault shares
-        // in the withdraw request (`w`) are marked at the amount of vault shares the account holds.
-        return _getValueOfWithdrawRequest(w, stakeAssetPrice);
+        return _getValueOfWithdrawRequest(w.requestId, w.vaultShares, stakeAssetPrice);
     }
 
     /// @notice Initiates a withdraw request of all vault shares
