@@ -28,11 +28,11 @@ library EtherFiLib {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w,
+        uint256 totalVaultShares,
         uint256 weETHPrice,
         uint256 borrowPrecision
     ) internal pure returns (uint256) {
-        return (w.vaultShares * weETHPrice * borrowPrecision) /
+        return (totalVaultShares * weETHPrice * borrowPrecision) /
             (uint256(Constants.INTERNAL_TOKEN_PRECISION) * Constants.EXCHANGE_RATE_PRECISION);
     }
 

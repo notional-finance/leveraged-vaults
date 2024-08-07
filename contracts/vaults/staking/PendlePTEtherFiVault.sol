@@ -44,9 +44,9 @@ contract PendlePTEtherFiVault is PendlePrincipalToken, IERC721Receiver {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 /* */
+        uint256 requestId, uint256 /* totalVaultShares */, uint256 /* stakeAssetPrice */
     ) internal override view returns (uint256) {
-        uint256 tokenOutSY = getTokenOutSYForWithdrawRequest(w.requestId);
+        uint256 tokenOutSY = getTokenOutSYForWithdrawRequest(requestId);
         // NOTE: in this vault the tokenOutSy is known to be weETH.
         (int256 weETHPrice, /* */) = TRADING_MODULE.getOraclePrice(TOKEN_OUT_SY, BORROW_TOKEN);
         return (tokenOutSY * weETHPrice.toUint() * BORROW_PRECISION) /

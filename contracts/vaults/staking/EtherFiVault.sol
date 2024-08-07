@@ -54,9 +54,9 @@ contract EtherFiVault is BaseStakingVault, IERC721Receiver {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 weETHPrice
+        uint256 /* requestId */, uint256 totalVaultShares, uint256 weETHPrice
     ) internal override view returns (uint256) {
-        return EtherFiLib._getValueOfWithdrawRequest(w, weETHPrice, BORROW_PRECISION);
+        return EtherFiLib._getValueOfWithdrawRequest(totalVaultShares, weETHPrice, BORROW_PRECISION);
     }
 
     function _finalizeWithdrawImpl( address /* */, uint256 requestId) internal override returns (uint256, bool) {

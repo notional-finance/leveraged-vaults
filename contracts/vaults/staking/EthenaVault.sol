@@ -78,9 +78,9 @@ contract EthenaVault is BaseStakingVault {
 
     /// @notice Returns the value of a withdraw request in terms of the borrowed token
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 /* */
+       uint256 requestId, uint256 /* totalVaultShares */, uint256 /* stakeAssetPrice */
     ) internal override view returns (uint256) {
-        return EthenaLib._getValueOfWithdrawRequest(w, BORROW_TOKEN, BORROW_PRECISION);
+        return EthenaLib._getValueOfWithdrawRequest(requestId, BORROW_TOKEN, BORROW_PRECISION);
     }
 
     function _initiateWithdrawImpl(
