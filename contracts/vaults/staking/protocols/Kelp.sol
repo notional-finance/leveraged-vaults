@@ -112,29 +112,13 @@ library KelpLib {
     uint256 internal constant stETH_PRECISION = 1e18;
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w,
+        uint256 totalVaultShares,
         address borrowToken,
         uint256 borrowPrecision
     ) internal view returns (uint256) {
-        address holder = address(uint160(w.requestId));
-
-        uint256 expectedStETHAmount;
-        if (KelpCooldownHolder(payable(holder)).triggered()) {
-            uint256[] memory requestIds = LidoWithdraw.getWithdrawalRequests(holder);
-            ILidoWithdraw.WithdrawalRequestStatus[] memory withdrawsStatus = LidoWithdraw.getWithdrawalStatus(requestIds);
-
-            expectedStETHAmount = withdrawsStatus[0].amountOfStETH;
-        } else {
-            (/* */, expectedStETHAmount, /* */, /* */) = WithdrawManager.getUserWithdrawalRequest(stETH, holder, 0);
-
-        }
-
-        (int256 stETHToBorrowRate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
-            address(stETH), borrowToken
-        );
-
-        return (expectedStETHAmount * stETHToBorrowRate.toUint() * borrowPrecision) /
-            (Constants.EXCHANGE_RATE_PRECISION * stETH_PRECISION);
+        (int256 rsETHPrice, /* */) = Deployments.TRADING_MODULE.getOraclePrice(address(rsETH), borrowToken);
+        return (totalVaultShares * rsETHPrice.toUint() * borrowPrecision) /
+            (uint256(Constants.INTERNAL_TOKEN_PRECISION) * Constants.EXCHANGE_RATE_PRECISION);
     }
 
     function _initiateWithdrawImpl(

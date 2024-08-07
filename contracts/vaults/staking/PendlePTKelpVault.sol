@@ -40,9 +40,13 @@ contract PendlePTKelpVault is PendlePrincipalToken {
 
     /// @notice Returns the value of a withdraw request in terms of the borrowed token
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 /* */
+        uint256 requestId, uint256 /* totalVaultShares */, uint256 /* stakeAssetPrice */
     ) internal override view returns (uint256) {
-        return KelpLib._getValueOfWithdrawRequest(w, BORROW_TOKEN, BORROW_PRECISION);
+        uint256 tokenOutSY = getTokenOutSYForWithdrawRequest(requestId);
+        // NOTE: in this vault the tokenOutSy is known to be stETH.
+        (int256 stETHPrice, /* */) = TRADING_MODULE.getOraclePrice(TOKEN_OUT_SY, BORROW_TOKEN);
+        return (tokenOutSY * stETHPrice.toUint() * BORROW_PRECISION) /
+            (KelpLib.stETH_PRECISION * Constants.EXCHANGE_RATE_PRECISION);
     }
 
     function _initiateSYWithdraw(
