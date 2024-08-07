@@ -21,7 +21,7 @@ contract PendlePTGeneric is PendlePrincipalToken {
     }
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory /* */, uint256 /* */
+        uint256 /* requestId */, uint256 /* totalVaultShares */, uint256 /* stakeAssetPrice */
     ) internal override view returns (uint256) {
         revert("Unimplemented");
     }

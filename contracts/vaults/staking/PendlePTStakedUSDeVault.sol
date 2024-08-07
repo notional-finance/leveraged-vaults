@@ -40,11 +40,11 @@ contract PendlePTStakedUSDeVault is PendlePrincipalToken {
 
     /// @notice Returns the value of a withdraw request in terms of the borrowed token
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w, uint256 /* */
+        uint256 requestId, uint256 /* totalVaultShares */, uint256 /* stakeAssetPrice */
     ) internal override view returns (uint256) {
         // NOTE: This withdraw valuation is not based on the vault shares value so we do not
         // need to use the PendlePT metadata conversion.
-        return EthenaLib._getValueOfWithdrawRequest(w, BORROW_TOKEN, BORROW_PRECISION);
+        return EthenaLib._getValueOfWithdrawRequest(requestId, BORROW_TOKEN, BORROW_PRECISION);
     }
 
     function _initiateSYWithdraw(

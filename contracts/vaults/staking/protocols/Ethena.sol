@@ -75,11 +75,11 @@ library EthenaLib {
     uint256 internal constant USDE_PRECISION = 1e18;
 
     function _getValueOfWithdrawRequest(
-        WithdrawRequest memory w,
+        uint256 requestId,
         address borrowToken,
         uint256 borrowPrecision
     ) internal view returns (uint256) {
-        address holder = address(uint160(w.requestId));
+        address holder = address(uint160(requestId));
         // This valuation is the amount of USDe the account will receive at cooldown, once
         // a cooldown is initiated the account is no longer receiving sUSDe yield. This balance
         // of USDe is transferred to a Silo contract and guaranteed to be available once the
