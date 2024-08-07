@@ -220,26 +220,29 @@ abstract contract WithdrawRequestBase {
             VaultStorage.getSplitWithdrawRequest()[w.requestId].totalVaultShares = w.vaultShares;
         }
 
+        // Ensure that no withdraw request gets overridden, the _to account always receives their withdraw
+        // request in the account withdraw slot. All storage is updated prior to changes to the `w` storage
+        // variable below.
+        WithdrawRequest storage toWithdraw = VaultStorage.getAccountWithdrawRequest()[_to];
+        require(toWithdraw.requestId == 0 || toWithdraw.requestId == w.requestId , "Existing Request");
+
+        toWithdraw.requestId = w.requestId;
+        toWithdraw.hasSplit = true;
+
         if (w.vaultShares <= vaultShares) {
             // If the resulting vault shares is zero, then delete the request. The _from account's
             // withdraw request is fully transferred to _to. If vaultShares is greater than w.vaultShares
             // then the withdraw request is fully transferred and excess vault shares are taken from the
             // account's liquid vault shares (the state for this resides in the main Notional contract).
+
+            // In this case, the _to account receives the full amount of the _from account's withdraw request.
+            toWithdraw.vaultShares = toWithdraw.vaultShares + w.vaultShares;
             delete VaultStorage.getAccountWithdrawRequest()[_from];
         } else {
-            // Otherwise deduct the vault shares
+            // In this case, the amount of vault shares is transferred from one account to the other.
+            toWithdraw.vaultShares = toWithdraw.vaultShares + vaultShares;
             w.vaultShares = w.vaultShares - vaultShares;
             w.hasSplit = true;
         }
-
-        // Ensure that no withdraw request gets overridden, the _to account always receives their withdraw
-        // request in the account withdraw slot.
-        WithdrawRequest storage toWithdraw = VaultStorage.getAccountWithdrawRequest()[_to];
-        require(toWithdraw.requestId == 0 || toWithdraw.requestId == w.requestId , "Existing Request");
-
-        // Either the request gets set or it gets incremented here.
-        toWithdraw.requestId = w.requestId;
-        toWithdraw.vaultShares = toWithdraw.vaultShares + vaultShares;
-        toWithdraw.hasSplit = true;
     }
 }
