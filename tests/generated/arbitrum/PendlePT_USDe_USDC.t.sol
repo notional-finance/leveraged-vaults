@@ -118,10 +118,10 @@ contract Harness_PendlePT_USDe_USDC is PendleStakingHarness {
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
         baseToUSDOracle = 0x88AC7Bca36567525A866138F03a6F6844868E0Bc;
-        
-        tokenInSy = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
         borrowToken = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         tokenOutSy = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
+        
+        tokenInSy = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
         redemptionToken = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
         
 

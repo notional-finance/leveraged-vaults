@@ -12,11 +12,11 @@ abstract contract PendleStakingHarness is BaseStakingHarness {
     address public ptAddress;
     uint32 twapDuration;
     bool useSyOracleRate;
-    address ptOracle;
+    address public ptOracle;
     address public baseToUSDOracle;
     address tokenInSy;
-    address tokenOutSy;
-    address borrowToken;
+    address public tokenOutSy;
+    address public borrowToken;
     address redemptionToken;
 
     function deployImplementation() internal virtual returns (address);

@@ -256,6 +256,8 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
         baseToUSDOracle = 0x150aab1C3D63a1eD0560B95F23d7905CE6544cCB;
+        tokenOutSy = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
+        borrowToken = 0x0000000000000000000000000000000000000000;
 
         UniV3Adapter.UniV3SingleData memory u;
         u.fee = 500; // 0.05 %
