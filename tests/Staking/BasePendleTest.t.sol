@@ -13,6 +13,25 @@ abstract contract BasePendleTest is BaseStakingTest {
         expires = IPMarket(PendleStakingHarness(address(harness)).marketAddress()).expiry();
     }
 
+    function test_PendlePTOracle_getPrice_postExpiry() public {
+        vm.warp(expires);
+        setMaxOracleFreshness();
+        // rsETH oracle is not deployed on mainnet, so skip the test.
+        if (PendleStakingHarness(address(harness)).tokenOutSy() == 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7) return;
+
+        // tokenOutSy to usd rate should be the expiry price
+        (int256 tokenOutSyPrice, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
+            PendleStakingHarness(address(harness)).tokenOutSy(),
+            PendleStakingHarness(address(harness)).borrowToken()
+        );
+        (int256 ptExpiryPrice, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
+            PendleStakingHarness(address(harness)).ptAddress(),
+            PendleStakingHarness(address(harness)).borrowToken()
+        );
+
+        assertEq(tokenOutSyPrice, ptExpiryPrice, "tokenOutSyPrice should be the expiry price");
+    }
+
     function test_RevertIf_accountEntry_postExpiry(uint8 maturityIndex) public {
         vm.warp(expires);
         address account = makeAddr("account");
