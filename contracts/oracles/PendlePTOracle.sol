@@ -111,8 +111,6 @@ contract PendlePTOracle is AggregatorV2V3Interface {
         if (invertBase) baseToUSD = (baseToUSDDecimals * baseToUSDDecimals) / baseToUSD;
 
         int256 ptRate = _getPTRate();
-        // Past expiration, hardcode the PT oracle price to 1. It is no longer tradable and
-        // is worth 1 unit of the underlying SY at expiration.
         // ptRate is always returned in 1e18 decimals (rateDecimals)
         answer = (ptRate * baseToUSD * rateDecimals) /
             (baseToUSDDecimals * rateDecimals);
