@@ -32,7 +32,8 @@ abstract contract WithdrawRequestBase {
     function _initiateWithdrawImpl(
         address account,
         uint256 vaultShares,
-        bool isForced
+        bool isForced,
+        bytes calldata data
     ) internal virtual returns (uint256 requestId);
 
     /// @notice Required implementation to finalize the withdraw
@@ -112,14 +113,14 @@ abstract contract WithdrawRequestBase {
     }
 
     /// @notice Initiates a withdraw request of all vault shares
-    function _initiateWithdraw(address account, bool isForced) internal {
+    function _initiateWithdraw(address account, bool isForced, bytes calldata data) internal {
         uint256 vaultShares = Deployments.NOTIONAL.getVaultAccount(account, address(this)).vaultShares;
         require(0 < vaultShares);
 
         WithdrawRequest storage accountWithdraw = VaultStorage.getAccountWithdrawRequest()[account];
         require(accountWithdraw.requestId == 0, "Existing Request");
 
-        uint256 requestId = _initiateWithdrawImpl(account, vaultShares, isForced);
+        uint256 requestId = _initiateWithdrawImpl(account, vaultShares, isForced, data);
         accountWithdraw.requestId = requestId;
         accountWithdraw.hasSplit = false;
         accountWithdraw.vaultShares = vaultShares;
