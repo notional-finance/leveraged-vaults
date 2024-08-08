@@ -187,10 +187,10 @@ contract Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is Pendl
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = {{ useSyOracleRate }};
         baseToUSDOracle = {{ baseToUSDOracle }};
-        {% if contractName == "PendlePTGeneric" %}
-        tokenInSy = {{ stakeToken }};
         borrowToken = {{ borrowToken }};
         tokenOutSy = {{ stakeToken }};
+        {% if contractName == "PendlePTGeneric" %}
+        tokenInSy = {{ stakeToken }};
         redemptionToken = {{ stakeToken }};
         {% endif %}
 
