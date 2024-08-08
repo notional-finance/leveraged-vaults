@@ -143,7 +143,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             _forceWithdraw(account);
         } else {
             vm.prank(account);
-            v().initiateWithdraw();
+            v().initiateWithdraw("");
         }
 
         // Cannot enter the vault again because a withdraw is in process
@@ -212,7 +212,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             _forceWithdraw(account);
         } else {
             vm.prank(account);
-            v().initiateWithdraw();
+            v().initiateWithdraw("");
         }
 
         bytes memory params = getRedeemParamsWithdrawRequest(vaultShares, maturity);
@@ -261,11 +261,11 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         vm.prank(accountWithNoShares);
         vm.expectRevert();
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
 
         vm.prank(accountWithNoShares);
         vm.expectRevert();
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
     }
 
     function test_RevertIf_accountWithdraw_unauthorizedAccount() public {
@@ -278,7 +278,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         vm.startPrank(makeAddr("unauthorized account"));
         vm.expectRevert();
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
     }
 
     function test_accountWithdraw(
@@ -300,7 +300,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         int256 valueBefore = v().convertStrategyToUnderlying(account, vaultShares, maturity);
 
         vm.startPrank(account);
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
         vm.stopPrank();
         int256 valueAfter = v().convertStrategyToUnderlying(account, vaultShares, maturity);
 
@@ -325,11 +325,11 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         enterVault(account, depositAmount, maturity, getDepositParams(depositAmount, maturity));
 
         vm.prank(account);
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
 
         vm.prank(account);
         vm.expectRevert("Existing Request");
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
     }
 
     function test_forceWithdraw(
@@ -353,7 +353,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(keccak256("EMERGENCY_EXIT_ROLE"), admin);
         vm.prank(admin);
-        v().forceWithdraw(account);
+        v().forceWithdraw(account, "");
 
         w = v().getWithdrawRequest(account);
         assertTrue(w.requestId != 0, "7");
@@ -382,12 +382,12 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(keccak256("EMERGENCY_EXIT_ROLE"), admin);
         vm.prank(admin);
-        v().forceWithdraw(account);
+        v().forceWithdraw(account, "");
 
 
         vm.prank(account);
         vm.expectRevert("Existing Request");
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
     }
 
     function test_forceWithdraw_initiateNewWithdraw(
@@ -408,7 +408,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(keccak256("EMERGENCY_EXIT_ROLE"), admin);
         vm.prank(admin);
-        v().forceWithdraw(account);
+        v().forceWithdraw(account, "");
         if (forceFinalizeWithdraw) finalizeWithdrawRequest(account);
         WithdrawRequest memory f = v().getWithdrawRequest(account);
         assertTrue(f.requestId != 0, "4");
@@ -450,7 +450,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         // attempt to account withdraw
         vm.prank(account);
         vm.expectRevert("Insufficient Collateral");
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
 
         _forceWithdraw(account);
         WithdrawRequest memory w = v().getWithdrawRequest(account);
@@ -534,7 +534,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         uint256 vaultShares = enterVaultLiquidation(account, maturity);
 
         vm.prank(account);
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
 
         _changeTokenPrice(
             withdrawLiquidationDiscount,
@@ -596,7 +596,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             _forceWithdraw(account);
         } else {
             vm.prank(account);
-            v().initiateWithdraw();
+            v().initiateWithdraw("");
         }
         WithdrawRequest memory w = v().getWithdrawRequest(account);
 
@@ -686,7 +686,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         if (expectRevert) {
             vm.expectRevert(error);
         }
-        v().forceWithdraw(account);
+        v().forceWithdraw(account, "");
         vm.stopPrank();
     }
 

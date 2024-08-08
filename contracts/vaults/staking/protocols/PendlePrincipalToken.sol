@@ -160,6 +160,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
             // each dex and token it wants to sell.
             (/* */, borrowedCurrencyAmount) = _executeTrade(params.dexId, trade);
         } else {
+            require(params.minPurchaseAmount <= netTokenOut, "Slippage");
             borrowedCurrencyAmount = netTokenOut;
         }
     }
@@ -169,13 +170,17 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
     ) internal virtual returns (uint256 requestId);
 
     function _initiateWithdrawImpl(
-        address account, uint256 vaultSharesToRedeem, bool isForced
+        address account, uint256 vaultSharesToRedeem, bool isForced, bytes calldata data
     ) internal override returns (uint256 requestId) {
         // When doing a direct withdraw for PTs, we first redeem or trade out of the PT
         // and then initiate a withdraw on the TOKEN_OUT_SY. Since the vault shares are
         // stored in PT terms, we pass tokenOutSy terms (i.e. weETH or sUSDe) to the withdraw
         // implementation.
+        uint256 minTokenOutSy;
+        if (data.length > 0) (minTokenOutSy) = abi.decode(data, (uint256));
         uint256 tokenOutSy = _redeemPT(vaultSharesToRedeem);
+        require(minTokenOutSy <= tokenOutSy, "Slippage");
+
         requestId = _initiateSYWithdraw(account, tokenOutSy, isForced);
         // Store the tokenOutSy here for later when we do a valuation check against the position
         VaultStorage.getWithdrawRequestData()[requestId] = abi.encode(tokenOutSy);

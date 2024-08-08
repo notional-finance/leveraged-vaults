@@ -142,7 +142,7 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
             _forceWithdraw(account);
         } else {
             vm.prank(account);
-            v().initiateWithdraw();
+            v().initiateWithdraw("");
         }
         finalizeWithdrawRequest(account);
 
@@ -184,7 +184,7 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
             _forceWithdraw(account);
         } else {
             vm.prank(account);
-            v().initiateWithdraw();
+            v().initiateWithdraw("");
         }
         WithdrawRequest memory w = v().getWithdrawRequest(account);
 
