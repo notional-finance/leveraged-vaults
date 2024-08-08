@@ -22,7 +22,11 @@ library EtherFiLib {
     using TypeConvert for int256;
 
     function _initiateWithdrawImpl(uint256 weETHToUnwrap) internal returns (uint256 requestId) {
-        uint256 eETHReceived = weETH.unwrap(weETHToUnwrap);
+        uint256 balanceBefore = eETH.balanceOf(address(this));
+        weETH.unwrap(weETHToUnwrap);
+        uint256 balanceAfter = eETH.balanceOf(address(this));
+        uint256 eETHReceived = balanceAfter - balanceBefore;
+
         eETH.approve(address(LiquidityPool), eETHReceived);
         return LiquidityPool.requestWithdraw(address(this), eETHReceived);
     }
