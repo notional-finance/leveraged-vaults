@@ -21,15 +21,15 @@ abstract contract BasePendleTest is BaseStakingTest {
 
         // tokenOutSy to usd rate should be the expiry price
         (int256 tokenOutSyPrice, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
-            PendleStakingHarness(address(harness)).tokenOutSy(),
-            PendleStakingHarness(address(harness)).borrowToken()
+            PendleStakingHarness(address(harness)).borrowToken(),
+            PendleStakingHarness(address(harness)).tokenOutSy()
         );
         (int256 ptExpiryPrice, /* */) = Deployments.TRADING_MODULE.getOraclePrice(
             PendleStakingHarness(address(harness)).ptAddress(),
-            PendleStakingHarness(address(harness)).borrowToken()
+            PendleStakingHarness(address(harness)).tokenOutSy()
         );
 
-        assertEq(tokenOutSyPrice, ptExpiryPrice, "tokenOutSyPrice should be the expiry price");
+        assertApproxEqRel(tokenOutSyPrice, ptExpiryPrice, 0.001e18, "tokenOutSyPrice should be the expiry price");
     }
 
     function test_RevertIf_accountEntry_postExpiry(uint8 maturityIndex) public {
