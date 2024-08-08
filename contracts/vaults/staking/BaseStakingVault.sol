@@ -246,7 +246,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     }
 
     /// @notice Allows an account to initiate a withdraw of their vault shares
-    function initiateWithdraw() external {
+    function initiateWithdraw(bytes calldata data) external {
         (VaultAccountHealthFactors memory health, /* */, /* */) = NOTIONAL.getVaultAccountHealthFactors(
             msg.sender, address(this)
         );
@@ -254,13 +254,13 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
         // Require that the account is collateralized
         require(config.minCollateralRatio <= health.collateralRatio, "Insufficient Collateral");
 
-        _initiateWithdraw({account: msg.sender, isForced: false});
+        _initiateWithdraw({account: msg.sender, isForced: false, data: data});
     }
 
     /// @notice Allows the emergency exit role to force an account to withdraw all their vault shares
-    function forceWithdraw(address account) external onlyRole(EMERGENCY_EXIT_ROLE) {
+    function forceWithdraw(address account, bytes calldata data) external onlyRole(EMERGENCY_EXIT_ROLE) {
         // Forced withdraw will withdraw all vault shares
-        _initiateWithdraw({account: account, isForced: true});
+        _initiateWithdraw({account: account, isForced: true, data: data});
     }
 
     /// @notice Finalizes withdraws manually
