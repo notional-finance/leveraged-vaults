@@ -10,6 +10,7 @@ import {WithdrawRequestBase, WithdrawRequest, SplitWithdrawRequest} from "../com
 import {BaseStrategyVault, IERC20, NotionalProxy} from "../common/BaseStrategyVault.sol";
 import {ITradingModule, Trade, TradeType} from "@interfaces/trading/ITradingModule.sol";
 import {VaultAccountHealthFactors} from "@interfaces/notional/IVaultController.sol";
+import {ClonedCoolDownHolder} from "@contracts/vaults/staking/protocols/ClonedCoolDownHolder.sol";
 
 struct RedeemParams {
     uint8 dexId;
@@ -266,5 +267,11 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
     /// @notice Finalizes withdraws manually
     function finalizeWithdrawsManual(address account) external {
         return _finalizeWithdrawsManual(account);
+    }
+
+    function rescueTokens(
+        address cooldownHolder, IERC20 token, address receiver, uint256 amount
+    ) external onlyRole(EMERGENCY_EXIT_ROLE) {
+        ClonedCoolDownHolder(cooldownHolder).rescueTokens(token, receiver, amount);
     }
 }
