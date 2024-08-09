@@ -2,6 +2,8 @@
 pragma solidity 0.8.24;
 
 import "../../Staking/harness/index.sol";
+import {WithdrawRequestNFT} from "@contracts/vaults/staking/protocols/EtherFi.sol";
+import {WithdrawManager} from "@contracts/vaults/staking/protocols/Kelp.sol";
 import {
     PendleDepositParams,
     IPRouter,
@@ -9,10 +11,8 @@ import {
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
-import {WithdrawManager, rsETH} from "@contracts/vaults/staking/protocols/Kelp.sol";
-import {PendlePTKelpVault} from "@contracts/vaults/staking/PendlePTKelpVault.sol";
+import { PendlePTKelpVault } from "@contracts/vaults/staking/PendlePTKelpVault.sol";
 
-/**** NOTE: this file is not auto-generated because there is lots of custom withdraw logic *****/
 
 interface ILRTOracle {
     // methods
@@ -24,10 +24,10 @@ interface ILRTOracle {
 ILRTOracle constant lrtOracle = ILRTOracle(0x349A73444b1a310BAe67ef67973022020d70020d);
 address constant unstakingVault = 0xc66830E2667bc740c0BED9A71F18B14B8c8184bA;
 
+
 contract Test_PendlePT_rsETH_ETH is BasePendleTest {
     function setUp() public override {
         FORK_BLOCK = 20492805;
-
         harness = new Harness_PendlePT_rsETH_ETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -41,13 +41,14 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
         deleverageCollateralDecreaseRatio = 930;
         defaultLiquidationDiscount = 955;
         withdrawLiquidationDiscount = 945;
-        splitWithdrawPriceDecrease = 450;
         borrowTokenPriceIncrease = 1500;
+        splitWithdrawPriceDecrease = 450;
 
         super.setUp();
     }
 
-    function finalizeWithdrawRequest(address /* account */) internal override {
+    
+    function finalizeWithdrawRequest(address account) internal override {
         // finalize withdraw request on Kelp
         vm.deal(address(unstakingVault), 10_000e18);
         vm.startPrank(0xCbcdd778AA25476F203814214dD3E9b9c46829A1); // kelp: operator
@@ -60,13 +61,15 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
         vm.stopPrank();
         vm.roll(block.number + WithdrawManager.withdrawalDelayBlocks());
     }
+    
 
     function getDepositParams(
         uint256 /* depositAmount */,
         uint256 /* maturity */
-    ) internal pure override returns (bytes memory) {
+    ) internal view override returns (bytes memory) {
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+
         PendleDepositParams memory d = PendleDepositParams({
-            // No initial trading required for this vault
             dexId: 0,
             minPurchaseAmount: 0,
             exchangeData: "",
@@ -83,60 +86,20 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
         return abi.encode(d);
     }
 
-    function test_exitVault_useWithdrawRequest_postExpiry(
-        uint8 maturityIndex, uint256 depositAmount, bool useForce
-    ) public override {
-        depositAmount = uint256(bound(depositAmount, minDeposit, maxDeposit));
-        maturityIndex = uint8(bound(maturityIndex, 0, 2));
-        address account = makeAddr("account");
-        uint256 maturity = maturities[maturityIndex];
-
-        uint256 vaultShares = enterVault(
-            account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
-        );
-
-        setMaxOracleFreshness();
-        vm.warp(expires + 3600);
-        try Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false) {} catch {}
-        if (maturity < block.timestamp) {
-            // Push the vault shares to prime
-            totalVaultShares[maturity] -= vaultShares;
-            maturity = maturities[0];
-            totalVaultShares[maturity] += vaultShares;
-        }
-
-        if (useForce) {
-            _forceWithdraw(account);
-        } else {
-            vm.prank(account);
-            v().initiateWithdraw();
-        }
-        finalizeWithdrawRequest(account);
-
-        uint256 underlyingToReceiver = exitVault(
-            account, vaultShares, maturity, getRedeemParamsWithdrawRequest(vaultShares, maturity)
-        );
-
-        assertRelDiff(
-            uint256(depositAmount),
-            underlyingToReceiver,
-            maxRelExitValuation,
-            "Valuation and Deposit"
-        );
     }
-}
 
 
 contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
+
     function getVaultName() public pure override returns (string memory) {
-        return 'Pendle:PT rsETH 27JUN2024:[ETH]';
+        return 'Pendle:PT rsETH 26SEP2024:[ETH]';
     }
 
     function getRequiredOracles() public override view returns (
         address[] memory token, address[] memory oracle
     ) {
-        token = new address[](3);
-        oracle = new address[](3);
+        token = new address[](2);
+        oracle = new address[](2);
 
         // Custom PT Oracle
         token[0] = ptAddress;
@@ -145,10 +108,7 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
         // ETH
         token[1] = 0x0000000000000000000000000000000000000000;
         oracle[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-
-        // rsETH
-        token[2] = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
-        oracle[2] = 0xb676EA4e0A54ffD579efFc1f1317C70d671f2028;
+        
     }
 
     function getTradingPermissions() public pure override returns (
@@ -156,16 +116,20 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
     ) {
         token = new address[](1);
         permissions = new ITradingModule.TokenPermissions[](1);
-        // rsETH
+
+        
+
         token[0] = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
         permissions[0] = ITradingModule.TokenPermissions(
-            // UniswapV3, EXACT_IN_SINGLE, EXACT_IN_BATCH
-            { allowSell: true, dexFlags: 4, tradeTypeFlags: 5 }
+            { allowSell: true, dexFlags: 1 << 2, tradeTypeFlags: 5 }
         );
+        
     }
 
     function deployImplementation() internal override returns (address impl) {
+        
         return address(new PendlePTKelpVault(marketAddress, ptAddress));
+        
     }
 
     constructor() {
@@ -174,11 +138,12 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
         baseToUSDOracle = 0xb676EA4e0A54ffD579efFc1f1317C70d671f2028;
+        
 
-        UniV3Adapter.UniV3SingleData memory u;
-        u.fee = 500; // 0.05 %
-        bytes memory exchangeData = abi.encode(u);
-        uint8 primaryDexId = uint8(DexId.UNISWAP_V3);
+        UniV3Adapter.UniV3SingleData memory d;
+        d.fee = 500;
+        bytes memory exchangeData = abi.encode(d);
+        uint8 primaryDexId = 2;
 
         setMetadata(StakingMetadata(1, primaryDexId, exchangeData, true));
     }

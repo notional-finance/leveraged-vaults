@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import "../../Staking/harness/index.sol";
 import {WithdrawRequestNFT} from "@contracts/vaults/staking/protocols/EtherFi.sol";
+import {WithdrawManager} from "@contracts/vaults/staking/protocols/Kelp.sol";
 import {
     PendleDepositParams,
     IPRouter,
@@ -11,6 +12,18 @@ import {
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 import { {{contractName}} } from "@contracts/vaults/staking/{{contractName}}.sol";
+
+{% if contractName == 'PendlePTKelpVault' %}
+interface ILRTOracle {
+    // methods
+    function getAssetPrice(address asset) external view returns (uint256);
+    function assetPriceOracle(address asset) external view returns (address);
+    function rsETHPrice() external view returns (uint256);
+}
+
+ILRTOracle constant lrtOracle = ILRTOracle(0x349A73444b1a310BAe67ef67973022020d70020d);
+address constant unstakingVault = 0xc66830E2667bc740c0BED9A71F18B14B8c8184bA;
+{% endif %}
 
 contract Test_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is BasePendleTest {
     function setUp() public override {
