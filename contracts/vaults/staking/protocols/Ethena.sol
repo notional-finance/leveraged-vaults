@@ -133,8 +133,7 @@ library EthenaLib {
             sellToken: address(sUSDe),
             buyToken: address(sDAI),
             amount: sUSDeAmount,
-            // NOTE: when borrowToken is not DAI slippage is enforced in the second leg of the trade.
-            limit: borrowToken == address(DAI) ? minPurchaseAmount : 0,
+            limit: 0,
             deadline: block.timestamp,
             exchangeData: abi.encode(CurveV2Adapter.CurveV2SingleData({
                 pool: 0x167478921b907422F8E88B43C4Af2B8BEa278d3A,
@@ -162,6 +161,7 @@ library EthenaLib {
             // Trades the unwrapped DAI back to the given token.
             (/* */, borrowedCurrencyAmount) = trade._executeTrade(dexId);
         } else {
+            require(minPurchaseAmount <= daiAmount, "Slippage");
             borrowedCurrencyAmount = daiAmount;
         }
     }
