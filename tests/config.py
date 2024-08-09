@@ -110,7 +110,8 @@ oracle = {
         "weETH": "0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE",
         'GHO': "0x3f12643D3f6f874d39C2a4c9f2Cd6f2DbAC877FC",
         'USDe': "0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961",
-        'ezETH': "0xCa140AE5a361b7434A729dCadA0ea60a50e249dd"
+        'ezETH': "0xCa140AE5a361b7434A729dCadA0ea60a50e249dd",
+        "rsETH": "0xb676EA4e0A54ffD579efFc1f1317C70d671f2028"
     },
     "arbitrum": {
         "WETH": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",

@@ -62,7 +62,9 @@ abstract contract BaseAcceptanceTest is Test {
         // NOTE: everything needs to run after create select fork
         deployCodeTo("VaultRewarderLib.sol", Deployments.VAULT_REWARDER_LIB);
         if (Deployments.CHAIN_ID == 1) {
-            vm.startPrank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            if (FORK_BLOCK < 20492800) vm.startPrank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+            else vm.startPrank(Deployments.NOTIONAL.owner());
+
             address tradingModule = address(new TradingModule(Deployments.NOTIONAL, Deployments.TRADING_MODULE));
             // NOTE: fixes curve router
             UUPSUpgradeable(address(Deployments.TRADING_MODULE)).upgradeTo(tradingModule);

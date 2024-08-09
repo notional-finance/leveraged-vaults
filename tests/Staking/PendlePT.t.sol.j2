@@ -46,6 +46,20 @@ contract Test_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is BasePend
         vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
         WithdrawRequestNFT.finalizeRequests(w.requestId);
     }
+    {% elif contractName == 'PendlePTKelpVault' %}
+    function finalizeWithdrawRequest(address account) internal override {
+        // finalize withdraw request on Kelp
+        vm.deal(address(unstakingVault), 10_000e18);
+        vm.startPrank(0xCbcdd778AA25476F203814214dD3E9b9c46829A1); // kelp: operator
+        WithdrawManager.unlockQueue(
+            Deployments.ALT_ETH_ADDRESS,
+            type(uint256).max,
+            lrtOracle.getAssetPrice(Deployments.ALT_ETH_ADDRESS),
+            lrtOracle.rsETHPrice()
+        );
+        vm.stopPrank();
+        vm.roll(block.number + WithdrawManager.withdrawalDelayBlocks());
+    }
     {% else %}
     function finalizeWithdrawRequest(address account) internal override {}
     {% endif %}
