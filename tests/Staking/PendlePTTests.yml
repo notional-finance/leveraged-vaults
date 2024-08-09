@@ -119,6 +119,28 @@ mainnet:
       deleverageCollateralDecreaseRatio: 920
       splitWithdrawPriceDecrease: 450
       borrowTokenPriceIncrease: 1500
+  - stakeSymbol: rsETH
+    forkBlock: 20492805
+    expiry: 26SEP2024
+    primaryBorrowCurrency: ETH
+    contractName: PendlePTKelpVault
+    oracles: [ETH]
+    marketAddress: "0x6b4740722e46048874d84306B2877600ABCea3Ae"
+    ptAddress: "0x7bAf258049cc8B9A78097723dc19a8b103D4098F"
+    useSyOracleRate: 'true'
+    primaryDex: UniswapV3
+    exchangeData:
+      feeTier: 500
+    permissions:
+      - token: rsETH
+        dex: UniswapV3
+        tradeTypeFlags: 5
+    setUp:
+      minDeposit: 0.1e18
+      maxDeposit: 10e18
+      deleverageCollateralDecreaseRatio: 930
+      splitWithdrawPriceDecrease: 450
+      borrowTokenPriceIncrease: 1500
   - stakeSymbol: USDe
     forkBlock: 20092864
     expiry: 24JUL2024
