@@ -3,9 +3,9 @@ pragma solidity 0.8.24;
 
 import {Constants} from "@contracts/global/Constants.sol";
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
+import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {VaultStorage, WithdrawRequest, SplitWithdrawRequest} from "./VaultStorage.sol";
-import {IERC20} from "@interfaces/IERC20.sol";
 
 /**
  * Library to handle potentially illiquid withdraw requests of staking tokens where there
@@ -77,8 +77,8 @@ abstract contract WithdrawRequestBase {
             // Otherwise, apply the proper exchange rate
             (int256 rate, /* */) = Deployments.TRADING_MODULE.getOraclePrice(redeemToken, borrowToken);
 
-            uint256 borrowPrecision = 10 ** IERC20(borrowToken).decimals();
-            uint256 redeemPrecision = 10 ** IERC20(redeemToken).decimals();
+            uint256 borrowPrecision = 10 ** TokenUtils.getDecimals(borrowToken);
+            uint256 redeemPrecision = 10 ** TokenUtils.getDecimals(redeemToken);
 
             return (s.totalWithdraw * rate.toUint() * w.vaultShares * borrowPrecision) /
                 (s.totalVaultShares * Constants.EXCHANGE_RATE_PRECISION * redeemPrecision);
