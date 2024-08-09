@@ -313,16 +313,18 @@ contract VaultRewarderLib is IVaultRewarder {
             // prevent normal vault operations from working. Failures may include a
             // lack of balances or some sort of blacklist that prevents an account
             // from receiving tokens.
-            try IEIP20NonStandard(rewardToken).transfer(account, rewardToClaim) {
-                bool success = TokenUtils.checkReturnCode();
-                if (success) {
-                    emit VaultRewardTransfer(rewardToken, account, rewardToClaim);
-                } else {
+            if (rewardToken.code.length > 0) {
+                try IEIP20NonStandard(rewardToken).transfer(account, rewardToClaim) {
+                    bool success = TokenUtils.checkReturnCode();
+                    if (success) {
+                        emit VaultRewardTransfer(rewardToken, account, rewardToClaim);
+                    } else {
+                        emit VaultRewardTransfer(rewardToken, account, 0);
+                    }
+                // Emits zero tokens transferred if the transfer fails.
+                } catch {
                     emit VaultRewardTransfer(rewardToken, account, 0);
                 }
-            // Emits zero tokens transferred if the transfer fails.
-            } catch {
-                emit VaultRewardTransfer(rewardToken, account, 0);
             }
         }
     }
