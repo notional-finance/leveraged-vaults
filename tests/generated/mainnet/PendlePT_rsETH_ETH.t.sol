@@ -86,7 +86,7 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
         return abi.encode(d);
     }
 
-}
+    }
 
 
 contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
@@ -137,9 +137,9 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
         ptAddress = 0x7bAf258049cc8B9A78097723dc19a8b103D4098F;
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
-        tokenOutSy = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
-        borrowToken = 0x0000000000000000000000000000000000000000;
         baseToUSDOracle = 0xb676EA4e0A54ffD579efFc1f1317C70d671f2028;
+        borrowToken = 0x0000000000000000000000000000000000000000;
+        tokenOutSy = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
         
 
         UniV3Adapter.UniV3SingleData memory d;

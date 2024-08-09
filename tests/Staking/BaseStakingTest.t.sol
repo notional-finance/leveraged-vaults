@@ -603,7 +603,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         // Liquidate the account and check
         vm.prank(account);
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
 
         _changeTokenPrice(
             withdrawLiquidationDiscount,
@@ -642,7 +642,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         // Liquidator cannot initiate a second withdraw request
         vm.prank(liquidator);
         vm.expectRevert("Existing Request");
-        v().initiateWithdraw();
+        v().initiateWithdraw("");
 
         // Reduce the token price further to force liquidation of the liquidator, this
         // price change is relative to the initial price change.
