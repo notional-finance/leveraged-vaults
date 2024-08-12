@@ -27,7 +27,7 @@ address constant unstakingVault = 0xc66830E2667bc740c0BED9A71F18B14B8c8184bA;
 
 contract Test_PendlePT_rsETH_ETH is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 20492805;
+        FORK_BLOCK = 20499945;
         harness = new Harness_PendlePT_rsETH_ETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -98,8 +98,8 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
     function getRequiredOracles() public override view returns (
         address[] memory token, address[] memory oracle
     ) {
-        token = new address[](2);
-        oracle = new address[](2);
+        token = new address[](3);
+        oracle = new address[](3);
 
         // Custom PT Oracle
         token[0] = ptAddress;
@@ -108,6 +108,9 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
         // ETH
         token[1] = 0x0000000000000000000000000000000000000000;
         oracle[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+        // rsETH
+        token[2] = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
+        oracle[2] = 0xb676EA4e0A54ffD579efFc1f1317C70d671f2028;
         
     }
 
