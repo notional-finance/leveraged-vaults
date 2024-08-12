@@ -77,8 +77,8 @@ contract Harness_PendlePT_USDe_USDC is PendleStakingHarness {
     function getRequiredOracles() public override view returns (
         address[] memory token, address[] memory oracle
     ) {
-        token = new address[](2);
-        oracle = new address[](2);
+        token = new address[](3);
+        oracle = new address[](3);
 
         // Custom PT Oracle
         token[0] = ptAddress;
@@ -87,6 +87,9 @@ contract Harness_PendlePT_USDe_USDC is PendleStakingHarness {
         // USDC
         token[1] = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         oracle[1] = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
+        // USDe
+        token[2] = 0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34;
+        oracle[2] = 0x88AC7Bca36567525A866138F03a6F6844868E0Bc;
         
     }
 

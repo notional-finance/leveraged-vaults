@@ -28,11 +28,11 @@ defaults:
 
 arbitrum:
   - stakeSymbol: rsETH
-    forkBlock: 222513382
+    forkBlock: 241486254
     expiry: 25SEP2024
     primaryBorrowCurrency: ETH
     contractName: PendlePTGeneric
-    oracles: [ETH]
+    oracles: [ETH, rsETH]
     marketAddress: "0xED99fC8bdB8E9e7B8240f62f69609a125A0Fbf14"
     ptAddress: "0x30c98c0139B62290E26aC2a2158AC341Dcaf1333"
     useSyOracleRate: 'true'
@@ -78,7 +78,7 @@ arbitrum:
     expiry: 24JUL2024
     primaryBorrowCurrency: USDC
     contractName: PendlePTGeneric
-    oracles: [USDC]
+    oracles: [USDC, USDe]
     whale: "0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D"
     marketAddress: "0x2Dfaf9a5E4F293BceedE49f2dBa29aACDD88E0C4"
     ptAddress: "0xad853EB4fB3Fe4a66CdFCD7b75922a0494955292"
@@ -120,11 +120,11 @@ mainnet:
       splitWithdrawPriceDecrease: 450
       borrowTokenPriceIncrease: 1500
   - stakeSymbol: rsETH
-    forkBlock: 20492805
+    forkBlock: 20499945
     expiry: 26SEP2024
     primaryBorrowCurrency: ETH
     contractName: PendlePTKelpVault
-    oracles: [ETH]
+    oracles: [ETH, rsETH]
     marketAddress: "0x6b4740722e46048874d84306B2877600ABCea3Ae"
     ptAddress: "0x7bAf258049cc8B9A78097723dc19a8b103D4098F"
     useSyOracleRate: 'true'
