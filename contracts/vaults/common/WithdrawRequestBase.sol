@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Constants} from "@contracts/global/Constants.sol";
+import {VaultAccount} from "@contracts/global/Types.sol";
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {Deployments} from "@deployments/Deployments.sol";
@@ -227,17 +228,16 @@ abstract contract WithdrawRequestBase {
         // variable below.
         WithdrawRequest storage toWithdraw = VaultStorage.getAccountWithdrawRequest()[_to];
         require(toWithdraw.requestId == 0 || toWithdraw.requestId == w.requestId , "Existing Request");
-
         toWithdraw.requestId = w.requestId;
         toWithdraw.hasSplit = true;
 
-        if (w.vaultShares <= vaultShares) {
+        if (w.vaultShares < vaultShares) {
+            // This should never occur given the checks below.
+            revert("Invalid Split");
+        } else if (w.vaultShares == vaultShares) {
             // If the resulting vault shares is zero, then delete the request. The _from account's
-            // withdraw request is fully transferred to _to. If vaultShares is greater than w.vaultShares
-            // then the withdraw request is fully transferred and excess vault shares are taken from the
-            // account's liquid vault shares (the state for this resides in the main Notional contract).
-
-            // In this case, the _to account receives the full amount of the _from account's withdraw request.
+            // withdraw request is fully transferred to _to. In this case, the _to account receives
+            // the full amount of the _from account's withdraw request.
             toWithdraw.vaultShares = toWithdraw.vaultShares + w.vaultShares;
             delete VaultStorage.getAccountWithdrawRequest()[_from];
         } else {
@@ -246,5 +246,11 @@ abstract contract WithdrawRequestBase {
             w.vaultShares = w.vaultShares - vaultShares;
             w.hasSplit = true;
         }
+
+        // Prevents an edge case where a liquidator is able to hold both vault shares and a withdraw request
+        // at the same time. This allows a liquidator to liquidate an account's withdraw request multiple times
+        // but it cannot have any vault shares outside of that withdraw request.
+        VaultAccount memory toVaultAccount = Deployments.NOTIONAL.getVaultAccount(_to, address(this));
+        require(toVaultAccount.vaultShares == toWithdraw.vaultShares, "Invalid Liquidator");
     }
 }
