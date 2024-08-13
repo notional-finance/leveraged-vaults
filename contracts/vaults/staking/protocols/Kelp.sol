@@ -47,10 +47,13 @@ contract KelpCooldownHolder is ClonedCoolDownHolder {
     }
 
     function _finalizeCooldown() internal override returns (uint256 tokensClaimed, bool finalized) {
-        (/* */, /* */, /* */, uint256 userWithdrawalRequestNonce) = WithdrawManager.getUserWithdrawalRequest(Deployments.ALT_ETH_ADDRESS, address(this), 0);
+        (/* */, /* */, uint256 userWithdrawalStartBlock, uint256 userWithdrawalRequestNonce) = WithdrawManager.getUserWithdrawalRequest(Deployments.ALT_ETH_ADDRESS, address(this), 0);
         uint256 nextNonce = WithdrawManager.nextLockedNonce(Deployments.ALT_ETH_ADDRESS);
-        // Will revert when nextLockedNonce == userWithdrawalRequestNonce, so this must be strictly less than
-        if (nextNonce < userWithdrawalRequestNonce) {
+        // These two requirements are checked in the WithdrawManager.
+        if (
+            nextNonce < userWithdrawalRequestNonce || 
+            block.number < userWithdrawalStartBlock + WithdrawManager.withdrawalDelayBlocks()
+        ) {
             return (0, false);
         }
 
