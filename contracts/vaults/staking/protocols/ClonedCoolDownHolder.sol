@@ -24,13 +24,13 @@ abstract contract ClonedCoolDownHolder {
        token.checkTransfer(receiver, amount);
     }
 
-    function startCooldown() external onlyVault { _startCooldown(); }
+    function startCooldown(uint256 cooldownBalance) external onlyVault { _startCooldown(cooldownBalance); }
     function stopCooldown() external onlyVault { _stopCooldown(); }
     function finalizeCooldown() external onlyVault returns (
         uint256 tokensClaimed, bool finalized
     ) { return _finalizeCooldown(); }
 
-    function _startCooldown() internal virtual;
+    function _startCooldown(uint256 cooldownBalance) internal virtual;
     function _stopCooldown() internal virtual;
     function _finalizeCooldown() internal virtual returns (
         uint256 tokensClaimed, bool finalized
