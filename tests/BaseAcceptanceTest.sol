@@ -673,14 +673,18 @@ abstract contract BaseAcceptanceTest is Test {
     }
 
     function enterVaultLiquidation(address account, uint256 maturity, uint256 collateralRatio) internal returns (uint256) {
-        uint256 depositAmountExternal;
+        VaultConfig memory c = Deployments.NOTIONAL.getVaultConfig(address(vault));
+        uint256 depositAmountExternal = uint256(c.minAccountBorrowSize) * precision / 1e8;
+        return enterVaultLiquidation(account, maturity, collateralRatio, depositAmountExternal);
+    }
+
+    function enterVaultLiquidation(address account, uint256 maturity, uint256 collateralRatio, uint256 depositAmountExternal) internal returns (uint256) {
         uint256 borrowAmountExternal;
         uint256 borrowAmount;
         bytes memory depositParams;
         {
             depositParams = getDepositParams(depositAmountExternal, maturity);
             VaultConfig memory c = Deployments.NOTIONAL.getVaultConfig(address(vault));
-            depositAmountExternal = uint256(c.minAccountBorrowSize) * precision / 1e8;
             borrowAmountExternal = depositAmountExternal * 1e9 / collateralRatio;
 
             if (maturity == Constants.PRIME_CASH_VAULT_MATURITY) {

@@ -592,7 +592,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(w.hasSplit, true, "Liquidator withdraw request should be marked as split");
     }
 
-    function test_deleverageAccount_splitAccountWithdrawRequest_liquidatorHasVaultShares() public {
+    function test_RevertIf_deleverageAccount_splitAccountWithdrawRequest_liquidatorHasVaultShares() public {
         vm.skip(!hasWithdrawRequests());
         address account = makeAddr("account");
         address liquidator = makeAddr("liquidator");
@@ -609,6 +609,37 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             withdrawLiquidationDiscount,
             BaseStakingHarness(address(harness)).withdrawToken(address(v()))
         );
+        (/* */, int256[3] memory maxDeposit, /* */) = Deployments.NOTIONAL.getVaultAccountHealthFactors(
+            account, address(vault)
+        );
+
+        uint256 maxDepositExternal = uint256(maxDeposit[0]) * precision / 1e8;
+        dealTokensAndApproveNotional(maxDepositExternal * 2, liquidator);
+        uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ? maxDepositExternal  : 0;
+        vm.prank(liquidator);
+        vm.expectRevert("Invalid Liquidator");
+        v().deleverageAccount{value: msgValue}(account, address(v()), liquidator, 0, maxDeposit[0]);
+    }
+
+    function test_deleverageAccount_splitAccountWithdrawRequest_multipleLiquidations() public {
+        vm.skip(!hasWithdrawRequests());
+        address account = makeAddr("account");
+        address liquidator = makeAddr("liquidator");
+        uint256 maturity = maturities[0];
+        VaultConfig memory c = Deployments.NOTIONAL.getVaultConfig(address(vault));
+        uint256 depositAmountExternal = 5 * uint256(c.minAccountBorrowSize) * precision / 1e8;
+        uint256 cr = uint256(c.minCollateralRatio) + 10 * maxRelEntryValuation;
+        // TODO: need to increase the amount to ensure that we still have some debt after the first liquidation
+        uint256 vaultShares = enterVaultLiquidation(account, maturity, cr, depositAmountExternal);
+
+        // Liquidate the account and check
+        vm.prank(account);
+        v().initiateWithdraw("");
+
+        _changeTokenPrice(
+            withdrawLiquidationDiscount,
+            BaseStakingHarness(address(harness)).withdrawToken(address(v()))
+        );
         _liquidateAccount(account, liquidator);
 
         (VaultAccount memory vaultAccount) = Deployments.NOTIONAL.getVaultAccount(account, address(v()));
@@ -616,7 +647,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         uint256 liquidatedAmount = vaultShares - vaultAccount.vaultShares;
         assertGt(liquidatedAmount, 0, "Liquidated amount should be larger than 0");
-        assertEq(liquidatorAccount.vaultShares, liquidatorVaultShares + liquidatedAmount, "Liquidator account should receive liquidated amount");
+        assertEq(liquidatorAccount.vaultShares, liquidatedAmount, "Liquidator account should receive liquidated amount");
 
         WithdrawRequest memory w = v().getWithdrawRequest(account);
         // withdraw request should be unchanged after liquidation
@@ -635,10 +666,6 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(w.hasSplit, true, "Liquidator withdraw request should be marked as split");
         assertGt(liquidatorAccount.vaultShares, 0, "Liquidator account should have non-zero vault shares");
 
-        // NOTE: now the liquidator should have a withdraw request and vault shares, a somewhat unexpected state,
-        // will attempt to liquidate the liquidator
-        address liquidator2 = makeAddr("liquidator2");
-
         // Liquidator cannot initiate a second withdraw request
         vm.prank(liquidator);
         vm.expectRevert("Existing Request");
@@ -650,21 +677,13 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             splitWithdrawPriceDecrease,
             BaseStakingHarness(address(harness)).withdrawToken(address(v()))
         );
-        if (borrowTokenPriceIncrease != 0) {
-            // NOTE: there is an area where as we get closer to insolvency this reverts with min borrow
-            _changeTokenPrice(
-                borrowTokenPriceIncrease,
-                v().BORROW_TOKEN()
-            );
-        }
-        _liquidateAccount(liquidator, liquidator2);
+        _liquidateAccount(account, liquidator);
 
-        // The liquidator's entire withdraw request should be transferred to the liquidator2
-        _assertWithdrawRequestIsEmpty(v().getWithdrawRequest(liquidator));
-        WithdrawRequest memory w2 = v().getWithdrawRequest(liquidator2);
-        assertEq(w2.requestId, w.requestId, "Liquidator2 withdraw request ID should match liquidator's withdraw request ID");
-        assertEq(w2.vaultShares, w.vaultShares, "Liquidator2 withdraw request vault shares should match liquidator's withdraw request vault shares");
-        assertEq(w2.hasSplit, w.hasSplit, "Liquidator2 withdraw request hasSplit should match liquidator's withdraw request hasSplit");
+        // Liquidator's withdraw request should have increased
+        WithdrawRequest memory w2 = v().getWithdrawRequest(liquidator);
+        assertEq(w2.requestId, w.requestId, "Liquidator's withdraw request ID should remain unchanged after second liquidation");
+        assertGt(w2.vaultShares, w.vaultShares, "Liquidator's withdraw request vault shares should increase after second liquidation");
+        assertEq(w2.hasSplit, w.hasSplit, "Liquidator's withdraw request hasSplit status should remain unchanged after second liquidation");
     }
 
     function test_finalizeWithdrawsManual(
