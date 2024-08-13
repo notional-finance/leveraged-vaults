@@ -39,11 +39,10 @@ contract KelpCooldownHolder is ClonedCoolDownHolder {
     /// @notice There is no way to stop a cool down
     function _stopCooldown() internal pure override { revert(); }
 
-    function _startCooldown() internal override {
-        uint256 balance = rsETH.balanceOf(address(this));
-        rsETH.approve(address(WithdrawManager), balance);
+    function _startCooldown(uint256 cooldownBalance) internal override {
+        rsETH.approve(address(WithdrawManager), cooldownBalance);
         // initiate withdraw from Kelp
-        WithdrawManager.initiateWithdrawal(Deployments.ALT_ETH_ADDRESS, balance);
+        WithdrawManager.initiateWithdrawal(Deployments.ALT_ETH_ADDRESS, cooldownBalance);
     }
 
     function _finalizeCooldown() internal override returns (uint256 tokensClaimed, bool finalized) {
@@ -57,9 +56,11 @@ contract KelpCooldownHolder is ClonedCoolDownHolder {
             return (0, false);
         }
 
+        uint256 balanceBefore = address(this).balance;
         WithdrawManager.completeWithdrawal(Deployments.ALT_ETH_ADDRESS);
+        uint256 balanceAfter = address(this).balance;
 
-        tokensClaimed = address(this).balance;
+        tokensClaimed = balanceAfter - balanceBefore;
         (bool sent,) = vault.call{value: tokensClaimed}("");
         require(sent);
         finalized = true;
@@ -85,7 +86,7 @@ library KelpLib {
     ) internal returns (uint256 requestId) {
         KelpCooldownHolder holder = KelpCooldownHolder(payable(Clones.clone(holderImplementation)));
         rsETH.transfer(address(holder), balanceToTransfer);
-        holder.startCooldown();
+        holder.startCooldown(balanceToTransfer);
 
         return uint256(uint160(address(holder)));
     }
