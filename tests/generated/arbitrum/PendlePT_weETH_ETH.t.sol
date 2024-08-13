@@ -31,8 +31,7 @@ contract Test_PendlePT_weETH_ETH is BasePendleTest {
         deleverageCollateralDecreaseRatio = 925;
         defaultLiquidationDiscount = 950;
         withdrawLiquidationDiscount = 945;
-        borrowTokenPriceIncrease = 0;
-        splitWithdrawPriceDecrease = 500;
+        splitWithdrawPriceDecrease = 610;
 
         super.setUp();
     }
