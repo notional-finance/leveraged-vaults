@@ -10,6 +10,7 @@ import { KelpLib, KelpCooldownHolder, rsETH} from "./protocols/Kelp.sol";
 contract PendlePTKelpVault is PendlePrincipalToken {
     using TypeConvert for int256;
     address public HOLDER_IMPLEMENTATION;
+    uint256 internal constant rsETH_PRECISION = 1e18;
 
     constructor(
         address marketAddress,
@@ -43,10 +44,10 @@ contract PendlePTKelpVault is PendlePrincipalToken {
         uint256 requestId, uint256 /* totalVaultShares */, uint256 /* stakeAssetPrice */
     ) internal override view returns (uint256) {
         uint256 tokenOutSY = getTokenOutSYForWithdrawRequest(requestId);
-        // NOTE: in this vault the tokenOutSy is known to be stETH.
+        // NOTE: in this vault the tokenOutSy is known to be rsETH.
         (int256 ethPrice, /* */) = TRADING_MODULE.getOraclePrice(TOKEN_OUT_SY, BORROW_TOKEN);
         return (tokenOutSY * ethPrice.toUint() * BORROW_PRECISION) /
-            (Constants.EXCHANGE_RATE_PRECISION * Constants.EXCHANGE_RATE_PRECISION);
+            (rsETH_PRECISION * Constants.EXCHANGE_RATE_PRECISION);
     }
 
     function _initiateSYWithdraw(

@@ -112,8 +112,7 @@ contract PendlePTOracle is AggregatorV2V3Interface {
 
         int256 ptRate = _getPTRate();
         // ptRate is always returned in 1e18 decimals (rateDecimals)
-        answer = (ptRate * baseToUSD * rateDecimals) /
-            (baseToUSDDecimals * rateDecimals);
+        answer = (ptRate * baseToUSD) / baseToUSDDecimals;
     }
 
     function latestRoundData() external view override returns (

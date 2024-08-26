@@ -100,8 +100,11 @@ library KelpLib {
 
     function _canFinalizeWithdrawRequest(uint256 requestId) internal view returns (bool) {
         address holder = address(uint160(requestId));
-        (/* */, /* */, /* */, uint256 userWithdrawalRequestNonce) = WithdrawManager.getUserWithdrawalRequest(Deployments.ALT_ETH_ADDRESS, holder, 0);
+        (/* */, /* */, uint256 userWithdrawalStartBlock, uint256 userWithdrawalRequestNonce) = WithdrawManager.getUserWithdrawalRequest(Deployments.ALT_ETH_ADDRESS, holder, 0);
         uint256 nextNonce = WithdrawManager.nextLockedNonce(Deployments.ALT_ETH_ADDRESS);
-        return userWithdrawalRequestNonce < nextNonce;
+        return (
+            userWithdrawalRequestNonce < nextNonce &&
+            (userWithdrawalStartBlock + WithdrawManager.withdrawalDelayBlocks()) < block.number
+        );
     }
 }
