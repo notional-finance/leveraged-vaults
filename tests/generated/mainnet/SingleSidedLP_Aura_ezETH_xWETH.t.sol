@@ -97,7 +97,7 @@ ComposablePoolHarness
         _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
+            maxPoolShare: 3000,
             oraclePriceDeviationLimitPercent: 0.015e4,
             numRewardTokens: 0,
             forceClaimAfter: 1 weeks

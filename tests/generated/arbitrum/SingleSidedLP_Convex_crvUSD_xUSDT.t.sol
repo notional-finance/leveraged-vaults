@@ -5,7 +5,6 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Convex_crvUSD_xUSDT is VaultRewarderTests {
     function setUp() public override {
-        FORK_BLOCK = 206791948;
         harness = new Harness_SingleSidedLP_Convex_crvUSD_xUSDT();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues

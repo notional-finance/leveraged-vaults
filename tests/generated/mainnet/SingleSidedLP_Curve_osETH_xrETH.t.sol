@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Curve_osETH_xrETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Curve_osETH_xrETH is VaultRewarderTests {
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Curve_osETH_xrETH();
 
@@ -85,9 +85,10 @@ Curve2TokenHarness
         _m.primaryBorrowCurrency = 7;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 0.015e4
+            oraclePriceDeviationLimitPercent: 0.015e4,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x63037a4e3305d25D48BAED2022b8462b2807351c);
 

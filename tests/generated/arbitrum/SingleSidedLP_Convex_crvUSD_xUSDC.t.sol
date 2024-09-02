@@ -5,7 +5,6 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Convex_crvUSD_xUSDC is VaultRewarderTests {
     function setUp() public override {
-        FORK_BLOCK = 206791948;
         harness = new Harness_SingleSidedLP_Convex_crvUSD_xUSDC();
 
         WHALE = 0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D;
