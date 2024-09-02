@@ -11,7 +11,7 @@ contract Test_SingleSidedLP_Aura_xUSDC_DAI_USDT_USDC_e is VaultRewarderTests {
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 1e6;
-        maxDeposit = 100_000e6;
+        maxDeposit = 50_000e6;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 15 * BASIS_POINT;
 
@@ -67,8 +67,8 @@ ComposablePoolHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](3);
-        permissions = new ITradingModule.TokenPermissions[](3);
+        token = new address[](2);
+        permissions = new ITradingModule.TokenPermissions[](2);
 
         // AURA
         token[0] = 0x1509706a6c66CA549ff0cB464de88231DDBe213B;
@@ -79,12 +79,6 @@ ComposablePoolHarness
         // BAL
         token[1] = 0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8;
         permissions[1] = ITradingModule.TokenPermissions(
-            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
-            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
-        );
-        // ARB
-        token[2] = 0x912CE59144191C1204E64559FE8253a0e49E6548;
-        permissions[2] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
@@ -108,13 +102,11 @@ ComposablePoolHarness
 
         
 
-        _m.rewardTokens = new IERC20[](3);
+        _m.rewardTokens = new IERC20[](2);
         // AURA
         _m.rewardTokens[0] = IERC20(0x1509706a6c66CA549ff0cB464de88231DDBe213B);
         // BAL
         _m.rewardTokens[1] = IERC20(0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8);
-        // ARB
-        _m.rewardTokens[2] = IERC20(0x912CE59144191C1204E64559FE8253a0e49E6548);
         
         setMetadata(_m);
     }

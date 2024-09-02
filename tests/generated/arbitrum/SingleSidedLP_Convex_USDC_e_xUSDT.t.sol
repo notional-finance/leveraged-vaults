@@ -19,7 +19,7 @@ contract Test_SingleSidedLP_Convex_USDC_e_xUSDT is VaultRewarderTests {
 }
 
 contract Harness_SingleSidedLP_Convex_USDC_e_xUSDT is 
-Curve2TokenHarness
+Curve2TokenConvexHarness
  {
     function getVaultName() public pure override returns (string memory) {
         return 'SingleSidedLP:Convex:USDC.e/[USDT]';

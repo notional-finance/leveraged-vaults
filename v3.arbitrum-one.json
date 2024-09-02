@@ -38,9 +38,7 @@
     "balancer": {
         "vault": "0xBA12222222228d8Ba445958a75a0704d566BF2C8"
     },
-    "trading": {
-        "proxy": "0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8"
-    },
+    "tradingModule": "0xBf6B9c5608D520469d8c4BD1E24F850497AF0Bb8",
     "tokens": {
         "DAI": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
         "USDC": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",

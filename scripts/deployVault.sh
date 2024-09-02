@@ -85,6 +85,14 @@ case "$PROTOCOL" in
         CONTRACT="BalancerComposableAuraVault"
         CONTRACT_PATH="vaults/balancer"
         ;;
+    "Balancer")
+        CONTRACT="BalancerComposableAuraVault"
+        CONTRACT_PATH="vaults/balancer"
+        ;;
+    "Curve")
+        CONTRACT="Curve2TokenVault"
+        CONTRACT_PATH="vaults/curve"
+        ;;
 esac
 
 CHAIN_ID=""
@@ -103,11 +111,12 @@ DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
 forge build --force
 FILE_NAME=SingleSidedLP_${PROTOCOL}_${POOL_NAME}
+# TODO: should be able to deploy and verify from inside this line
 forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
     -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
    --chain $CHAIN_ID --account $DEPLOYER -vvvv
 
-VAULT_CODE=`jq '.transactions[0].transaction.data' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
+VAULT_CODE=`jq '.transactions[0].transaction.input' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
 DEPLOYMENT_ARGS=`jq '.transactions[0].arguments' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
 IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
 

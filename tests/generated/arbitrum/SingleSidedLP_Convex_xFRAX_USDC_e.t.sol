@@ -19,7 +19,7 @@ contract Test_SingleSidedLP_Convex_xFRAX_USDC_e is VaultRewarderTests {
 }
 
 contract Harness_SingleSidedLP_Convex_xFRAX_USDC_e is 
-Curve2TokenHarness
+Curve2TokenConvexHarness
  {
     function getVaultName() public pure override returns (string memory) {
         return 'SingleSidedLP:Convex:[FRAX]/USDC.e';
@@ -33,13 +33,13 @@ Curve2TokenHarness
         params.liquidationRate = 102;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 1000;
+        params.minCollateralRatioBPS = 900;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1700;
+        params.maxDeleverageCollateralRatioBPS = 1500;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 1e8;
-        maxPrimaryBorrow = 100e8;
+        params.minAccountBorrowSize = 1_000e8;
+        maxPrimaryBorrow = 200_000e8;
     }
 
     function getRequiredOracles() public override pure returns (

@@ -5,7 +5,7 @@ import {TokenUtils, IERC20} from "@contracts/utils/TokenUtils.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
-import {IConvexBooster} from "@interfaces/convex/IConvexBooster.sol";
+import {IConvexBooster, IConvexBoosterArbitrum} from "@interfaces/convex/IConvexBooster.sol";
 import {IConvexRewardToken} from "@interfaces/convex/IConvexRewardToken.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "@interfaces/convex/IConvexRewardPool.sol";
 import {Curve2TokenPoolMixin, DeploymentParams} from "./Curve2TokenPoolMixin.sol";
@@ -13,7 +13,6 @@ import {RewardPoolStorage, RewardPoolType} from "@contracts/vaults/common/VaultS
 
 struct ConvexVaultDeploymentParams {
     address rewardPool;
-    address whitelistedReward;
     DeploymentParams baseParams;
 }
 
@@ -25,8 +24,6 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
     /// @notice Convex reward pool contract used for unstaking and claiming reward tokens
     address internal immutable CONVEX_REWARD_POOL;
     uint256 internal immutable CONVEX_POOL_ID;
-
-    address immutable WHITELISTED_REWARD;
 
     constructor(NotionalProxy notional_, ConvexVaultDeploymentParams memory params) 
         Curve2TokenPoolMixin(notional_, params.baseParams) {
@@ -52,9 +49,28 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
 
         CONVEX_POOL_ID = poolId;
         CONVEX_BOOSTER = convexBooster;
-        // Allows one of the pool tokens to be whitelisted as a reward token to be re-entered
-        // back into the pool to increase LP shares.
-        WHITELISTED_REWARD = params.whitelistedReward;
+    }
+
+    function _stakeLpTokens(uint256 lpTokens) internal override {
+        // Method signatures are slightly different on mainnet and arbitrum
+        bool success;
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+            success = IConvexBooster(CONVEX_BOOSTER).deposit(CONVEX_POOL_ID, lpTokens, true);
+        } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
+            success = IConvexBoosterArbitrum(CONVEX_BOOSTER).deposit(CONVEX_POOL_ID, lpTokens);
+        }
+        require(success);
+    }
+
+    function _unstakeLpTokens(uint256 poolClaim) internal override {
+        bool success;
+        // Do not claim rewards when unstaking
+        if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
+            success = IConvexRewardPool(CONVEX_REWARD_POOL).withdrawAndUnwrap(poolClaim, false);
+        } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
+            success = IConvexRewardPoolArbitrum(CONVEX_REWARD_POOL).withdraw(poolClaim, false);
+        }
+        require(success);
     }
 
     function _initialApproveTokens() internal override {

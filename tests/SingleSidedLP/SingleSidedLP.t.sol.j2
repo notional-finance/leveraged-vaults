@@ -34,6 +34,10 @@ contract Test_{{ contractName }} is VaultRewarderTests {
         maxRelEntryValuation = {{ setUp.maxRelEntryValuation }} * BASIS_POINT;
         maxRelExitValuation = {{ setUp.maxRelExitValuation }} * BASIS_POINT;
 
+        {% if setUp.flashLender is defined -%}
+        flashLender = {{ setUp.flashLender }};
+        {% endif -%}
+
         super.setUp();
     }
 }
@@ -45,6 +49,8 @@ contract Harness_{{ contractName }} is
     ComposablePoolHarness
 {% elif vaultType == "WrappedComposablePool" -%}
     WrappedComposablePoolHarness
+{% elif vaultType == "Curve2TokenConvex" -%}
+    Curve2TokenConvexHarness
 {% elif vaultType == "Curve2Token" -%}
     Curve2TokenHarness
 {% endif %} {
@@ -111,6 +117,11 @@ contract Harness_{{ contractName }} is
         EXISTING_DEPLOYMENT = {{ existingDeployment }};
         {% endif -%}
 
+        {% if balancerPoolId is defined -%}
+        balancerPoolId = {{ balancerPoolId }};
+        balancerPool = {{ balancerPool }};
+        {% endif -%}
+
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = {{ primaryBorrowCurrency }};
         _m.settings = StrategyVaultSettings({
@@ -125,7 +136,7 @@ contract Harness_{{ contractName }} is
         _m.whitelistedReward = {{ whitelistedReward }};
         {% endif %}
 
-        {% if vaultType == "Curve2Token" %}
+        {% if vaultType == "Curve2Token" or vaultType == "Curve2TokenConvex" %}
         _m.poolToken = IERC20({{ poolToken }});
         lpToken = {{ lpToken }};
         curveInterface = CurveInterface.{{ curveInterface }};

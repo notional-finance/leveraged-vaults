@@ -9,7 +9,7 @@ import "@interfaces/notional/NotionalProxy.sol";
 import "@interfaces/notional/IStrategyVault.sol";
 import "@interfaces/trading/ITradingModule.sol";
 import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
-import "@contracts/liquidator/AaveFlashLiquidator.sol";
+import "@contracts/liquidator/FlashLiquidator.sol";
 import "@contracts/global/Constants.sol";
 import "@contracts/trading/TradingModule.sol";
 import {VaultRewarderLib} from "@contracts/vaults/common/VaultRewarderLib.sol";
@@ -55,7 +55,8 @@ abstract contract BaseAcceptanceTest is Test {
     address WHALE;
     bytes32 FOUNDRY_PROFILE;
 
-    AaveFlashLiquidator liquidator;
+    address flashLender;
+    FlashLiquidator liquidator;
 
     function setUp() public virtual {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
@@ -116,11 +117,7 @@ abstract contract BaseAcceptanceTest is Test {
         }
         vm.stopPrank();
 
-        address aave = Deployments.CHAIN_ID == 1 ?
-            0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 :
-            0x794a61358D6845594F94dc1DB02A252b5b4814aD;
-
-        liquidator = new AaveFlashLiquidator(Deployments.NOTIONAL, aave);
+        liquidator = new FlashLiquidator();
     }
 
     function setMaxOracleFreshness() internal {
@@ -142,6 +139,15 @@ abstract contract BaseAcceptanceTest is Test {
         (uint256 top, uint256 bot) = a < b ? (a, b) : (b, a);
         uint256 r = (BASIS_POINT - top * BASIS_POINT / bot);
         assertLe(r, rel, m);
+    }
+
+    function _setOracleFreshness(uint32 freshness) internal {
+        if (Deployments.CHAIN_ID == 1) {
+            vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
+        } else {
+            vm.prank(Deployments.NOTIONAL.owner());
+        }
+        TradingModule(address(Deployments.TRADING_MODULE)).setMaxOracleFreshness(freshness);
     }
 
     function setTokenPermissions(
@@ -635,7 +641,7 @@ abstract contract BaseAcceptanceTest is Test {
     /**** Liquidation Tests *****/
 
     function getLiquidationParams(address account) internal returns (
-        FlashLiquidatorBase.LiquidationParams memory params,
+        FlashLiquidator.LiquidationParams memory params,
         address asset,
         int256 maxUnderlying
     ) {
@@ -651,14 +657,15 @@ abstract contract BaseAcceptanceTest is Test {
         ) = Deployments.NOTIONAL.getVaultAccountHealthFactors(account, address(vault));
 
         bytes memory redeem = getRedeemParams(vaultSharesToLiquidator[0], va.maturity);
-        params = FlashLiquidatorBase.LiquidationParams({
-            liquidationType: FlashLiquidatorBase.LiquidationType.DELEVERAGE_VAULT_ACCOUNT,
+        address[] memory accounts = new address[](1);
+        accounts[0] = account;
+        params = FlashLiquidator.LiquidationParams({
+            liquidationType: FlashLiquidator.LiquidationType.DELEVERAGE_VAULT_ACCOUNT,
             currencyId: config.borrowCurrencyId,
             currencyIndex: 0,
-            account: account,
+            accounts: accounts,
             vault: address(vault),
-            useVaultDeleverage: config.flags & ONLY_VAULT_DELEVERAGE == ONLY_VAULT_DELEVERAGE,
-            actionData: redeem
+            redeemData: redeem
         });
 
         (/* */, Token memory t) = Deployments.NOTIONAL.getCurrency(config.borrowCurrencyId);
@@ -734,14 +741,14 @@ abstract contract BaseAcceptanceTest is Test {
 
         enterVaultLiquidation(account, maturity);
         (
-            FlashLiquidatorBase.LiquidationParams memory params,
+            FlashLiquidator.LiquidationParams memory params,
             address asset,
             int256 maxUnderlying
         ) = getLiquidationParams(account);
         assertEq(maxUnderlying, 0, "Under Collateralized");
 
         vm.expectRevert();
-        liquidator.flashLiquidate(
+        _flashLiquidate(
             asset,
             // This number does not really matter
             uint256(100e8) * precision / 1e8 + roundingPrecision,
@@ -749,7 +756,48 @@ abstract contract BaseAcceptanceTest is Test {
         );
     }
 
-    function test_deleverageVariableFixed_noCashPurchase(uint256 maturityIndex) public {
+    function test_deleverageBatch(uint256 maturityIndex) public {
+        address[] memory accounts = new address[](3);
+        accounts[0] = makeAddr("account1");
+        accounts[1] = makeAddr("account2");
+        accounts[2] = makeAddr("account3");
+        maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
+        uint256 maturity = maturities[maturityIndex];
+        // All the accounts have to be in the same maturity
+        _enterVaultLiquidation(accounts[0], maturity);
+        // Test that the liquidator will not fail if one of the accounts is empty or
+        // has sufficient collateral
+        // _enterVaultLiquidation(accounts[1], maturity);
+        _enterVaultLiquidation(accounts[2], maturity);
+
+        _changeCollateralRatio();
+        (
+            FlashLiquidator.LiquidationParams memory params,
+            address asset,
+            int256 maxUnderlying1
+        ) = getLiquidationParams(accounts[0]);
+        (,,int256 maxUnderlying2) = getLiquidationParams(accounts[1]);
+        (,,int256 maxUnderlying3) = getLiquidationParams(accounts[2]);
+        params.accounts = accounts;
+        uint256 totalFlash = uint256(maxUnderlying1 + maxUnderlying2 + maxUnderlying3);
+
+        _flashLiquidate(
+            asset,
+            totalFlash * precision / 1e8 + roundingPrecision,
+            params
+        );
+
+        // Check that all accounts were liquidated
+        int256 x;
+        (/* */, x) = liquidator.getOptimalDeleveragingParams(accounts[0], address(vault));
+        assertEq(x, 0);
+        (/* */, x) = liquidator.getOptimalDeleveragingParams(accounts[1], address(vault));
+        assertEq(x, 0);
+        (/* */, x) = liquidator.getOptimalDeleveragingParams(accounts[2], address(vault));
+        assertEq(x, 0);
+    }
+
+    function test_deleverageVariableFixed_cashPurchase(uint256 maturityIndex) public {
         address account = makeAddr("account");
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
@@ -759,13 +807,13 @@ abstract contract BaseAcceptanceTest is Test {
         _changeCollateralRatio();
 
         (
-            FlashLiquidatorBase.LiquidationParams memory params,
+            FlashLiquidator.LiquidationParams memory params,
             address asset,
             int256 maxUnderlying
         ) = getLiquidationParams(account);
         assertGt(maxUnderlying, 0, "Not Under Collateralized");
 
-        liquidator.flashLiquidate(
+        _flashLiquidate(
             asset,
             uint256(maxUnderlying) * precision / 1e8 + 2 * roundingPrecision,
             params
@@ -782,6 +830,34 @@ abstract contract BaseAcceptanceTest is Test {
         } else {
             assertGt(va.tempCashBalance, 0, "Cash Balance");
         }
+
+        if (va.tempCashBalance > 50e5) {
+            va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
+            params.liquidationType = FlashLiquidator.LiquidationType.LIQUIDATE_CASH_BALANCE;
+            params.redeemData = "";
+
+            (int256 fCashDeposit, /* */) = Deployments.NOTIONAL.getfCashRequiredToLiquidateCash(
+                params.currencyId, va.maturity, va.tempCashBalance
+            );
+            _flashLiquidate(
+                asset,
+                uint256(fCashDeposit) * precision / 1e8 + roundingPrecision,
+                params
+            );
+
+            VaultAccount memory vaAfter = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
+            assertGt(vaAfter.accountDebtUnderlying, va.accountDebtUnderlying, "Debt Decrease");
+            assertLt(va.tempCashBalance, 50e5, "Cash Balance");
+        }
+    }
+
+    function _flashLiquidate(address asset, uint256 amount, FlashLiquidator.LiquidationParams memory params) private {
+        liquidator.flashLiquidate(
+            flashLender == address(0) ? Deployments.FLASH_LENDER_AAVE : flashLender,
+            asset,
+            amount,
+            params
+        );
     }
 
     function test_deleverageVariableBorrow_accruedFees() public {
@@ -797,13 +873,13 @@ abstract contract BaseAcceptanceTest is Test {
         setMaxOracleFreshness();
 
         (
-            FlashLiquidatorBase.LiquidationParams memory params,
+            FlashLiquidator.LiquidationParams memory params,
             address asset,
             int256 maxUnderlying
         ) = getLiquidationParams(account);
         assertGt(maxUnderlying, 0, "Not Under Collateralized");
 
-        liquidator.flashLiquidate(
+        _flashLiquidate(
             asset,
             uint256(maxUnderlying) * precision / 1e8 + roundingPrecision,
             params

@@ -6,8 +6,13 @@ from brownie.network.contract import Contract
 pools = json.load(open("vaults.json", "r"))
 
 def gnosisBatch(network, txns):
+    if network == "mainnet":
+        chainId = 1
+    elif network == "arbitrum":
+        chainId = 42161
+
     return {
-        "chainId": network,
+        "chainId": str(chainId),
         "createdAt": 1701985180000,
         "meta": {
             "name": "Transactions Batch",

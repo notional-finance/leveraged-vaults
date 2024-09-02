@@ -14,12 +14,13 @@ contract Test_SingleSidedLP_Convex_xUSDT_crvUSD is VaultRewarderTests {
         maxRelEntryValuation = 75 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
 
+        flashLender = 0x9E092cb431e5F1aa70e47e052773711d2Ba4917E;
         super.setUp();
     }
 }
 
 contract Harness_SingleSidedLP_Convex_xUSDT_crvUSD is 
-Curve2TokenHarness
+Curve2TokenConvexHarness
  {
     function getVaultName() public pure override returns (string memory) {
         return 'SingleSidedLP:Convex:[USDT]/crvUSD';

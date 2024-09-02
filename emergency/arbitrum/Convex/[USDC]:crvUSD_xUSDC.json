@@ -1,5 +1,5 @@
 {
-  "chainId": "arbitrum",
+  "chainId": "42161",
   "createdAt": 1701985180000,
   "meta": {
     "name": "Transactions Batch",

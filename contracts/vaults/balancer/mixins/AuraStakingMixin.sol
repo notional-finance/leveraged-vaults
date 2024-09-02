@@ -34,8 +34,11 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
         BalancerPoolMixin(notional_, params.baseParams) {
         AURA_REWARD_POOL = params.rewardPool;
 
-        AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
-        AURA_POOL_ID = AURA_REWARD_POOL.pid();
+        if (address(AURA_REWARD_POOL) != address(0)) {
+            // Skip this if there is no reward pool
+            AURA_BOOSTER = IAuraBooster(AURA_REWARD_POOL.operator());
+            AURA_POOL_ID = AURA_REWARD_POOL.pid();
+        }
         // Allows one of the pool tokens to be whitelisted as a reward token to be re-entered
         // back into the pool to increase LP shares.
         WHITELISTED_REWARD = params.whitelistedReward;
@@ -67,7 +70,9 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
         }
 
         // Approve Aura to transfer pool tokens for staking
-        POOL_TOKEN().checkApprove(address(AURA_BOOSTER), type(uint256).max);
+        if (address(AURA_BOOSTER) != address(0)) {
+            POOL_TOKEN().checkApprove(address(AURA_BOOSTER), type(uint256).max);
+        }
     }
 
     /// @notice Claim reward tokens

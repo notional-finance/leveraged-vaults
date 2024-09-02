@@ -3,7 +3,7 @@
 set -e
 
 source .env
-export PYTHONPATH=$PYTHONPATH:$(pwd)
+source venv/bin/activate
 python tests/SingleSidedLP/generate_tests.py
 python tests/Staking/generate_tests.py
 
@@ -13,7 +13,7 @@ export FOUNDRY_PROFILE=mainnet
 forge test --mp "tests/generated/mainnet/**"
 
 export RPC_URL=$ARBITRUM_RPC_URL
-export FORK_BLOCK=194820300
+export FORK_BLOCK=199952636
 export FOUNDRY_PROFILE=arbitrum
 forge test --mp "tests/generated/arbitrum/**"
 
