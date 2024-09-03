@@ -2,7 +2,7 @@
 pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
-
+import "forge-std/console.sol";
 import "./StrategyVaultHarness.sol";
 import "@deployments/Deployments.sol";
 import "@interfaces/notional/NotionalProxy.sol";
@@ -830,7 +830,10 @@ abstract contract BaseAcceptanceTest is Test {
             assertGt(va.tempCashBalance, 0, "Cash Balance");
         }
 
-        if (va.tempCashBalance > 50e5) {
+        // On lower precisions the minimum required cash balance is higher or else the liquidation
+        // will not generate enough profit to repay the flash loan
+        int256 minTempCashBalance = precision < 1e18 ? int256(125e5) : int256(100e5);
+        if (minTempCashBalance < va.tempCashBalance) {
             va = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
             params.liquidationType = FlashLiquidator.LiquidationType.LIQUIDATE_CASH_BALANCE;
             params.redeemData = "";
@@ -838,6 +841,9 @@ abstract contract BaseAcceptanceTest is Test {
             (int256 fCashDeposit, /* */) = Deployments.NOTIONAL.getfCashRequiredToLiquidateCash(
                 params.currencyId, va.maturity, va.tempCashBalance
             );
+            int256 maxFCashDeposit = -1 * va.accountDebtUnderlying;
+            fCashDeposit = maxFCashDeposit < fCashDeposit ?  maxFCashDeposit : fCashDeposit;
+
             _flashLiquidate(
                 asset,
                 uint256(fCashDeposit) * precision / 1e8 + roundingPrecision,
@@ -846,13 +852,18 @@ abstract contract BaseAcceptanceTest is Test {
 
             VaultAccount memory vaAfter = Deployments.NOTIONAL.getVaultAccount(account, address(vault));
             assertGt(vaAfter.accountDebtUnderlying, va.accountDebtUnderlying, "Debt Decrease");
-            assertLt(va.tempCashBalance, 50e5, "Cash Balance");
+            assertLt(vaAfter.tempCashBalance, minTempCashBalance, "Cash Balance");
         }
     }
 
     function _flashLiquidate(address asset, uint256 amount, FlashLiquidator.LiquidationParams memory params) private {
+        address lender = flashLender == address(0) ? Deployments.FLASH_LENDER_AAVE : flashLender;
+        if (asset == 0xdAC17F958D2ee523a2206206994597C13D831ec7 && block.chainid == 1) {
+            // USDT approvals are broken on mainnet for the Aave flash lender
+            lender = 0x9E092cb431e5F1aa70e47e052773711d2Ba4917E;
+        }
         liquidator.flashLiquidate(
-            flashLender == address(0) ? Deployments.FLASH_LENDER_AAVE : flashLender,
+            lender,
             asset,
             amount,
             params
