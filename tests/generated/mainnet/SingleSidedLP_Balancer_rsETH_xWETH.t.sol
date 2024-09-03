@@ -5,7 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Balancer_rsETH_xWETH is VaultRewarderTests {
     function setUp() public override {
-        FORK_BLOCK = 20056700;
+        FORK_BLOCK = 20671361;
         harness = new Harness_SingleSidedLP_Balancer_rsETH_xWETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues

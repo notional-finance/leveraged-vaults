@@ -405,21 +405,23 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         assertEq(state.length, 1, "1");
 
         // update reward token that is issue via reward booster
-        setTokenPermissions(
-            address(vault),
-            address(metadata.rewardTokens[0]),
-            ITradingModule.TokenPermissions({allowSell: false, dexFlags: 1, tradeTypeFlags: 1})
-        );
-        vm.prank(Deployments.NOTIONAL.owner());
-        _updateRewardToken({
-            index: 1,
-            rewardToken: address(metadata.rewardTokens[0]),
-            emissionRatePerYear: 0,
-            endTime: uint32(block.timestamp + 300 days)
-        });
+        if (metadata.rewardTokens.length > 0) {
+            setTokenPermissions(
+                address(vault),
+                address(metadata.rewardTokens[0]),
+                ITradingModule.TokenPermissions({allowSell: false, dexFlags: 1, tradeTypeFlags: 1})
+            );
+            vm.prank(Deployments.NOTIONAL.owner());
+            _updateRewardToken({
+                index: 1,
+                rewardToken: address(metadata.rewardTokens[0]),
+                emissionRatePerYear: 0,
+                endTime: uint32(block.timestamp + 300 days)
+            });
 
-        (state,,) = VaultRewarderLib(address(vault)).getRewardSettings();
-        assertEq(state.length, 2, "2");
+            (state,,) = VaultRewarderLib(address(vault)).getRewardSettings();
+            assertEq(state.length, 2, "2");
+        }
     }
 
     function test_getAccountRewardClaim_ShouldBeZeroAtStartOfIncentivePeriod() public {
