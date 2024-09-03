@@ -63,7 +63,7 @@ arbitrum:
     rewards: [AURA, BAL]
     oracles: [USDC, DAI, USDT, USDC_e]
     settings:
-      maxPoolShare: 2000
+      maxPoolShare: 5000
       oraclePriceDeviationLimitPercent: 100
     setUp:
       minDeposit: 1e6
@@ -76,38 +76,6 @@ arbitrum:
       maxDeleverageCollateralRatioBPS: 1700
       minAccountBorrowSize: 5_000e8
       maxPrimaryBorrow: 300_000e8
-  - vaultName: SingleSidedLP:Aura:USDC/DAI/[USDT]/USDC.e
-    vaultType: ComposablePool
-    primaryBorrowCurrency: USDT
-    rewardPool: "0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E"
-    rewards: [AURA, BAL]
-    oracles: [USDC, DAI, USDT, USDC_e]
-    setUp:
-      minDeposit: 1e6
-      maxDeposit: 100_000e6
-      maxRelEntryValuation: 50
-      maxRelExitValuation: 15
-    config:
-      minAccountBorrowSize: 1e8
-      minCollateralRatioBPS: 1100
-      maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 1700
-  - vaultName: SingleSidedLP:Aura:USDC/[DAI]/USDT/USDC.e
-    vaultType: ComposablePool
-    primaryBorrowCurrency: DAI
-    rewardPool: "0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E"
-    rewards: [AURA, BAL]
-    oracles: [USDC, DAI, USDT, USDC_e]
-    setUp:
-      minDeposit: 0.01e18
-      maxDeposit: 50e18
-      maxRelEntryValuation: 50
-      maxRelExitValuation: 15
-    config:
-      minAccountBorrowSize: 1e8
-      minCollateralRatioBPS: 1100
-      maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Aura:wstETH/[WETH]
     vaultType: ComposablePool
     primaryBorrowCurrency: ETH
@@ -127,6 +95,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1700
   - vaultName: SingleSidedLP:Convex:[FRAX]/USDC.e
+    forkBlock: 249745375
     vaultType: Curve2TokenConvex
     primaryBorrowCurrency: FRAX
     existingDeployment: "0xdb08f663e5D765949054785F2eD1b2aa1e9C22Cf"
@@ -141,7 +110,7 @@ arbitrum:
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 0.1e18
-      maxDeposit: 100_000e18
+      maxDeposit: 10_000e18
       maxRelEntryValuation: 50
       maxRelExitValuation: 50
     config:
@@ -151,6 +120,7 @@ arbitrum:
       minAccountBorrowSize: 1_000e8
       maxPrimaryBorrow: 200_000e8
   - vaultName: SingleSidedLP:Convex:USDC.e/[USDT]
+    forkBlock: 242772900
     vaultType: Curve2TokenConvex
     primaryBorrowCurrency: USDT
     existingDeployment: "0x431dbfE3050eA39abBfF3E0d86109FB5BafA28fD"
@@ -158,7 +128,7 @@ arbitrum:
     poolToken: "0x7f90122BF0700F9E7e1F688fe926940E8839F353"
     lpToken: "0x7f90122BF0700F9E7e1F688fe926940E8839F353"
     curveInterface: V1
-    rewards: [CRV, ARB]
+    rewards: [CRV]
     oracles: [USDT, USDC_e]
     settings:
       maxPoolShare: 2000
@@ -172,6 +142,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 1900
   - vaultName: SingleSidedLP:Convex:crvUSD/[USDC]
+    forkBlock: 249745375
     vaultType: Curve2TokenConvex
     primaryBorrowCurrency: USDC
     rewardPool: "0xBFEE9F3E015adC754066424AEd535313dc764116"
@@ -182,7 +153,7 @@ arbitrum:
     rewards: [ARB]
     oracles: [USDC, crvUSD]
     settings:
-      maxPoolShare: 2000
+      maxPoolShare: 5000
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1e6
@@ -244,27 +215,6 @@ arbitrum:
       liquidationRate: 103
       minAccountBorrowSize: 2e8
       maxPrimaryBorrow: 100e8
-  - vaultName: SingleSidedLP:Curve:[FRAX]/crvUSD
-    vaultType: Curve2Token
-    primaryBorrowCurrency: FRAX
-    rewardPool: "0x059E0db6BF882f5fe680dc5409C7adeB99753736"
-    poolToken: "0x2FE7AE43591E534C256A1594D326e5779E302Ff4"
-    lpToken: "0x2FE7AE43591E534C256A1594D326e5779E302Ff4"
-    curveInterface: StableSwapNG
-    rewards: [CRV, ARB]
-    oracles: [FRAX, crvUSD]
-    settings:
-      maxPoolShare: 2000
-    setUp:
-      minDeposit: 0.1e18
-      maxDeposit: 100_000e18
-      maxRelEntryValuation: 50
-      maxRelExitValuation: 50
-    config:
-      minCollateralRatioBPS: 1000
-      maxRequiredAccountCollateralRatioBPS: 10_000
-      maxDeleverageCollateralRatioBPS: 1700
-      minAccountBorrowSize: 1e8
   - vaultName: SingleSidedLP:Convex:[WBTC]/tBTC
     vaultType: Curve2TokenConvex
     forkBlock: 215828254
@@ -276,7 +226,7 @@ arbitrum:
     rewards: [CRV]
     oracles: [WBTC, tBTC]
     settings:
-      maxPoolShare: 2000
+      maxPoolShare: 4000
       oraclePriceDeviationLimitPercent: 150
     setUp:
       minDeposit: 0.01e8
@@ -401,7 +351,7 @@ mainnet:
     rewards: [AURA, BAL]
     oracles: [GHO, USDT, USDC]
     settings:
-      maxPoolShare: 2000
+      maxPoolShare: 5000
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1_000e6

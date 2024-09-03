@@ -5,6 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Convex_crvUSD_xUSDC is VaultRewarderTests {
     function setUp() public override {
+        FORK_BLOCK = 249745375;
         harness = new Harness_SingleSidedLP_Convex_crvUSD_xUSDC();
 
         WHALE = 0xB38e8c17e38363aF6EbdCb3dAE12e0243582891D;
@@ -81,7 +82,7 @@ Curve2TokenConvexHarness
         _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
+            maxPoolShare: 5000,
             oraclePriceDeviationLimitPercent: 0.015e4,
             numRewardTokens: 0,
             forceClaimAfter: 1 weeks

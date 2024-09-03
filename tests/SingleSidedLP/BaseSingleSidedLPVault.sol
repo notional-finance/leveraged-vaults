@@ -41,6 +41,9 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
 
             ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory afterInfo = b.getStrategyVaultInfo();
             assertEq(abi.encode(afterInfo), abi.encode(beforeInfo));
+
+            vm.prank(Deployments.NOTIONAL.owner());
+            b.setStrategyVaultSettings(metadata.settings);
         } else {
             bytes memory initData = harness.getInitializeData();
 

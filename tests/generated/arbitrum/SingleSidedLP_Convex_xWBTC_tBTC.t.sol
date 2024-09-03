@@ -81,7 +81,7 @@ Curve2TokenConvexHarness
         _m.primaryBorrowCurrency = 4;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
+            maxPoolShare: 4000,
             oraclePriceDeviationLimitPercent: 150,
             numRewardTokens: 0,
             forceClaimAfter: 1 weeks
