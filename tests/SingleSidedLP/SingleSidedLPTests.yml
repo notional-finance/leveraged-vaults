@@ -344,34 +344,34 @@ mainnet:
       liquidationRate: 103
       minAccountBorrowSize: 100_000e8
       maxPrimaryBorrow: 5_000_000e8
-  - vaultName: SingleSidedLP:Convex:pyUSD/[USDC]
-    skipTests: ["test_claimReward_WithChangingForceClaimAfter"]
-    vaultType: Curve2TokenConvex
-    curveInterface: StableSwapNG
-    primaryBorrowCurrency: USDC
-    existingDeployment: "0x84e58d8faA4e3B74d55D9fc762230f15d95570B8"
-    rewardPool: "0xc583e81bB36A1F620A804D8AF642B63b0ceEb5c0"
-    poolToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"
-    lpToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"
-    whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
-    whitelistedReward: "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8"
-    rewards: [CRV, CVX, pyUSD]
-    oracles: [USDC, pyUSD]
-    settings:
-      maxPoolShare: 2000
-      oraclePriceDeviationLimitPercent: 0.015e4
-    setUp:
-      minDeposit: 1e6
-      maxDeposit: 50_000e6
-      maxRelEntryValuation: 50
-      maxRelExitValuation: 75
-    config:
-      feeRate5BPS: 20
-      minCollateralRatioBPS: 1100
-      maxDeleverageCollateralRatioBPS: 1900
-      liquidationRate: 103
-      minAccountBorrowSize: 1e8
-      maxPrimaryBorrow: 5_000e8
+  # - vaultName: SingleSidedLP:Convex:pyUSD/[USDC]
+  #   skipTests: ["test_claimReward_WithChangingForceClaimAfter"]
+  #   vaultType: Curve2TokenConvex
+  #   curveInterface: StableSwapNG
+  #   primaryBorrowCurrency: USDC
+  #   existingDeployment: "0x84e58d8faA4e3B74d55D9fc762230f15d95570B8"
+  #   rewardPool: "0xc583e81bB36A1F620A804D8AF642B63b0ceEb5c0"
+  #   poolToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"
+  #   lpToken: "0x383E6b4437b59fff47B619CBA855CA29342A8559"
+  #   whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
+  #   whitelistedReward: "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8"
+  #   rewards: [CRV, CVX, pyUSD]
+  #   oracles: [USDC, pyUSD]
+  #   settings:
+  #     maxPoolShare: 2000
+  #     oraclePriceDeviationLimitPercent: 0.015e4
+  #   setUp:
+  #     minDeposit: 1e6
+  #     maxDeposit: 50_000e6
+  #     maxRelEntryValuation: 50
+  #     maxRelExitValuation: 75
+  #   config:
+  #     feeRate5BPS: 20
+  #     minCollateralRatioBPS: 1100
+  #     maxDeleverageCollateralRatioBPS: 1900
+  #     liquidationRate: 103
+  #     minAccountBorrowSize: 1e8
+  #     maxPrimaryBorrow: 5_000e8
   # - vaultName: SingleSidedLP:Aura:osETH/[WETH]
   #   vaultType: ComposablePool
   #   primaryBorrowCurrency: ETH
@@ -527,9 +527,9 @@ mainnet:
   #     minAccountBorrowSize: 1e8
   #     maxPrimaryBorrow: 5_000e8
   - vaultName: SingleSidedLP:Curve:[USDT]/crvUSD
-    vaultType: Curve2Token
+    vaultType: Curve2TokenConvex
     primaryBorrowCurrency: USDT
-    rewardPool: "0x4e6bB6B7447B7B2Aa268C16AB87F4Bb48BF57939"
+    rewardPool: "0xD1DdB0a0815fD28932fBb194C84003683AF8a824"
     poolToken: "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4"
     lpToken: "0x390f3595bCa2Df7d23783dFd126427CCeb997BF4"
     curveInterface: V1

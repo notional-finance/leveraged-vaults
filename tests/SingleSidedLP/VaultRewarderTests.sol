@@ -13,6 +13,7 @@ import {ISingleSidedLPStrategyVault, StrategyVaultSettings} from "@interfaces/no
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20Metadata as IERC20} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {console} from "forge-std/console.sol";
 
 function min(uint256 a, uint256 b) pure returns (uint256) {
     return a < b ? a : b;
@@ -1006,4 +1007,30 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         _claimAndAssertNewBal(AssertType.Gt, poolRewardTokens);
     }
+
+    function test_RewardReinvestmentClaimTokens() public {
+        address account = makeAddr("account");
+        address reward = makeAddr("reward");
+        uint256 maturity = maturities[0];
+        enterVault(account, maxDeposit, maturity, getDepositParams(0, 0));
+
+        vm.prank(Deployments.NOTIONAL.owner());
+        v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
+
+        skip(3600);
+        uint256[] memory initialBalance = new uint256[](metadata.rewardTokens.length);
+        for (uint256 i; i < metadata.rewardTokens.length; i++) {
+            initialBalance[i] = metadata.rewardTokens[i].balanceOf(address(vault));
+        }
+
+        vm.prank(reward);
+        VaultRewarderLib(address(v())).claimRewardTokens();
+
+        for (uint256 i; i < metadata.rewardTokens.length; i++) {
+            uint256 rewardBalance = metadata.rewardTokens[i].balanceOf(address(vault));
+            console.log("reward token", address(metadata.rewardTokens[i]));
+            assertGt(rewardBalance - initialBalance[i], 0, "Reward Balance Decrease");
+        }
+    }
+
 }

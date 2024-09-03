@@ -20,7 +20,7 @@ contract Test_SingleSidedLP_Curve_xUSDT_crvUSD is VaultRewarderTests {
 }
 
 contract Harness_SingleSidedLP_Curve_xUSDT_crvUSD is 
-Curve2TokenHarness
+Curve2TokenConvexHarness
  {
     function getVaultName() public pure override returns (string memory) {
         return 'SingleSidedLP:Curve:[USDT]/crvUSD';
@@ -85,7 +85,7 @@ Curve2TokenHarness
             numRewardTokens: 0,
             forceClaimAfter: 1 weeks
         });
-        _m.rewardPool = IERC20(0x4e6bB6B7447B7B2Aa268C16AB87F4Bb48BF57939);
+        _m.rewardPool = IERC20(0xD1DdB0a0815fD28932fBb194C84003683AF8a824);
 
         
         _m.poolToken = IERC20(0x390f3595bCa2Df7d23783dFd126427CCeb997BF4);

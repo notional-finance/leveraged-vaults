@@ -364,30 +364,6 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         v().reinvestReward(new SingleSidedRewardTradeParams[](0), 0);
     }
 
-    function test_RewardReinvestmentClaimTokens() public {
-        address account = makeAddr("account");
-        address reward = makeAddr("reward");
-        uint256 maturity = maturities[0];
-        enterVault(account, maxDeposit, maturity, getDepositParams(0, 0));
-
-        vm.prank(Deployments.NOTIONAL.owner());
-        v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
-
-        skip(3600);
-        uint256[] memory initialBalance = new uint256[](metadata.rewardTokens.length);
-        for (uint256 i; i < metadata.rewardTokens.length; i++) {
-            initialBalance[i] = metadata.rewardTokens[i].balanceOf(address(vault));
-        }
-
-        vm.prank(reward);
-        // v().claimRewardTokens();
-
-        for (uint256 i; i < metadata.rewardTokens.length; i++) {
-            uint256 rewardBalance = metadata.rewardTokens[i].balanceOf(address(vault));
-            assertGt(rewardBalance - initialBalance[i], 0, "Reward Balance Decrease");
-        }
-    }
-
     function test_RevertIf_RewardReinvestmentTradesPoolTokens() public {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
