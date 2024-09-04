@@ -17,7 +17,7 @@ abstract contract BaseStakingHarness is StrategyVaultHarness {
         return abi.decode(metadata, (StakingMetadata));
     }
 
-    function setMetadata(StakingMetadata memory _m) virtual internal returns (bytes memory) {
+    function setMetadata(StakingMetadata memory _m) virtual public returns (bytes memory) {
         metadata = abi.encode(_m);
         return metadata;
     }

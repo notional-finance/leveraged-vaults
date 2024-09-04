@@ -19,7 +19,7 @@ abstract contract CrossCurrencyHarness is StrategyVaultHarness {
         return abi.decode(metadata, (CrossCurrencyMetadata));
     }
 
-    function setMetadata(CrossCurrencyMetadata memory _m) internal returns (bytes memory) {
+    function setMetadata(CrossCurrencyMetadata memory _m) public returns (bytes memory) {
         metadata = abi.encode(_m);
         return metadata;
     }

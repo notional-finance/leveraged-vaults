@@ -5,22 +5,22 @@ import {BaseSingleSidedLPVault} from "./BaseSingleSidedLPVault.sol";
 import {Deployments} from "@deployments/Deployments.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {VaultConfigParams} from "@contracts/global/Types.sol";
-import {VaultRewarderLib} from "@contracts/vaults/common/VaultRewarderLib.sol";
+import {VaultRewarderLib, RewardPoolStorage, RewardPoolType} from "@contracts/vaults/common/VaultRewarderLib.sol";
 import {VaultRewardState} from "@interfaces/notional/IVaultRewarder.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 import {IERC4626} from "@interfaces/IERC4626.sol";
 import {ISingleSidedLPStrategyVault, StrategyVaultSettings} from "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
-import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20Metadata as IERC20} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {console} from "forge-std/console.sol";
+import {ComposablePoolHarness, SingleSidedLPMetadata} from "./harness/ComposablePoolHarness.sol";
 
 function min(uint256 a, uint256 b) pure returns (uint256) {
     return a < b ? a : b;
 }
 
 abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
-    using SafeERC20 for IERC20;
+    using TokenUtils for IERC20;
     struct AccountsData {
         address account;
         uint256 initialShare;
@@ -522,7 +522,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         dealTokens(liquidityProvider, deposit);
         vm.startPrank(liquidityProvider);
         if (!isETH) {
-            IERC20(address(primaryBorrowToken)).safeApprove(address(Deployments.NOTIONAL), deposit);
+            IERC20(address(primaryBorrowToken)).checkApprove(address(Deployments.NOTIONAL), deposit);
         }
         Deployments.NOTIONAL.depositUnderlyingToken{value: isETH ? deposit : 0}(liquidityProvider, config.borrowCurrencyId, deposit);
         vm.stopPrank();
@@ -1033,4 +1033,35 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         }
     }
 
+    function test_migrateRewardPool_fromNoGauge() public {
+        vm.skip(address(v()) != 0xF94507F3dECE4CC4c73B6cf228912b85Eadc9CFB);
+        SingleSidedLPMetadata memory m = ComposablePoolHarness(address(harness)).getMetadata();
+        m.rewardPool = IERC20(0xB5FdB4f75C26798A62302ee4959E4281667557E0);
+        ComposablePoolHarness(address(harness)).setMetadata(m);
+        (address impl, /* */) = harness.deployVaultImplementation();
+
+        assertEq(m.rewardPool.balanceOf(address(v())), 0, "Reward Pool Balance");
+
+        vm.startPrank(Deployments.NOTIONAL.owner());
+        v().upgradeToAndCall(impl, abi.encodeWithSelector(
+            VaultRewarderLib.migrateRewardPool.selector,
+            IERC20(0x58AAdFB1Afac0ad7fca1148f3cdE6aEDF5236B6D),
+            RewardPoolStorage({
+                rewardPool: address(0xB5FdB4f75C26798A62302ee4959E4281667557E0),
+                poolType: RewardPoolType.AURA,
+                lastClaimTimestamp: 0
+            })
+        ));
+        vm.stopPrank();
+
+        assertGt(m.rewardPool.balanceOf(address(v())), 0, "Reward Pool Balance");
+
+        // Now skip forward and make sure we can claim rewards
+        skip(1 days);
+        VaultRewarderLib(address(v())).claimRewardTokens();
+
+        // Rewards are paid in USDC
+        uint256 usdcBalance = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48).balanceOf(address(v()));
+        assertGt(usdcBalance, 0, "USDC Balance");
+    }
 }

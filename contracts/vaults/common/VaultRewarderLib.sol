@@ -13,10 +13,13 @@ import {
     IConvexRewardPoolArbitrum
 } from "../../../interfaces/convex/IConvexRewardPool.sol";
 import {IAuraRewardPool} from "../../../interfaces/aura/IAuraRewardPool.sol";
+import {IAuraBooster} from "@interfaces/aura/IAuraBooster.sol";
+import {IConvexBooster, IConvexBoosterArbitrum} from "@interfaces/convex/IConvexBooster.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract VaultRewarderLib is IVaultRewarder, ReentrancyGuard {
     using TypeConvert for uint256;
+    using TokenUtils for IERC20;
 
     /// @notice Returns the current reward claim method and reward state
     function getRewardSettings() public view override returns (
@@ -130,6 +133,51 @@ contract VaultRewarderLib is IVaultRewarder, ReentrancyGuard {
         (VaultRewardState[] memory allStates, /* */, RewardPoolStorage memory rewardPool) = getRewardSettings();
         _claimVaultRewards(totalVaultSharesBefore, allStates, rewardPool);
         emit VaultRewardUpdate(rewardToken, emissionRatePerYear, endTime);
+    }
+
+    function _withdrawFromPreviousRewardPool(IERC20 poolToken, RewardPoolStorage memory r) internal {
+        if (r.rewardPool == address(0)) return;
+
+        // First, withdraw from existing pool and clear approval
+        uint256 boosterBalance = IERC20(address(r.rewardPool)).balanceOf(address(this));
+        if (r.poolType == RewardPoolType.AURA) {
+            require(IAuraRewardPool(r.rewardPool).withdrawAndUnwrap(boosterBalance, true));
+        } else if (r.poolType == RewardPoolType.CONVEX_MAINNET) {
+            require(IConvexRewardPool(r.rewardPool).withdrawAndUnwrap(boosterBalance, true));
+        } else if (r.poolType == RewardPoolType.CONVEX_ARBITRUM) {
+            require(IConvexRewardPoolArbitrum(r.rewardPool).withdraw(boosterBalance, true));
+        }
+
+        // Clear approvals on the old pool.
+        poolToken.checkApprove(address(r.rewardPool), 0);
+    }
+
+    function migrateRewardPool(IERC20 poolToken, RewardPoolStorage memory newRewardPool) external {
+        require(msg.sender == Deployments.NOTIONAL.owner());
+        RewardPoolStorage memory r = VaultStorage.getRewardPoolStorage();
+
+        _withdrawFromPreviousRewardPool(poolToken, r);
+
+        uint256 poolTokens = poolToken.balanceOf(address(this));
+
+        if (newRewardPool.poolType == RewardPoolType.AURA) {
+            uint256 poolId = IAuraRewardPool(newRewardPool.rewardPool).pid();
+            address booster = IAuraRewardPool(newRewardPool.rewardPool).operator();
+            poolToken.checkApprove(booster, type(uint256).max);
+            require(IAuraBooster(booster).deposit(poolId, poolTokens, true));
+        } else if (newRewardPool.poolType == RewardPoolType.CONVEX_MAINNET) {
+            uint256 poolId = IConvexRewardPool(newRewardPool.rewardPool).pid();
+            address booster = IConvexRewardPool(newRewardPool.rewardPool).operator();
+            poolToken.checkApprove(booster, type(uint256).max);
+            require(IConvexBooster(booster).deposit(poolId, poolTokens, true));
+        } else if (newRewardPool.poolType == RewardPoolType.CONVEX_ARBITRUM) {
+            uint256 poolId = IConvexRewardPoolArbitrum(newRewardPool.rewardPool).convexPoolId();
+            address booster = IConvexRewardPoolArbitrum(newRewardPool.rewardPool).convexBooster();
+            poolToken.checkApprove(booster, type(uint256).max);
+            require(IConvexBoosterArbitrum(booster).deposit(poolId, poolTokens));
+        }
+
+        VaultStorage.setRewardPoolStorage(newRewardPool);
     }
 
     /// @notice Claims all the rewards for the entire vault and updates the accumulators. Does not
