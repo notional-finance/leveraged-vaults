@@ -77,7 +77,7 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
 
     /// @notice Claim reward tokens
     function _rewardPoolStorage() internal view override returns (RewardPoolStorage memory r) {
-        r.poolType = RewardPoolType.AURA;
+        r.poolType = address(AURA_REWARD_POOL) == address(0) ? RewardPoolType._UNUSED : RewardPoolType.AURA;
         r.rewardPool = address(AURA_REWARD_POOL);
     }
 }

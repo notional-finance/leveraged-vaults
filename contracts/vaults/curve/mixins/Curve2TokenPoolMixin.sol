@@ -19,6 +19,8 @@ import {
 } from "@interfaces/curve/ICurvePool.sol";
 import {ITradingModule} from "@interfaces/trading/ITradingModule.sol";
 import {ICurveGauge} from "@interfaces/curve/ICurveGauge.sol";
+import {RewardPoolStorage, RewardPoolType} from "@contracts/vaults/common/VaultStorage.sol";
+
 
 interface Minter {
     function mint(address gauge) external;
@@ -257,10 +259,8 @@ abstract contract Curve2TokenPoolMixin is SingleSidedLPVaultBase {
         );
     }
 
-    function _claimRewardTokens() internal override virtual {
-        ICurveGauge(CURVE_GAUGE).claim_rewards();
-        // wrapping in try/catch here since in cases when curve pool is relatively new and
-        // we had to manually deploy gauge, gauge will not be listed on Curve minter
-        try Minter(Deployments.CURVE_MINTER).mint(CURVE_GAUGE) {} catch {}
+    function _rewardPoolStorage() internal view override virtual returns (RewardPoolStorage memory r) {
+        r.rewardPool = address(0);
+        r.poolType = RewardPoolType._UNUSED;
     }
 }
