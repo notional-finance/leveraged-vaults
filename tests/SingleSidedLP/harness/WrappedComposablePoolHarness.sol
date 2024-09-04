@@ -20,7 +20,7 @@ abstract contract WrappedComposablePoolHarness is SingleSidedLPHarness {
         return abi.decode(metadata, (WrappedComposableMetadata)).meta;
     }
 
-    function setMetadata(WrappedComposableMetadata memory _m) internal returns (bytes memory) {
+    function setMetadata(WrappedComposableMetadata memory _m) public returns (bytes memory) {
         metadata = abi.encode(_m);
         return metadata;
     }
