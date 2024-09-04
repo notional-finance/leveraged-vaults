@@ -180,7 +180,9 @@ contract VaultRewarderLib is IVaultRewarder, ReentrancyGuard {
 
     /// @notice Executes the proper call for various rewarder types.
     function _executeClaim(RewardPoolStorage memory r) internal {
-        if (r.poolType == RewardPoolType.AURA) {
+        if (r.poolType == RewardPoolType._UNUSED) {
+            return;
+        } else if (r.poolType == RewardPoolType.AURA) {
             require(IAuraRewardPool(r.rewardPool).getReward(address(this), true));
         } else if (r.poolType == RewardPoolType.CONVEX_MAINNET) {
             require(IConvexRewardPool(r.rewardPool).getReward(address(this), true));
