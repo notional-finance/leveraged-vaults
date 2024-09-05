@@ -678,6 +678,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         }
 
         _sendIncentivesToVault(additionalRewTokens);
+        _sendIncentivesToVault(additionalRewardTokens);
 
         uint256 skipTime = 10 days;
         vm.warp(block.timestamp + skipTime);
