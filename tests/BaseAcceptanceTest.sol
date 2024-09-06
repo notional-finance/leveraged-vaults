@@ -58,10 +58,18 @@ abstract contract BaseAcceptanceTest is Test {
     address flashLender;
     FlashLiquidator liquidator;
 
+    function _deployVaultRewarderLib() internal {
+        if (Deployments.CHAIN_ID == 42161 && 250810618 < FORK_BLOCK) return;
+
+        // At lower fork blocks, need to deploy the new VaultRewarderLib
+        deployCodeTo("VaultRewarderLib.sol", Deployments.VAULT_REWARDER_LIB);
+    }
+
     function setUp() public virtual {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
         // NOTE: everything needs to run after create select fork
-        deployCodeTo("VaultRewarderLib.sol", Deployments.VAULT_REWARDER_LIB);
+        _deployVaultRewarderLib();
+
         if (Deployments.CHAIN_ID == 1) {
             if (FORK_BLOCK < 20492800) vm.startPrank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
             else vm.startPrank(Deployments.NOTIONAL.owner());

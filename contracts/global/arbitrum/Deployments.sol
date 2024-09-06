@@ -47,8 +47,7 @@ library Deployments {
 
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(0xFdB631F5EE196F0ed6FAa767959853A9F217697D);
-    // TODO: update this deployment
-    address internal constant VAULT_REWARDER_LIB = 0x0000dEb798bB3E4dFA0139dfa1b3D433CC23b72F;
+    address internal constant VAULT_REWARDER_LIB = 0x54BB219281Fe0EeF1483bc4421e6502Fe1e30A97;
 
     IPOracle internal constant PENDLE_ORACLE = IPOracle(0x9a9Fa8338dd5E5B2188006f1Cd2Ef26d921650C2);
     IPRouter internal constant PENDLE_ROUTER = IPRouter(0x888888888889758F76e7103c6CbF23ABbF58F946);
