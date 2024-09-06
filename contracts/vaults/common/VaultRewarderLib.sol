@@ -152,9 +152,14 @@ contract VaultRewarderLib is IVaultRewarder, ReentrancyGuard {
         poolToken.checkApprove(address(r.rewardPool), 0);
     }
 
-    function migrateRewardPool(IERC20 poolToken, RewardPoolStorage memory newRewardPool) external {
+    function migrateRewardPool(IERC20 poolToken, RewardPoolStorage memory newRewardPool) external nonReentrant {
         require(msg.sender == Deployments.NOTIONAL.owner());
         RewardPoolStorage memory r = VaultStorage.getRewardPoolStorage();
+
+        // Claim all rewards from the previous reward pool before withdrawing
+        uint256 totalVaultSharesBefore = VaultStorage.getStrategyVaultState().totalVaultSharesGlobal;
+        (VaultRewardState[] memory state, , RewardPoolStorage memory rewardPool) = getRewardSettings();
+        _claimVaultRewards(totalVaultSharesBefore, state, rewardPool);
 
         _withdrawFromPreviousRewardPool(poolToken, r);
 
@@ -182,7 +187,7 @@ contract VaultRewarderLib is IVaultRewarder, ReentrancyGuard {
 
     /// @notice Claims all the rewards for the entire vault and updates the accumulators. Does not
     /// update emission rewarders since those are automatically updated on every account claim.
-    function claimRewardTokens() external nonReentrant {
+    function claimRewardTokens() public nonReentrant {
         // Ensures that this method is not called from inside a vault account action.
         require(msg.sender != address(Deployments.NOTIONAL));
         // This method is not executed from inside enter or exit vault positions, so this total
