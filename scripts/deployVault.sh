@@ -96,13 +96,16 @@ case "$PROTOCOL" in
 esac
 
 CHAIN_ID=""
+VERIFIER_URL=""
 case "$CHAIN" in
     "mainnet")
         CHAIN_ID=1
+        VERIFIER_URL="https://api.etherscan.io/api"
         ;;
     "arbitrum")
         CHAIN_ID=42161
         export ETHERSCAN_API_KEY=$ARBISCAN_API_KEY
+        VERIFIER_URL="https://api.arbiscan.io/api"
         ;;
 esac
 
@@ -111,29 +114,14 @@ DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
 forge build --force
 FILE_NAME=SingleSidedLP_${PROTOCOL}_${POOL_NAME}
-# TODO: should be able to deploy and verify from inside this line
+
+echo "Deploying Vault Implementation for $FILE_NAME on $CHAIN"
 forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
     -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
-   --chain $CHAIN_ID --account $DEPLOYER -vvvv
+   --chain $CHAIN_ID --account $DEPLOYER --broadcast \
+   --verify --verifier-url $VERIFIER_URL --etherscan-api-key $ETHERSCAN_API_KEY
 
-VAULT_CODE=`jq '.transactions[0].transaction.input' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
-DEPLOYMENT_ARGS=`jq '.transactions[0].arguments' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
-IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json | tr -d '"'`
-
-echo "Expected Implementation Address: $IMPLEMENTATION_ADDRESS"
-echo "Arguments: $DEPLOYMENT_ARGS"
-echo "Deployer: $DEPLOYER_ADDRESS ($DEPLOYER)"
-
-confirm "Do you want to proceed?" || exit 0
-
-# NOTE: if this fails on estimating gas when executing the deployment we have to manually
-# send the transaction. Verification will not be required if the code has not changed.
-cast send --account $DEPLOYER --chain $CHAIN_ID -r $ETH_RPC_URL --create $VAULT_CODE
-
-# Requires manual verification
-forge verify-contract $IMPLEMENTATION_ADDRESS \
-    contracts/$CONTRACT_PATH/$CONTRACT.sol:$CONTRACT -c $CHAIN \
-    --show-standard-json-input > json-input.std.json
+IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/run-latest.json | tr -d '"'`
 
 if [ "$UPGRADE_VAULT" = true ]; then
   echo "Vault Implementation Deployed to $IMPLEMENTATION_ADDRESS"

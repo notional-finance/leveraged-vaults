@@ -1,4 +1,5 @@
 source .env
+export PYTHONPATH=$PYTHONPATH:$(pwd)
 source venv/bin/activate
 python tests/SingleSidedLP/generate_tests.py
 
