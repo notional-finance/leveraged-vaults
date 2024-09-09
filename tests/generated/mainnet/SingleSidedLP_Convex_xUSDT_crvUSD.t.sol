@@ -3,15 +3,15 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Convex_xUSDT_crvUSD is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Convex_xUSDT_crvUSD is VaultRewarderTests {
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Convex_xUSDT_crvUSD();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 1e6;
-        maxDeposit = 90_000e6;
-        maxRelEntryValuation = 50 * BASIS_POINT;
+        maxDeposit = 10_000e6;
+        maxRelEntryValuation = 75 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
 
         flashLender = 0x9E092cb431e5F1aa70e47e052773711d2Ba4917E;
@@ -87,9 +87,10 @@ Curve2TokenConvexHarness
         _m.primaryBorrowCurrency = 8;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 0.015e4
+            oraclePriceDeviationLimitPercent: 0.015e4,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0xD1DdB0a0815fD28932fBb194C84003683AF8a824);
 

@@ -10,6 +10,7 @@ library UniV3Adapter {
 
     struct UniV3SingleData { uint24 fee; }
 
+    // Path is packed encoding `token, fee, token, fee, outToken`
     struct UniV3BatchData { bytes path; }
 
     function _toAddress(bytes memory _bytes, uint256 _start) private pure returns (address) {

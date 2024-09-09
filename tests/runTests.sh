@@ -1,12 +1,17 @@
 #!/bin/bash
+# Exits immediately if a test fails
+set -e
+
 source .env
+export PYTHONPATH=$PYTHONPATH:$(pwd)
 source venv/bin/activate
 python tests/SingleSidedLP/generate_tests.py
+python tests/Staking/generate_tests.py
 
 export RPC_URL=$MAINNET_RPC_URL
-export FORK_BLOCK=19626900
+export FORK_BLOCK=19691163
 export FOUNDRY_PROFILE=mainnet
-forge test --mp "tests/generated/mainnet/*"
+forge test --mp "tests/generated/mainnet/**"
 
 export RPC_URL=$ARBITRUM_RPC_URL
 export FORK_BLOCK=199952636

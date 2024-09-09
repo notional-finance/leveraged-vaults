@@ -1,0 +1,203 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
+
+import "../../Staking/harness/index.sol";
+import {WithdrawRequestNFT} from "@contracts/vaults/staking/protocols/EtherFi.sol";
+import {WithdrawManager} from "@contracts/vaults/staking/protocols/Kelp.sol";
+import {
+    PendleDepositParams,
+    IPRouter,
+    IPMarket
+} from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
+import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
+import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
+import { {{contractName}} } from "@contracts/vaults/staking/{{contractName}}.sol";
+
+{% if contractName == 'PendlePTKelpVault' %}
+interface ILRTOracle {
+    // methods
+    function getAssetPrice(address asset) external view returns (uint256);
+    function assetPriceOracle(address asset) external view returns (address);
+    function rsETHPrice() external view returns (uint256);
+}
+
+ILRTOracle constant lrtOracle = ILRTOracle(0x349A73444b1a310BAe67ef67973022020d70020d);
+address constant unstakingVault = 0xc66830E2667bc740c0BED9A71F18B14B8c8184bA;
+{% endif %}
+
+contract Test_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is BasePendleTest {
+    function setUp() public override {
+        {% if forkBlock is defined -%}
+        FORK_BLOCK = {{ forkBlock }};
+        {% endif -%}
+        {% if whale is defined -%}
+        WHALE = {{ whale }};
+        {% endif -%}
+        harness = new Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }}();
+
+        // NOTE: need to enforce some minimum deposit here b/c of rounding issues
+        // on the DEX side, even though we short circuit 0 deposits
+        minDeposit = {{ setUp.minDeposit }};
+        maxDeposit = {{ setUp.maxDeposit }};
+        maxRelEntryValuation = {{ setUp.maxRelEntryValuation }} * BASIS_POINT;
+        maxRelExitValuation = {{ setUp.maxRelExitValuation }} * BASIS_POINT;
+        maxRelExitValuation_WithdrawRequest_Fixed = {{ setUp.maxRelExitValuation_WithdrawRequest_Fixed }}e18;
+        maxRelExitValuation_WithdrawRequest_Variable = {{ setUp.maxRelExitValuation_WithdrawRequest_Variable }}e18;
+        deleverageCollateralDecreaseRatio = {{ setUp.deleverageCollateralDecreaseRatio }};
+        defaultLiquidationDiscount = {{ setUp.defaultLiquidationDiscount }};
+        withdrawLiquidationDiscount = {{ setUp.withdrawLiquidationDiscount }};
+        splitWithdrawPriceDecrease = {{ setUp.splitWithdrawPriceDecrease }};
+
+        super.setUp();
+    }
+
+    {% if contractName == 'PendlePTEtherFiVault' %}
+    function finalizeWithdrawRequest(address account) internal override {
+        WithdrawRequest memory w = v().getWithdrawRequest(account);
+
+        vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
+        WithdrawRequestNFT.finalizeRequests(w.requestId);
+    }
+    {% elif contractName == 'PendlePTKelpVault' %}
+    function finalizeWithdrawRequest(address account) internal override {
+        // finalize withdraw request on Kelp
+        vm.deal(address(unstakingVault), 10_000e18);
+        vm.startPrank(0xCbcdd778AA25476F203814214dD3E9b9c46829A1); // kelp: operator
+        WithdrawManager.unlockQueue(
+            Deployments.ALT_ETH_ADDRESS,
+            type(uint256).max,
+            lrtOracle.getAssetPrice(Deployments.ALT_ETH_ADDRESS),
+            lrtOracle.rsETHPrice()
+        );
+        vm.stopPrank();
+        vm.roll(block.number + WithdrawManager.withdrawalDelayBlocks());
+    }
+    {% else %}
+    function finalizeWithdrawRequest(address account) internal override {}
+    {% endif %}
+
+    function getDepositParams(
+        uint256 /* depositAmount */,
+        uint256 /* maturity */
+    ) internal view override returns (bytes memory) {
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+
+        PendleDepositParams memory d = PendleDepositParams({
+            dexId: {{ 'm.primaryDexId' if tradeOnEntry else '0' }},
+            minPurchaseAmount: 0,
+            exchangeData: {{ 'm.exchangeData' if tradeOnEntry else '""' }},
+            minPtOut: 0,
+            approxParams: IPRouter.ApproxParams({
+                guessMin: 0,
+                guessMax: type(uint256).max,
+                guessOffchain: 0,
+                maxIteration: 256,
+                eps: 1e15 // recommended setting (0.1%)
+            })
+        });
+
+        return abi.encode(d);
+    }
+
+    {% if primaryDex == "CurveV2" %}
+    function getRedeemParams(
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal view virtual override returns (bytes memory) {
+        RedeemParams memory r;
+
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        r.minPurchaseAmount = 0;
+        r.dexId = m.primaryDexId;
+        // For CurveV2 we need to swap the in and out indexes on exit
+        CurveV2Adapter.CurveV2SingleData memory d;
+        d.pool = {{exchangeData.pool}};
+        d.fromIndex = {{exchangeData.toIndex}};
+        d.toIndex = {{exchangeData.fromIndex}};
+        r.exchangeData = abi.encode(d);
+
+        return abi.encode(r);
+    }
+    {% endif -%}
+}
+
+
+contract Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is PendleStakingHarness {
+
+    function getVaultName() public pure override returns (string memory) {
+        return 'Pendle:PT {{stakeSymbol}} {{expiry}}:[{{primaryBorrowCurrency}}]';
+    }
+
+    function getRequiredOracles() public override view returns (
+        address[] memory token, address[] memory oracle
+    ) {
+        {%- set oracleLength = oracles | length + 1 %}
+        token = new address[]({{ oracleLength }});
+        oracle = new address[]({{ oracleLength }});
+
+        // Custom PT Oracle
+        token[0] = ptAddress;
+        oracle[0] = ptOracle;
+
+        {% for oracle in oracles -%}
+        // {{ oracle.symbol }}
+        token[{{ loop.index }}] = {{ oracle.tokenAddress }};
+        oracle[{{ loop.index }}] = {{ oracle.oracleAddress }};
+        {% endfor %}
+    }
+
+    function getTradingPermissions() public pure override returns (
+        address[] memory token, ITradingModule.TokenPermissions[] memory permissions
+    ) {
+        {%- set tokenLength = rewards | length + (permissions | default([]) | length) %}
+        token = new address[]({{ tokenLength }});
+        permissions = new ITradingModule.TokenPermissions[]({{ tokenLength }});
+
+        {% for reward in rewards -%}
+        // {{ reward.symbol }}
+        token[{{ loop.index - 1}}] = {{ reward.tokenAddress}};
+        permissions[{{ loop.index - 1}}] = ITradingModule.TokenPermissions(
+            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
+        );
+        {% endfor %}
+
+        {% for p in (permissions | default([])) -%}
+        token[{{ rewards | length + loop.index - 1 }}] = {{ p.tokenAddress }};
+        permissions[{{ rewards | length + loop.index - 1 }}] = ITradingModule.TokenPermissions(
+            { allowSell: true, dexFlags: 1 << {{ p.dexId }}, tradeTypeFlags: {{ p.tradeTypeFlags }} }
+        );
+        {% endfor %}
+    }
+
+    function deployImplementation() internal override returns (address impl) {
+        {% if contractName == "PendlePTGeneric" %}
+        return address(new PendlePTGeneric(
+            marketAddress, tokenInSy, tokenOutSy, borrowToken, ptAddress, redemptionToken
+        ));
+        {% else %}
+        return address(new {{contractName}}(marketAddress, ptAddress));
+        {% endif %}
+    }
+
+    constructor() {
+        marketAddress = {{ marketAddress }};
+        ptAddress = {{ ptAddress }};
+        twapDuration = 15 minutes; // recommended 15 - 30 min
+        useSyOracleRate = {{ useSyOracleRate }};
+        baseToUSDOracle = {{ baseToUSDOracle }};
+        borrowToken = {{ borrowToken }};
+        tokenOutSy = {{ stakeToken }};
+        {% if contractName == "PendlePTGeneric" %}
+        tokenInSy = {{ stakeToken }};
+        redemptionToken = {{ stakeToken }};
+        {% endif %}
+
+        {{ exchangeCode }}
+        bytes memory exchangeData = abi.encode(d);
+        uint8 primaryDexId = {{ primaryDexId }};
+
+        setMetadata(StakingMetadata({{ borrowCurrencyId }}, primaryDexId, exchangeData, {{ 'false' if contractName == "PendlePTGeneric" else 'true' }}));
+    }
+
+}

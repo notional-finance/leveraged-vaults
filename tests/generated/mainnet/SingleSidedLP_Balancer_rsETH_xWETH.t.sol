@@ -3,9 +3,9 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Balancer_rsETH_xWETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Balancer_rsETH_xWETH is VaultRewarderTests {
     function setUp() public override {
-        FORK_BLOCK = 20056700;
+        FORK_BLOCK = 20671361;
         harness = new Harness_SingleSidedLP_Balancer_rsETH_xWETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -51,7 +51,7 @@ ComposablePoolHarness
 
         // rsETH
         token[0] = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
-        oracle[0] = 0x150aab1C3D63a1eD0560B95F23d7905CE6544cCB;
+        oracle[0] = 0xb676EA4e0A54ffD579efFc1f1317C70d671f2028;
         // ETH
         token[1] = 0x0000000000000000000000000000000000000000;
         oracle[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -77,9 +77,10 @@ ComposablePoolHarness
         _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 3000,
-            oraclePriceDeviationLimitPercent: 0.015e4
+            oraclePriceDeviationLimitPercent: 0.015e4,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x0000000000000000000000000000000000000000);
 

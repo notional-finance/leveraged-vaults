@@ -3,13 +3,13 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Aura_rETH_xWETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Aura_rETH_xWETH is VaultRewarderTests {
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Aura_rETH_xWETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 1000e8;
+        minDeposit = 0.01e18;
         maxDeposit = 1e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
@@ -86,9 +86,10 @@ ComposablePoolHarness
         _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 3000,
-            oraclePriceDeviationLimitPercent: 0.01e4
+            oraclePriceDeviationLimitPercent: 0.01e4,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x17F061160A167d4303d5a6D32C2AC693AC87375b);
 

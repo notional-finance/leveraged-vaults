@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Aura_xUSDC_DAI_USDT_USDC_e is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Aura_xUSDC_DAI_USDT_USDC_e is VaultRewarderTests {
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Aura_xUSDC_DAI_USDT_USDC_e();
 
@@ -93,9 +93,10 @@ ComposablePoolHarness
         _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 100
+            maxPoolShare: 5000,
+            oraclePriceDeviationLimitPercent: 100,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E);
 

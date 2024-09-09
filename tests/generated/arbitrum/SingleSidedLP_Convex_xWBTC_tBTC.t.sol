@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Convex_xWBTC_tBTC is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Convex_xWBTC_tBTC is VaultRewarderTests {
     function setUp() public override {
         FORK_BLOCK = 215828254;
         harness = new Harness_SingleSidedLP_Convex_xWBTC_tBTC();
@@ -81,9 +81,10 @@ Curve2TokenConvexHarness
         _m.primaryBorrowCurrency = 4;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
-            maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 150
+            maxPoolShare: 4000,
+            oraclePriceDeviationLimitPercent: 150,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x6B7B84F6EC1c019aF08C7A2F34D3C10cCB8A8eA6);
 

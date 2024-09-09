@@ -8,6 +8,7 @@ import {IAuraRewardPool} from "@interfaces/aura/IAuraRewardPool.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {BalancerPoolMixin, DeploymentParams} from "./BalancerPoolMixin.sol";
 import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
+import {RewardPoolStorage, RewardPoolType} from "@contracts/vaults/common/VaultStorage.sol";
 
 /// @notice Deployment parameters with Aura staking
 struct AuraVaultDeploymentParams {
@@ -75,11 +76,8 @@ abstract contract AuraStakingMixin is BalancerPoolMixin {
     }
 
     /// @notice Claim reward tokens
-    function _claimRewardTokens() internal override {
-        if (address(AURA_REWARD_POOL) != address(0)) {
-            // Claim all reward tokens including extra tokens
-            bool success = AURA_REWARD_POOL.getReward(address(this), true); // claimExtraRewards = true
-            require(success);
-        }
+    function _rewardPoolStorage() internal view override returns (RewardPoolStorage memory r) {
+        r.poolType = address(AURA_REWARD_POOL) == address(0) ? RewardPoolType._UNUSED : RewardPoolType.AURA;
+        r.rewardPool = address(AURA_REWARD_POOL);
     }
 }

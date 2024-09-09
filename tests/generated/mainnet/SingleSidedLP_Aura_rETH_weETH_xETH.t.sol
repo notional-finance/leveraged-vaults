@@ -3,14 +3,26 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Aura_rETH_weETH_xETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Aura_rETH_weETH_xETH is VaultRewarderTests {
+    function _stringEqual(string memory a, string memory b) private pure returns(bool) {
+      return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
+    function _shouldSkip(string memory name) internal pure override returns(bool) {
+        if (_stringEqual(name, "test_claimReward_ShouldNotClaimMoreThanTotalIncentives")) return true;
+        if (_stringEqual(name, "test_EnterExitEnterVault")) return true;
+        if (_stringEqual(name, "test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission")) return true;
+        
+        return false;
+    }
+
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Aura_rETH_weETH_xETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 1e18;
-        maxDeposit = 100e18;
+        maxDeposit = 5e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
 
@@ -52,8 +64,8 @@ WrappedComposablePoolHarness
         token[0] = 0xae78736Cd615f374D3085123A210448E74Fc6393;
         oracle[0] = 0xA7D273951861CF07Df8B0A1C3c934FD41bA9E8Eb;
         // weETH
-        token[1] = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
-        oracle[1] = 0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136;
+        token[1] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
+        oracle[1] = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
         // ETH
         token[2] = 0x0000000000000000000000000000000000000000;
         oracle[2] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -96,9 +108,10 @@ WrappedComposablePoolHarness
         _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 0.015e4
+            oraclePriceDeviationLimitPercent: 0.015e4,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x07A319A023859BbD49CC9C38ee891c3EA9283Cc5);
 

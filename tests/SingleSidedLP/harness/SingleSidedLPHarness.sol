@@ -9,7 +9,7 @@ abstract contract SingleSidedLPHarness is StrategyVaultHarness {
         return abi.decode(metadata, (SingleSidedLPMetadata));
     }
 
-    function setMetadata(SingleSidedLPMetadata memory _m) virtual internal returns (bytes memory) {
+    function setMetadata(SingleSidedLPMetadata memory _m) virtual public returns (bytes memory) {
         metadata = abi.encode(_m);
         return metadata;
     }

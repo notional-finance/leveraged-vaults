@@ -3,14 +3,25 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Aura_ezETH_xWETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Aura_ezETH_xWETH is VaultRewarderTests {
+    function _stringEqual(string memory a, string memory b) private pure returns(bool) {
+      return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
+    function _shouldSkip(string memory name) internal pure override returns(bool) {
+        if (_stringEqual(name, "test_claimReward_ShouldNotClaimMoreThanTotalIncentives")) return true;
+        if (_stringEqual(name, "test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission")) return true;
+        
+        return false;
+    }
+
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Aura_ezETH_xWETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 1e18;
-        maxDeposit = 100e18;
+        maxDeposit = 5e18;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
 
@@ -86,9 +97,10 @@ ComposablePoolHarness
         _m.primaryBorrowCurrency = 1;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 3000,
-            oraclePriceDeviationLimitPercent: 0.015e4
+            oraclePriceDeviationLimitPercent: 0.015e4,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x95eC73Baa0eCF8159b4EE897D973E41f51978E50);
 

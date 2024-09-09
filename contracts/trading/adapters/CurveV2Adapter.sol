@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 import {Deployments} from "@deployments/Deployments.sol";
 import {Trade, TradeType, InvalidTrade} from "@interfaces/trading/ITradingModule.sol";
 import {ICurveRouterV2} from "@interfaces/curve/ICurveRouterV2.sol";
+import {ICurvePool} from "@interfaces/curve/ICurvePool.sol";
 
 library CurveV2Adapter {
     uint256 internal constant ROUTE_LEN = 9;
@@ -11,6 +12,8 @@ library CurveV2Adapter {
     struct CurveV2SingleData {
         // Address of the pool to use for the swap
         address pool;
+        int128 fromIndex;
+        int128 toIndex;
     }
 
     struct CurveV2BatchData { 
@@ -44,19 +47,23 @@ library CurveV2Adapter {
             bytes memory executionCallData
         )
     {
+        if (trade.sellToken == Deployments.ETH_ADDRESS) {
+            msgValue = trade.amount;
+        }
+
         if (trade.tradeType == TradeType.EXACT_IN_SINGLE) {
             CurveV2SingleData memory data = abi.decode(trade.exchangeData, (CurveV2SingleData));
+            target = data.pool;
+
             executionCallData = abi.encodeWithSelector(
-                ICurveRouterV2.exchange.selector,
-                data.pool,
-                _getTokenAddress(trade.sellToken),
-                _getTokenAddress(trade.buyToken),
+                ICurvePool.exchange.selector,
+                data.fromIndex, data.toIndex,
                 trade.amount,
-                trade.limit,
-                from
+                trade.limit
             );
         } else if (trade.tradeType == TradeType.EXACT_IN_BATCH) {
             CurveV2BatchData memory data = abi.decode(trade.exchangeData, (CurveV2BatchData));
+            target = address(Deployments.CURVE_ROUTER_V2);
 
             // Validate exchange data
             require(data.route[0] == _getTokenAddress(trade.sellToken));
@@ -90,11 +97,6 @@ library CurveV2Adapter {
             revert InvalidTrade();
         }
 
-        target = address(Deployments.CURVE_ROUTER_V2);
-        if (trade.sellToken == Deployments.ETH_ADDRESS) {
-            msgValue = trade.amount;
-        } else {
-            spender = target;
-        }
+        spender = target;
     }
 }

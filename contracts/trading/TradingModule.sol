@@ -11,6 +11,7 @@ import {UniV3Adapter} from "./adapters/UniV3Adapter.sol";
 import {UniV2Adapter} from "./adapters/UniV2Adapter.sol";
 import {ZeroExAdapter} from "./adapters/ZeroExAdapter.sol";
 import {CurveV2Adapter} from "./adapters/CurveV2Adapter.sol";
+import {CamelotV3Adapter} from "./adapters/CamelotV3Adapter.sol";
 import {TradingUtils} from "./TradingUtils.sol";
 
 import {IERC20} from "@contracts/utils/TokenUtils.sol";
@@ -85,7 +86,7 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         /// @dev update these if we are adding new DEXes or types
         // Validates that the permissions being set do not exceed the max values set
         // by the token.
-        for (uint32 i = uint32(DexId.CURVE_V2) + 1; i < 32; i++) {
+        for (uint32 i = uint32(DexId.CAMELOT_V3) + 1; i < 32; i++) {
             require(!_hasPermission(permissions.dexFlags, uint32(1 << i)));
         }
         for (uint32 i = uint32(TradeType.EXACT_OUT_BATCH) + 1; i < 32; i++) {
@@ -226,6 +227,10 @@ contract TradingModule is Initializable, UUPSUpgradeable, ITradingModule {
         if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
             if (DexId(dexId) == DexId.UNISWAP_V2) {
                 return UniV2Adapter.getExecutionData(from, trade);
+            }
+        } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
+            if (DexId(dexId) == DexId.CAMELOT_V3) {
+                return CamelotV3Adapter.getExecutionData(from, trade);
             }
         }
 

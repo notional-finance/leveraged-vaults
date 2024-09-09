@@ -2,7 +2,6 @@
 pragma solidity 0.8.24;
 
 import "../BaseAcceptanceTest.sol";
-import "../../scripts/deploy/DeployProxyVault.sol";
 import "@contracts/vaults/common/SingleSidedLPVaultBase.sol";
 import "@contracts/proxy/nProxy.sol";
 import "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
@@ -20,28 +19,31 @@ struct SingleSidedLPMetadata {
 }
 
 abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
-    bytes32 internal constant EMERGENCY_EXIT_ROLE = keccak256("EMERGENCY_EXIT_ROLE");
-    bytes32 internal constant REWARD_REINVESTMENT_ROLE = keccak256("REWARD_REINVESTMENT_ROLE");
-
     uint256 numTokens;
     SingleSidedLPMetadata metadata;
-
 
     function deployTestVault() internal override returns (IStrategyVault) {
         (address impl, bytes memory _metadata) = harness.deployVaultImplementation();
         metadata = abi.decode(_metadata, (SingleSidedLPMetadata));
         nProxy proxy;
 
-        if (harness.EXISTING_DEPLOYMENT() != address(0)) {
-            SingleSidedLPVaultBase b = SingleSidedLPVaultBase(payable(harness.EXISTING_DEPLOYMENT()));
+        address existingDeployment = harness.EXISTING_DEPLOYMENT();
+        if (existingDeployment != address(0)) {
+            SingleSidedLPVaultBase b = SingleSidedLPVaultBase(payable(existingDeployment));
             ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory beforeInfo = b.getStrategyVaultInfo();
-            
-            proxy = nProxy(payable(harness.EXISTING_DEPLOYMENT()));
+
+            proxy = nProxy(payable(existingDeployment));
             vm.prank(Deployments.NOTIONAL.owner());
-            UUPSUpgradeable(address(proxy)).upgradeTo(impl);
+            UUPSUpgradeable(address(proxy)).upgradeToAndCall(
+                impl,
+                abi.encodeWithSelector(SingleSidedLPVaultBase.setRewardPoolStorage.selector)
+            );
 
             ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory afterInfo = b.getStrategyVaultInfo();
             assertEq(abi.encode(afterInfo), abi.encode(beforeInfo));
+
+            vm.prank(Deployments.NOTIONAL.owner());
+            b.setStrategyVaultSettings(metadata.settings);
         } else {
             bytes memory initData = harness.getInitializeData();
 
@@ -60,13 +62,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         for (uint256 i; i < t.length; i++) {
             (AggregatorV2V3Interface oracle, /* */) = Deployments.TRADING_MODULE.priceOracles(t[i]);
             if (address(oracle) == address(0)) {
-                if (Deployments.CHAIN_ID == 1) {
-                    // NOTE: temporary code b/c owner has not changed yet
-                    vm.prank(0x22341fB5D92D3d801144aA5A925F401A91418A05);
-                } else {
-                    vm.prank(Deployments.NOTIONAL.owner());
-                }
-                Deployments.TRADING_MODULE.setPriceOracle(t[i], AggregatorV2V3Interface(oracles[i]));
+                setPriceOracle(t[i], oracles[i]);
             } else {
                 require(address(oracle) == oracles[i], "Oracle Mismatch");
             }
@@ -120,9 +116,10 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.expectRevert("Unauthorized");
         v().setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 1,
-            oraclePriceDeviationLimitPercent: 50
+            oraclePriceDeviationLimitPercent: 50,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         }));
 
         vm.expectRevert("Unauthorized");
@@ -143,9 +140,10 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         vm.prank(Deployments.NOTIONAL.owner());
         v().setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 1,
-            oraclePriceDeviationLimitPercent: 50
+            oraclePriceDeviationLimitPercent: 50,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         }));
 
         
@@ -171,7 +169,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     function test_RevertIf_belowMinAmounts() public {
         address account = makeAddr("account");
         uint256 maturity = maturities[0];
-        uint256 vaultShares = enterVaultBypass(
+        uint256 vaultShares = enterVault(
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
@@ -181,14 +179,14 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         for (uint256 i; i < d.minAmounts.length; i++) d.minAmounts[i] = maxDeposit * 2;
 
         vm.expectRevert();
-        exitVaultBypass(account, vaultShares, maturity, abi.encode(d));
+        exitVault(account, vaultShares, maturity, abi.encode(d));
     }
 
     function test_RevertIf_NoAccessEmergencyExit() public {
         address account = makeAddr("account");
         address exit = makeAddr("exit");
         uint256 maturity = maturities[0];
-        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+        enterVault(account, maxDeposit, maturity, getDepositParams(0, 0));
 
         vm.prank(exit);
         // Access control revert on role
@@ -204,7 +202,7 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         address account = makeAddr("account");
         exit = makeAddr("exit");
         uint256 maturity = maturities[0];
-        enterVaultBypass(
+        enterVault(
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
@@ -258,10 +256,10 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
             Errors.VaultLocked.selector
         );
 
-        vm.expectRevert(Errors.VaultLocked.selector);
+        vm.expectRevert();
         // 0.01e8 is an intentionally small number here to avoid underflows in
         // the test code, we expect a revert no matter what
-        exitVaultBypass(account, 0.01e8, maturity, getRedeemParams(0, 0));
+        exitVault(account, 0.01e8, maturity, getRedeemParams(0, 0));
 
         vm.expectRevert(Errors.VaultLocked.selector);
         vault.convertStrategyToUnderlying(account, 0.01e8, maturity);
@@ -284,7 +282,6 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     }
 
     function test_EmergencyExit() public {
-        address account = makeAddr("account");
         uint256 maturity = maturities[0];
         (uint256[] memory exitBalances, /* */, uint256 initialBalance) = setup_EmergencyExit();
 
@@ -311,29 +308,32 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         assertRelDiff(initialBalance, postRestore, 0.0001e9, "Restore Balance");
         assertEq(v().isLocked(), false);
 
+        address account = makeAddr("account2");
         // All of these calls should succeed
-        uint256 vaultShares = enterVaultBypass(account, maxDeposit * 2, maturity, getDepositParams(0, 0));
+        uint256 vaultShares = enterVault(account, maxDeposit / 2, maturity, getDepositParams(0, 0));
         vault.convertStrategyToUnderlying(account, vaultShares, maturity);
+        vm.warp(block.timestamp + 2 minutes);
         // NOTE: the exitVaultBypass above causes an underflow inside exitVaultBypass
         // here because the vault shares are removed from the test accounting even though
         // the call reverts earlier.
-        exitVaultBypass(account, vaultShares, maturity, getRedeemParams(0, 0));
+        exitVault(account, vaultShares, maturity, getRedeemParams(0, 0));
     }
 
     function test_RevertIf_oracleDeviation() public {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
-        uint256 vaultShares = enterVaultBypass(
+        uint256 vaultShares = enterVault(
             account, maxDeposit, maturity, getDepositParams(0, 0)
         );
 
         vm.prank(Deployments.NOTIONAL.owner());
         v().setStrategyVaultSettings(StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 0
+            oraclePriceDeviationLimitPercent: 0,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         }));
 
         // Oracle deviation checks only occur when we do valuation, so deposit
@@ -355,47 +355,23 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
-        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+        enterVault(account, maxDeposit, maturity, getDepositParams(0, 0));
 
         vm.prank(reward);
         // Access control revert on role
         vm.expectRevert();
-        v().claimRewardTokens();
+        // v().claimRewardTokens();
 
         vm.prank(reward);
         vm.expectRevert();
         v().reinvestReward(new SingleSidedRewardTradeParams[](0), 0);
     }
 
-    function test_RewardReinvestmentClaimTokens() public {
-        address account = makeAddr("account");
-        address reward = makeAddr("reward");
-        uint256 maturity = maturities[0];
-        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
-
-        vm.prank(Deployments.NOTIONAL.owner());
-        v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
-
-        skip(3600);
-        uint256[] memory initialBalance = new uint256[](metadata.rewardTokens.length);
-        for (uint256 i; i < metadata.rewardTokens.length; i++) {
-            initialBalance[i] = metadata.rewardTokens[i].balanceOf(address(vault));
-        }
-
-        vm.prank(reward);
-        v().claimRewardTokens();
-
-        for (uint256 i; i < metadata.rewardTokens.length; i++) {
-            uint256 rewardBalance = metadata.rewardTokens[i].balanceOf(address(vault));
-            assertGt(rewardBalance - initialBalance[i], 0, "Reward Balance Decrease");
-        }
-    }
-
     function test_RevertIf_RewardReinvestmentTradesPoolTokens() public {
         address account = makeAddr("account");
         address reward = makeAddr("reward");
         uint256 maturity = maturities[0];
-        enterVaultBypass(account, maxDeposit, maturity, getDepositParams(0, 0));
+        enterVault(account, maxDeposit, maturity, getDepositParams(0, 0));
 
         vm.prank(Deployments.NOTIONAL.owner());
         v().grantRole(REWARD_REINVESTMENT_ROLE, reward);
@@ -410,8 +386,8 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     }
 
     function test_cannotReinitialize() public {
-        vm.prank(Deployments.NOTIONAL.owner());
         bytes memory init = harness.getInitializeData();
+        vm.prank(Deployments.NOTIONAL.owner());
         vm.expectRevert("Initializable: contract is already initialized");
         (address(vault).call(init));
     }

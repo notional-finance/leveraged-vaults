@@ -12,6 +12,6 @@ out_mainnet/
 out_arbitrum/
 node_modules/
 hardhat.config.js
-cache_hardhat/
 tags
 cspell.json
+cache_hardhat/

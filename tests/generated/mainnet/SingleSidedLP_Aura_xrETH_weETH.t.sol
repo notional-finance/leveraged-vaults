@@ -3,14 +3,14 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_SingleSidedLP_Aura_xrETH_weETH is BaseSingleSidedLPVault {
+contract Test_SingleSidedLP_Aura_xrETH_weETH is VaultRewarderTests {
     function setUp() public override {
         harness = new Harness_SingleSidedLP_Aura_xrETH_weETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
         minDeposit = 1e18;
-        maxDeposit = 100e18;
+        maxDeposit = 10e18;
         maxRelEntryValuation = 75 * BASIS_POINT;
         maxRelExitValuation = 75 * BASIS_POINT;
 
@@ -52,8 +52,8 @@ ComposablePoolHarness
         token[0] = 0xae78736Cd615f374D3085123A210448E74Fc6393;
         oracle[0] = 0xA7D273951861CF07Df8B0A1C3c934FD41bA9E8Eb;
         // weETH
-        token[1] = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
-        oracle[1] = 0xdDb6F90fFb4d3257dd666b69178e5B3c5Bf41136;
+        token[1] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
+        oracle[1] = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
         
     }
 
@@ -86,9 +86,10 @@ ComposablePoolHarness
         _m.primaryBorrowCurrency = 7;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: 2000,
-            oraclePriceDeviationLimitPercent: 0.015e4
+            oraclePriceDeviationLimitPercent: 0.015e4,
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20(0x07A319A023859BbD49CC9C38ee891c3EA9283Cc5);
 

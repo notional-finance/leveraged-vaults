@@ -3,7 +3,21 @@ pragma solidity 0.8.24;
 
 import "../../SingleSidedLP/harness/index.sol";
 
-contract Test_{{ contractName }} is BaseSingleSidedLPVault {
+contract Test_{{ contractName }} is VaultRewarderTests {
+    {% if (skipTests | length) > 0 -%}
+    function _stringEqual(string memory a, string memory b) private pure returns(bool) {
+      return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
+    function _shouldSkip(string memory name) internal pure override returns(bool) {
+        {% for test in skipTests -%}
+            if (_stringEqual(name, "{{ test }}")) return true;
+        {% endfor %}
+        return false;
+    }
+
+    {% endif -%}
+
     function setUp() public override {
         {% if forkBlock is defined -%}
         FORK_BLOCK = {{ forkBlock }};
@@ -112,9 +126,10 @@ contract Harness_{{ contractName }} is
         _m.primaryBorrowCurrency = {{ primaryBorrowCurrency }};
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            deprecated_poolSlippageLimitPercent: 0,
             maxPoolShare: {{ settings.maxPoolShare }},
-            oraclePriceDeviationLimitPercent: {{ settings.oraclePriceDeviationLimitPercent }}
+            oraclePriceDeviationLimitPercent: {{ settings.oraclePriceDeviationLimitPercent }},
+            numRewardTokens: 0,
+            forceClaimAfter: 1 weeks
         });
         _m.rewardPool = IERC20({{ rewardPool }});
         {%- if whitelistedReward %}

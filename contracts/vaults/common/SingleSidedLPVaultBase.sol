@@ -8,6 +8,8 @@ import {Errors} from "@contracts/global/Errors.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {TokenUtils} from "@contracts/utils/TokenUtils.sol";
+import {Deployments} from "@deployments/Deployments.sol";
+import {Delegate} from "../../utils/Delegate.sol";
 import {StrategyUtils} from "./StrategyUtils.sol";
 import {VaultStorage} from "./VaultStorage.sol";
 
@@ -25,6 +27,7 @@ import {
 } from "@interfaces/notional/ISingleSidedLPStrategyVault.sol";
 import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {ITradingModule, DexId} from "@interfaces/trading/ITradingModule.sol";
+import {VaultRewarderLib, RewardPoolStorage} from "./VaultRewarderLib.sol";
 
 /**
  * @notice Base contract for the SingleSidedLP strategy. This strategy deposits into an LP
@@ -78,7 +81,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     function _initialApproveTokens() internal virtual;
 
     /// @notice Called to claim reward tokens
-    function _claimRewardTokens() internal virtual;
+    function _rewardPoolStorage() internal view virtual returns (RewardPoolStorage memory);
 
     /// @notice Called during reward reinvestment to validate that the token being sold is not one
     /// of the tokens that is required for the vault to function properly (i.e. one of the pool tokens
@@ -172,6 +175,11 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         VaultStorage.setStrategyVaultSettings(settings);
     }
 
+    // @notice need to be called with `upgradeToAndCall` when upgrading already deployed vaults
+    // does not need to be called on any upgrade after that
+    function setRewardPoolStorage() public onlyNotionalOwner {
+        VaultStorage.setRewardPoolStorage(_rewardPoolStorage());
+    }
     /// @notice Called to initialize the vault and set the initial approvals. All of the other vault
     /// parameters are set via immutable parameters already.
     function initialize(InitParams calldata params) external override initializer onlyNotionalOwner {
@@ -182,6 +190,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         VaultStorage.setStrategyVaultSettings(params.settings);
 
         _initialApproveTokens();
+        VaultStorage.setRewardPoolStorage(_rewardPoolStorage());
     }
 
     /************************************************************************
@@ -197,8 +206,8 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// the deposit amount has been transferred to this vault. Will join the LP pool with
     /// the funds given and then return the total vault shares minted.
     function _depositFromNotional(
-        address /* account */, uint256 deposit, uint256 /* maturity */, bytes calldata data
-    ) internal override virtual whenNotLocked returns (uint256 vaultSharesMinted) {
+        address account, uint256 deposit, uint256 /* maturity */, bytes calldata data
+    ) internal override virtual whenNotLocked returns (uint256) {
         // Short circuit any zero deposit amounts
         if (deposit == 0) return 0;
 
@@ -224,13 +233,24 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         }
 
         uint256 lpTokens = _joinPoolAndStake(amounts, params.minPoolClaim);
-        return _mintVaultShares(lpTokens);
+        (uint256 vaultShares, uint256 totalVaultSharesBefore) = _mintVaultShares(lpTokens);
+
+        _updateAccountRewards({
+            account: account,
+            vaultShares: vaultShares,
+            totalVaultSharesBefore: totalVaultSharesBefore,
+            isMint: true
+        });
+        return vaultShares;
     }
 
     /// @notice Given a number of LP tokens minted, issues vault shares back to the holder. Vault
     /// shares are claim on the LP tokens held by the vault. As rewards are reinvested, one vault
     /// share is a claim on an increasing amount of LP tokens.
-    function _mintVaultShares(uint256 lpTokens) internal returns (uint256 vaultShares) {
+    function _mintVaultShares(uint256 lpTokens) internal returns (
+        uint256 vaultShares,
+        uint256 totalVaultSharesBefore
+    ) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         if (state.totalPoolClaim == 0) {
             // Vault Shares are in 8 decimal precision
@@ -239,6 +259,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             vaultShares = (lpTokens * state.totalVaultSharesGlobal) / state.totalPoolClaim;
         }
 
+        totalVaultSharesBefore = state.totalVaultSharesGlobal;
         // Updates internal storage here
         state.totalPoolClaim += lpTokens;
         state.totalVaultSharesGlobal += vaultShares.toUint80();
@@ -259,14 +280,14 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
     /// @return finalPrimaryBalance which is the amount of funds that the vault will transfer back
     /// to Notional and the account to repay debts and withdraw profits.
     function _redeemFromNotional(
-        address /* account */, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
+        address account, uint256 vaultShares, uint256 /* maturity */, bytes calldata data
     ) internal override virtual whenNotLocked returns (uint256 finalPrimaryBalance) {
         // Short circuit any zero redemption amounts, this can occur during rolling positions
         // or withdraw cash balances post liquidation.
         if (vaultShares == 0) return 0;
 
         // Updates internal account to deduct the vault shares.
-        uint256 poolClaim = _redeemVaultShares(vaultShares);
+        (uint256 poolClaim, uint256 totalVaultSharesBefore) = _redeemVaultShares(vaultShares);
         RedeemParams memory params = abi.decode(data, (RedeemParams));
 
         bool isSingleSided = params.redemptionTrades.length == 0;
@@ -279,7 +300,7 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             (IERC20[] memory tokens, /* */) = TOKENS();
             // Redemption trades are not automatically enabled on vaults since the trading module
             // requires explicit permission for every token that can be sold by an address.
-            return StrategyUtils.executeRedemptionTrades(
+            finalPrimaryBalance = StrategyUtils.executeRedemptionTrades(
                 tokens,
                 exitBalances,
                 params.redemptionTrades,
@@ -289,15 +310,28 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
             // No explicit check is done here to ensure that the other balances are zero, assumed
             // that the `_unstakeAndExitPool` method on the implementation is correct and will only
             // ever withdraw to a single balance.
-            return exitBalances[PRIMARY_INDEX()];
+            finalPrimaryBalance = exitBalances[PRIMARY_INDEX()];
         }
+
+        _updateAccountRewards({
+            account: account,
+            vaultShares: vaultShares,
+            totalVaultSharesBefore: totalVaultSharesBefore,
+            isMint: false
+        });
     }
 
     /// @notice Updates internal account for vault share redemption.
-    function _redeemVaultShares(uint256 vaultShares) internal returns (uint256 poolClaim) {
+    function _redeemVaultShares(uint256 vaultShares) internal returns (
+        uint256 poolClaim,
+        uint256 totalVaultSharesBefore
+    ) {
         StrategyVaultState memory state = VaultStorage.getStrategyVaultState();
         // Will revert on divide by zero, which is the correct behavior
         poolClaim = (vaultShares * state.totalPoolClaim) / state.totalVaultSharesGlobal;
+
+        // Set this before reducing the global shares
+        totalVaultSharesBefore = state.totalVaultSharesGlobal;
 
         state.totalPoolClaim -= poolClaim;
         // Will revert on underflow if vault shares is greater than total shares global
@@ -375,11 +409,6 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
      * Methods used by bots to claim reward tokens and reinvest them as LP  *
      * tokens which are donated to all vault users.                         *
      ************************************************************************/
-
-    /// @notice Ensures that only whitelisted bots can claim reward tokens.
-    function claimRewardTokens() external override onlyRole(REWARD_REINVESTMENT_ROLE) {
-        _claimRewardTokens();
-    }
 
     /// @notice Ensures that only whitelisted bots can reinvest rewards. Since rewards
     /// are typically less liquid than pool tokens and lack oracles, reward reinvestment
@@ -531,6 +560,35 @@ abstract contract SingleSidedLPVaultBase is BaseStrategyVault, UUPSUpgradeable, 
         // method we do not validate the sell token so we can sell any of the tokens held on the vault
         // in exchange for any other token that goes into the pool.
         _executeRewardTrades(trades, trades[0].sellToken);
+    }
+
+    function deleverageAccount(
+        address /* account */,
+        address /* vault */,
+        address liquidator,
+        uint16 /* currencyIndex */,
+        int256 /* depositUnderlyingInternal */
+    ) external payable override returns (uint256 /* vaultSharesFromLiquidation */, int256 /* depositAmountPrimeCash */) {
+        require(msg.sender == liquidator);
+        _checkReentrancyContext();
+        Delegate._delegate(Deployments.VAULT_REWARDER_LIB);
+    }
+
+    fallback() external {
+        Delegate._delegate(Deployments.VAULT_REWARDER_LIB);
+    }
+
+    function _updateAccountRewards(
+        address account,
+        uint256 vaultShares,
+        uint256 totalVaultSharesBefore,
+        bool isMint
+    ) internal {
+        (bool success, /* */) = Deployments.VAULT_REWARDER_LIB.delegatecall(abi.encodeWithSelector(
+            VaultRewarderLib.updateAccountRewards.selector,
+            account, vaultShares, totalVaultSharesBefore, isMint
+        ));
+        require(success);
     }
 
     // Storage gap for future potential upgrades

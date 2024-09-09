@@ -9,6 +9,7 @@ import {IConvexBooster, IConvexBoosterArbitrum} from "@interfaces/convex/IConvex
 import {IConvexRewardToken} from "@interfaces/convex/IConvexRewardToken.sol";
 import {IConvexRewardPool, IConvexRewardPoolArbitrum} from "@interfaces/convex/IConvexRewardPool.sol";
 import {Curve2TokenPoolMixin, DeploymentParams} from "./Curve2TokenPoolMixin.sol";
+import {RewardPoolStorage, RewardPoolType} from "@contracts/vaults/common/VaultStorage.sol";
 
 struct ConvexVaultDeploymentParams {
     address rewardPool;
@@ -94,11 +95,12 @@ abstract contract ConvexStakingMixin is Curve2TokenPoolMixin {
         );
     }
 
-    function _claimRewardTokens() internal override {
+    function _rewardPoolStorage() internal view override returns (RewardPoolStorage memory r) {
+        r.rewardPool = address(CONVEX_REWARD_POOL);
         if (Deployments.CHAIN_ID == Constants.CHAIN_ID_MAINNET) {
-            require(IConvexRewardPool(CONVEX_REWARD_POOL).getReward(address(this), true));
+            r.poolType = RewardPoolType.CONVEX_MAINNET;
         } else if (Deployments.CHAIN_ID == Constants.CHAIN_ID_ARBITRUM) {
-            IConvexRewardPoolArbitrum(CONVEX_REWARD_POOL).getReward(address(this));
+            r.poolType = RewardPoolType.CONVEX_ARBITRUM;
         } else {
             revert();
         }

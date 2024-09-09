@@ -167,7 +167,7 @@ contract FlashLiquidator is BoringOwnable {
 
         uint256 currentBalance = IERC20(asset).balanceOf(address(this));
         // force revert if there is no profit
-        require(currentBalance > amount);
+        require(currentBalance > (amount + fee), "Unprofitable Liquidation");
 
         // Send profits back to the owner
         if (withdraw) {
@@ -281,6 +281,9 @@ contract FlashLiquidator is BoringOwnable {
         (int256 fCashDeposit, /* */)  = NOTIONAL.getfCashRequiredToLiquidateCash(
             params.currencyId, vaultAccount.maturity, cashBalance
         );
+        // fCash deposit cannot exceed the account's debt
+        int256 maxFCashDeposit = -1 * vaultAccount.accountDebtUnderlying;
+        fCashDeposit = maxFCashDeposit < fCashDeposit ?  maxFCashDeposit : fCashDeposit;
 
         _lend(params.currencyId, vaultAccount.maturity, uint256(fCashDeposit), 0, asset);
 

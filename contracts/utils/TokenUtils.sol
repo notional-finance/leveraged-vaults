@@ -45,8 +45,7 @@ library TokenUtils {
     }
 
     // Supports checking return codes on non-standard ERC20 contracts
-    function _checkReturnCode() private pure {
-        bool success;
+    function checkReturnCode() internal pure returns (bool success) {
         uint256[1] memory result;
         assembly {
             switch returndatasize()
@@ -64,7 +63,9 @@ library TokenUtils {
                     revert(0, 0)
                 }
         }
+    }
 
-        if (!success) revert ERC20Error();
+    function _checkReturnCode() internal pure {
+        if (!checkReturnCode()) revert ERC20Error();
     }
 }
