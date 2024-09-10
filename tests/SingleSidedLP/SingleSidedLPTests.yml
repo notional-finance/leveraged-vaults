@@ -254,7 +254,7 @@ arbitrum:
     rewards: [CRV, ARB]
     oracles: [WBTC, tBTC]
     settings:
-      maxPoolShare: 4000
+      maxPoolShare: 2500
       oraclePriceDeviationLimitPercent: 150
     setUp:
       minDeposit: 0.01e8
@@ -270,7 +270,7 @@ arbitrum:
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 2_300
       minAccountBorrowSize: 0.05e8
-      maxPrimaryBorrow: 0.01e8
+      maxPrimaryBorrow: 0.1e8
 mainnet:
   - vaultName: SingleSidedLP:Convex:[USDT]/crvUSD
     vaultType: Curve2TokenConvex
