@@ -33,7 +33,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
     IPMarket public immutable MARKET;
     address public immutable TOKEN_OUT_SY;
 
-    address immutable TOKEN_IN_SY;
+    address public immutable TOKEN_IN_SY;
     IStandardizedYield immutable SY;
     IPPrincipalToken immutable PT;
     IPYieldToken immutable YT;
