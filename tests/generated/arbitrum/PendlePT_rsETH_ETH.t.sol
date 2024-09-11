@@ -17,7 +17,7 @@ import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 contract Test_PendlePT_rsETH_ETH is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 241486254;
+        FORK_BLOCK = 252477204;
         harness = new Harness_PendlePT_rsETH_ETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -101,11 +101,11 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
 
         token[0] = 0x4186BFC76E2E237523CBC30FD220FE055156b41F;
         permissions[0] = ITradingModule.TokenPermissions(
-            { allowSell: true, dexFlags: 1 << 2, tradeTypeFlags: 5 }
+            { allowSell: true, dexFlags: 1 << 4, tradeTypeFlags: 5 }
         );
         token[1] = 0x0000000000000000000000000000000000000000;
         permissions[1] = ITradingModule.TokenPermissions(
-            { allowSell: true, dexFlags: 1 << 2, tradeTypeFlags: 5 }
+            { allowSell: true, dexFlags: 1 << 4, tradeTypeFlags: 5 }
         );
         
     }
@@ -131,10 +131,10 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
         redemptionToken = 0x4186BFC76E2E237523CBC30FD220FE055156b41F;
         
 
-        UniV3Adapter.UniV3SingleData memory d;
-        d.fee = 100;
+        BalancerV2Adapter.SingleSwapData memory d;
+        d.poolId = 0x90e6cb5249f5e1572afbf8a96d8a1ca6acffd73900000000000000000000055c;
         bytes memory exchangeData = abi.encode(d);
-        uint8 primaryDexId = 2;
+        uint8 primaryDexId = 4;
 
         setMetadata(StakingMetadata(1, primaryDexId, exchangeData, false));
     }

@@ -165,6 +165,11 @@ def get_exchange_data(dex, data):
         d.pool = {data['pool']};
         d.fromIndex = {data['fromIndex']};
         d.toIndex = {data['toIndex']};""".strip()
+    elif dex == "BalancerV2":
+        return f"""
+        BalancerV2Adapter.SingleSwapData memory d;
+        d.poolId = {data['poolId']};
+        """.strip()
     else:
         return f"""
         bytes memory d = "";

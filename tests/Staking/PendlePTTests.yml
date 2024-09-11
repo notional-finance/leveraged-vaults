@@ -27,7 +27,7 @@ defaults:
 
 arbitrum:
   - stakeSymbol: rsETH
-    forkBlock: 241486254
+    forkBlock: 252477204
     expiry: 25SEP2024
     primaryBorrowCurrency: ETH
     contractName: PendlePTGeneric
@@ -36,15 +36,15 @@ arbitrum:
     ptAddress: "0x30c98c0139B62290E26aC2a2158AC341Dcaf1333"
     useSyOracleRate: 'true'
     tradeOnEntry: true
-    primaryDex: UniswapV3
+    primaryDex: BalancerV2
     exchangeData:
-      feeTier: 100
+      poolId: '0x90e6cb5249f5e1572afbf8a96d8a1ca6acffd73900000000000000000000055c'
     permissions:
       - token: rsETH
-        dex: UniswapV3
+        dex: BalancerV2
         tradeTypeFlags: 5
       - token: ETH
-        dex: UniswapV3
+        dex: BalancerV2
         tradeTypeFlags: 5
     setUp:
       minDeposit: 0.1e18
