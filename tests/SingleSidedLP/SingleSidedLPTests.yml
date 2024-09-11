@@ -266,11 +266,11 @@ arbitrum:
       liquidationRate: 103
       reserveFeeShare: 80
       maxBorrowMarketIndex: 2
-      minCollateralRatioBPS: 800
+      minCollateralRatioBPS: 1300
       maxRequiredAccountCollateralRatioBPS: 10_000
       maxDeleverageCollateralRatioBPS: 2_300
       minAccountBorrowSize: 0.05e8
-      maxPrimaryBorrow: 0.1e8
+      maxPrimaryBorrow: 15e8
 mainnet:
   - vaultName: SingleSidedLP:Convex:[USDT]/crvUSD
     vaultType: Curve2TokenConvex

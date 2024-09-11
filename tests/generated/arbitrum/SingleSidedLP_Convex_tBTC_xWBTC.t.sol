@@ -34,13 +34,13 @@ Curve2TokenConvexHarness
         params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 1300;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
         params.maxDeleverageCollateralRatioBPS = 2300;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 0.05e8;
-        maxPrimaryBorrow = 0.1e8;
+        maxPrimaryBorrow = 15e8;
     }
 
     function getRequiredOracles() public override pure returns (
@@ -87,7 +87,7 @@ Curve2TokenConvexHarness
         _m.primaryBorrowCurrency = 4;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            maxPoolShare: 4000,
+            maxPoolShare: 2500,
             oraclePriceDeviationLimitPercent: 150,
             numRewardTokens: 0,
             forceClaimAfter: 1 weeks
