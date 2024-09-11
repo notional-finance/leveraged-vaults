@@ -201,3 +201,13 @@ contract Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is Pendl
     }
 
 }
+
+contract Deploy_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }}, DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }}();
+    }
+
+    function deployVault() internal override returns (address impl, bytes memory _metadata) {
+        return deployVaultImplementation();
+    }
+}

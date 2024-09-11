@@ -140,3 +140,13 @@ contract Harness_PendlePT_USDe_USDC is PendleStakingHarness {
     }
 
 }
+
+contract Deploy_PendlePT_USDe_USDC is Harness_PendlePT_USDe_USDC, DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_PendlePT_USDe_USDC();
+    }
+
+    function deployVault() internal override returns (address impl, bytes memory _metadata) {
+        return deployVaultImplementation();
+    }
+}

@@ -13,6 +13,10 @@ struct StakingMetadata {
 
 abstract contract BaseStakingHarness is StrategyVaultHarness {
 
+    function hasRewarderRole() public pure override returns (bool) {
+        return false;
+    }
+
     function getMetadata() virtual public view returns (StakingMetadata memory _m) {
         return abi.decode(metadata, (StakingMetadata));
     }
