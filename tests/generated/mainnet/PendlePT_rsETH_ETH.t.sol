@@ -153,3 +153,13 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
     }
 
 }
+
+contract Deploy_PendlePT_rsETH_ETH is Harness_PendlePT_rsETH_ETH, DeployProxyVault {
+    function setUp() public override {
+        harness = new Harness_PendlePT_rsETH_ETH();
+    }
+
+    function deployVault() internal override returns (address impl, bytes memory _metadata) {
+        return deployVaultImplementation();
+    }
+}
