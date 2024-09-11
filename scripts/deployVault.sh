@@ -73,25 +73,14 @@ process_json_file() {
 }
 
 
-CONTRACT=""
-CONTRACT_PATH=""
+FILE_NAME=""
 # Switch statement for contract verification
 case "$PROTOCOL" in
-    "Convex")
-        CONTRACT="Curve2TokenConvexVault"
-        CONTRACT_PATH="vaults/curve"
+    "Aura" | "Convex" | "Balancer" | "Curve")
+        FILE_NAME="SingleSidedLP"_${PROTOCOL}_${POOL_NAME}
         ;;
-    "Aura")
-        CONTRACT="BalancerComposableAuraVault"
-        CONTRACT_PATH="vaults/balancer"
-        ;;
-    "Balancer")
-        CONTRACT="BalancerComposableAuraVault"
-        CONTRACT_PATH="vaults/balancer"
-        ;;
-    "Curve")
-        CONTRACT="Curve2TokenVault"
-        CONTRACT_PATH="vaults/curve"
+    "Pendle")
+        FILE_NAME="PendlePT_${POOL_NAME}"
         ;;
 esac
 
@@ -113,13 +102,13 @@ DEPLOYER=MAINNET_V2_DEPLOYER
 DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
 forge build --force
-FILE_NAME=SingleSidedLP_${PROTOCOL}_${POOL_NAME}
 
 echo "Deploying Vault Implementation for $FILE_NAME on $CHAIN"
 forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
     -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
-   --chain $CHAIN_ID --account $DEPLOYER --broadcast \
-   --verify --verifier-url $VERIFIER_URL --etherscan-api-key $ETHERSCAN_API_KEY
+   --chain $CHAIN_ID --account $DEPLOYER \
+   --verify --verifier-url $VERIFIER_URL --etherscan-api-key $ETHERSCAN_API_KEY \
+   --broadcast
 
 IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/run-latest.json | tr -d '"'`
 
