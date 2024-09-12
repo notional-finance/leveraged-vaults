@@ -641,13 +641,13 @@ mainnet:
       minAccountBorrowSize: 60_000e8
       maxPrimaryBorrow: 1_000_000e8
   - vaultName: SingleSidedLP:Balancer:rsETH/[WETH]
-    forkBlock: 20671361
+    forkBlock: 20736060
     vaultType: ComposablePool
     primaryBorrowCurrency: ETH
     balancerPoolId: "0x58aadfb1afac0ad7fca1148f3cde6aedf5236b6d00000000000000000000067f"
     balancerPool: "0x58AAdFB1Afac0ad7fca1148f3cdE6aEDF5236B6D"
-    rewardPool: "0x0000000000000000000000000000000000000000"
-    rewards: []
+    rewardPool: "0xB5FdB4f75C26798A62302ee4959E4281667557E0"
+    rewards: [USDC]
     oracles: [rsETH, ETH]
     settings:
       maxPoolShare: 3000

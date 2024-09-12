@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+import "@contracts/vaults/common/VaultRewarderLib.sol";
 import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Balancer_rsETH_xWETH is VaultRewarderTests {
     function setUp() public override {
-        FORK_BLOCK = 20671361;
+        FORK_BLOCK = 20736060;
         harness = new Harness_SingleSidedLP_Balancer_rsETH_xWETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -16,6 +17,17 @@ contract Test_SingleSidedLP_Balancer_rsETH_xWETH is VaultRewarderTests {
         maxRelExitValuation = 50 * BASIS_POINT;
 
         super.setUp();
+
+        vm.startPrank(Deployments.NOTIONAL.owner());
+        VaultRewarderLib(address(v())).migrateRewardPool(
+            IERC20(0x58AAdFB1Afac0ad7fca1148f3cdE6aEDF5236B6D),
+            RewardPoolStorage({
+                rewardPool: address(0xB5FdB4f75C26798A62302ee4959E4281667557E0),
+                poolType: RewardPoolType.AURA,
+                lastClaimTimestamp: 0
+            })
+        );
+        vm.stopPrank();
     }
 }
 
@@ -61,9 +73,15 @@ ComposablePoolHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](0);
-        permissions = new ITradingModule.TokenPermissions[](0);
+        token = new address[](1);
+        permissions = new ITradingModule.TokenPermissions[](1);
 
+        // USDC
+        token[0] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        permissions[0] = ITradingModule.TokenPermissions(
+            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
+        );
         
 
         
@@ -82,11 +100,13 @@ ComposablePoolHarness
             numRewardTokens: 0,
             forceClaimAfter: 1 weeks
         });
-        _m.rewardPool = IERC20(0x0000000000000000000000000000000000000000);
+        _m.rewardPool = IERC20(0xB5FdB4f75C26798A62302ee4959E4281667557E0);
 
         
 
-        _m.rewardTokens = new IERC20[](0);
+        _m.rewardTokens = new IERC20[](1);
+        // USDC
+        _m.rewardTokens[0] = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
         
         setMetadata(_m);
     }
