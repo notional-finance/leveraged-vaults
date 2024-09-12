@@ -5,8 +5,8 @@ set -e
 source .env
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 source venv/bin/activate
-python tests/SingleSidedLP/generate_tests.py
-python tests/Staking/generate_tests.py
+# python tests/SingleSidedLP/generate_tests.py
+# python tests/Staking/generate_tests.py
 
 # Check if a command line argument is provided
 if [ $# -ge 1 ]; then
