@@ -6,6 +6,7 @@ source .env
 # Check if exactly two arguments are provided
 if [ $# -lt 4 ]; then
     echo "Usage: $0 CHAIN PROTOCOL POOL_NAME TOKEN"
+    echo "  --execute  executes the deployment, otherwise only does a dry run"
     echo "  --upgrade only deploys a new implementation"
     echo "  --update  creates config update json"
     exit 1
@@ -19,6 +20,7 @@ TOKEN=$4
 
 UPGRADE_VAULT=false
 UPDATE_CONFIG=false
+EXECUTE=false
 # Loop through all command-line arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -27,6 +29,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --update)
       UPDATE_CONFIG=true
+      ;;
+    --execute)
+      EXECUTE=true
       ;;
   esac
   shift
@@ -103,14 +108,30 @@ DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
 forge build --force
 
-echo "Deploying Vault Implementation for $FILE_NAME on $CHAIN"
-forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
-    -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
-   --chain $CHAIN_ID --account $DEPLOYER \
-   --verify --verifier-url $VERIFIER_URL --etherscan-api-key $ETHERSCAN_API_KEY \
-   --broadcast
+OUTPUT_FILE=""
+if [ "$EXECUTE" = true ]; then
+    echo "Deploying Vault Implementation for $FILE_NAME on $CHAIN"
+    forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
+        -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
+    --chain $CHAIN_ID --account $DEPLOYER \
+    --verify --verifier-url $VERIFIER_URL --etherscan-api-key $ETHERSCAN_API_KEY \
+    --broadcast
+    OUTPUT_FILE="broadcast/$FILE_NAME.t.sol/$CHAIN_ID/run-latest.json"
 
-IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' broadcast/$FILE_NAME.t.sol/$CHAIN_ID/run-latest.json | tr -d '"'`
+else 
+    echo "Dry Run: Deploying Vault Implementation for $FILE_NAME on $CHAIN"
+    forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
+        -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
+    --chain $CHAIN_ID --account $DEPLOYER
+    OUTPUT_FILE="broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json"
+fi
+
+IMPLEMENTATION_ADDRESS=`jq '.transactions[0].contractAddress' $OUTPUT_FILE | tr -d '"'`
+
+if [ "$PROTOCOL" = "Pendle" ]; then
+    PENDLE_ORACLE_ADDRESS=`jq '.transactions[1].contractAddress' $OUTPUT_FILE | tr -d '"'`
+    echo "Pendle Oracle Deployed to $PENDLE_ORACLE_ADDRESS"
+fi
 
 if [ "$UPGRADE_VAULT" = true ]; then
   echo "Vault Implementation Deployed to $IMPLEMENTATION_ADDRESS"
@@ -121,6 +142,8 @@ if [ "$UPGRADE_VAULT" = true ]; then
   process_json_file "scripts/deploy/$PROXY.upgradeVault.json"
   exit 0
 fi
+
+if [ "$EXECUTE" = false ]; then exit 0; fi
 
 # Create the proxy contract
 echo "Deploying Proxy contract for $IMPLEMENTATION_ADDRESS"
