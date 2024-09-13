@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "@contracts/vaults/common/VaultRewarderLib.sol";
 import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Balancer_rsETH_xWETH is VaultRewarderTests {
@@ -17,17 +16,6 @@ contract Test_SingleSidedLP_Balancer_rsETH_xWETH is VaultRewarderTests {
         maxRelExitValuation = 50 * BASIS_POINT;
 
         super.setUp();
-
-        vm.startPrank(Deployments.NOTIONAL.owner());
-        VaultRewarderLib(address(v())).migrateRewardPool(
-            IERC20(0x58AAdFB1Afac0ad7fca1148f3cdE6aEDF5236B6D),
-            RewardPoolStorage({
-                rewardPool: address(0xB5FdB4f75C26798A62302ee4959E4281667557E0),
-                poolType: RewardPoolType.AURA,
-                lastClaimTimestamp: 0
-            })
-        );
-        vm.stopPrank();
     }
 }
 
