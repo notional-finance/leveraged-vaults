@@ -51,13 +51,12 @@ def generate_files(network, yaml_file, template_file):
         # test['config'] = { **defaults['config'], **test['config'] } if 'config' in test else defaults['config']
 
         # Look up the existing deployment from the json registry
-        fileName = f"PendlePT_{test['stakeSymbol']}_{test['primaryBorrowCurrency']}"
-        # [_, protocol, poolName] = test['contractName'].split("_", 2)
-        # poolName = "[{}]:{}".format(test['primaryBorrowCurrency'], poolName)
-        # try:
-        #     test['existingDeployment'] = vaults[network][protocol][poolName]
-        # except:
-        #     pass
+        fileName = f"PendlePT_{test['stakeSymbol']}_{test['expiry']}_{test['primaryBorrowCurrency']}"
+        poolName = "[{}]:{}_{}".format(test['primaryBorrowCurrency'], test['stakeSymbol'], test['expiry'])
+        try:
+            test['existingDeployment'] = vaults[network]["Pendle"][poolName]
+        except:
+            pass
         test['primaryDexId'] = DexIds[test['primaryDex']]
         test['exchangeCode'] = get_exchange_data(test['primaryDex'], test['exchangeData'])
         test['oracles'] = get_oracles(network, test['oracles'])

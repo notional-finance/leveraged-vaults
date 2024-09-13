@@ -85,7 +85,7 @@ case "$PROTOCOL" in
         FILE_NAME="SingleSidedLP"_${PROTOCOL}_${POOL_NAME}
         ;;
     "Pendle")
-        FILE_NAME="PendlePT_${POOL_NAME}"
+        FILE_NAME="PendlePT_${POOL_NAME}_${TOKEN}"
         ;;
 esac
 

@@ -25,10 +25,10 @@ ILRTOracle constant lrtOracle = ILRTOracle(0x349A73444b1a310BAe67ef67973022020d7
 address constant unstakingVault = 0xc66830E2667bc740c0BED9A71F18B14B8c8184bA;
 
 
-contract Test_PendlePT_rsETH_ETH is BasePendleTest {
+contract Test_PendlePT_rsETH_26SEP2024_ETH is BasePendleTest {
     function setUp() public override {
         FORK_BLOCK = 20499945;
-        harness = new Harness_PendlePT_rsETH_ETH();
+        harness = new Harness_PendlePT_rsETH_26SEP2024_ETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -88,7 +88,7 @@ contract Test_PendlePT_rsETH_ETH is BasePendleTest {
     }
 
 
-contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
+contract Harness_PendlePT_rsETH_26SEP2024_ETH is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
         return 'Pendle:PT rsETH 26SEP2024:[ETH]';
@@ -154,9 +154,9 @@ contract Harness_PendlePT_rsETH_ETH is PendleStakingHarness {
 
 }
 
-contract Deploy_PendlePT_rsETH_ETH is Harness_PendlePT_rsETH_ETH, DeployProxyVault {
+contract Deploy_PendlePT_rsETH_26SEP2024_ETH is Harness_PendlePT_rsETH_26SEP2024_ETH, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_PendlePT_rsETH_ETH();
+        harness = new Harness_PendlePT_rsETH_26SEP2024_ETH();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {
