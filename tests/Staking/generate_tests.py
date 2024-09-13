@@ -48,7 +48,7 @@ def generate_files(network, yaml_file, template_file):
     for test in tests[network]:
         # test['settings'] = { **defaults['settings'], **test['settings'] } if 'settings' in test else defaults['settings']
         test['setUp'] = { **defaults['setUp'], **test['setUp'] } if 'setUp' in test else defaults['setUp']
-        # test['config'] = { **defaults['config'], **test['config'] } if 'config' in test else defaults['config']
+        test['config'] = { **defaults['config'], **test['config'] } if 'config' in test else defaults['config']
 
         # Look up the existing deployment from the json registry
         fileName = f"PendlePT_{test['stakeSymbol']}_{test['expiry']}_{test['primaryBorrowCurrency']}"

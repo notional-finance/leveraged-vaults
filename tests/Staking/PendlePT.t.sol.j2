@@ -170,6 +170,23 @@ contract Harness_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrenc
         {% endfor %}
     }
 
+    function getDeploymentConfig() public view override returns (
+        VaultConfigParams memory params, uint80 maxPrimaryBorrow
+    ) {
+        params = getTestVaultConfig();
+        params.feeRate5BPS = {{ config.feeRate5BPS }};
+        params.liquidationRate = {{ config.liquidationRate }};
+        params.reserveFeeShare = {{ config.reserveFeeShare }};
+        params.maxBorrowMarketIndex = {{ config.maxBorrowMarketIndex }};
+        params.minCollateralRatioBPS = {{ config.minCollateralRatioBPS }};
+        params.maxRequiredAccountCollateralRatioBPS = {{ config.maxRequiredAccountCollateralRatioBPS }};
+        params.maxDeleverageCollateralRatioBPS = {{ config.maxDeleverageCollateralRatioBPS }};
+
+        // NOTE: these are always in 8 decimals
+        params.minAccountBorrowSize = {{ config.minAccountBorrowSize }};
+        maxPrimaryBorrow = {{ config.maxPrimaryBorrow }};
+    }
+
     function deployImplementation() internal override returns (address impl) {
         {% if contractName == "PendlePTGeneric" %}
         return address(new PendlePTGeneric(
