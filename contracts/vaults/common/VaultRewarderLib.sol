@@ -182,6 +182,9 @@ contract VaultRewarderLib is IVaultRewarder, ReentrancyGuard {
             require(IConvexBoosterArbitrum(booster).deposit(poolId, poolTokens));
         }
 
+        // Set the last claim timestamp to the current block timestamp since we re claiming all the rewards
+        // earlier in this method.
+        newRewardPool.lastClaimTimestamp = uint32(block.timestamp);
         VaultStorage.setRewardPoolStorage(newRewardPool);
     }
 
