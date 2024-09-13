@@ -108,6 +108,23 @@ contract Harness_PendlePT_weETH_27JUN2024_ETH is PendleStakingHarness {
         
     }
 
+    function getDeploymentConfig() public view override returns (
+        VaultConfigParams memory params, uint80 maxPrimaryBorrow
+    ) {
+        params = getTestVaultConfig();
+        params.feeRate5BPS = 10;
+        params.liquidationRate = 102;
+        params.reserveFeeShare = 80;
+        params.maxBorrowMarketIndex = 2;
+        params.minCollateralRatioBPS = 800;
+        params.maxRequiredAccountCollateralRatioBPS = 10000;
+        params.maxDeleverageCollateralRatioBPS = 1500;
+
+        // NOTE: these are always in 8 decimals
+        params.minAccountBorrowSize = 0.001e8;
+        maxPrimaryBorrow = 100e8;
+    }
+
     function deployImplementation() internal override returns (address impl) {
         
         return address(new PendlePTEtherFiVault(marketAddress, ptAddress));

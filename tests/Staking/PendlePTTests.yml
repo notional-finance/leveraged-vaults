@@ -11,9 +11,6 @@ defaults:
     withdrawLiquidationDiscount: 945
     splitWithdrawPriceDecrease: 610
     
-  settings:
-    maxPoolShare: 2000
-    oraclePriceDeviationLimitPercent: 100
   config:
     feeRate5BPS: 10
     liquidationRate: 102
@@ -49,6 +46,16 @@ arbitrum:
     setUp:
       minDeposit: 0.1e18
       maxDeposit: 10e18
+    config:
+      feeRate5BPS: 10
+      liquidationRate: 102
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 2
+      minCollateralRatioBPS: 800
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 1500
+      minAccountBorrowSize: 0.01e8
+      maxPrimaryBorrow: 1e8
   - stakeSymbol: weETH
     forkBlock: 221089505
     expiry: 27JUN2024
