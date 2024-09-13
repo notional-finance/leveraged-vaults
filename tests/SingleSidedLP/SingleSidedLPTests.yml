@@ -663,4 +663,4 @@ mainnet:
       maxDeleverageCollateralRatioBPS: 2_700
       liquidationRate: 103
       minAccountBorrowSize: 30e8
-      maxPrimaryBorrow: 5e8
+      maxPrimaryBorrow: 400e8
