@@ -15,6 +15,9 @@
       "[wstETH]:xwstETH_cbETH_rETH": "0x37dD23Ab1885982F789A2D6400B583B8aE09223d",
       "[ETH]:rETH_xWETH": "0xA0d61c08e642103158Fc6a1495E7Ff82bAF25857",
       "[wstETH]:ezETH_xwstETH": "0xD7c3Dc1C36d19cF4e8cea4eA143a2f4458Dd1937"
+    },
+    "Pendle": {
+      "[ETH]:rsETH_25SEP2024": "0x851a28260227f9a8e6BF39a5Fa3b5132Fa49c7F3"
     }
   },
   "mainnet": {

@@ -25,7 +25,7 @@ ILRTOracle constant lrtOracle = ILRTOracle(0x349A73444b1a310BAe67ef67973022020d7
 address constant unstakingVault = 0xc66830E2667bc740c0BED9A71F18B14B8c8184bA;
 {% endif %}
 
-contract Test_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is BasePendleTest {
+contract Test_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrency }} is BasePendleTest {
     function setUp() public override {
         {% if forkBlock is defined -%}
         FORK_BLOCK = {{ forkBlock }};
@@ -33,7 +33,7 @@ contract Test_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is BasePend
         {% if whale is defined -%}
         WHALE = {{ whale }};
         {% endif -%}
-        harness = new Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }}();
+        harness = new Harness_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrency }}();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -122,7 +122,7 @@ contract Test_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is BasePend
 }
 
 
-contract Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is PendleStakingHarness {
+contract Harness_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrency }} is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
         return 'Pendle:PT {{stakeSymbol}} {{expiry}}:[{{primaryBorrowCurrency}}]';
@@ -181,6 +181,9 @@ contract Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is Pendl
     }
 
     constructor() {
+        {% if existingDeployment is defined -%}
+        EXISTING_DEPLOYMENT = {{ existingDeployment }};
+        {% endif -%}
         marketAddress = {{ marketAddress }};
         ptAddress = {{ ptAddress }};
         twapDuration = 15 minutes; // recommended 15 - 30 min
@@ -202,9 +205,9 @@ contract Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is Pendl
 
 }
 
-contract Deploy_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }} is Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }}, DeployProxyVault {
+contract Deploy_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrency }} is Harness_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrency }}, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_PendlePT_{{ stakeSymbol }}_{{ primaryBorrowCurrency }}();
+        harness = new Harness_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrency }}();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {

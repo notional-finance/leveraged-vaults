@@ -59,7 +59,18 @@ export ETH_RPC_URL="${!RPC_VAR}"
 DEPLOYER_ADDRESS="0x8B64fA5Fd129df9c755eB82dB1e16D6D0Bdf5Bc3"
 
 echo "Updating Config at Proxy Address:" $PROXY
-FILE_NAME=SingleSidedLP_${PROTOCOL}_${POOL_NAME}
+FILE_NAME=""
+# Switch statement for contract verification
+case "$PROTOCOL" in
+    "Aura" | "Convex" | "Balancer" | "Curve")
+        FILE_NAME="SingleSidedLP"_${PROTOCOL}_${POOL_NAME}
+        ;;
+    "Pendle")
+        FILE_NAME="PendlePT_${POOL_NAME}_${TOKEN}"
+        ;;
+esac
+
+echo "File Name: " $FILE_NAME
 # Re-run this to generate the gnosis outputs
 forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
     -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS --chain $CHAIN_ID
