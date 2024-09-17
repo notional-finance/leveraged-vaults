@@ -46,8 +46,7 @@ library Deployments {
     address internal constant BALANCER_SPOT_PRICE = 0xA153B3E85833F8a323E60Dcdc08F6286eae28728;
     IWrappedfCashFactory internal constant WRAPPED_FCASH_FACTORY = IWrappedfCashFactory(address(0));
 
-    // TODO: update this deployment
-    address internal constant VAULT_REWARDER_LIB = 0x0000dEb798bB3E4dFA0139dfa1b3D433CC23b72F;
+    address internal constant VAULT_REWARDER_LIB = 0x9C7b863f8EAdFE000C2b6FF0f43F58223ec29D84;
 
     // Chainlink L2 Sequencer Uptime: https://docs.chain.link/data-feeds/l2-sequencer-feeds/
     AggregatorV2V3Interface internal constant SEQUENCER_UPTIME_ORACLE = AggregatorV2V3Interface(address(0));

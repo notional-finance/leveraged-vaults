@@ -96,7 +96,7 @@ Next, redeploy the registry cache to get the new LP pool data synchronizing. Thi
 
 Now, you can run the website locally in order to create a test vault position
 
-`yarn run serve web`
+`yarn nx serve web`
 
 And navigate to localhost:3000 in your browser. Also be sure to check that the vault APY data shows up properly.
 

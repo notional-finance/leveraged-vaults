@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 import {Deployments} from "@deployments/Deployments.sol";
 import {TradeHandler} from "../TradeHandler.sol";
 import "@interfaces/trading/ITradingModule.sol";
-import "@interfaces/camelot/ISwapRouter.sol";
+import {ICamelotSwapRouter} from "@interfaces/camelot/ISwapRouter.sol";
 
 library CamelotV3Adapter {
 
@@ -31,23 +31,23 @@ library CamelotV3Adapter {
     function _exactInSingle(address from, Trade memory trade)
         private pure returns (bytes memory)
     {
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(
+        ICamelotSwapRouter.ExactInputSingleParams memory params = ICamelotSwapRouter.ExactInputSingleParams(
             _getTokenAddress(trade.sellToken),
             _getTokenAddress(trade.buyToken),
             from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
         );
 
-        return abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector, params);
+        return abi.encodeWithSelector(ICamelotSwapRouter.exactInputSingle.selector, params);
     }
 
     function _exactOutSingle(address from, Trade memory trade) private pure returns (bytes memory) {
-        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams(
+        ICamelotSwapRouter.ExactOutputSingleParams memory params = ICamelotSwapRouter.ExactOutputSingleParams(
             _getTokenAddress(trade.sellToken),
             _getTokenAddress(trade.buyToken),
             from, trade.deadline, trade.amount, trade.limit, 0 // sqrtPriceLimitX96
         );
 
-        return abi.encodeWithSelector(ISwapRouter.exactOutputSingle.selector, params);
+        return abi.encodeWithSelector(ICamelotSwapRouter.exactOutputSingle.selector, params);
     }
 
     function _exactInBatch(address from, Trade memory trade) private pure returns (bytes memory) {
@@ -58,11 +58,11 @@ library CamelotV3Adapter {
         require(_toAddress(data.path, 0) == _getTokenAddress(trade.sellToken));
         require(_toAddress(data.path, data.path.length - 20) == _getTokenAddress(trade.buyToken));
 
-        ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams(
+        ICamelotSwapRouter.ExactInputParams memory params = ICamelotSwapRouter.ExactInputParams(
             data.path, from, trade.deadline, trade.amount, trade.limit
         );
 
-        return abi.encodeWithSelector(ISwapRouter.exactInput.selector, params);
+        return abi.encodeWithSelector(ICamelotSwapRouter.exactInput.selector, params);
     }
 
     function _exactOutBatch(address from, Trade memory trade) private pure returns (bytes memory) {
@@ -73,11 +73,11 @@ library CamelotV3Adapter {
         require(_toAddress(data.path, 0) == _getTokenAddress(trade.buyToken));
         require(_toAddress(data.path, data.path.length - 20) == _getTokenAddress(trade.sellToken));
 
-        ISwapRouter.ExactOutputParams memory params = ISwapRouter.ExactOutputParams(
+        ICamelotSwapRouter.ExactOutputParams memory params = ICamelotSwapRouter.ExactOutputParams(
             data.path, from, trade.deadline, trade.amount, trade.limit
         );
 
-        return abi.encodeWithSelector(ISwapRouter.exactOutput.selector, params);
+        return abi.encodeWithSelector(ICamelotSwapRouter.exactOutput.selector, params);
     }
 
     function getExecutionData(address from, Trade memory trade)
