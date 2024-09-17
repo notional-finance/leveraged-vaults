@@ -664,3 +664,31 @@ mainnet:
       liquidationRate: 103
       minAccountBorrowSize: 30e8
       maxPrimaryBorrow: 400e8
+  - vaultName: SingleSidedLP:Convex:[WBTC]/tBTC
+    forkBlock: 20773171
+    vaultType: Curve2TokenConvex
+    primaryBorrowCurrency: WBTC
+    rewardPool: "0x5793691B4ba69665213614d7ac722Db2d3f41927"
+    poolToken: "0xB7ECB2AA52AA64a717180E030241bC75Cd946726"
+    lpToken: "0xB7ECB2AA52AA64a717180E030241bC75Cd946726"
+    curveInterface: V1
+    rewards: [CRV, CVX]
+    oracles: [WBTC, tBTC]
+    settings:
+      maxPoolShare: 2000
+      oraclePriceDeviationLimitPercent: 0.015e4
+    setUp:
+      minDeposit: 0.01e8
+      maxDeposit: 1e8
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 75
+    config:
+      feeRate5BPS: 10
+      liquidationRate: 103
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 2
+      minCollateralRatioBPS: 800
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 2_300
+      minAccountBorrowSize: 0.001e8
+      maxPrimaryBorrow: 0.1e8
