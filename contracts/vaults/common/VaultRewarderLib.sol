@@ -154,14 +154,13 @@ contract VaultRewarderLib is IVaultRewarder, ReentrancyGuard {
 
     function migrateRewardPool(IERC20 poolToken, RewardPoolStorage memory newRewardPool) external nonReentrant {
         require(msg.sender == Deployments.NOTIONAL.owner());
-        RewardPoolStorage memory r = VaultStorage.getRewardPoolStorage();
 
         // Claim all rewards from the previous reward pool before withdrawing
         uint256 totalVaultSharesBefore = VaultStorage.getStrategyVaultState().totalVaultSharesGlobal;
         (VaultRewardState[] memory state, , RewardPoolStorage memory rewardPool) = getRewardSettings();
         _claimVaultRewards(totalVaultSharesBefore, state, rewardPool);
 
-        _withdrawFromPreviousRewardPool(poolToken, r);
+        _withdrawFromPreviousRewardPool(poolToken, rewardPool);
 
         uint256 poolTokens = poolToken.balanceOf(address(this));
 

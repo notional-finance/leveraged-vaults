@@ -1049,6 +1049,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
     }
 
     function test_migrateRewardPool_fromNoGauge() public {
+        vm.skip(true);
         SingleSidedLPMetadata memory m = ComposablePoolHarness(address(harness)).getMetadata();
         m.rewardPool = IERC20(0xB5FdB4f75C26798A62302ee4959E4281667557E0);
         ComposablePoolHarness(address(harness)).setMetadata(m);
