@@ -61,9 +61,15 @@ Curve2TokenConvexHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](0);
-        permissions = new ITradingModule.TokenPermissions[](0);
+        token = new address[](1);
+        permissions = new ITradingModule.TokenPermissions[](1);
 
+        // CRV
+        token[0] = 0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978;
+        permissions[0] = ITradingModule.TokenPermissions(
+            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
+        );
         
 
         

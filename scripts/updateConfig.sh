@@ -4,8 +4,9 @@ source venv/bin/activate
 python tests/SingleSidedLP/generate_tests.py
 
 # Check if exactly two arguments are provided
-if [ $# -ne 4 ]; then
+if [ $# -lt 4 ]; then
     echo "Usage: $0 CHAIN PROTOCOL POOL_NAME TOKEN"
+    echo "  --init    creates init vault json"
     exit 1
 fi
 
@@ -22,12 +23,10 @@ PROTOCOL=$2
 POOL_NAME=$3
 TOKEN=$4
 
-PROXY=$(jq --arg network "$CHAIN" \
+export PROXY=$(jq --arg network "$CHAIN" \
            --arg protocol "$PROTOCOL" \
            --arg pair "[$TOKEN]:$POOL_NAME" \
            -r '.[$network][$protocol][$pair]' "vaults.json")
-
-
 
 CHAIN_ID=""
 case "$CHAIN" in
@@ -39,6 +38,17 @@ case "$CHAIN" in
         export ETHERSCAN_API_KEY=$ARBISCAN_API_KEY
         ;;
 esac
+
+# Loop through all command-line arguments
+export INIT_VAULT=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --init)
+      INIT_VAULT=true
+      ;;
+  esac
+  shift
+done
 
 export UPDATE_CONFIG=true
 export FOUNDRY_PROFILE=$CHAIN

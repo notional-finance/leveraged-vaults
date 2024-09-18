@@ -20,6 +20,12 @@ abstract contract StrategyVaultHarness {
     uint16 internal constant DISABLE_DELEVERAGE              = 1 << 8;
     uint16 internal constant ENABLE_FCASH_DISCOUNT           = 1 << 9;
 
+    struct RewardSettings {
+        address token;
+        uint128 emissionRatePerYear;
+        uint32 endTime;
+    }
+
     function setDeployment(address deployment) public {
         EXISTING_DEPLOYMENT = deployment;
     }
@@ -39,4 +45,8 @@ abstract contract StrategyVaultHarness {
     function getTradingPermissions() public view virtual returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     );
+
+    function getRewardSettings() public view virtual returns (RewardSettings[] memory rewards) {
+        return rewards;
+    }
 }

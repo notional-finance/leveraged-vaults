@@ -229,7 +229,6 @@ arbitrum:
     settings:
       maxPoolShare: 4000
       oraclePriceDeviationLimitPercent: 150
-      useAccountClaim: true
     setUp:
       minDeposit: 0.01e8
       maxDeposit: 1e8
@@ -679,6 +678,8 @@ mainnet:
     settings:
       maxPoolShare: 2000
       oraclePriceDeviationLimitPercent: 0.015e4
+      forceClaimAfter: 0
+      useAccountClaim: true
     setUp:
       minDeposit: 0.01e8
       maxDeposit: 1e8
