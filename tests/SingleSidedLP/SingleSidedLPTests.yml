@@ -245,13 +245,13 @@ arbitrum:
       maxPrimaryBorrow: 6e8
   - vaultName: SingleSidedLP:Convex:tBTC/[WBTC]
     vaultType: Curve2TokenConvex
-    forkBlock: 250810619
+    forkBlock: 254595129
     primaryBorrowCurrency: WBTC
     rewardPool: "0xa4Ed1e1Db18d65A36B3Ef179AaFB549b45a635A4"
     poolToken: "0x186cF879186986A20aADFb7eAD50e3C20cb26CeC"
     lpToken: "0x186cF879186986A20aADFb7eAD50e3C20cb26CeC"
     curveInterface: StableSwapNG
-    rewards: [CRV, ARB]
+    rewards: [CRV]
     oracles: [WBTC, tBTC]
     settings:
       maxPoolShare: 2500
