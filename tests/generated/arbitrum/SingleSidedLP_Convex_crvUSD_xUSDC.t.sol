@@ -85,7 +85,7 @@ Curve2TokenConvexHarness
             maxPoolShare: 5000,
             oraclePriceDeviationLimitPercent: 0.015e4,
             numRewardTokens: 0,
-            forceClaimAfter: 1 weeks
+            forceClaimAfter: 1 days
         });
         _m.rewardPool = IERC20(0xBFEE9F3E015adC754066424AEd535313dc764116);
 

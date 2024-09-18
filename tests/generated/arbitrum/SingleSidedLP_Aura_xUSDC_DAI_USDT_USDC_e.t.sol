@@ -96,7 +96,7 @@ ComposablePoolHarness
             maxPoolShare: 5000,
             oraclePriceDeviationLimitPercent: 100,
             numRewardTokens: 0,
-            forceClaimAfter: 1 weeks
+            forceClaimAfter: 1 days
         });
         _m.rewardPool = IERC20(0x416C7Ad55080aB8e294beAd9B8857266E3B3F28E);
 

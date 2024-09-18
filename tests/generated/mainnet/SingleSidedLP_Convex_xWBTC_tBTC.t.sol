@@ -82,6 +82,7 @@ Curve2TokenConvexHarness
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0xe20048FA0F165A49b780DFA9A8caBa845332f848;
         SingleSidedLPMetadata memory _m;
         _m.primaryBorrowCurrency = 4;
         _m.settings = StrategyVaultSettings({
@@ -89,7 +90,7 @@ Curve2TokenConvexHarness
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 0.015e4,
             numRewardTokens: 0,
-            forceClaimAfter: 1 weeks
+            forceClaimAfter: 1 days
         });
         _m.rewardPool = IERC20(0x5793691B4ba69665213614d7ac722Db2d3f41927);
 

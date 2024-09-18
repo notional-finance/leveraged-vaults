@@ -7,6 +7,7 @@ defaults:
   settings:
     maxPoolShare: 2000
     oraclePriceDeviationLimitPercent: 100
+    forceClaimAfter: 1 days
   config:
     feeRate5BPS: 10
     liquidationRate: 102
@@ -228,6 +229,7 @@ arbitrum:
     settings:
       maxPoolShare: 4000
       oraclePriceDeviationLimitPercent: 150
+      useAccountClaim: true
     setUp:
       minDeposit: 0.01e8
       maxDeposit: 1e8
