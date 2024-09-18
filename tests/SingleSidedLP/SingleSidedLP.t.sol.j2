@@ -116,6 +116,20 @@ contract Harness_{{ contractName }} is
         {% endfor %}
     }
 
+    {%- if settings.useAccountClaim %}
+    function getRewardSettings() public pure override returns (StrategyVaultHarness.RewardSettings[] memory rewards) {
+        rewards = new StrategyVaultHarness.RewardSettings[]({{ rewards | length }});
+        {% for reward in rewards -%}
+        // {{ reward.symbol }}
+        rewards[{{ loop.index - 1 }}] = StrategyVaultHarness.RewardSettings({
+            token: {{ reward.tokenAddress }},
+            emissionRatePerYear: 0,
+            endTime: 0
+        });
+        {% endfor %}
+    }
+    {% endif %}
+
     constructor() {
         {% if existingDeployment is defined -%}
         EXISTING_DEPLOYMENT = {{ existingDeployment }};

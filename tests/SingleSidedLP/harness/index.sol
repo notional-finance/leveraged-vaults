@@ -16,3 +16,4 @@ import { Curve2TokenConvexHarness } from "./Curve2TokenConvexHarness.sol";
 import { WeightedPoolHarness } from "./WeightedPoolHarness.sol";
 import { WrappedComposablePoolHarness } from "./WrappedComposablePoolHarness.sol";
 import { ITradingModule } from "@interfaces/trading/ITradingModule.sol";
+import { StrategyVaultHarness } from "../../../tests/StrategyVaultHarness.sol";

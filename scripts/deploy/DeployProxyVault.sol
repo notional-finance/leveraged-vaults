@@ -12,6 +12,7 @@ import "@contracts/proxy/nProxy.sol";
 import "@interfaces/notional/IVaultController.sol";
 import "@interfaces/trading/ITradingModule.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {VaultRewarderLib} from "@contracts/vaults/common/VaultRewarderLib.sol";
 
 abstract contract DeployProxyVault is Script, GnosisHelper {
     StrategyVaultHarness harness;
@@ -23,15 +24,34 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
         require(block.chainid == Deployments.CHAIN_ID, "Invalid Chain");
         bool upgradeVault = vm.envOr("UPGRADE_VAULT", false);
         bool updateConfig = vm.envOr("UPDATE_CONFIG", false);
+        bool initVault = vm.envOr("INIT_VAULT", false);
         address proxy = vm.envOr("PROXY", address(0));
 
         if (harness.EXISTING_DEPLOYMENT() == address(0)) {
             // Create a new deployment if value is not set
             console.log("Creating a new vault deployment");
+            // Broadcast the implementation if proxy is not set
+            if (proxy == address(0)) {
+                vm.startBroadcast();
+                (address impl, /* */) = deployVault();
+                console.log("Implementation Address", impl);
+                vm.stopBroadcast();
+                return;
+            }
+        }
+
+        console.log("Generating code for", proxy);
+        // Generate the initialization code if the vault is not deployed or if the initVault flag is set
+        if (harness.EXISTING_DEPLOYMENT() == address(0) || initVault) {
             (address[] memory tkOracles, address[] memory oracles) = harness.getRequiredOracles();
             (address[] memory tkPerms, ITradingModule.TokenPermissions[] memory permissions) = harness.getTradingPermissions();
+            StrategyVaultHarness.RewardSettings[] memory rewards = harness.getRewardSettings();
 
-            uint256 totalCalls = tkPerms.length + 3;
+            uint256 totalCalls = tkPerms.length + 
+                rewards.length + 
+                // 2 calls if there are rewards, no REWARD_REINVESTMENT_ROLE needed,
+                // otherwise 3 calls are needed for the reward reinvestment role
+                (rewards.length > 0 ? 2 : 3);
 
             // Check for the required oracles, these are all token/USD oracles
             for (uint256 i; i < tkOracles.length; i++) {
@@ -43,16 +63,8 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                 }
             }
 
-            // Broadcast the implementation if proxy is not set
-            if (proxy == address(0)) {
-                vm.startBroadcast();
-                (address impl, /* */) = deployVault();
-                console.log("Implementation Address", impl);
-                vm.stopBroadcast();
-                return;
-            }
-
             MethodCall[] memory init = new MethodCall[](totalCalls);
+            console.log("Total Calls", totalCalls);
             uint256 callIndex = 0;
             {
                 // Set the implementation
@@ -60,14 +72,28 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                 init[callIndex].callData = harness.getInitializeData();
                 callIndex++;
 
-                // Grant roles for emergency exit and reward reinvestment
-                init[callIndex].to = proxy;
-                init[callIndex].callData = abi.encodeWithSelector(
-                    AccessControlUpgradeable.grantRole.selector,
-                    keccak256("REWARD_REINVESTMENT_ROLE"),
-                    Deployments.TREASURY_MANAGER
-                );
-                callIndex++;
+                // Update reward tokens if using account claims
+                if (rewards.length > 0) {
+                    for (uint256 i; i < rewards.length; i++) {
+                        init[callIndex].to = proxy;
+                        init[callIndex].callData = abi.encodeWithSelector(
+                            VaultRewarderLib.updateRewardToken.selector,
+                            i,
+                            rewards[i].token,
+                            rewards[i].emissionRatePerYear,
+                            rewards[i].endTime
+                        );
+                        callIndex++;
+                    }
+                } else {
+                    init[callIndex].to = proxy;
+                    init[callIndex].callData = abi.encodeWithSelector(
+                        AccessControlUpgradeable.grantRole.selector,
+                        keccak256("REWARD_REINVESTMENT_ROLE"),
+                        Deployments.TREASURY_MANAGER
+                    );
+                    callIndex++;
+                }
 
                 init[callIndex].to = proxy;
                 init[callIndex].callData = abi.encodeWithSelector(

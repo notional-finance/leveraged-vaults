@@ -61,25 +61,30 @@ Curve2TokenConvexHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](2);
-        permissions = new ITradingModule.TokenPermissions[](2);
+        token = new address[](0);
+        permissions = new ITradingModule.TokenPermissions[](0);
 
-        // CRV
-        token[0] = 0xD533a949740bb3306d119CC777fa900bA034cd52;
-        permissions[0] = ITradingModule.TokenPermissions(
-            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
-            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
-        );
-        // CVX
-        token[1] = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-        permissions[1] = ITradingModule.TokenPermissions(
-            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
-            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
-        );
         
 
         
     }
+    function getRewardSettings() public pure override returns (StrategyVaultHarness.RewardSettings[] memory rewards) {
+        rewards = new StrategyVaultHarness.RewardSettings[](2);
+        // CRV
+        rewards[0] = StrategyVaultHarness.RewardSettings({
+            token: 0xD533a949740bb3306d119CC777fa900bA034cd52,
+            emissionRatePerYear: 0,
+            endTime: 0
+        });
+        // CVX
+        rewards[1] = StrategyVaultHarness.RewardSettings({
+            token: 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B,
+            emissionRatePerYear: 0,
+            endTime: 0
+        });
+        
+    }
+    
 
     constructor() {
         EXISTING_DEPLOYMENT = 0xe20048FA0F165A49b780DFA9A8caBa845332f848;
@@ -90,7 +95,7 @@ Curve2TokenConvexHarness
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 0.015e4,
             numRewardTokens: 0,
-            forceClaimAfter: 1 days
+            forceClaimAfter: 0
         });
         _m.rewardPool = IERC20(0x5793691B4ba69665213614d7ac722Db2d3f41927);
 
