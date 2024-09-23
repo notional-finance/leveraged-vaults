@@ -118,9 +118,9 @@ contract Harness_PendlePT_rsETH_25SEP2024_ETH is PendleStakingHarness {
         params.liquidationRate = 102;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 1300;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1500;
+        params.maxDeleverageCollateralRatioBPS = 2300;
 
         // NOTE: these are always in 8 decimals
         params.minAccountBorrowSize = 0.01e8;

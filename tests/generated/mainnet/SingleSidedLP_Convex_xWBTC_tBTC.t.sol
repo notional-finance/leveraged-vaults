@@ -33,7 +33,7 @@ Curve2TokenConvexHarness
         params.feeRate5BPS = 10;
         params.liquidationRate = 103;
         params.reserveFeeShare = 80;
-        params.maxBorrowMarketIndex = 2;
+        params.maxBorrowMarketIndex = 0;
         params.minCollateralRatioBPS = 800;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
         params.maxDeleverageCollateralRatioBPS = 2300;
