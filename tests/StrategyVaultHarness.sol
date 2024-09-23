@@ -49,5 +49,4 @@ abstract contract StrategyVaultHarness {
     function getRewardSettings() public view virtual returns (RewardSettings[] memory rewards) {
         return rewards;
     }
-    function hasRewarderRole() public pure virtual returns (bool);
 }
