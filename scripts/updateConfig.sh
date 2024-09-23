@@ -2,6 +2,7 @@ source .env
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 source venv/bin/activate
 python tests/SingleSidedLP/generate_tests.py
+python tests/Staking/generate_tests.py
 
 # Check if exactly two arguments are provided
 if [ $# -lt 4 ]; then
