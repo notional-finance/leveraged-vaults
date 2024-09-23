@@ -5,10 +5,6 @@ import "../BaseSingleSidedLPVault.sol";
 
 abstract contract SingleSidedLPHarness is StrategyVaultHarness {
 
-    function hasRewarderRole() public pure override returns (bool) {
-        return true;
-    }
-
     function getMetadata() virtual public view returns (SingleSidedLPMetadata memory _m) {
         return abi.decode(metadata, (SingleSidedLPMetadata));
     }

@@ -15,10 +15,6 @@ struct CrossCurrencyMetadata {
 
 abstract contract CrossCurrencyHarness is StrategyVaultHarness {
 
-    function hasRewarderRole() public pure override returns (bool) {
-        return false;
-    }
-
     function getMetadata() public view returns (CrossCurrencyMetadata memory _m) {
         return abi.decode(metadata, (CrossCurrencyMetadata));
     }
