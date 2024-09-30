@@ -5,7 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Convex_tBTC_xWBTC is VaultRewarderTests {
     function setUp() public override {
-        FORK_BLOCK = 254595129;
+        FORK_BLOCK = 259043405;
         harness = new Harness_SingleSidedLP_Convex_tBTC_xWBTC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -81,7 +81,7 @@ Curve2TokenConvexHarness
         _m.primaryBorrowCurrency = 4;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            maxPoolShare: 2500,
+            maxPoolShare: 5000,
             oraclePriceDeviationLimitPercent: 150,
             numRewardTokens: 0,
             forceClaimAfter: 1 days

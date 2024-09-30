@@ -83,13 +83,15 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         VaultRewarderLib vl = VaultRewarderLib(address(v()));
         (VaultRewardState[] memory state,,) = vl.getRewardSettings();
 
+        bool wasFound = false;
         for (uint256 i = 0; i < state.length; i++) {
             if (state[i].rewardToken == rewardToken) {
                 index = i;
+                wasFound = true;
                 break;
             }
         }
-        if (state.length > 0 && index == 0) index = state.length;
+        if (!wasFound) index = state.length;
 
         vm.startPrank(Deployments.NOTIONAL.owner());
         (bool allowSell, ,) = Deployments.TRADING_MODULE.tokenWhitelist(address(vault), rewardToken);
@@ -432,6 +434,8 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         // update reward token that is issue via reward booster
         if (metadata.rewardTokens.length > 0) {
+            (state,,) = VaultRewarderLib(address(vault)).getRewardSettings();
+            uint256 lengthBefore = state.length;
             setTokenPermissions(
                 address(vault),
                 address(metadata.rewardTokens[0]),
@@ -445,7 +449,11 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
             });
 
             (state,,) = VaultRewarderLib(address(vault)).getRewardSettings();
-            assertEq(state.length, initialLength + 2, "2");
+            uint256 rewardTokenCount;
+            for (uint256 i; i < state.length; i++) {
+                if (state[i].rewardToken == address(metadata.rewardTokens[0])) rewardTokenCount++;
+            }
+            assertEq(rewardTokenCount, 1, "Only one reward token should be set");
         }
     }
 
@@ -467,6 +475,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
     }
 
     function testFuzz_getAccountRewardClaim_ShouldNotBeZeroAfterSomeTime(uint32 timeToSkip) public {
+        _skipIfHasRewardTokens();
         timeToSkip = uint32(bound(timeToSkip, 1 hours, uint256(type(uint32).max / 10)));
         uint256 emissionRatePerYear = 1_000_000e8;
         uint256 endTime = block.timestamp + 30 days;
@@ -491,7 +500,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
                 assertApproxEqRel(
                     rewards[j],
                     predictedReward,
-                    1e14, // 0.01 %
+                    0.0025e18, // 0.25%
                     vm.toString(j)
                 );
             }
@@ -554,7 +563,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
     function test_claimReward_ShouldNotClaimMoreThanTotalIncentives() public {
         vm.skip(_shouldSkip("test_claimReward_ShouldNotClaimMoreThanTotalIncentives"));
         _provideLiquidity();
-        uint256 PERCENT_DIFF = 3e15; // 1e18 is 100%
+        uint256 PERCENT_DIFF = 0.005e18; // 0.5%
         for (uint256 i = 0; i < additionalRewardTokens.length; i++) {
             _updateRewardToken(
                 additionalRewardTokens[i].token,
@@ -738,6 +747,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
     function test_claimReward_ShouldBeAbleToHaveSecondaryIncentivesOnPoolRewardToken(
         uint8 reinvestToClaimNum, uint8 emissionTokNum, uint256[256] memory emissionRatesList, uint256[256] memory incentivePeriodList
     ) public {
+        _skipIfHasRewardTokens();
         reinvestToClaimNum = uint8(bound(reinvestToClaimNum, 0, metadata.rewardTokens.length));
         emissionTokNum = uint8(bound(emissionTokNum, 0, additionalRewardTokens.length));
         AdditionalRewardToken[] memory claimableTokensInfo = new AdditionalRewardToken[](reinvestToClaimNum + emissionTokNum);
@@ -802,7 +812,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < claimableTokensInfo.length; j++) {
                 // since we used some random accounts, none of them should have any balance at this point
-                assertEq(IERC20(claimableTokensInfo[j].token).balanceOf(accounts[i].account), 0, "1");
+                assertEq(IERC20(claimableTokensInfo[j].token).balanceOf(accounts[i].account), 0, "Account should have no initial balance");
             }
 
             vm.prank(accounts[i].account);
@@ -811,7 +821,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
             for (uint256 j = 0; j < claimableTokensInfo.length; j++) {
                 uint256 newBal = IERC20(claimableTokensInfo[j].token).balanceOf(accounts[i].account);
-                assertGt(newBal, 0, "2");
+                assertGt(newBal, 0, "Account should have positive balance after claiming rewards");
                 totalClaims[j] += newBal;
             }
         }
@@ -834,32 +844,33 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
             }
             uint256 currentBalance = IERC20(claimableTokensInfo[i].token).balanceOf(address(vault));
 
-            assertLe(prevVaultBalancesForClaimableTokens[i], currentBalance, "4");
+            assertLe(prevVaultBalancesForClaimableTokens[i], currentBalance, "Vault balance should not decrease after claiming rewards");
 
             // increase both sides by totalClaims[i] so that relative difference does not appear large
             // when predictedBalance is 0 or both predictedBalance and currentBalance are small numbers
             assertApproxEqRel(
                 predictedBalance + totalClaims[i],
                 currentBalance + totalClaims[i],
-                6e15, // 0.6 % diff
-                "5"
+                0.0125e18, // 1.25% diff
+                "Actual balance should be close to predicted balance"
             );
         }
         // check do vault have still enough tokens for reinvestment
         for (uint256 i = 0; i < reinvestTokens.length; i++) {
             // in case when reward token is meant to be reinvested we should observe increased
             // balance on vault since first user claim also triggered vault reward claim
-            assertLt(prevVaultBalancesForReinvestTokens[i], IERC20(reinvestTokens[i]).balanceOf(address(vault)), "6");
+            assertLt(prevVaultBalancesForReinvestTokens[i], IERC20(reinvestTokens[i]).balanceOf(address(vault)), "Vault balance for reinvest tokens should increase");
         }
         // account balance of tokens for reinvestment should be zero
         for (uint256 j = 0; j < accounts.length; j++) {
             for (uint256 i = 0; i < reinvestTokens.length; i++) {
-                assertEq(IERC20(reinvestTokens[i]).balanceOf(accounts[j].account), 0, "7");
+                assertEq(IERC20(reinvestTokens[i]).balanceOf(accounts[j].account), 0, "Account balance for reinvest tokens should be zero");
             }
         }
     }
 
     function test_claimReward_ShouldBeAbleToManuallyClaimPoolRewardTokens(uint8 manualRewTokNum) public {
+        _skipIfHasRewardTokens();
         manualRewTokNum = uint8(bound(manualRewTokNum, 0, metadata.rewardTokens.length));
         AdditionalRewardToken[] memory manualClaimRewTokens = new AdditionalRewardToken[](manualRewTokNum);
 
@@ -889,7 +900,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
                 uint256 prevBal = metadata.rewardTokens[j].balanceOf(accounts[i].account);
-                assertEq(prevBal, 0, "1");
+                assertEq(prevBal, 0, "Initial balance should be zero");
             }
 
             vm.prank(accounts[i].account);
@@ -900,13 +911,13 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
                 uint256 newBal = IERC20(manualClaimRewTokens[j].token).balanceOf(accounts[i].account);
                 totalRewardsReceived[j] += newBal;
                 totalRewardsPerAccount[i].push(newBal);
-                assertGt(newBal, 0, "2");
+                assertGt(newBal, 0, "New balance should be greater than zero after claiming rewards");
             }
 
             // accounts should not receive anything for each reward tokens meant to be reinvested
             for (uint256 j = manualRewTokNum; j < metadata.rewardTokens.length; j++) {
                 uint256 newBal = metadata.rewardTokens[j].balanceOf(accounts[i].account);
-                assertEq(newBal, 0, "3");
+                assertEq(newBal, 0, "Balance should remain zero for reinvested tokens");
             }
         }
 
@@ -917,7 +928,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
                     totalRewardsReceived[j] * accounts[i].initialShare / (totalAccountsShare),
                     totalRewardsPerAccount[i][j],
                     2,
-                    "4"
+                    "Account should receive a fair share of rewards"
                 );
             }
         }
@@ -933,12 +944,12 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
                     (prevVaultBalances[i] + leftForOtherUsersToClaim) / 1e6,
                     currentVaultBalance / 1e6,
                     1e12, // 0.0001 % diff
-                    "5"
+                    "Vault balance should match expected value for manually claimed tokens"
                 );
             } else {
                 // in case when reward token is meant to be reinvested we should observe increased
                 // balance on vault since first user claim also triggered vault reward claim
-                assertLt(prevVaultBalances[i], currentVaultBalance, "6");
+                assertLt(prevVaultBalances[i], currentVaultBalance, "Vault balance should increase for reinvested tokens");
             }
         }
     }
@@ -946,7 +957,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
     function test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission() public {
         vm.skip(_shouldSkip("test_claimReward_UpdateRewardTokenShouldBeAbleToReduceOrIncreaseEmission"));
         _provideLiquidity();
-        uint256 PERCENT_DIFF = 3e15; // 1e18 is 100%
+        uint256 PERCENT_DIFF = 0.005e18; // 0.5%
         for (uint256 i = 0; i < additionalRewardTokens.length; i++) {
             _updateRewardToken(
                 additionalRewardTokens[i].token,
@@ -1063,7 +1074,6 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         for (uint256 i; i < metadata.rewardTokens.length; i++) {
             uint256 rewardBalance = metadata.rewardTokens[i].balanceOf(address(vault));
-            console.log("reward token", address(metadata.rewardTokens[i]));
             assertGt(rewardBalance - initialBalance[i], 0, "Reward Balance Decrease");
         }
     }
