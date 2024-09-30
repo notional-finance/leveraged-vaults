@@ -60,6 +60,7 @@ abstract contract BaseAcceptanceTest is Test {
 
     function _deployVaultRewarderLib() internal {
         if (Deployments.CHAIN_ID == 42161 && 250810618 < FORK_BLOCK) return;
+        if (Deployments.CHAIN_ID == 1 && 20773061 < FORK_BLOCK) return;
 
         // At lower fork blocks, need to deploy the new VaultRewarderLib
         deployCodeTo("VaultRewarderLib.sol", Deployments.VAULT_REWARDER_LIB);
