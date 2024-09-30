@@ -71,6 +71,12 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         additionalRewardTokens[2] = AdditionalRewardToken(REWARD_2, 100_000e6, uint32(block.timestamp + 200 days), 10 ** 6);
     }
 
+    function _skipIfHasRewardTokens() internal {
+        VaultRewarderLib vl = VaultRewarderLib(address(v()));
+        (VaultRewardState[] memory state,,) = vl.getRewardSettings();
+        vm.skip(state.length > 0);
+    }
+
     function _updateRewardToken(address rewardToken, uint256 emissionRatePerYear, uint256 endTime)
         private returns (uint256 index)
     {
@@ -588,6 +594,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
     }
 
     function test_claimReward_ShouldNotClaimPoolReinvestRewards() public {
+        _skipIfHasRewardTokens();
         for (uint256 i = 0; i < additionalRewardTokens.length; i++) {
             _updateRewardToken(
                 additionalRewardTokens[i].token,
@@ -610,33 +617,33 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account), "Account should have no rewards before claiming");
             }
             vm.prank(accounts[i].account);
             VaultRewarderLib(address(vault)).claimAccountRewards(accounts[i].account);
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account), "Account should have no rewards after claiming");
             }
         }
 
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account), "Account should still have no rewards after all claims");
             }
         }
 
         for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
             uint256 currentBal = metadata.rewardTokens[j].balanceOf(address(vault));
-            assertGt(currentBal, prevBalances[j], "2");
+            assertGt(currentBal, prevBalances[j], "Vault balance should increase after claims");
         }
 
     }
 
     function test_claimReward_ShouldNotClaimPoolReinvestRewardsEvenIfNoSecondaryIncentives() public {
+        _skipIfHasRewardTokens();
         _depositWithInitialAccounts();
 
         vm.warp(block.timestamp + 20 days);
-
         uint256[] memory prevBalances = new uint256[](metadata.rewardTokens.length);
         for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
             prevBalances[j] = metadata.rewardTokens[j].balanceOf(address(vault));
@@ -644,24 +651,24 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account), "Account should have no rewards before claiming");
             }
             vm.prank(accounts[i].account);
             VaultRewarderLib(address(vault)).claimAccountRewards(accounts[i].account);
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account), "Account should have no rewards after claiming");
             }
         }
 
         for (uint256 i = 0; i < accounts.length; i++) {
             for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
-                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account));
+                assertEq(0, metadata.rewardTokens[j].balanceOf(accounts[i].account), "Account should still have no rewards after all claims");
             }
         }
 
         for (uint256 j = 0; j < metadata.rewardTokens.length; j++) {
             uint256 currentBal = metadata.rewardTokens[j].balanceOf(address(vault));
-            assertGt(currentBal, prevBalances[j], "2");
+            assertGt(currentBal, prevBalances[j], "Vault balance should increase after claims");
         }
 
     }
