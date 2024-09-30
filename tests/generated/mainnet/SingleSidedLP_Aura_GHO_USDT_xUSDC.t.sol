@@ -97,6 +97,8 @@ ComposablePoolHarness
             forceClaimAfter: 1 days
         });
         _m.rewardPool = IERC20(0xBDD6984C3179B099E9D383ee2F44F3A57764BF7d);
+        _m.whitelistedReward = 0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f;
+        
 
         
 
