@@ -5,6 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Aura_GHO_USDT_xUSDC is VaultRewarderTests {
     function setUp() public override {
+        FORK_BLOCK = 20864646;
         harness = new Harness_SingleSidedLP_Aura_GHO_USDT_xUSDC();
 
         WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
@@ -90,7 +91,7 @@ ComposablePoolHarness
         _m.primaryBorrowCurrency = 3;
         _m.settings = StrategyVaultSettings({
             deprecated_emergencySettlementSlippageLimitPercent: 0,
-            maxPoolShare: 5000,
+            maxPoolShare: 3500,
             oraclePriceDeviationLimitPercent: 0.015e4,
             numRewardTokens: 0,
             forceClaimAfter: 1 days

@@ -146,7 +146,7 @@ contract Harness_{{ contractName }} is
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             maxPoolShare: {{ settings.maxPoolShare }},
             oraclePriceDeviationLimitPercent: {{ settings.oraclePriceDeviationLimitPercent }},
-            numRewardTokens: 0,
+            numRewardTokens: {{ settings.numRewardTokens }},
             forceClaimAfter: {{ settings.forceClaimAfter }}
         });
         _m.rewardPool = IERC20({{ rewardPool }});

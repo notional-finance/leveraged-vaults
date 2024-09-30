@@ -5,7 +5,7 @@ import "../../SingleSidedLP/harness/index.sol";
 
 contract Test_SingleSidedLP_Convex_xWBTC_tBTC is VaultRewarderTests {
     function setUp() public override {
-        FORK_BLOCK = 20773171;
+        FORK_BLOCK = 20865202;
         harness = new Harness_SingleSidedLP_Convex_xWBTC_tBTC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
@@ -94,7 +94,7 @@ Curve2TokenConvexHarness
             deprecated_emergencySettlementSlippageLimitPercent: 0,
             maxPoolShare: 2000,
             oraclePriceDeviationLimitPercent: 0.015e4,
-            numRewardTokens: 0,
+            numRewardTokens: 2,
             forceClaimAfter: 0
         });
         _m.rewardPool = IERC20(0x5793691B4ba69665213614d7ac722Db2d3f41927);

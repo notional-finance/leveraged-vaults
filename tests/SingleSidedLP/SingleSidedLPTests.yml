@@ -8,6 +8,7 @@ defaults:
     maxPoolShare: 2000
     oraclePriceDeviationLimitPercent: 100
     forceClaimAfter: 1 days
+    numRewardTokens: 0
   config:
     feeRate5BPS: 10
     liquidationRate: 102
@@ -373,6 +374,7 @@ mainnet:
   #     minAccountBorrowSize: 0.1e8
   #     maxPrimaryBorrow: 1e8
   - vaultName: SingleSidedLP:Aura:GHO/USDT/[USDC]
+    forkBlock: 20864646
     vaultType: ComposablePool
     primaryBorrowCurrency: USDC
     whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
@@ -380,7 +382,7 @@ mainnet:
     rewards: [AURA, BAL]
     oracles: [GHO, USDT, USDC]
     settings:
-      maxPoolShare: 5000
+      maxPoolShare: 3500
       oraclePriceDeviationLimitPercent: 0.015e4
     setUp:
       minDeposit: 1_000e6
@@ -666,7 +668,7 @@ mainnet:
       minAccountBorrowSize: 30e8
       maxPrimaryBorrow: 400e8
   - vaultName: SingleSidedLP:Convex:[WBTC]/tBTC
-    forkBlock: 20773171
+    forkBlock: 20865202
     vaultType: Curve2TokenConvex
     primaryBorrowCurrency: WBTC
     rewardPool: "0x5793691B4ba69665213614d7ac722Db2d3f41927"
@@ -680,6 +682,7 @@ mainnet:
       oraclePriceDeviationLimitPercent: 0.015e4
       forceClaimAfter: 0
       useAccountClaim: true
+      numRewardTokens: 2
     setUp:
       minDeposit: 0.01e8
       maxDeposit: 1e8

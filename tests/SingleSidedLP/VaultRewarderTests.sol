@@ -71,16 +71,39 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         additionalRewardTokens[2] = AdditionalRewardToken(REWARD_2, 100_000e6, uint32(block.timestamp + 200 days), 10 ** 6);
     }
 
-    function _updateRewardToken(address rewardToken, uint256 index, uint256 emissionRatePerYear, uint256 endTime)
-        private
+    function _updateRewardToken(address rewardToken, uint256 emissionRatePerYear, uint256 endTime)
+        private returns (uint256 index)
     {
-        vm.prank(Deployments.NOTIONAL.owner());
-        VaultRewarderLib(address(vault)).updateRewardToken({
+        VaultRewarderLib vl = VaultRewarderLib(address(v()));
+        (VaultRewardState[] memory state,,) = vl.getRewardSettings();
+
+        for (uint256 i = 0; i < state.length; i++) {
+            if (state[i].rewardToken == rewardToken) {
+                index = i;
+                break;
+            }
+        }
+        if (state.length > 0 && index == 0) index = state.length;
+
+        vm.startPrank(Deployments.NOTIONAL.owner());
+        (bool allowSell, ,) = Deployments.TRADING_MODULE.tokenWhitelist(address(vault), rewardToken);
+        if (allowSell) {
+            // Clear token permissions for this test
+            Deployments.TRADING_MODULE.setTokenPermissions(
+                address(vault),
+                rewardToken,
+                ITradingModule.TokenPermissions({allowSell: false, dexFlags: 0, tradeTypeFlags: 0})
+            );
+        }
+
+        vl.updateRewardToken({
             index: index,
             rewardToken: rewardToken,
             emissionRatePerYear: uint128(emissionRatePerYear),
             endTime: uint32(endTime)
         });
+
+        vm.stopPrank();
     }
 
     function _depositWithInitialAccounts() private returns (uint256 initialVaultShare) {
@@ -122,7 +145,6 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
             _updateRewardToken(
                 newRewardTokens[i].token,
-                i,
                 newRewardTokens[i].emissionRatePerYear,
                 newRewardTokens[i].endTime
             );
@@ -358,11 +380,10 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
     function test_VaultRewarder_updateRewardToken_ShouldFailIfNotNotionOwner() public {
         (VaultRewardState[] memory state,,) = VaultRewarderLib(address(vault)).getRewardSettings();
-        assertEq(state.length, 0);
 
         vm.expectRevert();
         VaultRewarderLib(address(vault)).updateRewardToken({
-            index: 0,
+            index: state.length,
             rewardToken: REWARD,
             emissionRatePerYear: uint128(100_000e8),
             endTime: uint32(block.timestamp + 30 days)
@@ -371,11 +392,10 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
     function test_VaultRewarder_updateRewardToken_ShouldFailIfUpdatingExistingIndexWithDifferentToken() public {
         (VaultRewardState[] memory state,,) = VaultRewarderLib(address(vault)).getRewardSettings();
-        assertEq(state.length, 0);
 
         vm.prank(Deployments.NOTIONAL.owner());
         VaultRewarderLib(address(vault)).updateRewardToken({
-            index: 0,
+            index: state.length,
             rewardToken: REWARD,
             emissionRatePerYear: uint128(100_000e8),
             endTime: uint32(block.timestamp + 30 days)
@@ -383,7 +403,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         vm.expectRevert();
         VaultRewarderLib(address(vault)).updateRewardToken({
-            index: 0,
+            index: state.length,
             rewardToken: 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8,
             emissionRatePerYear: uint128(10_000e8),
             endTime: uint32(block.timestamp + 60 days)
@@ -392,18 +412,17 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
     function test_VaultRewarder_updateRewardToken() public {
         (VaultRewardState[] memory state,,) = VaultRewarderLib(address(vault)).getRewardSettings();
-        assertEq(state.length, 0);
+        uint256 initialLength = state.length;
 
         vm.prank(Deployments.NOTIONAL.owner());
         _updateRewardToken({
-            index: 0,
             rewardToken: REWARD,
             emissionRatePerYear: 100_000e8,
             endTime: uint32(block.timestamp + 30 days)
         });
 
         (state,,) = VaultRewarderLib(address(vault)).getRewardSettings();
-        assertEq(state.length, 1, "1");
+        assertEq(state.length, initialLength + 1, "1");
 
         // update reward token that is issue via reward booster
         if (metadata.rewardTokens.length > 0) {
@@ -414,21 +433,19 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
             );
             vm.prank(Deployments.NOTIONAL.owner());
             _updateRewardToken({
-                index: 1,
                 rewardToken: address(metadata.rewardTokens[0]),
                 emissionRatePerYear: 0,
                 endTime: uint32(block.timestamp + 300 days)
             });
 
             (state,,) = VaultRewarderLib(address(vault)).getRewardSettings();
-            assertEq(state.length, 2, "2");
+            assertEq(state.length, initialLength + 2, "2");
         }
     }
 
     function test_getAccountRewardClaim_ShouldBeZeroAtStartOfIncentivePeriod() public {
         _depositWithInitialAccounts();
         _updateRewardToken({
-            index: 0,
             rewardToken: REWARD,
             emissionRatePerYear: 100_000e8,
             endTime: block.timestamp + 30 days
@@ -447,13 +464,13 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         timeToSkip = uint32(bound(timeToSkip, 1 hours, uint256(type(uint32).max / 10)));
         uint256 emissionRatePerYear = 1_000_000e8;
         uint256 endTime = block.timestamp + 30 days;
-        _updateRewardToken({index: 0, rewardToken: REWARD, emissionRatePerYear: emissionRatePerYear, endTime: endTime});
-        uint40 starTime = uint40(block.timestamp);
+        _updateRewardToken({rewardToken: REWARD, emissionRatePerYear: emissionRatePerYear, endTime: endTime});
+        uint40 startTime = uint40(block.timestamp);
         _depositWithInitialAccounts();
 
         skip(timeToSkip);
 
-        uint256 totalGeneratedIncentive = uint256(min(timeToSkip, endTime - starTime)) * emissionRatePerYear
+        uint256 totalGeneratedIncentive = uint256(min(timeToSkip, endTime - startTime)) * emissionRatePerYear
             * Constants.INCENTIVE_ACCUMULATION_PRECISION / Constants.YEAR;
 
         for (uint256 i = 0; i < accounts.length; i++) {
@@ -535,7 +552,6 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         for (uint256 i = 0; i < additionalRewardTokens.length; i++) {
             _updateRewardToken(
                 additionalRewardTokens[i].token,
-                i,
                 additionalRewardTokens[i].emissionRatePerYear,
                 additionalRewardTokens[i].endTime
             );
@@ -575,7 +591,6 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         for (uint256 i = 0; i < additionalRewardTokens.length; i++) {
             _updateRewardToken(
                 additionalRewardTokens[i].token,
-                i,
                 additionalRewardTokens[i].emissionRatePerYear,
                 additionalRewardTokens[i].endTime
             );
@@ -928,7 +943,6 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
         for (uint256 i = 0; i < additionalRewardTokens.length; i++) {
             _updateRewardToken(
                 additionalRewardTokens[i].token,
-                i,
                 additionalRewardTokens[i].emissionRatePerYear,
                 additionalRewardTokens[i].endTime
             );
@@ -949,7 +963,7 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
         // turn off emissions
         for (uint256 i = 0; i < additionalRewardTokens.length; i++) {
-            _updateRewardToken(additionalRewardTokens[i].token, i, 0, 0);
+            _updateRewardToken(additionalRewardTokens[i].token, 0, 0);
         }
 
         skipTime = 2 weeks;
@@ -965,7 +979,6 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
              additionalRewardTokens[i].endTime = uint32(block.timestamp + 1 weeks);
             _updateRewardToken(
                 additionalRewardTokens[i].token,
-                i,
                 additionalRewardTokens[i].emissionRatePerYear,
                 additionalRewardTokens[i].endTime
             );
