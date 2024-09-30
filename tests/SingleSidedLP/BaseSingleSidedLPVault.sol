@@ -216,11 +216,12 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         }
         assertGt(initialBalance, 0);
         (IERC20[] memory tokens, /* */) = v().TOKENS();
+        uint256[] memory initialBalances = new uint256[](tokens.length);
         for (uint256 i; i < tokens.length; i++) {
             if (address(tokens[i]) == address(0)) {
-                assertEq(address(vault).balance, 0);
-            } else if (tokens[i] != metadata.poolToken && address(tokens[i]) != metadata.whitelistedReward) {
-                assertEq(tokens[i].balanceOf(address(vault)), 0);
+                initialBalances[i] = address(vault).balance;
+            } else if (tokens[i] != metadata.poolToken) {
+                initialBalances[i] = tokens[i].balanceOf(address(vault));
             }
         }
 
@@ -231,10 +232,10 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
         for (uint256 i; i < tokens.length; i++) {
             if (address(tokens[i]) == address(0)) {
                 exitBalances[i] = address(vault).balance;
-                assertGt(exitBalances[i], 0);
+                assertGt(exitBalances[i], initialBalances[i]);
             } else if (tokens[i] != metadata.poolToken) {
                 exitBalances[i] = tokens[i].balanceOf(address(vault));
-                assertGt(exitBalances[i], 0);
+                assertGt(exitBalances[i], initialBalances[i]);
             }
         }
     }
