@@ -84,6 +84,10 @@ Curve2TokenConvexHarness
         });
         
     }
+
+    function hasRewardReinvestmentRole() public view override returns (bool) {
+        return false;
+    }
     
 
     constructor() {
