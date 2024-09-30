@@ -85,7 +85,7 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
                         );
                         callIndex++;
                     }
-                } else {
+                } else if (harness.hasRewardReinvestmentRole()) {
                     init[callIndex].to = proxy;
                     init[callIndex].callData = abi.encodeWithSelector(
                         AccessControlUpgradeable.grantRole.selector,

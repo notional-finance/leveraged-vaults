@@ -25,7 +25,7 @@ defaults:
 arbitrum:
   - stakeSymbol: rsETH
     forkBlock: 259045792
-    expiry: 25DEC2024
+    expiry: 26DEC2024
     primaryBorrowCurrency: ETH
     contractName: PendlePTGeneric
     oracles: [ETH, rsETH]

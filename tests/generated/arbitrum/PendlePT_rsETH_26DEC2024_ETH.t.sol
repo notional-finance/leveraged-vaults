@@ -15,10 +15,10 @@ import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 
 
-contract Test_PendlePT_rsETH_25DEC2024_ETH is BasePendleTest {
+contract Test_PendlePT_rsETH_26DEC2024_ETH is BasePendleTest {
     function setUp() public override {
         FORK_BLOCK = 259045792;
-        harness = new Harness_PendlePT_rsETH_25DEC2024_ETH();
+        harness = new Harness_PendlePT_rsETH_26DEC2024_ETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -66,10 +66,10 @@ contract Test_PendlePT_rsETH_25DEC2024_ETH is BasePendleTest {
     }
 
 
-contract Harness_PendlePT_rsETH_25DEC2024_ETH is PendleStakingHarness {
+contract Harness_PendlePT_rsETH_26DEC2024_ETH is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
-        return 'Pendle:PT rsETH 25DEC2024:[ETH]';
+        return 'Pendle:PT rsETH 26DEC2024:[ETH]';
     }
 
     function getRequiredOracles() public override view returns (
@@ -136,6 +136,7 @@ contract Harness_PendlePT_rsETH_25DEC2024_ETH is PendleStakingHarness {
     }
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0x878C46978AC67E43d9d27e510f98e087E9940B12;
         marketAddress = 0xcB471665BF23B2Ac6196D84D947490fd5571215f;
         ptAddress = 0x355ec27c9d4530dE01A103FA27F884a2F3dA65ef;
         twapDuration = 15 minutes; // recommended 15 - 30 min
@@ -158,9 +159,9 @@ contract Harness_PendlePT_rsETH_25DEC2024_ETH is PendleStakingHarness {
 
 }
 
-contract Deploy_PendlePT_rsETH_25DEC2024_ETH is Harness_PendlePT_rsETH_25DEC2024_ETH, DeployProxyVault {
+contract Deploy_PendlePT_rsETH_26DEC2024_ETH is Harness_PendlePT_rsETH_26DEC2024_ETH, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_PendlePT_rsETH_25DEC2024_ETH();
+        harness = new Harness_PendlePT_rsETH_26DEC2024_ETH();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {

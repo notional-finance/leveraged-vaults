@@ -41,4 +41,8 @@ abstract contract SingleSidedLPHarness is StrategyVaultHarness {
         p.maxRequiredAccountCollateralRatioBPS = 10000;
         p.excessCashLiquidationBonus = 100;
     }
+
+    function hasRewardReinvestmentRole() public view virtual override returns (bool) {
+        return true;
+    }
 }
