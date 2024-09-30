@@ -379,8 +379,9 @@ mainnet:
     primaryBorrowCurrency: USDC
     whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
     rewardPool: "0xBDD6984C3179B099E9D383ee2F44F3A57764BF7d"
-    rewards: [AURA, BAL]
+    rewards: [AURA, BAL, GHO]
     oracles: [GHO, USDT, USDC]
+    whitelistedReward: "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f"
     settings:
       maxPoolShare: 3500
       oraclePriceDeviationLimitPercent: 0.015e4
