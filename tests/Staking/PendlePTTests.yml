@@ -24,13 +24,13 @@ defaults:
 
 arbitrum:
   - stakeSymbol: rsETH
-    forkBlock: 252477204
-    expiry: 25SEP2024
+    forkBlock: 259045792
+    expiry: 25DEC2024
     primaryBorrowCurrency: ETH
     contractName: PendlePTGeneric
     oracles: [ETH, rsETH]
-    marketAddress: "0xED99fC8bdB8E9e7B8240f62f69609a125A0Fbf14"
-    ptAddress: "0x30c98c0139B62290E26aC2a2158AC341Dcaf1333"
+    marketAddress: "0xcB471665BF23B2Ac6196D84D947490fd5571215f"
+    ptAddress: "0x355ec27c9d4530dE01A103FA27F884a2F3dA65ef"
     useSyOracleRate: 'true'
     tradeOnEntry: true
     primaryDex: BalancerV2
@@ -56,29 +56,6 @@ arbitrum:
       maxDeleverageCollateralRatioBPS: 2300
       minAccountBorrowSize: 0.01e8
       maxPrimaryBorrow: 1e8
-  - stakeSymbol: weETH
-    forkBlock: 221089505
-    expiry: 27JUN2024
-    primaryBorrowCurrency: ETH
-    contractName: PendlePTGeneric
-    oracles: [ETH]
-    marketAddress: "0x952083cde7aaa11AB8449057F7de23A970AA8472"
-    ptAddress: "0x1c27Ad8a19Ba026ADaBD615F6Bc77158130cfBE4"
-    useSyOracleRate: 'true'
-    tradeOnEntry: true
-    primaryDex: UniswapV3
-    exchangeData:
-      feeTier: 100
-    permissions:
-      - token: weETH
-        dex: UniswapV3
-        tradeTypeFlags: 5
-      - token: ETH
-        dex: UniswapV3
-        tradeTypeFlags: 5
-    setUp:
-      minDeposit: 1e18
-      defaultLiquidationDiscount: 950
   - stakeSymbol: USDe
     forkBlock: 222513382
     expiry: 24JUL2024

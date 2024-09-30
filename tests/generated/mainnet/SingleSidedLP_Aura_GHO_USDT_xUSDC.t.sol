@@ -65,8 +65,8 @@ ComposablePoolHarness
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](2);
-        permissions = new ITradingModule.TokenPermissions[](2);
+        token = new address[](3);
+        permissions = new ITradingModule.TokenPermissions[](3);
 
         // AURA
         token[0] = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
@@ -77,6 +77,12 @@ ComposablePoolHarness
         // BAL
         token[1] = 0xba100000625a3754423978a60c9317c58a424e3D;
         permissions[1] = ITradingModule.TokenPermissions(
+            // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
+            { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
+        );
+        // GHO
+        token[2] = 0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f;
+        permissions[2] = ITradingModule.TokenPermissions(
             // 0x, EXACT_IN_SINGLE, EXACT_IN_BATCH
             { allowSell: true, dexFlags: 8, tradeTypeFlags: 5 }
         );
@@ -102,11 +108,13 @@ ComposablePoolHarness
 
         
 
-        _m.rewardTokens = new IERC20[](2);
+        _m.rewardTokens = new IERC20[](3);
         // AURA
         _m.rewardTokens[0] = IERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF);
         // BAL
         _m.rewardTokens[1] = IERC20(0xba100000625a3754423978a60c9317c58a424e3D);
+        // GHO
+        _m.rewardTokens[2] = IERC20(0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f);
         
         setMetadata(_m);
     }
