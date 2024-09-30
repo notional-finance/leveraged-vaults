@@ -113,16 +113,16 @@ if [ "$EXECUTE" = true ]; then
     echo "Deploying Vault Implementation for $FILE_NAME on $CHAIN"
     forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
         -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
-    --chain $CHAIN_ID --account $DEPLOYER \
-    --verify --verifier-url $VERIFIER_URL --etherscan-api-key $ETHERSCAN_API_KEY \
-    --broadcast
+        --chain $CHAIN_ID --account $DEPLOYER \
+        --verify --verifier-url $VERIFIER_URL --etherscan-api-key $ETHERSCAN_API_KEY \
+        --broadcast
     OUTPUT_FILE="broadcast/$FILE_NAME.t.sol/$CHAIN_ID/run-latest.json"
 
 else 
     echo "Dry Run: Deploying Vault Implementation for $FILE_NAME on $CHAIN"
     forge script tests/generated/${CHAIN}/${FILE_NAME}.t.sol:Deploy_${FILE_NAME} \
         -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
-    --chain $CHAIN_ID --account $DEPLOYER
+        --chain $CHAIN_ID --account $DEPLOYER
     OUTPUT_FILE="broadcast/$FILE_NAME.t.sol/$CHAIN_ID/dry-run/run-latest.json"
 fi
 
