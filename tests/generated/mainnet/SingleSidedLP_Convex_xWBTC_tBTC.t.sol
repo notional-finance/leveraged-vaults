@@ -34,13 +34,13 @@ Curve2TokenConvexHarness
         params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 0;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 1300;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
         params.maxDeleverageCollateralRatioBPS = 2300;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.001e8;
-        maxPrimaryBorrow = 0.1e8;
+        params.minAccountBorrowSize = 1e8;
+        maxPrimaryBorrow = 50e8;
     }
 
     function getRequiredOracles() public override pure returns (
