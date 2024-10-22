@@ -80,56 +80,65 @@ arbitrum:
       minDeposit: 0.1e6
       maxDeposit: 5_000e6
 mainnet:
-  - stakeSymbol: weETH
-    forkBlock: 20092864
-    expiry: 27JUN2024
+  - stakeSymbol: ezETH
+    forkBlock: 21023919
+    expiry: 25DEC2024
     primaryBorrowCurrency: ETH
-    contractName: PendlePTEtherFiVault
+    contractName: PendlePTGeneric
     oracles: [ETH]
-    marketAddress: "0xF32e58F92e60f4b0A37A69b95d642A471365EAe8"
-    ptAddress: "0xc69Ad9baB1dEE23F4605a82b3354F8E40d1E5966"
+    marketAddress: "0xD8F12bCDE578c653014F27379a6114F67F0e445f"
+    ptAddress: "0xf7906F274c174A52d444175729E3fa98f9bde285"
     useSyOracleRate: 'true'
-    primaryDex: UniswapV3
+    primaryDex: BalancerV2
+    tradeOnEntry: true
     exchangeData:
-      feeTier: 500
+      poolId: "0x596192bb6e41802428ac943d2f1476c1af25cc0e000000000000000000000659"
     permissions:
-      - token: weETH
-        dex: UniswapV3
+      - token: ezETH
+        dex: BalancerV2
+        tradeTypeFlags: 5
+      - token: ETH
+        dex: BalancerV2
         tradeTypeFlags: 5
     setUp:
       minDeposit: 0.1e18
       maxDeposit: 10e18
-      deleverageCollateralDecreaseRatio: 920
-  - stakeSymbol: rsETH
-    forkBlock: 20499945
-    expiry: 26SEP2024
-    primaryBorrowCurrency: ETH
-    contractName: PendlePTKelpVault
-    oracles: [ETH, rsETH]
-    marketAddress: "0x6b4740722e46048874d84306B2877600ABCea3Ae"
-    ptAddress: "0x7bAf258049cc8B9A78097723dc19a8b103D4098F"
-    useSyOracleRate: 'true'
-    primaryDex: UniswapV3
-    exchangeData:
-      feeTier: 500
-    permissions:
-      - token: rsETH
-        dex: UniswapV3
-        tradeTypeFlags: 5
-    setUp:
-      minDeposit: 0.1e18
-      maxDeposit: 10e18
-      deleverageCollateralDecreaseRatio: 930
   - stakeSymbol: USDe
-    forkBlock: 20092864
-    expiry: 24JUL2024
+    forkBlock: 21023919
+    expiry: 26MAR2025
+    primaryBorrowCurrency: USDC
+    contractName: PendlePTGeneric
+    oracles: [USDe, USDC]
+    whale: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf"
+    marketAddress: "0xB451A36c8B6b2EAc77AD0737BA732818143A0E25"
+    ptAddress: "0x8A47b431A7D947c6a3ED6E42d501803615a97EAa"
+    useSyOracleRate: 'true'
+    primaryDex: CurveV2
+    tradeOnEntry: true
+    exchangeData:
+      pool: "0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72"
+      fromIndex: 1 # USDC
+      toIndex: 0   # USDe
+    permissions:
+      - token: USDC
+        dex: CurveV2
+        tradeTypeFlags: 5
+      - token: USDe
+        dex: CurveV2
+        tradeTypeFlags: 5
+    setUp:
+      minDeposit: 0.1e6
+      maxDeposit: 100_000e6
+  - stakeSymbol: USDe
+    forkBlock: 21023919
+    expiry: 25DEC2024
     primaryBorrowCurrency: USDC
     contractName: PendlePTGeneric
     tradeOnEntry: true
     oracles: [USDC]
-    whale: "0x0A59649758aa4d66E25f08Dd01271e891fe52199"
-    marketAddress: "0x19588F29f9402Bb508007FeADd415c875Ee3f19F"
-    ptAddress: "0xa0021EF8970104c2d008F38D92f115ad56a9B8e1"
+    whale: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf"
+    marketAddress: "0x8a49f2AC2730ba15AB7EA832EdaC7f6BA22289f8"
+    ptAddress: "0xA8778DD6B7f1F61f2CFda5D3cB18be8F99A8dB30"
     useSyOracleRate: 'true'
     primaryDex: CurveV2
     exchangeData:

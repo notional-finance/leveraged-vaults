@@ -11,14 +11,14 @@ import {
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
-import { PendlePTEtherFiVault } from "@contracts/vaults/staking/PendlePTEtherFiVault.sol";
+import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 
 
-contract Test_PendlePT_weETH_27JUN2024_ETH is BasePendleTest {
+contract Test_PendlePT_ezETH_25DEC2024_ETH is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 20092864;
-        harness = new Harness_PendlePT_weETH_27JUN2024_ETH();
+        FORK_BLOCK = 21023919;
+        harness = new Harness_PendlePT_ezETH_25DEC2024_ETH();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -28,7 +28,7 @@ contract Test_PendlePT_weETH_27JUN2024_ETH is BasePendleTest {
         maxRelExitValuation = 50 * BASIS_POINT;
         maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
         maxRelExitValuation_WithdrawRequest_Variable = 0.005e18;
-        deleverageCollateralDecreaseRatio = 920;
+        deleverageCollateralDecreaseRatio = 925;
         defaultLiquidationDiscount = 955;
         withdrawLiquidationDiscount = 945;
         splitWithdrawPriceDecrease = 610;
@@ -37,12 +37,7 @@ contract Test_PendlePT_weETH_27JUN2024_ETH is BasePendleTest {
     }
 
     
-    function finalizeWithdrawRequest(address account) internal override {
-        WithdrawRequest memory w = v().getWithdrawRequest(account);
-
-        vm.prank(0x0EF8fa4760Db8f5Cd4d993f3e3416f30f942D705); // etherFi: admin
-        WithdrawRequestNFT.finalizeRequests(w.requestId);
-    }
+    function finalizeWithdrawRequest(address account) internal override {}
     
 
     function getDepositParams(
@@ -52,9 +47,9 @@ contract Test_PendlePT_weETH_27JUN2024_ETH is BasePendleTest {
         StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
 
         PendleDepositParams memory d = PendleDepositParams({
-            dexId: 0,
+            dexId: m.primaryDexId,
             minPurchaseAmount: 0,
-            exchangeData: "",
+            exchangeData: m.exchangeData,
             minPtOut: 0,
             approxParams: IPRouter.ApproxParams({
                 guessMin: 0,
@@ -71,10 +66,10 @@ contract Test_PendlePT_weETH_27JUN2024_ETH is BasePendleTest {
     }
 
 
-contract Harness_PendlePT_weETH_27JUN2024_ETH is PendleStakingHarness {
+contract Harness_PendlePT_ezETH_25DEC2024_ETH is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
-        return 'Pendle:PT weETH 27JUN2024:[ETH]';
+        return 'Pendle:PT ezETH 25DEC2024:[ETH]';
     }
 
     function getRequiredOracles() public override view returns (
@@ -96,14 +91,18 @@ contract Harness_PendlePT_weETH_27JUN2024_ETH is PendleStakingHarness {
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](1);
-        permissions = new ITradingModule.TokenPermissions[](1);
+        token = new address[](2);
+        permissions = new ITradingModule.TokenPermissions[](2);
 
         
 
-        token[0] = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
+        token[0] = 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110;
         permissions[0] = ITradingModule.TokenPermissions(
-            { allowSell: true, dexFlags: 1 << 2, tradeTypeFlags: 5 }
+            { allowSell: true, dexFlags: 1 << 4, tradeTypeFlags: 5 }
+        );
+        token[1] = 0x0000000000000000000000000000000000000000;
+        permissions[1] = ITradingModule.TokenPermissions(
+            { allowSell: true, dexFlags: 1 << 4, tradeTypeFlags: 5 }
         );
         
     }
@@ -127,33 +126,38 @@ contract Harness_PendlePT_weETH_27JUN2024_ETH is PendleStakingHarness {
 
     function deployImplementation() internal override returns (address impl) {
         
-        return address(new PendlePTEtherFiVault(marketAddress, ptAddress));
+        return address(new PendlePTGeneric(
+            marketAddress, tokenInSy, tokenOutSy, borrowToken, ptAddress, redemptionToken
+        ));
         
     }
 
     constructor() {
-        marketAddress = 0xF32e58F92e60f4b0A37A69b95d642A471365EAe8;
-        ptAddress = 0xc69Ad9baB1dEE23F4605a82b3354F8E40d1E5966;
+        marketAddress = 0xD8F12bCDE578c653014F27379a6114F67F0e445f;
+        ptAddress = 0xf7906F274c174A52d444175729E3fa98f9bde285;
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
-        baseToUSDOracle = 0xE47F6c47DE1F1D93d8da32309D4dB90acDadeEaE;
+        baseToUSDOracle = 0xCa140AE5a361b7434A729dCadA0ea60a50e249dd;
         borrowToken = 0x0000000000000000000000000000000000000000;
-        tokenOutSy = 0xCd5fE23C85820F7B72D0926FC9b05b43E359b7ee;
+        tokenOutSy = 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110;
+        
+        tokenInSy = 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110;
+        redemptionToken = 0xbf5495Efe5DB9ce00f80364C8B423567e58d2110;
         
 
-        UniV3Adapter.UniV3SingleData memory d;
-        d.fee = 500;
+        BalancerV2Adapter.SingleSwapData memory d;
+        d.poolId = 0x596192bb6e41802428ac943d2f1476c1af25cc0e000000000000000000000659;
         bytes memory exchangeData = abi.encode(d);
-        uint8 primaryDexId = 2;
+        uint8 primaryDexId = 4;
 
-        setMetadata(StakingMetadata(1, primaryDexId, exchangeData, true));
+        setMetadata(StakingMetadata(1, primaryDexId, exchangeData, false));
     }
 
 }
 
-contract Deploy_PendlePT_weETH_27JUN2024_ETH is Harness_PendlePT_weETH_27JUN2024_ETH, DeployProxyVault {
+contract Deploy_PendlePT_ezETH_25DEC2024_ETH is Harness_PendlePT_ezETH_25DEC2024_ETH, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_PendlePT_weETH_27JUN2024_ETH();
+        harness = new Harness_PendlePT_ezETH_25DEC2024_ETH();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {

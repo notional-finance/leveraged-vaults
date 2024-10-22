@@ -15,11 +15,11 @@ import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 
 
-contract Test_PendlePT_USDe_24JUL2024_USDC is BasePendleTest {
+contract Test_PendlePT_USDe_25DEC2024_USDC is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 20092864;
-        WHALE = 0x0A59649758aa4d66E25f08Dd01271e891fe52199;
-        harness = new Harness_PendlePT_USDe_24JUL2024_USDC();
+        FORK_BLOCK = 21023919;
+        WHALE = 0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf;
+        harness = new Harness_PendlePT_USDe_25DEC2024_USDC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -86,10 +86,10 @@ contract Test_PendlePT_USDe_24JUL2024_USDC is BasePendleTest {
     }
 
 
-contract Harness_PendlePT_USDe_24JUL2024_USDC is PendleStakingHarness {
+contract Harness_PendlePT_USDe_25DEC2024_USDC is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
-        return 'Pendle:PT USDe 24JUL2024:[USDC]';
+        return 'Pendle:PT USDe 25DEC2024:[USDC]';
     }
 
     function getRequiredOracles() public override view returns (
@@ -153,8 +153,8 @@ contract Harness_PendlePT_USDe_24JUL2024_USDC is PendleStakingHarness {
     }
 
     constructor() {
-        marketAddress = 0x19588F29f9402Bb508007FeADd415c875Ee3f19F;
-        ptAddress = 0xa0021EF8970104c2d008F38D92f115ad56a9B8e1;
+        marketAddress = 0x8a49f2AC2730ba15AB7EA832EdaC7f6BA22289f8;
+        ptAddress = 0xA8778DD6B7f1F61f2CFda5D3cB18be8F99A8dB30;
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
         baseToUSDOracle = 0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961;
@@ -177,9 +177,9 @@ contract Harness_PendlePT_USDe_24JUL2024_USDC is PendleStakingHarness {
 
 }
 
-contract Deploy_PendlePT_USDe_24JUL2024_USDC is Harness_PendlePT_USDe_24JUL2024_USDC, DeployProxyVault {
+contract Deploy_PendlePT_USDe_25DEC2024_USDC is Harness_PendlePT_USDe_25DEC2024_USDC, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_PendlePT_USDe_24JUL2024_USDC();
+        harness = new Harness_PendlePT_USDe_25DEC2024_USDC();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {
