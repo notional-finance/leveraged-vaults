@@ -11,34 +11,25 @@ import {
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
-import { PendlePTKelpVault } from "@contracts/vaults/staking/PendlePTKelpVault.sol";
+import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 
-interface ILRTOracle {
-    // methods
-    function getAssetPrice(address asset) external view returns (uint256);
-    function assetPriceOracle(address asset) external view returns (address);
-    function rsETHPrice() external view returns (uint256);
-}
 
-ILRTOracle constant lrtOracle = ILRTOracle(0x349A73444b1a310BAe67ef67973022020d70020d);
-address constant unstakingVault = 0xc66830E2667bc740c0BED9A71F18B14B8c8184bA;
-
-
-contract Test_PendlePT_rsETH_26SEP2024_ETH is BasePendleTest {
+contract Test_PendlePT_USDe_26MAR2025_USDC is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 20499945;
-        harness = new Harness_PendlePT_rsETH_26SEP2024_ETH();
+        FORK_BLOCK = 21023919;
+        WHALE = 0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf;
+        harness = new Harness_PendlePT_USDe_26MAR2025_USDC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
-        minDeposit = 0.1e18;
-        maxDeposit = 10e18;
+        minDeposit = 0.1e6;
+        maxDeposit = 100_000e6;
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
         maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
         maxRelExitValuation_WithdrawRequest_Variable = 0.005e18;
-        deleverageCollateralDecreaseRatio = 930;
+        deleverageCollateralDecreaseRatio = 925;
         defaultLiquidationDiscount = 955;
         withdrawLiquidationDiscount = 945;
         splitWithdrawPriceDecrease = 610;
@@ -47,19 +38,7 @@ contract Test_PendlePT_rsETH_26SEP2024_ETH is BasePendleTest {
     }
 
     
-    function finalizeWithdrawRequest(address account) internal override {
-        // finalize withdraw request on Kelp
-        vm.deal(address(unstakingVault), 10_000e18);
-        vm.startPrank(0xCbcdd778AA25476F203814214dD3E9b9c46829A1); // kelp: operator
-        WithdrawManager.unlockQueue(
-            Deployments.ALT_ETH_ADDRESS,
-            type(uint256).max,
-            lrtOracle.getAssetPrice(Deployments.ALT_ETH_ADDRESS),
-            lrtOracle.rsETHPrice()
-        );
-        vm.stopPrank();
-        vm.roll(block.number + WithdrawManager.withdrawalDelayBlocks());
-    }
+    function finalizeWithdrawRequest(address account) internal override {}
     
 
     function getDepositParams(
@@ -69,9 +48,9 @@ contract Test_PendlePT_rsETH_26SEP2024_ETH is BasePendleTest {
         StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
 
         PendleDepositParams memory d = PendleDepositParams({
-            dexId: 0,
+            dexId: m.primaryDexId,
             minPurchaseAmount: 0,
-            exchangeData: "",
+            exchangeData: m.exchangeData,
             minPtOut: 0,
             approxParams: IPRouter.ApproxParams({
                 guessMin: 0,
@@ -85,13 +64,32 @@ contract Test_PendlePT_rsETH_26SEP2024_ETH is BasePendleTest {
         return abi.encode(d);
     }
 
+    
+    function getRedeemParams(
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal view virtual override returns (bytes memory) {
+        RedeemParams memory r;
+
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
+        r.minPurchaseAmount = 0;
+        r.dexId = m.primaryDexId;
+        // For CurveV2 we need to swap the in and out indexes on exit
+        CurveV2Adapter.CurveV2SingleData memory d;
+        d.pool = 0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72;
+        d.fromIndex = 0;
+        d.toIndex = 1;
+        r.exchangeData = abi.encode(d);
+
+        return abi.encode(r);
+    }
     }
 
 
-contract Harness_PendlePT_rsETH_26SEP2024_ETH is PendleStakingHarness {
+contract Harness_PendlePT_USDe_26MAR2025_USDC is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
-        return 'Pendle:PT rsETH 26SEP2024:[ETH]';
+        return 'Pendle:PT USDe 26MAR2025:[USDC]';
     }
 
     function getRequiredOracles() public override view returns (
@@ -104,26 +102,30 @@ contract Harness_PendlePT_rsETH_26SEP2024_ETH is PendleStakingHarness {
         token[0] = ptAddress;
         oracle[0] = ptOracle;
 
-        // ETH
-        token[1] = 0x0000000000000000000000000000000000000000;
-        oracle[1] = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-        // rsETH
-        token[2] = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
-        oracle[2] = 0xb676EA4e0A54ffD579efFc1f1317C70d671f2028;
+        // USDe
+        token[1] = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+        oracle[1] = 0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961;
+        // USDC
+        token[2] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        oracle[2] = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
         
     }
 
     function getTradingPermissions() public pure override returns (
         address[] memory token, ITradingModule.TokenPermissions[] memory permissions
     ) {
-        token = new address[](1);
-        permissions = new ITradingModule.TokenPermissions[](1);
+        token = new address[](2);
+        permissions = new ITradingModule.TokenPermissions[](2);
 
         
 
-        token[0] = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
+        token[0] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
         permissions[0] = ITradingModule.TokenPermissions(
-            { allowSell: true, dexFlags: 1 << 2, tradeTypeFlags: 5 }
+            { allowSell: true, dexFlags: 1 << 7, tradeTypeFlags: 5 }
+        );
+        token[1] = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+        permissions[1] = ITradingModule.TokenPermissions(
+            { allowSell: true, dexFlags: 1 << 7, tradeTypeFlags: 5 }
         );
         
     }
@@ -147,33 +149,40 @@ contract Harness_PendlePT_rsETH_26SEP2024_ETH is PendleStakingHarness {
 
     function deployImplementation() internal override returns (address impl) {
         
-        return address(new PendlePTKelpVault(marketAddress, ptAddress));
+        return address(new PendlePTGeneric(
+            marketAddress, tokenInSy, tokenOutSy, borrowToken, ptAddress, redemptionToken
+        ));
         
     }
 
     constructor() {
-        marketAddress = 0x6b4740722e46048874d84306B2877600ABCea3Ae;
-        ptAddress = 0x7bAf258049cc8B9A78097723dc19a8b103D4098F;
+        marketAddress = 0xB451A36c8B6b2EAc77AD0737BA732818143A0E25;
+        ptAddress = 0x8A47b431A7D947c6a3ED6E42d501803615a97EAa;
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
-        baseToUSDOracle = 0xb676EA4e0A54ffD579efFc1f1317C70d671f2028;
-        borrowToken = 0x0000000000000000000000000000000000000000;
-        tokenOutSy = 0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7;
+        baseToUSDOracle = 0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961;
+        borrowToken = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        tokenOutSy = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+        
+        tokenInSy = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+        redemptionToken = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
         
 
-        UniV3Adapter.UniV3SingleData memory d;
-        d.fee = 500;
+        CurveV2Adapter.CurveV2SingleData memory d;
+        d.pool = 0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72;
+        d.fromIndex = 1;
+        d.toIndex = 0;
         bytes memory exchangeData = abi.encode(d);
-        uint8 primaryDexId = 2;
+        uint8 primaryDexId = 7;
 
-        setMetadata(StakingMetadata(1, primaryDexId, exchangeData, true));
+        setMetadata(StakingMetadata(3, primaryDexId, exchangeData, false));
     }
 
 }
 
-contract Deploy_PendlePT_rsETH_26SEP2024_ETH is Harness_PendlePT_rsETH_26SEP2024_ETH, DeployProxyVault {
+contract Deploy_PendlePT_USDe_26MAR2025_USDC is Harness_PendlePT_USDe_26MAR2025_USDC, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_PendlePT_rsETH_26SEP2024_ETH();
+        harness = new Harness_PendlePT_USDe_26MAR2025_USDC();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {
