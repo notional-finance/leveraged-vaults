@@ -11,6 +11,7 @@ import {
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
+import "@interfaces/ethena/IsUSDe.sol";
 import { {{contractName}} } from "@contracts/vaults/staking/{{contractName}}.sol";
 
 {% if contractName == 'PendlePTKelpVault' %}
@@ -72,6 +73,14 @@ contract Test_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrency }
         vm.stopPrank();
         vm.roll(block.number + WithdrawManager.withdrawalDelayBlocks());
     }
+    {% elif contractName == 'PendlePTStakedUSDeVault' %}
+    function finalizeWithdrawRequest(address account) internal override {
+        WithdrawRequest memory w = v().getWithdrawRequest(account);
+        IsUSDe.UserCooldown memory wCooldown = sUSDe.cooldowns(address(uint160(w.requestId)));
+
+        setMaxOracleFreshness();
+        vm.warp(wCooldown.cooldownEnd);
+    }
     {% else %}
     function finalizeWithdrawRequest(address account) internal override {}
     {% endif %}
@@ -99,7 +108,44 @@ contract Test_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrency }
         return abi.encode(d);
     }
 
-    {% if primaryDex == "CurveV2" %}
+    {% if contractName == "PendlePTStakedUSDeVault" %}
+    function getRedeemParams(
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal view virtual override returns (bytes memory) {
+        RedeemParams memory r;
+
+        r.minPurchaseAmount = 0;
+        r.dexId = 7; // CurveV2
+        // For CurveV2 we need to swap the in and out indexes on exit
+        CurveV2Adapter.CurveV2SingleData memory d;
+        d.pool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+        d.fromIndex = 0; // DAI
+        d.toIndex = 1; // USDC
+        r.exchangeData = abi.encode(d);
+
+        return abi.encode(r);
+    }
+
+    function getRedeemParamsWithdrawRequest(
+        uint256 /* vaultShares */,
+        uint256 /* maturity */
+    ) internal view virtual override returns (bytes memory) {
+        RedeemParams memory r;
+        // On withdraw request, we need to swap USDe to USDC
+
+        r.minPurchaseAmount = 0;
+        r.dexId = 7; // CurveV2
+        // For CurveV2 we need to swap the in and out indexes on exit
+        CurveV2Adapter.CurveV2SingleData memory d;
+        d.pool = 0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72;
+        d.fromIndex = 0; // USDe
+        d.toIndex = 1; // USDC
+        r.exchangeData = abi.encode(d);
+
+        return abi.encode(r);
+    }
+    {% elif primaryDex == "CurveV2" %}
     function getRedeemParams(
         uint256 /* vaultShares */,
         uint256 /* maturity */
@@ -192,10 +238,19 @@ contract Harness_PendlePT_{{ stakeSymbol }}_{{ expiry }}_{{ primaryBorrowCurrenc
         return address(new PendlePTGeneric(
             marketAddress, tokenInSy, tokenOutSy, borrowToken, ptAddress, redemptionToken
         ));
+        {% elif contractName == "PendlePTStakedUSDeVault" %}
+        return address(new PendlePTStakedUSDeVault(marketAddress, ptAddress, borrowToken));
         {% else %}
         return address(new {{contractName}}(marketAddress, ptAddress));
         {% endif %}
     }
+
+    {% if contractName == "PendlePTStakedUSDeVault" %}
+    function withdrawToken(address vault) public view override returns (address) {
+        // USDe is the withdraw token
+        return 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+    }
+    {% endif %}
 
     constructor() {
         {% if existingDeployment is defined -%}

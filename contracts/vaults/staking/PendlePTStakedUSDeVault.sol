@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import {Constants} from "@contracts/global/Constants.sol";
 import {Deployments} from "@deployments/Deployments.sol";
-import {PendlePrincipalToken, WithdrawRequest} from "./protocols/PendlePrincipalToken.sol";
+import {PendlePrincipalToken, WithdrawRequest, RedeemParams} from "./protocols/PendlePrincipalToken.sol";
 import {
     EthenaLib, EthenaCooldownHolder, sUSDe, USDe, SplitWithdrawRequest
 } from "./protocols/Ethena.sol";
@@ -13,12 +13,13 @@ contract PendlePTStakedUSDeVault is PendlePrincipalToken {
 
     constructor(
         address marketAddress,
-        address ptAddress
+        address ptAddress,
+        address borrowToken
     ) PendlePrincipalToken(
         marketAddress,
         address(USDe),
         address(sUSDe),
-        address(USDe),
+        borrowToken,
         ptAddress,
         address(USDe)
     ) {
@@ -36,6 +37,21 @@ contract PendlePTStakedUSDeVault is PendlePrincipalToken {
 
     function strategy() external override pure returns (bytes4) {
         return bytes4(keccak256("Staking:PendlePT:sUSDe"));
+    }
+
+    function _executeInstantRedemption(
+        address /* account */,
+        uint256 vaultShares,
+        uint256 /* maturity */,
+        RedeemParams memory params
+    ) internal override returns (uint256 borrowedCurrencyAmount) {
+        uint256 sUSDeToSell = _redeemPT(vaultShares);
+
+        // Selling sUSDe requires special handling since most of the liquidity
+        // sits inside a sUSDe/sDAI pool on Curve.
+        return EthenaLib._sellStakedUSDe(
+            sUSDeToSell, BORROW_TOKEN, params.minPurchaseAmount, params.exchangeData, params.dexId
+        );
     }
 
     /// @notice Returns the value of a withdraw request in terms of the borrowed token

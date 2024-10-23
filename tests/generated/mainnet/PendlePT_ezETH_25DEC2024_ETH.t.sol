@@ -11,6 +11,7 @@ import {
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
+import "@interfaces/ethena/IsUSDe.sol";
 import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 
@@ -131,6 +132,8 @@ contract Harness_PendlePT_ezETH_25DEC2024_ETH is PendleStakingHarness {
         ));
         
     }
+
+    
 
     constructor() {
         marketAddress = 0xD8F12bCDE578c653014F27379a6114F67F0e445f;
