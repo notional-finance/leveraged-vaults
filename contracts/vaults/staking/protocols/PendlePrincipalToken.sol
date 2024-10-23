@@ -142,7 +142,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         uint256 vaultShares,
         uint256 /* maturity */,
         RedeemParams memory params
-    ) internal override returns (uint256 borrowedCurrencyAmount) {
+    ) internal override virtual returns (uint256 borrowedCurrencyAmount) {
         uint256 netTokenOut = _redeemPT(vaultShares);
 
         if (TOKEN_OUT_SY != BORROW_TOKEN) {

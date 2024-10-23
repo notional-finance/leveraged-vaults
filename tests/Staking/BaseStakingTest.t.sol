@@ -451,9 +451,13 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
 
         // Depending on the vault type, we need to change the price of different tokens.
         try PendlePrincipalToken(payable(address(v()))).TOKEN_OUT_SY() returns (address tokenOutSY) {
-            // Pendle PT tokens have the PT token as the staking token. That will be sold during the
-            // withdraw so we need to change the price of the TOKEN_OUT_SY token.
-            _changeTokenPrice(withdrawLiquidationDiscount, tokenOutSY);
+            if (address(v().REDEMPTION_TOKEN()) == 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3) {
+                _changeTokenPrice(withdrawLiquidationDiscount, v().REDEMPTION_TOKEN());
+            } else {
+                // Pendle PT tokens have the PT token as the staking token. That will be sold during the
+                // withdraw so we need to change the price of the TOKEN_OUT_SY token.
+                _changeTokenPrice(withdrawLiquidationDiscount, tokenOutSY);
+            }
         } catch {
             if (address(v().REDEMPTION_TOKEN()) == 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3) {
                 // If USDe then we need to change the price of the redemption token since the

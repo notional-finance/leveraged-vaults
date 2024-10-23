@@ -11,6 +11,7 @@ import {
 } from "@contracts/vaults/staking/protocols/PendlePrincipalToken.sol";
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
+import "@interfaces/ethena/IsUSDe.sol";
 import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 
@@ -135,6 +136,8 @@ contract Harness_PendlePT_USDe_24JUL2024_USDC is PendleStakingHarness {
         ));
         
     }
+
+    
 
     constructor() {
         marketAddress = 0x2Dfaf9a5E4F293BceedE49f2dBa29aACDD88E0C4;
