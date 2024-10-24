@@ -130,7 +130,7 @@ mainnet:
       minDeposit: 0.1e6
       maxDeposit: 100_000e6
   - stakeSymbol: USDe
-    forkBlock: 21023919
+    forkBlock: 21037163
     expiry: 25DEC2024
     primaryBorrowCurrency: USDC
     contractName: PendlePTGeneric

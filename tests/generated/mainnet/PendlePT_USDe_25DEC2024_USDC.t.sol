@@ -18,7 +18,7 @@ import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 contract Test_PendlePT_USDe_25DEC2024_USDC is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 21023919;
+        FORK_BLOCK = 21037163;
         WHALE = 0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf;
         harness = new Harness_PendlePT_USDe_25DEC2024_USDC();
 
