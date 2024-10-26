@@ -156,6 +156,7 @@ contract Harness_PendlePT_USDe_25DEC2024_USDC is PendleStakingHarness {
     
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0x5fc3FC6263B16F665d78075784f5A6ABeD00e1dD;
         marketAddress = 0x8a49f2AC2730ba15AB7EA832EdaC7f6BA22289f8;
         ptAddress = 0xA8778DD6B7f1F61f2CFda5D3cB18be8F99A8dB30;
         twapDuration = 15 minutes; // recommended 15 - 30 min

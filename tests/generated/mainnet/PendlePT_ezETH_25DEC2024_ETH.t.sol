@@ -136,6 +136,7 @@ contract Harness_PendlePT_ezETH_25DEC2024_ETH is PendleStakingHarness {
     
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0xe47d1584A6dBb98Cc889BB1c9CBE5387173C282b;
         marketAddress = 0xD8F12bCDE578c653014F27379a6114F67F0e445f;
         ptAddress = 0xf7906F274c174A52d444175729E3fa98f9bde285;
         twapDuration = 15 minutes; // recommended 15 - 30 min
