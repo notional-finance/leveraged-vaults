@@ -106,7 +106,7 @@ esac
 DEPLOYER=MAINNET_V2_DEPLOYER
 DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
-forge build --force
+forge build
 
 OUTPUT_FILE=""
 if [ "$EXECUTE" = true ]; then
@@ -115,7 +115,7 @@ if [ "$EXECUTE" = true ]; then
         -f $ETH_RPC_URL --sender $DEPLOYER_ADDRESS \
         --chain $CHAIN_ID --account $DEPLOYER \
         --verify --verifier-url $VERIFIER_URL --etherscan-api-key $ETHERSCAN_API_KEY \
-        --broadcast
+        --slow --broadcast
     OUTPUT_FILE="broadcast/$FILE_NAME.t.sol/$CHAIN_ID/run-latest.json"
 
 else 
