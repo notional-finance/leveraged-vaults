@@ -135,17 +135,17 @@ contract Harness_PendlePT_USDe_26MAR2025_USDC is PendleStakingHarness {
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
         params = getTestVaultConfig();
-        params.feeRate5BPS = 10;
-        params.liquidationRate = 102;
+        params.feeRate5BPS = 0;
+        params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 1200;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1500;
+        params.maxDeleverageCollateralRatioBPS = 2000;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.001e8;
-        maxPrimaryBorrow = 100e8;
+        params.minAccountBorrowSize = 100e8;
+        maxPrimaryBorrow = 1_000e8;
     }
 
     function deployImplementation() internal override returns (address impl) {
@@ -159,6 +159,7 @@ contract Harness_PendlePT_USDe_26MAR2025_USDC is PendleStakingHarness {
     
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0xc87a900078F04c45B7f14e46C520D4A6f37296b0;
         marketAddress = 0xB451A36c8B6b2EAc77AD0737BA732818143A0E25;
         ptAddress = 0x8A47b431A7D947c6a3ED6E42d501803615a97EAa;
         twapDuration = 15 minutes; // recommended 15 - 30 min
