@@ -103,6 +103,16 @@ mainnet:
     setUp:
       minDeposit: 0.1e18
       maxDeposit: 10e18
+    config:
+      feeRate5BPS: 0
+      liquidationRate: 103
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 2
+      minCollateralRatioBPS: 1100
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 2000
+      minAccountBorrowSize: 0.1e8
+      maxPrimaryBorrow: 1e8
   - stakeSymbol: USDe
     forkBlock: 21023919
     expiry: 26MAR2025
@@ -129,6 +139,16 @@ mainnet:
     setUp:
       minDeposit: 0.1e6
       maxDeposit: 100_000e6
+    config:
+      feeRate5BPS: 0
+      liquidationRate: 103
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 2
+      minCollateralRatioBPS: 1200
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 2000
+      minAccountBorrowSize: 100e8
+      maxPrimaryBorrow: 1_000e8
   - stakeSymbol: USDe
     forkBlock: 21037163
     expiry: 25DEC2024
@@ -155,6 +175,16 @@ mainnet:
     setUp:
       minDeposit: 0.1e6
       maxDeposit: 100_000e6
+    config:
+      feeRate5BPS: 0
+      liquidationRate: 103
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 2
+      minCollateralRatioBPS: 1200
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 2000
+      minAccountBorrowSize: 100e8
+      maxPrimaryBorrow: 1_000e8
   - stakeSymbol: sUSDe
     forkBlock: 21023919
     expiry: 25DEC2024

@@ -112,17 +112,17 @@ contract Harness_PendlePT_ezETH_25DEC2024_ETH is PendleStakingHarness {
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
         params = getTestVaultConfig();
-        params.feeRate5BPS = 10;
-        params.liquidationRate = 102;
+        params.feeRate5BPS = 0;
+        params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 1100;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1500;
+        params.maxDeleverageCollateralRatioBPS = 2000;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.001e8;
-        maxPrimaryBorrow = 100e8;
+        params.minAccountBorrowSize = 0.1e8;
+        maxPrimaryBorrow = 1e8;
     }
 
     function deployImplementation() internal override returns (address impl) {
