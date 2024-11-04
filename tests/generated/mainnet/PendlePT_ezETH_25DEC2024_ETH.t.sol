@@ -121,8 +121,8 @@ contract Harness_PendlePT_ezETH_25DEC2024_ETH is PendleStakingHarness {
         params.maxDeleverageCollateralRatioBPS = 2000;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.1e8;
-        maxPrimaryBorrow = 1e8;
+        params.minAccountBorrowSize = 20e8;
+        maxPrimaryBorrow = 1_000e8;
     }
 
     function deployImplementation() internal override returns (address impl) {
