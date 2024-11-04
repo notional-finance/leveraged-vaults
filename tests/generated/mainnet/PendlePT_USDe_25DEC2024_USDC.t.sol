@@ -141,8 +141,8 @@ contract Harness_PendlePT_USDe_25DEC2024_USDC is PendleStakingHarness {
         params.maxDeleverageCollateralRatioBPS = 2000;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 100e8;
-        maxPrimaryBorrow = 1_000e8;
+        params.minAccountBorrowSize = 60_000e8;
+        maxPrimaryBorrow = 1_000_000e8;
     }
 
     function deployImplementation() internal override returns (address impl) {
