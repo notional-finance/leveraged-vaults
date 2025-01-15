@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
+import "forge-std/console.sol";
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {VaultConfig} from "@contracts/global/Types.sol";
@@ -174,6 +175,7 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
 
                 (/* */, tokensClaimed) = _executeTrade(params.dexId, trade);
             }
+            console.log('usdcOut', tokensClaimed);
 
             return tokensClaimed;
         }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
+import "forge-std/console.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {VaultAccount} from "@contracts/global/Types.sol";
 import {TypeConvert} from "@contracts/global/TypeConvert.sol";
@@ -140,6 +141,7 @@ abstract contract WithdrawRequestBase {
         if (accountWithdraw.requestId == 0) return (0, 0);
 
         (uint256 tokens, bool finalized) = _finalizeWithdraw(account, accountWithdraw);
+        console.log('usdeOut', tokens);
         if (finalized) {
             vaultSharesRedeemed = accountWithdraw.vaultShares;
             tokensClaimed = tokens;

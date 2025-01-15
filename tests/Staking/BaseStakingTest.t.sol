@@ -194,7 +194,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
             maturity = maturities[maturityIndex];
             depositAmount =  bound(depositAmount, 5 * minDeposit, maxDeposit);
-
+            console.log('depositAmount', depositAmount);
+            console.log('ENTERING VAULT');
+            console.log(block.timestamp);
             vaultShares = enterVault(
                 account,
                 depositAmount,
@@ -202,9 +204,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
                 getDepositParams(depositAmount, maturity)
             );
         }
-
         vm.warp(block.timestamp + 3600);
-
         uint256 lendAmount = uint256(
             Deployments.NOTIONAL.getVaultAccount(account, address(vault)).accountDebtUnderlying * -1
         );
@@ -217,7 +217,6 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             vm.prank(account);
             v().initiateWithdraw("");
         }
-
         bytes memory params = getRedeemParamsWithdrawRequest(vaultShares, maturity);
         vm.prank(account);
         // should fail if withdraw is not finalized
@@ -225,21 +224,19 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         Deployments.NOTIONAL.exitVault(
             account, address(vault), account, vaultShares, lendAmount, 0, params
         );
-
         finalizeWithdrawRequest(account);
-
         vm.prank(account);
         vm.expectRevert();
         // should fail if exact amount of shares is not specified
         Deployments.NOTIONAL.exitVault(
             account, address(vault), account, vaultShares - 1, lendAmount, 0, params
         );
-
         vm.prank(account);
+        console.log('EXITING VAULT');
+        console.log(block.timestamp);
         uint256 totalToReceiver = Deployments.NOTIONAL.exitVault(
             account, address(vault), account, vaultShares, lendAmount, 0, params
         );
-
         uint256 maxDiff;
         if (maturityIndex == 0) {
             maxDiff = maxRelExitValuation_WithdrawRequest_Variable;
@@ -247,7 +244,6 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             maxDiff = maxRelExitValuation_WithdrawRequest_Fixed;
         }
         assertApproxEqRel(totalToReceiver, depositAmount, maxDiff, "1");
-
         _assertWithdrawRequestIsEmpty(v().getWithdrawRequest(account));
     }
 
@@ -703,6 +699,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             maturityIndex = uint8(bound(maturityIndex, 0, maturities.length - 1));
             maturity = maturities[maturityIndex];
             depositAmount =  bound(depositAmount, 8 * minDeposit, maxDeposit);
+            console.log(block.timestamp);
 
             vaultShares = enterVault(
                 account,
@@ -756,6 +753,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             maxDiff = maxRelExitValuation_WithdrawRequest_Fixed;
         }
         // exit vault and check that account received expected amount
+        console.log(block.timestamp);
         assertApproxEqRel(
             Deployments.NOTIONAL.exitVault(
                 account, address(vault), account,

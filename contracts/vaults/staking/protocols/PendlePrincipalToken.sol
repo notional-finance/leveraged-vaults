@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.24;
 
+import "forge-std/console.sol";
 import {Constants} from "@contracts/global/Constants.sol";
 import {VaultStorage} from "@contracts/vaults/common/VaultStorage.sol";
 import {Deployments} from "@deployments/Deployments.sol";
@@ -72,7 +73,6 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         bytes calldata data
     ) internal override returns (uint256 vaultShares) {
         require(!PT.isExpired(), "Expired");
-
         PendleDepositParams memory params = abi.decode(data, (PendleDepositParams));
         uint256 tokenInAmount;
 
@@ -93,6 +93,8 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
         } else {
             tokenInAmount = depositUnderlyingExternal;
         }
+        console.log('usdcIn', depositUnderlyingExternal);
+        console.log('usdeOut', tokenInAmount);
 
         IPRouter.SwapData memory EMPTY_SWAP;
         IPRouter.LimitOrderData memory EMPTY_LIMIT;
@@ -116,7 +118,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
             }),
             EMPTY_LIMIT
         );
-
+        console.log('ptReceived', ptReceived);
         return ptReceived * uint256(Constants.INTERNAL_TOKEN_PRECISION) / STAKING_PRECISION;
     }
 
@@ -124,7 +126,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
     function _redeemPT(uint256 vaultShares) internal returns (uint256 netTokenOut) {
         uint256 netPtIn = getStakingTokensForVaultShare(vaultShares);
         uint256 netSyOut;
-
+        console.log('netPtIn', netPtIn);
         // PT tokens are known to be ERC20 compatible
         if (PT.isExpired()) {
             PT.transfer(address(YT), netPtIn);
@@ -133,8 +135,9 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
             PT.transfer(address(MARKET), netPtIn);
             (netSyOut, ) = MARKET.swapExactPtForSy(address(SY), netPtIn, "");
         }
-
+        console.log('syOut', netSyOut);
         netTokenOut = SY.redeem(address(this), netSyOut, TOKEN_OUT_SY, 0, true);
+        console.log('sUSDeOut', netTokenOut);
     }
 
     function _executeInstantRedemption(
@@ -163,6 +166,7 @@ abstract contract PendlePrincipalToken is BaseStakingVault {
             require(params.minPurchaseAmount <= netTokenOut, "Slippage");
             borrowedCurrencyAmount = netTokenOut;
         }
+        console.log('usdcOut', borrowedCurrencyAmount);
     }
 
     function _initiateSYWithdraw(
