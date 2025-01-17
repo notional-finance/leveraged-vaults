@@ -182,6 +182,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         exitVaultBypass(account, vaultShares, maturity, abi.encode(r));
     }
 
+    // For vaults where the staked asset requires a cooldown on withdraw, this test may fail
+    // because the debt accrues interest during the cooldown but the asset does not earn yield.
+    // Depending on the length of the cooldown and the interest rate of the debt, the test may fail.
     function test_exitVault_useWithdrawRequest(
         uint8 maturityIndex, uint256 depositAmount, bool useForce
     ) public {
@@ -280,6 +283,8 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         v().initiateWithdraw("");
     }
 
+    // Low deviation setting here can cause failures for PT vaults due to slippage 
+    // particularly when the oracle price of the PT diverges from the market price.
     function test_accountWithdraw(
         uint8 maturityIndex, uint256 depositAmount, uint8 withdrawPercent
     ) public {
@@ -309,7 +314,7 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(w.hasSplit, false);
 
         // Assert no change to valuation
-        assertApproxEqRel(valueBefore, valueAfter, 0.002e18, "Valuation Change");
+        assertApproxEqRel(valueBefore, valueAfter, 0.003e18, "Valuation Change");
     }
 
     function test_RevertIf_accountWithdraw_hasExistingRequest(
@@ -500,6 +505,8 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         v().deleverageAccount{value: msgValue}(account, address(v()), liquidator, 0, maxDeposit[0]);
     }
 
+    // Test can fail due to precision issues when dealing with default (very low) min borrow size.
+    // To remedy, adjust the enterVaultLiquidation function to use a higher deposit amount.
     function test_RevertIf_deleverageAccount_collateralDecrease(uint8 maturityIndex) public {
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
@@ -686,6 +693,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         assertEq(w2.hasSplit, w.hasSplit, "Liquidator's withdraw request hasSplit status should remain unchanged after second liquidation");
     }
 
+    // For vaults where the staked asset requires a cooldown on withdraw, this test may fail
+    // because the debt accrues interest during the cooldown but the asset does not earn yield.
+    // Depending on the length of the cooldown and the interest rate of the debt, the test may fail.
     function test_finalizeWithdrawsManual(
         uint8 maturityIndex, uint256 depositAmount, bool useForce
     ) public {
