@@ -22,6 +22,8 @@ abstract contract DeployProxyVault is Script, GnosisHelper {
 
     function run() public {
         require(block.chainid == Deployments.CHAIN_ID, "Invalid Chain");
+        console.log("HEEEEEERRRRREEEEE");
+        console.log(harness.EXISTING_DEPLOYMENT());
         bool upgradeVault = vm.envOr("UPGRADE_VAULT", false);
         bool updateConfig = vm.envOr("UPDATE_CONFIG", false);
         bool initVault = vm.envOr("INIT_VAULT", false);

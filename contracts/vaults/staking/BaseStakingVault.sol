@@ -228,13 +228,15 @@ abstract contract BaseStakingVault is WithdrawRequestBase, BaseStrategyVault {
             account, vault
         );
         require(0 <= healthBefore.collateralRatio, "Insolvent");
+        console.logInt(healthBefore.collateralRatio);
 
         // Executes the liquidation on Notional, vault shares are transferred from the account to the liquidator
         // inside this process.
+        console.log("here");
         (vaultSharesFromLiquidation, depositAmountPrimeCash) = NOTIONAL.deleverageAccount{value: msg.value}(
             account, vault, liquidator, currencyIndex, depositUnderlyingInternal
         );
-
+        console.log("there");
         // Splits any withdraw requests, if required. Will revert if the liquidator cannot absorb the withdraw
         // request because they have another active one.
         _splitWithdrawRequest(account, liquidator, vaultSharesFromLiquidation);
