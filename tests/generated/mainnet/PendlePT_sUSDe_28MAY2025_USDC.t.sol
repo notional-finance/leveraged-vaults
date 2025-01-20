@@ -125,7 +125,7 @@ contract Harness_PendlePT_sUSDe_28MAY2025_USDC is PendleStakingHarness {
 
         // Custom PT Oracle
         token[0] = ptAddress;
-        oracle[0] = ptOracle;
+        oracle[0] = 0x77e910770f91994dB9CE3bF0435d3DB55c9d9F0f;
 
         // USDC
         token[1] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;

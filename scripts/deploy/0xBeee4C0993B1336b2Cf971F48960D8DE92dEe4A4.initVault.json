@@ -1,6 +1,6 @@
 {
   "chainId": "1",
-  "createdAt": 1737132035000,
+  "createdAt": 1737150875000,
   "meta": {
     "name": "Transactions Batch",
     "txBuilderVersion": "1.16.1"
@@ -72,7 +72,7 @@
         "name": "fallback",
         "payable": true
       },
-      "data": "0x67a74ddc000000000000000000000000b7de5dfcb74d25c2f21841fbd6230355c50d93080000000000000000000000000000000000000000000000000000000000000000",
+      "data": "0x67a74ddc000000000000000000000000b7de5dfcb74d25c2f21841fbd6230355c50d930800000000000000000000000077e910770f91994db9ce3bf0435d3db55c9d9f0f",
       "to": "0x594734c7e06C3D483466ADBCe401C6Bd269746C8",
       "value": "0"
     },
