@@ -14,6 +14,7 @@ import {NotionalProxy} from "@interfaces/notional/NotionalProxy.sol";
 import {IERC20, TokenUtils} from "@contracts/utils/TokenUtils.sol";
 import {console} from "forge-std/console.sol";
 import {ComposablePoolHarness, SingleSidedLPMetadata} from "./harness/ComposablePoolHarness.sol";
+import {StrategyVaultHarness} from "../StrategyVaultHarness.sol";
 
 function min(uint256 a, uint256 b) pure returns (uint256) {
     return a < b ? a : b;
@@ -47,6 +48,11 @@ abstract contract VaultRewarderTests is BaseSingleSidedLPVault {
 
     function setUp() public virtual override {
         super.setUp();
+
+        StrategyVaultHarness.RewardSettings[] memory rewards = harness.getRewardSettings();
+        if (harness.EXISTING_DEPLOYMENT() == address(0) && rewards.length > 0) {
+            _updateRewardToken(rewards[0].token, 0, 0);
+        }
 
         VaultRewarderLib vaultRewarder = VaultRewarderLib(address(vault));
         console.log("Getting reward settings...");

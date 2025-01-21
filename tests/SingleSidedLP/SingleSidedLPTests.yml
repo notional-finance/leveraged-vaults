@@ -714,7 +714,7 @@ mainnet:
       oraclePriceDeviationLimitPercent: 0.015e4
       forceClaimAfter: 0
       useAccountClaim: true
-      numRewardTokens: 2
+      numRewardTokens: 0
     setUp:
       minDeposit: 0.01e8
       maxDeposit: 1e8
