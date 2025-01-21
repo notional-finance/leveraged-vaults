@@ -699,3 +699,34 @@ mainnet:
       maxDeleverageCollateralRatioBPS: 2_300
       minAccountBorrowSize: 1e8
       maxPrimaryBorrow: 50e8
+  - vaultName: SingleSidedLP:Convex:[WBTC]/cbBTC
+    forkBlock: 21673310
+    vaultType: Curve2TokenConvex
+    primaryBorrowCurrency: WBTC
+    rewardPool: "0xEd211Ec6F81f3516Ef6c5DFaC6CF09cD33A6Dff3"
+    poolToken: "0x839d6bDeDFF886404A6d7a788ef241e4e28F4802"
+    lpToken: "0x839d6bDeDFF886404A6d7a788ef241e4e28F4802"
+    curveInterface: StableSwapNG
+    rewards: [CRV, CVX]
+    oracles: [WBTC, cbBTC]
+    settings:
+      maxPoolShare: 3000
+      oraclePriceDeviationLimitPercent: 0.015e4
+      forceClaimAfter: 0
+      useAccountClaim: true
+      numRewardTokens: 2
+    setUp:
+      minDeposit: 0.01e8
+      maxDeposit: 1e8
+      maxRelEntryValuation: 50
+      maxRelExitValuation: 75
+    config:
+      feeRate5BPS: 10
+      liquidationRate: 103
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 0
+      minCollateralRatioBPS: 1300
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 2_300
+      minAccountBorrowSize: 5e7
+      maxPrimaryBorrow: 20e8
