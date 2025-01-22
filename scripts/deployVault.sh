@@ -17,6 +17,7 @@ CHAIN=$1
 PROTOCOL=$2
 POOL_NAME=$3
 TOKEN=$4
+DEPLOYER=$5
 
 UPGRADE_VAULT=false
 UPDATE_CONFIG=false
@@ -103,7 +104,6 @@ case "$CHAIN" in
         ;;
 esac
 
-DEPLOYER=MAINNET_V2_DEPLOYER
 DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
 forge build
