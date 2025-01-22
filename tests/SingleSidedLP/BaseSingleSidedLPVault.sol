@@ -25,9 +25,14 @@ abstract contract BaseSingleSidedLPVault is BaseAcceptanceTest {
     function deployTestVault() internal override returns (IStrategyVault) {
         (address impl, bytes memory _metadata) = harness.deployVaultImplementation();
         metadata = abi.decode(_metadata, (SingleSidedLPMetadata));
+        console.log("Number of reward tokens:", metadata.rewardTokens.length);
+        for(uint i = 0; i < metadata.rewardTokens.length; i++) {
+            console.log("Reward token", i, ":", address(metadata.rewardTokens[i]));
+        }
         nProxy proxy;
 
         address existingDeployment = harness.EXISTING_DEPLOYMENT();
+        console.log("Existing deployment:", existingDeployment);
         if (existingDeployment != address(0)) {
             SingleSidedLPVaultBase b = SingleSidedLPVaultBase(payable(existingDeployment));
             ISingleSidedLPStrategyVault.SingleSidedLPStrategyVaultInfo memory beforeInfo = b.getStrategyVaultInfo();
