@@ -208,14 +208,44 @@ mainnet:
       - token: USDe
         dex: CurveV2
         tradeTypeFlags: 5
-      - token: DAI
-        dex: CurveV2
-        tradeTypeFlags: 5
-      - token: sUSDe
-        dex: CurveV2
-        tradeTypeFlags: 5
     setUp:
       minDeposit: 0.1e6
       maxDeposit: 100_000e6
       maxRelExitValuation_WithdrawRequest_Fixed: 0.03
       maxRelExitValuation_WithdrawRequest_Variable: 0.01
+  - stakeSymbol: USDe
+    forkBlock: 21971424
+    expiry: 30JUL2025
+    primaryBorrowCurrency: USDC
+    contractName: PendlePTGeneric
+    tradeOnEntry: true
+    oracles: [USDe,USDC]
+    whale: "0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf"
+    marketAddress: "0x9Df192D13D61609D1852461c4850595e1F56E714"
+    ptAddress: "0x917459337CaAC939D41d7493B3999f571D20D667"
+    useSyOracleRate: 'true'
+    primaryDex: CurveV2
+    exchangeData:
+      pool: "0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72"
+      fromIndex: 1 # USDC
+      toIndex: 0   # USDe
+    permissions:
+      - token: USDC
+        dex: CurveV2
+        tradeTypeFlags: 5
+      - token: USDe
+        dex: CurveV2
+        tradeTypeFlags: 5
+    setUp:
+      minDeposit: 0.1e6
+      maxDeposit: 100_000e6
+    config:
+      feeRate5BPS: 0
+      liquidationRate: 103
+      reserveFeeShare: 80
+      maxBorrowMarketIndex: 2
+      minCollateralRatioBPS: 1200
+      maxRequiredAccountCollateralRatioBPS: 10_000
+      maxDeleverageCollateralRatioBPS: 2000
+      minAccountBorrowSize: 60_000e8
+      maxPrimaryBorrow: 1_000_000e8
