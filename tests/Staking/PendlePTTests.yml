@@ -250,7 +250,7 @@ mainnet:
       minAccountBorrowSize: 60_000e8
       maxPrimaryBorrow: 1_000_000e8
   - stakeSymbol: pufETH
-    forkBlock: 21971424
+    forkBlock: 21989427
     expiry: 25JUN2025
     primaryBorrowCurrency: ETH
     contractName: PendlePTGeneric
@@ -261,7 +261,7 @@ mainnet:
     useSyOracleRate: 'true'
     primaryDex: CurveV2
     exchangeData:
-      pool: "0x39f5b252de249790faed0c2f05abead56d2088e1"
+      pool: "0x39F5b252dE249790fAEd0C2F05aBead56D2088e1"
       fromIndex: 0 # ETH
       toIndex: 1   # pufETH
     permissions:
