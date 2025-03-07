@@ -49,27 +49,29 @@ abstract contract BasePendleTest is BaseStakingTest {
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
         uint256 maturity = maturities[maturityIndex];
-
         uint256 vaultShares = enterVault(
             account, depositAmount, maturity, getDepositParams(depositAmount, maturity)
         );
-
+        uint256 nextMaturity = maturities[1];
+        // NOTE if expiry is greater than two maturities out, you need to initialize multiple times
+        while (expires > nextMaturity) {
+            vm.warp(nextMaturity + 3600);
+            try Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false) {} catch {}
+            nextMaturity = nextMaturity + 7776000;
+        }
         vm.warp(expires + 3600);
-        try Deployments.NOTIONAL.initializeMarkets(harness.getTestVaultConfig().borrowCurrencyId, false) {} catch {}
         if (maturity < block.timestamp) {
             // Push the vault shares to prime
             totalVaultShares[maturity] -= vaultShares;
             maturity = maturities[0];
             totalVaultShares[maturity] += vaultShares;
         }
-
         uint256 underlyingToReceiver = exitVault(
             account,
             vaultShares,
             maturity < block.timestamp ? maturities[0] : maturity,
             getRedeemParams(depositAmount, maturity)
         );
-
         assertRelDiff(
             uint256(depositAmount),
             underlyingToReceiver,

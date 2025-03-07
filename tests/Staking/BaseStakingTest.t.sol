@@ -504,19 +504,18 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         v().deleverageAccount{value: msgValue}(account, address(v()), liquidator, 0, maxDeposit[0]);
     }
 
+    // NOTE this test can fail due to known issue with min borrow on fixed rate positions
+    // Test expects to fail on collateral decrease, but it can fail due to min borrow because of this issue
     function test_RevertIf_deleverageAccount_collateralDecrease(uint8 maturityIndex) public {
         maturityIndex = uint8(bound(maturityIndex, 0, 2));
         address account = makeAddr("account");
         uint256 maturity = maturities[maturityIndex];
         enterVaultLiquidation(account, maturity);
-
         _changeTokenPrice(deleverageCollateralDecreaseRatio, v().STAKING_TOKEN());
-
         (/* */, int256[3] memory maxDeposit, /* */) = Deployments.NOTIONAL.getVaultAccountHealthFactors(
             account, address(vault)
         );
         address liquidator = makeAddr("liquidator");
-
         uint256 maxDepositExternal = uint256(maxDeposit[0]) * precision / 1e8;
         dealTokensAndApproveNotional(maxDepositExternal * 2, liquidator);
         uint256 msgValue = address(primaryBorrowToken) == Constants.ETH_ADDRESS ? maxDepositExternal  : 0;
