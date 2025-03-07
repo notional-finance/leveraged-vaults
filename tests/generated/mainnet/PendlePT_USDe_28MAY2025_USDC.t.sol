@@ -12,15 +12,15 @@ import {
 import {PendlePTOracle} from "@contracts/oracles/PendlePTOracle.sol";
 import "@interfaces/chainlink/AggregatorV2V3Interface.sol";
 import "@interfaces/ethena/IsUSDe.sol";
-import { PendlePTStakedUSDeVault } from "@contracts/vaults/staking/PendlePTStakedUSDeVault.sol";
+import { PendlePTGeneric } from "@contracts/vaults/staking/PendlePTGeneric.sol";
 
 
 
-contract Test_PendlePT_sUSDe_25DEC2024_USDC is BasePendleTest {
+contract Test_PendlePT_USDe_28MAY2025_USDC is BasePendleTest {
     function setUp() public override {
-        FORK_BLOCK = 21023919;
+        FORK_BLOCK = 21996261;
         WHALE = 0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf;
-        harness = new Harness_PendlePT_sUSDe_25DEC2024_USDC();
+        harness = new Harness_PendlePT_USDe_28MAY2025_USDC();
 
         // NOTE: need to enforce some minimum deposit here b/c of rounding issues
         // on the DEX side, even though we short circuit 0 deposits
@@ -29,7 +29,7 @@ contract Test_PendlePT_sUSDe_25DEC2024_USDC is BasePendleTest {
         maxRelEntryValuation = 50 * BASIS_POINT;
         maxRelExitValuation = 50 * BASIS_POINT;
         maxRelExitValuation_WithdrawRequest_Fixed = 0.03e18;
-        maxRelExitValuation_WithdrawRequest_Variable = 0.01e18;
+        maxRelExitValuation_WithdrawRequest_Variable = 0.005e18;
         deleverageCollateralDecreaseRatio = 925;
         defaultLiquidationDiscount = 955;
         withdrawLiquidationDiscount = 945;
@@ -39,13 +39,7 @@ contract Test_PendlePT_sUSDe_25DEC2024_USDC is BasePendleTest {
     }
 
     
-    function finalizeWithdrawRequest(address account) internal override {
-        WithdrawRequest memory w = v().getWithdrawRequest(account);
-        IsUSDe.UserCooldown memory wCooldown = sUSDe.cooldowns(address(uint160(w.requestId)));
-
-        setMaxOracleFreshness();
-        vm.warp(wCooldown.cooldownEnd);
-    }
+    function finalizeWithdrawRequest(address account) internal override {}
     
 
     function getDepositParams(
@@ -78,32 +72,14 @@ contract Test_PendlePT_sUSDe_25DEC2024_USDC is BasePendleTest {
     ) internal view virtual override returns (bytes memory) {
         RedeemParams memory r;
 
+        StakingMetadata memory m = BaseStakingHarness(address(harness)).getMetadata();
         r.minPurchaseAmount = 0;
-        r.dexId = 7; // CurveV2
-        // For CurveV2 we need to swap the in and out indexes on exit
-        CurveV2Adapter.CurveV2SingleData memory d;
-        d.pool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
-        d.fromIndex = 0; // DAI
-        d.toIndex = 1; // USDC
-        r.exchangeData = abi.encode(d);
-
-        return abi.encode(r);
-    }
-
-    function getRedeemParamsWithdrawRequest(
-        uint256 /* vaultShares */,
-        uint256 /* maturity */
-    ) internal view virtual override returns (bytes memory) {
-        RedeemParams memory r;
-        // On withdraw request, we need to swap USDe to USDC
-
-        r.minPurchaseAmount = 0;
-        r.dexId = 7; // CurveV2
+        r.dexId = m.primaryDexId;
         // For CurveV2 we need to swap the in and out indexes on exit
         CurveV2Adapter.CurveV2SingleData memory d;
         d.pool = 0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72;
-        d.fromIndex = 0; // USDe
-        d.toIndex = 1; // USDC
+        d.fromIndex = 0;
+        d.toIndex = 1;
         r.exchangeData = abi.encode(d);
 
         return abi.encode(r);
@@ -111,10 +87,10 @@ contract Test_PendlePT_sUSDe_25DEC2024_USDC is BasePendleTest {
     }
 
 
-contract Harness_PendlePT_sUSDe_25DEC2024_USDC is PendleStakingHarness {
+contract Harness_PendlePT_USDe_28MAY2025_USDC is PendleStakingHarness {
 
     function getVaultName() public pure override returns (string memory) {
-        return 'Pendle:PT sUSDe 25DEC2024:[USDC]';
+        return 'Pendle:PT USDe 28MAY2025:[USDC]';
     }
 
     function getRequiredOracles() public override view returns (
@@ -125,14 +101,14 @@ contract Harness_PendlePT_sUSDe_25DEC2024_USDC is PendleStakingHarness {
 
         // Custom PT Oracle
         token[0] = ptAddress;
-        oracle[0] = ptOracle;
+        oracle[0] = 0x9DD23c900e89C9814A3FdBFd49157F45d5EA1C98;
 
+        // USDe
+        token[1] = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+        oracle[1] = 0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961;
         // USDC
-        token[1] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-        oracle[1] = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
-        // sUSDe
-        token[2] = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
-        oracle[2] = 0xFF3BC18cCBd5999CE63E788A1c250a88626aD099;
+        token[2] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        oracle[2] = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
         
     }
 
@@ -159,40 +135,40 @@ contract Harness_PendlePT_sUSDe_25DEC2024_USDC is PendleStakingHarness {
         VaultConfigParams memory params, uint80 maxPrimaryBorrow
     ) {
         params = getTestVaultConfig();
-        params.feeRate5BPS = 10;
-        params.liquidationRate = 102;
+        params.feeRate5BPS = 0;
+        params.liquidationRate = 103;
         params.reserveFeeShare = 80;
         params.maxBorrowMarketIndex = 2;
-        params.minCollateralRatioBPS = 800;
+        params.minCollateralRatioBPS = 1200;
         params.maxRequiredAccountCollateralRatioBPS = 10000;
-        params.maxDeleverageCollateralRatioBPS = 1500;
+        params.maxDeleverageCollateralRatioBPS = 2000;
 
         // NOTE: these are always in 8 decimals
-        params.minAccountBorrowSize = 0.001e8;
-        maxPrimaryBorrow = 100e8;
+        params.minAccountBorrowSize = 60_000e8;
+        maxPrimaryBorrow = 1_000_000e8;
     }
 
     function deployImplementation() internal override returns (address impl) {
         
-        return address(new PendlePTStakedUSDeVault(marketAddress, ptAddress, borrowToken));
+        return address(new PendlePTGeneric(
+            marketAddress, tokenInSy, tokenOutSy, borrowToken, ptAddress, redemptionToken
+        ));
         
     }
 
     
-    function withdrawToken(address vault) public view override returns (address) {
-        // USDe is the withdraw token
-        return 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
-    }
-    
 
     constructor() {
-        marketAddress = 0xa0ab94DeBB3cC9A7eA77f3205ba4AB23276feD08;
-        ptAddress = 0xEe9085fC268F6727d5D4293dBABccF901ffDCC29;
+        marketAddress = 0x85667e484a32d884010Cf16427D90049CCf46e97;
+        ptAddress = 0x50D2C7992b802Eef16c04FeADAB310f31866a545;
         twapDuration = 15 minutes; // recommended 15 - 30 min
         useSyOracleRate = true;
-        baseToUSDOracle = 0xFF3BC18cCBd5999CE63E788A1c250a88626aD099;
+        baseToUSDOracle = 0xa569d910839Ae8865Da8F8e70FfFb0cBA869F961;
         borrowToken = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-        tokenOutSy = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
+        tokenOutSy = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+        
+        tokenInSy = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+        redemptionToken = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
         
 
         CurveV2Adapter.CurveV2SingleData memory d;
@@ -202,14 +178,14 @@ contract Harness_PendlePT_sUSDe_25DEC2024_USDC is PendleStakingHarness {
         bytes memory exchangeData = abi.encode(d);
         uint8 primaryDexId = 7;
 
-        setMetadata(StakingMetadata(3, primaryDexId, exchangeData, true));
+        setMetadata(StakingMetadata(3, primaryDexId, exchangeData, false));
     }
 
 }
 
-contract Deploy_PendlePT_sUSDe_25DEC2024_USDC is Harness_PendlePT_sUSDe_25DEC2024_USDC, DeployProxyVault {
+contract Deploy_PendlePT_USDe_28MAY2025_USDC is Harness_PendlePT_USDe_28MAY2025_USDC, DeployProxyVault {
     function setUp() public override {
-        harness = new Harness_PendlePT_sUSDe_25DEC2024_USDC();
+        harness = new Harness_PendlePT_USDe_28MAY2025_USDC();
     }
 
     function deployVault() internal override returns (address impl, bytes memory _metadata) {
