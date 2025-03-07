@@ -103,7 +103,7 @@ case "$CHAIN" in
         ;;
 esac
 
-DEPLOYER=MAINNET_V2_DEPLOYER
+DEPLOYER=DEPLOYER
 DEPLOYER_ADDRESS=`cast wallet address --account $DEPLOYER`
 
 forge build

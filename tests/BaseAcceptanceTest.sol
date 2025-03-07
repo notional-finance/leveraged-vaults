@@ -68,6 +68,7 @@ abstract contract BaseAcceptanceTest is Test {
 
     function setUp() public virtual {
         vm.createSelectFork(RPC_URL, FORK_BLOCK);
+        
         // NOTE: everything needs to run after create select fork
         _deployVaultRewarderLib();
 
@@ -516,7 +517,7 @@ abstract contract BaseAcceptanceTest is Test {
         maturityIndex = bound(maturityIndex, 0, maturities.length - 1);
         uint256 maturity = maturities[maturityIndex];
         depositAmount = boundDepositAmount(depositAmount);
-
+        
         hook_beforeEnterVault(account, maturity, depositAmount);
         uint256 vaultShares = enterVault(
             account,
@@ -524,7 +525,7 @@ abstract contract BaseAcceptanceTest is Test {
             maturity,
             getDepositParams(depositAmount, maturity)
         );
-
+        
         vm.warp(block.timestamp + 3600);
 
         exitVault(
@@ -534,10 +535,10 @@ abstract contract BaseAcceptanceTest is Test {
             getRedeemParams(depositAmount, maturity)
         );
 
-
         vm.warp(block.timestamp + 3600);
-
         hook_beforeEnterVault(account, maturity, depositAmount);
+        // warping causing test failure on not fresh oracle
+        setMaxOracleFreshness();
         enterVault(
             account,
             depositAmount,
