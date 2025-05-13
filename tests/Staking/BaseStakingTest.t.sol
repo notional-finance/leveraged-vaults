@@ -195,12 +195,17 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             maturity = maturities[maturityIndex];
             depositAmount =  bound(depositAmount, 5 * minDeposit, maxDeposit);
 
+            console.log("Initial deposit amount:", depositAmount);
+            console.log("Maturity index:", maturityIndex);
+            console.log("Maturity:", maturity);
+
             vaultShares = enterVault(
                 account,
                 depositAmount,
                 maturity,
                 getDepositParams(depositAmount, maturity)
             );
+            console.log("Vault shares after deposit:", vaultShares);
         }
 
         vm.warp(block.timestamp + 3600);
@@ -210,10 +215,13 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         );
         // Use max uint on variable lending to clear the position
         lendAmount = maturityIndex == 0 ? type(uint256).max : lendAmount;
+        console.log("Lend amount:", lendAmount);
 
         if (useForce) {
+            console.log("Using force withdraw");
             _forceWithdraw(account);
         } else {
+            console.log("Using normal withdraw");
             vm.prank(account);
             v().initiateWithdraw("");
         }
@@ -221,24 +229,29 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         bytes memory params = getRedeemParamsWithdrawRequest(vaultShares, maturity);
         vm.prank(account);
         // should fail if withdraw is not finalized
+        console.log("Attempting exit before finalization - should fail");
         vm.expectRevert();
         Deployments.NOTIONAL.exitVault(
             account, address(vault), account, vaultShares, lendAmount, 0, params
         );
 
+        console.log("Finalizing withdraw request");
         finalizeWithdrawRequest(account);
 
         vm.prank(account);
         vm.expectRevert();
         // should fail if exact amount of shares is not specified
+        console.log("Attempting exit with wrong share amount - should fail");
         Deployments.NOTIONAL.exitVault(
             account, address(vault), account, vaultShares - 1, lendAmount, 0, params
         );
 
         vm.prank(account);
+        console.log("Attempting final exit with correct parameters");
         uint256 totalToReceiver = Deployments.NOTIONAL.exitVault(
             account, address(vault), account, vaultShares, lendAmount, 0, params
         );
+        console.log("Total received:", totalToReceiver);
 
         uint256 maxDiff;
         if (maturityIndex == 0) {
@@ -246,6 +259,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         } else {
             maxDiff = maxRelExitValuation_WithdrawRequest_Fixed;
         }
+        console.log("Max allowed difference:", maxDiff);
+        console.log("Expected amount:", depositAmount);
+        console.log("Actual amount:", totalToReceiver);
         assertApproxEqRel(totalToReceiver, depositAmount, maxDiff, "1");
 
         _assertWithdrawRequestIsEmpty(v().getWithdrawRequest(account));
@@ -704,13 +720,20 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
             maturity = maturities[maturityIndex];
             depositAmount =  bound(depositAmount, 8 * minDeposit, maxDeposit);
 
+            console.log("Initial deposit amount:", depositAmount);
+            console.log("Maturity index:", maturityIndex);
+            console.log("Maturity:", maturity);
+
             vaultShares = enterVault(
                 account,
                 depositAmount,
                 maturity,
                 getDepositParams(depositAmount, maturity)
             );
+            console.log("Vault shares after deposit:", vaultShares);
+            
             positionValue = uint256(v().convertStrategyToUnderlying(account, vaultShares, maturity));
+            console.log("Initial position value:", positionValue);
         }
         vm.warp(block.timestamp + 3600);
 
@@ -720,26 +743,41 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         );
         // Use max uint on variable lending to clear the position
         lendAmount = maturityIndex == 0 ? type(uint256).max : lendAmount;
+        console.log("Lend amount:", lendAmount);
 
         if (useForce) {
+            console.log("Using force withdraw");
             _forceWithdraw(account);
         } else {
+            console.log("Using normal withdraw");
             vm.prank(account);
             v().initiateWithdraw("");
         }
         WithdrawRequest memory w = v().getWithdrawRequest(account);
+        console.log("Withdraw request after initiation - requestId:", w.requestId);
+        console.log("Withdraw request after initiation - vaultShares:", w.vaultShares);
+        console.log("Withdraw request after initiation - hasSplit:", w.hasSplit);
 
         {
+            console.log("Finalizing withdraw request");
             finalizeWithdrawRequest(account);
 
             vm.prank(account);
+            console.log("Calling finalizeWithdrawsManual");
             v().finalizeWithdrawsManual(account);
 
             w = v().getWithdrawRequest(account);
+            console.log("Withdraw request after finalization - requestId:", w.requestId);
+            console.log("Withdraw request after finalization - vaultShares:", w.vaultShares);
+            console.log("Withdraw request after finalization - hasSplit:", w.hasSplit);
         }
 
         if (w.requestId != 0) {
             SplitWithdrawRequest memory s = v().getSplitWithdrawRequest(w.requestId);
+            console.log("Split withdraw request - totalVaultShares:", s.totalVaultShares);
+            console.log("Split withdraw request - totalWithdraw:", s.totalWithdraw);
+            console.log("Split withdraw request - finalized:", s.finalized);
+            
             assertTrue(w.vaultShares != 0, "5");
             assertTrue(w.hasSplit, "6");
             assertEq(w.vaultShares, s.totalVaultShares);
@@ -755,6 +793,9 @@ abstract contract BaseStakingTest is BaseAcceptanceTest {
         } else {
             maxDiff = maxRelExitValuation_WithdrawRequest_Fixed;
         }
+        console.log("Max allowed difference:", maxDiff);
+        console.log("Expected amount:", depositAmount);
+        
         // exit vault and check that account received expected amount
         assertApproxEqRel(
             Deployments.NOTIONAL.exitVault(

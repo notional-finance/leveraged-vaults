@@ -499,7 +499,9 @@ abstract contract BaseAcceptanceTest is Test {
             maturity,
             getRedeemParams(depositAmount, maturity)
         );
-
+        console.log("Underlying to receiver:", underlyingToReceiver);
+        console.log("Valuation before:", uint256(valuationBefore));
+        
         assertRelDiff(
             uint256(valuationBefore),
             underlyingToReceiver,
