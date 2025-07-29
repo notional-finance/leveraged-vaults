@@ -125,7 +125,7 @@ contract Harness_PendlePT_sUSDe_24SEP2025_USDC is PendleStakingHarness {
 
         // Custom PT Oracle
         token[0] = ptAddress;
-        oracle[0] = 0x337A9E92eE62fD5B8726D72A08645687E595A730;
+        oracle[0] = ptOracle;
 
         // USDC
         token[1] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -194,6 +194,7 @@ contract Harness_PendlePT_sUSDe_24SEP2025_USDC is PendleStakingHarness {
     
 
     constructor() {
+        EXISTING_DEPLOYMENT = 0x1F1ee363423C361FF8416F11E9B217733d2f6A0C;
         marketAddress = 0xA36b60A14A1A5247912584768C6e53E1a269a9F7;
         ptAddress = 0x9F56094C450763769BA0EA9Fe2876070c0fD5F77;
         twapDuration = 15 minutes; // recommended 15 - 30 min
